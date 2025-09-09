@@ -1,0 +1,49 @@
+# Usaremos httpbin.org, uma API pública excelente para testar clientes HTTP.
+suite_name: "Fluxo de Teste com httpbin.org"
+
+# URL base para todas as requisições.
+base_url: "https://httpbin.org"
+
+# Variáveis globais que podem ser usadas em qualquer etapa.
+variables:
+  user_id: 123
+  user_name: "alpha_user"
+
+# A lista de etapas do nosso fluxo de teste.
+steps:
+  # Etapa 1: Enviar dados e "simular" a captura de um token.
+  - name: "Enviar dados via POST e capturar valores"
+    request:
+      method: POST
+      url: "/post" # Concatena com base_url -> https://httpbin.org/post
+      headers:
+        Content-Type: "application/json"
+        X-Custom-Header: "Meu-Teste"
+      body:
+        name: "{{user_name}}" # Usa uma variável
+        id: "{{user_id}}"
+        grant_type: "password"
+
+    # Validações (Assertions) para esta etapa.
+    assert:
+      status_code: 200
+
+    # O httpbin.org/post retorna o corpo enviado dentro de um campo 'json'.
+    # Vamos capturar o nome de usuário que enviamos de volta da resposta.
+    capture:
+      captured_username: "body.json.name"
+      # Simulando a captura de um token estático para o próximo passo.
+      auth_token: "body.headers.Host" # Apenas para ter um valor para usar
+
+  # Etapa 2: Fazer uma requisição GET usando um valor capturado.
+  - name: "Buscar dados usando o token capturado"
+    request:
+      method: GET
+      url: "/get"
+      headers:
+        # Usa a variável capturada na etapa anterior.
+        Authorization: "Bearer {{auth_token}}"
+        X-User-Name: "{{captured_username}}"
+
+    assert:
+      status_code: 200
