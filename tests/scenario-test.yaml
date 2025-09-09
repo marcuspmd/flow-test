@@ -1,0 +1,120 @@
+# Teste demonstrando cenários condicionais (Happy/Sad Path)
+suite_name: "Teste de Cenários Condicionais"
+
+base_url: "https://httpbin.org"
+
+variables:
+  username: "test_user"
+  password: "test_password"
+
+steps:
+  - name: "Login com cenários condicionais"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        username: "{{username}}"
+        password: "{{password}}"
+        action: "login"
+
+    # Cenários condicionais baseados na resposta
+    scenarios:
+      # Happy Path: Status 200
+      - condition: "status_code == `200`"
+        then:
+          assert:
+            status_code: 200
+            body:
+              json.action:
+                equals: "login"
+          capture:
+            auth_token: "body.headers.Host"
+            login_success: "`true`"
+      
+      # Sad Path: Status não é 200 
+      - condition: "status_code != `200`"
+        then:
+          assert:
+            status_code: 401
+          capture:
+            error_message: "body.error || 'Login failed'"
+            login_success: "`false`"
+
+  - name: "Testar diferentes códigos de status"
+    request:
+      method: GET
+      url: "/status/404"  # Força um 404
+
+    scenarios:
+      # Happy Path: Status esperado 404
+      - condition: "status_code == `404`"
+        then:
+          capture:
+            error_handled: "`true`"
+            status_message: "'Not Found as expected'"
+      
+      # Sad Path: Status não é o esperado
+      - condition: "status_code != `404`"
+        then:
+          capture:
+            error_handled: "`false`"
+            status_message: "'Unexpected status code'"
+
+    # Esta etapa pode falhar mas continuamos o teste
+    continue_on_failure: true
+
+  - name: "Validar com base em tamanho da resposta"
+    request:
+      method: GET
+      url: "/get"
+
+    scenarios:
+      # Resposta pequena
+      - condition: "size_bytes < `500`"
+        then:
+          capture:
+            response_type: "'small'"
+            
+      # Resposta grande
+      - condition: "size_bytes >= `500`"
+        then:
+          capture:
+            response_type: "'large'"
+
+  - name: "Cenário baseado em tempo de resposta"
+    request:
+      method: GET
+      url: "/delay/2"  # Adiciona delay de 2 segundos
+
+    scenarios:
+      # Resposta rápida
+      - condition: "duration_ms < `1000`"
+        then:
+          capture:
+            performance: "'fast'"
+            
+      # Resposta lenta
+      - condition: "duration_ms >= `1000`"
+        then:
+          capture:
+            performance: "'slow'"
+
+    continue_on_failure: true
+
+  - name: "Usar variáveis dos cenários anteriores"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        Authorization: "Bearer {{auth_token}}"
+      body:
+        login_success: "{{login_success}}"
+        error_handled: "{{error_handled}}"
+        response_type: "{{response_type}}"
+        performance: "{{performance}}"
+
+    assert:
+      status_code: 200
