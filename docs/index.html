@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flow Test Engine v1.0 - Documentação</title>
+    <link rel="stylesheet" href="custom.css">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 2.5em;
+            font-weight: 300;
+        }
+
+        .header p {
+            margin: 10px 0 0 0;
+            opacity: 0.9;
+            font-size: 1.2em;
+        }
+
+        .nav {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .nav h2 {
+            margin-top: 0;
+            color: #667eea;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .nav-links a {
+            color: #667eea;
+            text-decoration: none;
+            padding: 10px 15px;
+            border: 2px solid #667eea;
+            border-radius: 5px;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .nav-links a:hover {
+            background-color: #667eea;
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        .content {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .content h1,
+        .content h2,
+        .content h3 {
+            color: #333;
+            margin-top: 30px;
+            margin-bottom: 15px;
+        }
+
+        .content h1 {
+            color: #667eea;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .content h2 {
+            border-bottom: 2px solid #764ba2;
+            padding-bottom: 8px;
+        }
+
+        .content pre {
+            background-color: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 5px;
+            padding: 15px;
+            overflow-x: auto;
+            margin: 15px 0;
+        }
+
+        .content code {
+            background-color: #f1f3f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 0.9em;
+        }
+
+        .content pre code {
+            background-color: transparent;
+            padding: 0;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            padding: 20px;
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .version-badge {
+            background: #28a745;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 0.8em;
+            font-weight: bold;
+            display: inline-block;
+            margin-left: 10px;
+        }
+
+        .api-report {
+            margin-top: 40px;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-left: 4px solid #667eea;
+            border-radius: 5px;
+        }
+
+        .api-report h3 {
+            color: #667eea;
+            margin-top: 0;
+        }
+
+        @media (max-width: 768px) {
+            .nav-links {
+                flex-direction: column;
+            }
+
+            .nav-links a {
+                text-align: center;
+            }
+
+            .header h1 {
+                font-size: 2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Flow Test Engine <span class="version-badge">v1.0</span></h1>
+        <p>Motor de Testes de API com execução baseada em diretórios, variáveis globais e gerenciamento de testes por prioridade</p>
+    </div>
+
+    <div class="nav">
+        <h2>Navegação</h2>
+        <div class="nav-links">
+            <a href="#overview">Visão Geral</a>
+            <a href="#architecture">Arquitetura</a>
+            <a href="#api-reference">Referência da API</a>
+            <a href="#getting-started">Primeiros Passos</a>
+            <a href="api-report.md">Relatório da API (TSDoc)</a>
+            <a href="API_DOCUMENTATION.md">Documentação Completa</a>
+        </div>
+    </div>
+
+    <div class="content">
+        <section id="overview">
+            <h1>Visão Geral</h1>
+            <p>O Flow Test Engine v1.0 é um motor abrangente de testes de API com suporte para execução baseada em diretórios, variáveis globais e gerenciamento de testes orientado por prioridade.</p>
+
+            <h2>Características Principais</h2>
+            <ul>
+                <li><strong>Execução Baseada em Diretórios:</strong> Organize seus testes em uma estrutura de pastas intuitiva</li>
+                <li><strong>Variáveis Globais:</strong> Compartilhe dados entre testes com facilidade</li>
+                <li><strong>Gerenciamento por Prioridade:</strong> Controle a ordem de execução dos testes</li>
+                <li><strong>Documentação TSDoc:</strong> Documentação automática gerada a partir do código TypeScript</li>
+                <li><strong>Suporte a YAML:</strong> Configure seus testes usando arquivos YAML legíveis</li>
+            </ul>
+        </section>
+
+        <section id="architecture">
+            <h1>Arquitetura</h1>
+            <p>O Flow Test Engine é construído com uma arquitetura modular que separa responsabilidades claras:</p>
+
+            <h2>Principais Componentes</h2>
+
+            <h3>FlowTestEngine</h3>
+            <p>Motor principal responsável por orquestrar todo o processo de execução de testes.</p>
+            <pre><code>const engine = new FlowTestEngine('./config.yaml');
+const result = await engine.run();</code></pre>
+
+            <h3>ConfigManager</h3>
+            <p>Gerenciador de configuração que carrega e valida todas as configurações do motor.</p>
+            <pre><code>const configManager = new ConfigManager({
+  config_file: './flow-test.config.yml',
+  environment: 'staging',
+  verbosity: 'verbose'
+});</code></pre>
+
+            <h3>HttpService</h3>
+            <p>Serviço HTTP responsável por executar requisições e processar respostas.</p>
+            <pre><code>const httpService = new HttpService('https://api.example.com', 30000);
+const result = await httpService.executeRequest('Login', requestDetails);</code></pre>
+        </section>
+
+        <section id="api-reference">
+            <h1>Referência da API</h1>
+            <p>A documentação completa da API está disponível nos seguintes formatos:</p>
+
+            <div class="api-report">
+                <h3>📋 Relatório da API (TSDoc)</h3>
+                <p>Documentação técnica gerada automaticamente a partir dos comentários TSDoc no código fonte.</p>
+                <p><a href="api-report.md" class="nav-links" style="display: inline-block; margin: 0;"><strong>Ver Relatório da API →</strong></a></p>
+            </div>
+
+            <div class="api-report">
+                <h3>📖 Documentação Completa</h3>
+                <p>Documentação detalhada com exemplos de uso e guias práticos.</p>
+                <p><a href="API_DOCUMENTATION.md" class="nav-links" style="display: inline-block; margin: 0;"><strong>Ver Documentação Completa →</strong></a></p>
+            </div>
+        </section>
+
+        <section id="getting-started">
+            <h1>Primeiros Passos</h1>
+
+            <h2>Instalação</h2>
+            <pre><code>npm install flow-test-engine</code></pre>
+
+            <h2>Uso Básico</h2>
+            <pre><code>const { FlowTestEngine } = require('flow-test-engine');
+
+const engine = new FlowTestEngine('./tests');
+const results = await engine.run();</code></pre>
+
+            <h2>Executar Testes</h2>
+            <pre><code># Gerar documentação
+npm run docs
+
+# Servir documentação
+npm run docs:serve
+
+# Executar testes
+npm run dev</code></pre>
+        </section>
+    </div>
+
+    <div class="footer">
+        <p>&copy; 2025 Flow Test Engine v1.0 - Documentação gerada automaticamente</p>
+        <p>Última atualização: 10 de setembro de 2025</p>
+    </div>
+
+    <script>
+        // Adicionar funcionalidade de navegação suave
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // Destacar link ativo na navegação
+        window.addEventListener('scroll', function() {
+            const sections = document.querySelectorAll('section');
+            const navLinks = document.querySelectorAll('.nav-links a[href^="#"]');
+
+            let current = '';
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop;
+                if (pageYOffset >= sectionTop - 60) {
+                    current = section.getAttribute('id');
+                }
+            });
+
+            navLinks.forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('href') === '#' + current) {
+                    link.classList.add('active');
+                }
+            });
+        });
+    </script>
+</body>
+</html>

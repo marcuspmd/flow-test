@@ -1,7 +1,7 @@
 {
   "$schema": "https://json.schemastore.org/package.json",
   "name": "flow-test-engine",
-  "version": "2.0.0",
+  "version": "1.0.0",
   "description": "A comprehensive API testing engine with directory-based execution, global variables, and priority-driven test management.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -13,10 +13,8 @@
     "dev": "ts-node src/cli.ts",
     "test": "ts-node src/cli.ts",
     "prepare": "npm run build",
-    "docs": "npm run build && npx jsdoc -c jsdoc.json",
-    "docs:typedoc": "npx typedoc --options typedoc.json",
-    "docs:serve": "npm run docs && cd docs/jsdoc && python3 -m http.server 8080",
-    "docs:serve:typedoc": "npm run docs:typedoc && cd docs/typedoc && python3 -m http.server 8081"
+    "docs": "npm run build && npx @microsoft/api-extractor run --config api-extractor.json",
+    "docs:serve": "npm run docs && cd docs && python3 -m http.server 8080"
   },
   "keywords": [
     "api",
@@ -41,13 +39,13 @@
     "js-yaml": "^4.1.0"
   },
   "devDependencies": {
+    "@microsoft/api-documenter": "^7.25.4",
+    "@microsoft/api-extractor": "^7.52.11",
+    "@microsoft/tsdoc": "^0.15.0",
     "@types/jmespath": "^0.15.2",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^20.14.2",
-    "jsdoc": "^4.0.4",
     "ts-node": "^10.9.2",
-    "typedoc": "^0.28.12",
-    "typedoc-theme-hierarchy": "^6.0.0",
     "typescript": "^5.4.5"
   },
   "engines": {
