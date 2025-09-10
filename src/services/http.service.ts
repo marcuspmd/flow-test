@@ -1,5 +1,6 @@
 import axios, { AxiosResponse, AxiosError } from "axios";
 import { RequestDetails, ExecutionResult } from "../types/common.types";
+import { getLogger } from "./logger.service";
 
 /**
  * Serviço HTTP responsável por executar requisições e processar respostas
@@ -24,6 +25,8 @@ export class HttpService {
 
   /** Timeout em milissegundos para requisições HTTP */
   private timeout: number;
+
+  private logger = getLogger();
 
   /**
    * Construtor do HttpService
@@ -83,7 +86,7 @@ export class HttpService {
       // Builds the complete URL
       const fullUrl = this.buildFullUrl(request.url);
 
-      console.log(`  [→] ${request.method} ${fullUrl}`);
+      this.logger.info(`${request.method} ${fullUrl}`, { stepName });
 
       // Configures the request
       const axiosConfig = {
@@ -102,7 +105,7 @@ export class HttpService {
       // Calculates response size
       const responseSize = this.calculateResponseSize(response);
 
-      console.log(`  [✓] ${response.status} (${duration}ms)`);
+      this.logger.info(`${response.status}`, { stepName, duration });
 
       return {
         step_name: stepName,
@@ -122,7 +125,11 @@ export class HttpService {
       const duration = Date.now() - startTime;
       const errorMessage = this.formatError(error);
 
-      console.log(`  [✗] Error: ${errorMessage} (${duration}ms)`);
+      this.logger.error(`Error: ${errorMessage}`, {
+        stepName,
+        duration,
+        error: error as Error,
+      });
 
       return {
         step_name: stepName,

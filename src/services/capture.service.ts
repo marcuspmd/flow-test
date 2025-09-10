@@ -1,5 +1,6 @@
 import * as jmespath from "jmespath";
 import { ExecutionResult } from "../types/common.types";
+import { getLogger } from "./logger.service";
 
 /**
  * Service responsible for capturing variables from HTTP responses
@@ -21,6 +22,8 @@ import { ExecutionResult } from "../types/common.types";
  * ```
  */
 export class CaptureService {
+  private logger = getLogger();
+
   /**
    * Captures variables from HTTP response using JMESPath expressions
    *
@@ -47,9 +50,7 @@ export class CaptureService {
     const capturedVariables: Record<string, any> = {};
 
     if (!result.response_details) {
-      console.log(
-        "    [⚠] Could not capture variables: response not available"
-      );
+      this.logger.warn("Could not capture variables: response not available");
       return capturedVariables;
     }
 
@@ -63,12 +64,14 @@ export class CaptureService {
             `    [📥] Captured: ${variableName} = ${this.formatValue(value)}`
           );
         } else {
-          console.log(
-            `    [⚠] Could not capture: ${variableName} (path: ${jmesPath})`
+          this.logger.warn(
+            `Could not capture: ${variableName} (path: ${jmesPath})`
           );
         }
       } catch (error) {
-        console.log(`    [✗] Error capturing ${variableName}: ${error}`);
+        this.logger.error(`Error capturing ${variableName}`, {
+          error: error as Error,
+        });
       }
     }
 

@@ -8,11 +8,13 @@ import {
   VariableContext,
 } from "../types/common.types";
 import { VariableService } from "./variable.service";
+import { getLogger } from "./logger.service";
 
 export class FlowManager {
   private readonly loadedFlows: Map<string, ReusableFlow> = new Map();
   private readonly variableService: VariableService;
   private readonly verbosity: string;
+  private readonly logger = getLogger();
 
   constructor(variableService: VariableService, verbosity: string = "simple") {
     this.variableService = variableService;
@@ -30,8 +32,8 @@ export class FlowManager {
 
     for (const flowImport of imports) {
       if (this.verbosity !== "silent") {
-        console.log(
-          `[INFO] Loading flow: ${flowImport.name} from ${flowImport.path}`
+        this.logger.info(
+          `Loading flow: ${flowImport.name} from ${flowImport.path}`
         );
       }
 
@@ -45,8 +47,8 @@ export class FlowManager {
       this.variableService.addImportedFlow(flowImport.name, flowVariables);
 
       if (this.verbosity === "detailed" || this.verbosity === "verbose") {
-        console.log(
-          `  [✓] Flow "${flow.flow_name}" loaded with ${processedSteps.length} step(s)`
+        this.logger.info(
+          `Flow "${flow.flow_name}" loaded with ${processedSteps.length} step(s)`
         );
       }
     }

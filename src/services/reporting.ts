@@ -2,12 +2,14 @@ import fs from "fs";
 import path from "path";
 import { ConfigManager } from "../core/config";
 import { AggregatedResult, ReportFormat } from "../types/engine.types";
+import { getLogger } from "./logger.service";
 
 /**
  * Service for generating reports in multiple formats
  */
 export class ReportingService {
   private configManager: ConfigManager;
+  private logger = getLogger();
 
   constructor(configManager: ConfigManager) {
     this.configManager = configManager;
@@ -41,7 +43,9 @@ export class ReportingService {
           timestamp
         );
       } catch (error) {
-        console.error(`❌ Failed to generate ${format} report: ${error}`);
+        this.logger.error(`Failed to generate ${format} report`, {
+          error: error as Error,
+        });
       }
     }
   }
@@ -70,7 +74,7 @@ export class ReportingService {
         this.generateConsoleReport(result);
         break;
       default:
-        console.warn(`⚠️  Unknown report format: ${format}`);
+        this.logger.warn(`Unknown report format: ${format}`);
     }
   }
 
@@ -100,11 +104,11 @@ export class ReportingService {
 
     // Saves file with timestamp
     fs.writeFileSync(filePath, jsonContent, "utf8");
-    console.log(`📄 JSON report: ${filePath}`);
+    this.logger.info(`JSON report: ${filePath}`);
 
     // Saves copy as latest.json
     fs.writeFileSync(latestPath, jsonContent, "utf8");
-    console.log(`📄 Latest JSON: ${latestPath}`);
+    this.logger.info(`Latest JSON: ${latestPath}`);
   }
 
   /**
@@ -124,11 +128,11 @@ export class ReportingService {
 
     // Saves file with timestamp
     fs.writeFileSync(filePath, xml, "utf8");
-    console.log(`📄 JUnit report: ${filePath}`);
+    this.logger.info(`JUnit report: ${filePath}`);
 
     // Saves copy as latest.xml
     fs.writeFileSync(latestPath, xml, "utf8");
-    console.log(`📄 Latest JUnit: ${latestPath}`);
+    this.logger.info(`Latest JUnit: ${latestPath}`);
   }
 
   /**
@@ -148,48 +152,50 @@ export class ReportingService {
 
     // Saves file with timestamp
     fs.writeFileSync(filePath, html, "utf8");
-    console.log(`📄 HTML report: ${filePath}`);
+    this.logger.info(`HTML report: ${filePath}`);
 
     // Saves copy as latest.html
     fs.writeFileSync(latestPath, html, "utf8");
-    console.log(`📄 Latest HTML: ${latestPath}`);
+    this.logger.info(`Latest HTML: ${latestPath}`);
   }
 
   /**
    * Generates console report
    */
   private generateConsoleReport(result: AggregatedResult): void {
-    console.log(`\n📋 Detailed Console Report`);
-    console.log(`═══════════════════════════`);
+    this.logger.info(`\n📋 Detailed Console Report`);
+    this.logger.info(`═══════════════════════════`);
 
     // Summary section
-    console.log(`\n📊 Summary:`);
-    console.log(`   Project: ${result.project_name}`);
-    console.log(
+    this.logger.info(`\n📊 Summary:`);
+    this.logger.info(`   Project: ${result.project_name}`);
+    this.logger.info(
       `   Duration: ${this.formatDuration(result.total_duration_ms)}`
     );
-    console.log(`   Success Rate: ${result.success_rate.toFixed(1)}%`);
-    console.log(
+    this.logger.info(`   Success Rate: ${result.success_rate.toFixed(1)}%`);
+    this.logger.info(
       `   Tests: ${result.successful_tests}✅ ${result.failed_tests}❌ ${result.skipped_tests}⏭️`
     );
 
     // Performance section
     if (result.performance_summary) {
       const perf = result.performance_summary;
-      console.log(`\n🚀 Performance:`);
-      console.log(`   Total Requests: ${perf.total_requests}`);
-      console.log(
+      this.logger.info(`\n🚀 Performance:`);
+      this.logger.info(`   Total Requests: ${perf.total_requests}`);
+      this.logger.info(
         `   Avg Response Time: ${perf.average_response_time_ms.toFixed(0)}ms`
       );
-      console.log(
+      this.logger.info(
         `   Min/Max Response: ${perf.min_response_time_ms}ms / ${perf.max_response_time_ms}ms`
       );
-      console.log(`   Requests/Second: ${perf.requests_per_second.toFixed(1)}`);
+      this.logger.info(
+        `   Requests/Second: ${perf.requests_per_second.toFixed(1)}`
+      );
 
       if (perf.slowest_endpoints && perf.slowest_endpoints.length > 0) {
-        console.log(`\n🐌 Slowest Endpoints:`);
+        this.logger.info(`\n🐌 Slowest Endpoints:`);
         perf.slowest_endpoints.slice(0, 3).forEach((endpoint, index) => {
-          console.log(
+          this.logger.info(
             `   ${index + 1}. ${
               endpoint.url
             } (${endpoint.average_time_ms.toFixed(0)}ms avg, ${
@@ -202,7 +208,7 @@ export class ReportingService {
 
     // Suite details
     if (result.suites_results.length > 0) {
-      console.log(`\n📋 Suite Details:`);
+      this.logger.info(`\n📋 Suite Details:`);
       result.suites_results.forEach((suite, index) => {
         const status =
           suite.status === "success"
@@ -210,19 +216,19 @@ export class ReportingService {
             : suite.status === "failure"
             ? "❌"
             : "⏭️";
-        console.log(
+        this.logger.info(
           `   ${index + 1}. ${status} ${suite.suite_name} (${
             suite.duration_ms
           }ms)`
         );
 
         if (suite.status === "failure" && suite.error_message) {
-          console.log(`      ↳ Error: ${suite.error_message}`);
+          this.logger.error(`Error: ${suite.error_message}`);
         }
 
         if (suite.steps_failed > 0) {
-          console.log(
-            `      ↳ Failed Steps: ${suite.steps_failed}/${suite.steps_executed}`
+          this.logger.warn(
+            `Failed Steps: ${suite.steps_failed}/${suite.steps_executed}`
           );
         }
       });
@@ -233,7 +239,7 @@ export class ReportingService {
       result.global_variables_final_state &&
       Object.keys(result.global_variables_final_state).length > 0
     ) {
-      console.log(`\n🔧 Final Variables State:`);
+      this.logger.info(`\n🔧 Final Variables State:`);
       Object.entries(result.global_variables_final_state).forEach(
         ([key, value]) => {
           const displayValue =
@@ -242,7 +248,7 @@ export class ReportingService {
             displayValue.length > 50
               ? displayValue.substring(0, 47) + "..."
               : displayValue;
-          console.log(`   ${key}: ${truncated}`);
+          this.logger.info(`   ${key}: ${truncated}`);
         }
       );
     }

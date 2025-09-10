@@ -8,6 +8,7 @@ import { GlobalRegistryService } from "./global-registry.service";
 import { HttpService } from "./http.service";
 import { AssertionService } from "./assertion.service";
 import { CaptureService } from "./capture.service";
+import { getLogger } from "./logger.service";
 import {
   DiscoveredTest,
   TestSuite,
@@ -29,6 +30,7 @@ export class ExecutionService {
   private dependencyService: DependencyService;
   private globalRegistry: GlobalRegistryService;
   private hooks: EngineHooks;
+  private logger = getLogger();
 
   // Serviços reutilizados da versão anterior
   private httpService: HttpService;
@@ -105,12 +107,12 @@ export class ExecutionService {
     // 3. Resolves execution order considering dependencies
     const orderedTests = this.dependencyService.resolveExecutionOrder(tests);
 
-    console.log(
-      `📊 Dependency-aware execution order resolved for ${orderedTests.length} test(s)`
+    this.logger.info(
+      `Dependency-aware execution order resolved for ${orderedTests.length} test(s)`
     );
     if (config.execution!.mode === "parallel") {
-      console.log(
-        `⚠️  Note: Parallel execution with dependencies may be limited by dependency chains`
+      this.logger.warn(
+        "Parallel execution with dependencies may be limited by dependency chains"
       );
     }
 
@@ -159,7 +161,7 @@ export class ExecutionService {
           test.suite_name
         );
         if (cachedResult && cachedResult.success) {
-          console.log(`💨 Using cached result for '${test.suite_name}'`);
+          this.logger.info(`Using cached result for '${test.suite_name}'`);
 
           // Restores exported variables from cache
           this.restoreExportedVariables(cachedResult);
@@ -211,8 +213,8 @@ export class ExecutionService {
 
           // Checks if should stop on required test failure
           if (this.priorityService.isRequiredTest(test)) {
-            console.log(
-              `🛑 Stopping execution due to failure in required test: ${test.suite_name}`
+            this.logger.warn(
+              `Stopping execution due to failure in required test: ${test.suite_name}`
             );
             break;
           }
@@ -222,9 +224,9 @@ export class ExecutionService {
 
         onStatsUpdate?.(stats);
       } catch (error) {
-        console.error(
-          `💥 Unexpected error executing ${test.suite_name}: ${error}`
-        );
+        this.logger.error(`Unexpected error executing ${test.suite_name}`, {
+          error: error as Error,
+        });
 
         const errorResult = this.buildErrorSuiteResult(test, error as Error);
         results.push(errorResult);
@@ -269,8 +271,8 @@ export class ExecutionService {
             this.priorityService.isRequiredTest(test) &&
             config.priorities!.fail_fast_on_required
           ) {
-            console.log(
-              `🛑 Stopping execution due to failure in required test: ${test.suite_name}`
+            this.logger.warn(
+              `Stopping execution due to failure in required test: ${test.suite_name}`
             );
             break;
           }
@@ -280,9 +282,9 @@ export class ExecutionService {
 
         onStatsUpdate?.(stats);
       } catch (error) {
-        console.error(
-          `💥 Unexpected error executing ${test.suite_name}: ${error}`
-        );
+        this.logger.error(`Unexpected error executing ${test.suite_name}`, {
+          error: error as Error,
+        });
 
         const errorResult: SuiteExecutionResult = {
           node_id: test.node_id,
@@ -445,7 +447,10 @@ export class ExecutionService {
             );
           }
         } catch (error) {
-          console.error(`💥 Error in step '${step.name}': ${error}`);
+          this.logger.error(`Error in step '${step.name}'`, {
+            error: error as Error,
+            stepName: step.name,
+          });
 
           const errorStepResult: StepExecutionResult = {
             step_name: step.name,
@@ -656,8 +661,8 @@ export class ExecutionService {
           value
         );
       } else {
-        console.warn(
-          `⚠️  Export '${exportName}' not found in captured variables for suite '${test.suite_name}'`
+        this.logger.warn(
+          `Export '${exportName}' not found in captured variables for suite '${test.suite_name}'`
         );
       }
     }

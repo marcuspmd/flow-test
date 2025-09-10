@@ -5,6 +5,7 @@ import {
   AssertionChecks,
   ExecutionResult,
 } from "../types/common.types";
+import { getLogger } from "./logger.service";
 
 /**
  * Service responsible for validating assertions in HTTP responses
@@ -27,6 +28,8 @@ import {
  * ```
  */
 export class AssertionService {
+  private logger = getLogger();
+
   /**
    * Validates all assertions of an HTTP response
    *
@@ -364,9 +367,7 @@ export class AssertionService {
           checks.regex,
           actualValue,
           passed,
-          passed
-            ? undefined
-            : `Value does not match pattern: ${checks.regex}`
+          passed ? undefined : `Value does not match pattern: ${checks.regex}`
         )
       );
     }

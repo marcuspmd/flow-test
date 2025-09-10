@@ -7,10 +7,12 @@ import {
 } from "../types/common.types";
 import { AssertionService } from "./assertion.service";
 import { CaptureService } from "./capture.service";
+import { getLogger } from "./logger.service";
 
 export class ScenarioService {
   private readonly assertionService: AssertionService;
   private readonly captureService: CaptureService;
+  private readonly logger = getLogger();
 
   constructor() {
     this.assertionService = new AssertionService();
@@ -30,8 +32,8 @@ export class ScenarioService {
         const conditionMet = this.evaluateCondition(scenario.condition, result);
 
         if (verbosity === "detailed" || verbosity === "verbose") {
-          console.log(
-            `  [SCENARIO] Condição "${scenario.condition}": ${
+          this.logger.info(
+            `Condição "${scenario.condition}": ${
               conditionMet ? "TRUE" : "FALSE"
             }`
           );
@@ -43,7 +45,9 @@ export class ScenarioService {
           this.executeScenarioBlock(scenarioBlock, result, verbosity);
         }
       } catch (error) {
-        console.log(`  [✗] Error evaluating scenario: ${error}`);
+        this.logger.error(`Error evaluating scenario`, {
+          error: error as Error,
+        });
         result.error_message = `Scenario error: ${error}`;
         result.status = "failure";
       }
@@ -127,14 +131,14 @@ export class ScenarioService {
           verbosity === "detailed" ||
           verbosity === "verbose"
         ) {
-          console.log("  [✗] Scenario assertions failed:");
+          this.logger.error("Scenario assertions failed");
           failedAssertions.forEach((assertion) => {
-            console.log(`    - ${assertion.field}: ${assertion.message}`);
+            this.logger.error(`- ${assertion.field}: ${assertion.message}`);
           });
         }
       } else if (verbosity === "detailed" || verbosity === "verbose") {
-        console.log(
-          `  [✓] All ${scenarioAssertions.length} scenario assertion(s) passed`
+        this.logger.info(
+          `All ${scenarioAssertions.length} scenario assertion(s) passed`
         );
       }
     }

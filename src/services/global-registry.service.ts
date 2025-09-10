@@ -1,3 +1,5 @@
+import { getLogger } from "./logger.service";
+
 /**
  * Entry in the global variable registry
  *
@@ -80,6 +82,8 @@ export class GlobalRegistryService {
   /** Fast search index mapping full name (nodeId.variable) to node ID */
   private variableIndex: Map<string, string> = new Map();
 
+  private logger = getLogger();
+
   /**
    * GlobalRegistryService constructor
    *
@@ -107,7 +111,12 @@ export class GlobalRegistryService {
    * registry.registerNode('auth', 'Authentication Flow', ['token', 'user_id'], './flows/auth.yaml');
    * ```
    */
-  registerNode(nodeId: string, suiteName: string, exports: string[], filePath: string): void {
+  registerNode(
+    nodeId: string,
+    suiteName: string,
+    exports: string[],
+    filePath: string
+  ): void {
     if (!this.registry.has(nodeId)) {
       this.registry.set(nodeId, {
         nodeId,
@@ -131,8 +140,10 @@ export class GlobalRegistryService {
       this.variableIndex.set(fullName, nodeId);
     }
 
-    console.log(
-      `📝 Registered node '${nodeId}' (${suiteName}) with exports: [${exports.join(", ")}]`
+    this.logger.info(
+      `Registered node '${nodeId}' (${suiteName}) with exports: [${exports.join(
+        ", "
+      )}]`
     );
   }
 
@@ -141,18 +152,16 @@ export class GlobalRegistryService {
    * Backwards compatibility method
    */
   registerSuite(suiteName: string, exports: string[], filePath: string): void {
-    console.warn('registerSuite is deprecated. Use registerNode(nodeId, suiteName, exports, filePath) instead.');
+    console.warn(
+      "registerSuite is deprecated. Use registerNode(nodeId, suiteName, exports, filePath) instead."
+    );
     this.registerNode(suiteName, suiteName, exports, filePath);
   }
 
   /**
    * Sets an exported variable for a node
    */
-  setExportedVariable(
-    nodeId: string,
-    variableName: string,
-    value: any
-  ): void {
+  setExportedVariable(nodeId: string, variableName: string, value: any): void {
     let namespace = this.registry.get(nodeId);
 
     if (!namespace) {
@@ -191,7 +200,7 @@ export class GlobalRegistryService {
     const fullName = `${nodeId}.${variableName}`;
     this.variableIndex.set(fullName, nodeId);
 
-    console.log(`📥 Exported: ${fullName} = ${this.formatValue(value)}`);
+    this.logger.info(`Exported: ${fullName} = ${this.formatValue(value)}`);
   }
 
   /**
@@ -253,7 +262,9 @@ export class GlobalRegistryService {
    * Backwards compatibility method
    */
   getSuiteVariables(suiteName: string): Record<string, any> {
-    console.warn('getSuiteVariables is deprecated. Use getNodeVariables instead.');
+    console.warn(
+      "getSuiteVariables is deprecated. Use getNodeVariables instead."
+    );
     return this.getNodeVariables(suiteName);
   }
 
@@ -317,7 +328,9 @@ export class GlobalRegistryService {
    * @deprecated Use getRegisteredNodes instead
    */
   getRegisteredSuites(): string[] {
-    console.warn('getRegisteredSuites is deprecated. Use getRegisteredNodes instead.');
+    console.warn(
+      "getRegisteredSuites is deprecated. Use getRegisteredNodes instead."
+    );
     return this.getRegisteredNodes();
   }
 
@@ -331,10 +344,10 @@ export class GlobalRegistryService {
     variableCount: number;
     lastUpdated: Date;
   } | null {
-    console.warn('getSuiteInfo is deprecated. Use getNodeInfo instead.');
+    console.warn("getSuiteInfo is deprecated. Use getNodeInfo instead.");
     const nodeInfo = this.getNodeInfo(suiteName);
     if (!nodeInfo) return null;
-    
+
     return {
       suiteName: nodeInfo.suiteName,
       exports: nodeInfo.exports,
@@ -362,7 +375,7 @@ export class GlobalRegistryService {
     // Removes namespace
     this.registry.delete(nodeId);
 
-    console.log(`🗑️  Unregistered node '${nodeId}' (${namespace.suiteName})`);
+    this.logger.info(`Unregistered node '${nodeId}' (${namespace.suiteName})`);
   }
 
   /**
@@ -384,14 +397,16 @@ export class GlobalRegistryService {
     namespace.variables.clear();
     namespace.lastUpdated = Date.now();
 
-    console.log(`🧹 Cleared variables for node '${nodeId}' (${namespace.suiteName})`);
+    this.logger.info(
+      `Cleared variables for node '${nodeId}' (${namespace.suiteName})`
+    );
   }
 
   /**
    * @deprecated Use unregisterNode instead
    */
   unregisterSuite(suiteName: string): void {
-    console.warn('unregisterSuite is deprecated. Use unregisterNode instead.');
+    console.warn("unregisterSuite is deprecated. Use unregisterNode instead.");
     this.unregisterNode(suiteName);
   }
 
@@ -399,7 +414,9 @@ export class GlobalRegistryService {
    * @deprecated Use clearNodeVariables instead
    */
   clearSuiteVariables(suiteName: string): void {
-    console.warn('clearSuiteVariables is deprecated. Use clearNodeVariables instead.');
+    console.warn(
+      "clearSuiteVariables is deprecated. Use clearNodeVariables instead."
+    );
     this.clearNodeVariables(suiteName);
   }
 
@@ -409,7 +426,7 @@ export class GlobalRegistryService {
   clearAll(): void {
     this.registry.clear();
     this.variableIndex.clear();
-    console.log("🧹 Cleared all exported variables");
+    this.logger.info("Cleared all exported variables");
   }
 
   /**
