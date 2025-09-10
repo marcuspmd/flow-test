@@ -249,12 +249,21 @@ export class GlobalRegistryService {
   /**
    * Gets all exported variables with full namespace
    */
-  getAllExportedVariables(): Record<string, any> {
+  getAllExportedVariables(
+    runtimeVariables?: Record<string, any>
+  ): Record<string, any> {
     const result: Record<string, any> = {};
 
     for (const [nodeId, namespace] of this.registry) {
       for (const [variableName, entry] of namespace.variables) {
         const fullName = `${nodeId}.${variableName}`;
+
+        // Always include namespaced variables, regardless of whether they exist in runtime
+        // This ensures both `token` and `auth.token` are available for interpolation
+        // if (runtimeVariables && runtimeVariables[variableName] !== undefined) {
+        //   continue;
+        // }
+
         result[fullName] = entry.value;
       }
     }

@@ -1,4 +1,5 @@
 import fs from "fs";
+import path from "path";
 import yaml from "js-yaml";
 import { ConfigManager } from "../core/config";
 import { GlobalVariablesService } from "./global-variables";
@@ -303,7 +304,11 @@ export class ExecutionService {
           success_rate: 0,
           steps_results: [],
           error_message: `Unexpected error: ${error}`,
-          variables_captured: {},
+          variables_captured: this.getExportedVariables(test),
+          available_variables: this.filterAvailableVariables({
+            ...this.globalVariables.getAllVariables(),
+            ...this.globalVariables.getVariablesByScope("runtime"),
+          }),
         };
 
         results.push(errorResult);
@@ -370,7 +375,11 @@ export class ExecutionService {
             success_rate: 0,
             steps_results: [],
             error_message: `Parallel execution error: ${result.reason}`,
-            variables_captured: {},
+            variables_captured: this.getExportedVariables(batch[index]),
+            available_variables: this.filterAvailableVariables({
+              ...this.globalVariables.getAllVariables(),
+              ...this.globalVariables.getVariablesByScope("runtime"),
+            }),
           };
 
           results.push(errorResult);
@@ -450,12 +459,15 @@ export class ExecutionService {
             }
           }
 
-          // Updates captured variables globally
-          if (stepResult.captured_variables) {
-            this.globalVariables.setRuntimeVariables(
-              stepResult.captured_variables
-            );
-          }
+          // Updates captured variables globally (already done inside executeStep)
+          // if (stepResult.captured_variables) {
+          //   this.globalVariables.setRuntimeVariables(
+          //     this.processCapturedVariables(
+          //       stepResult.captured_variables,
+          //       suite
+          //     )
+          //   );
+          // }
         } catch (error) {
           this.logger.error(`Error in step '${step.name}'`, {
             error: error as Error,
@@ -502,7 +514,11 @@ export class ExecutionService {
         steps_failed: failedSteps,
         success_rate: Math.round(successRate * 100) / 100,
         steps_results: stepResults,
-        variables_captured: this.globalVariables.getVariablesByScope("runtime"),
+        variables_captured: this.getExportedVariables(discoveredTest),
+        available_variables: this.filterAvailableVariables({
+          ...this.globalVariables.getAllVariables(),
+          ...this.globalVariables.getVariablesByScope("runtime"),
+        }),
       };
 
       // Fires suite end hook
@@ -528,10 +544,75 @@ export class ExecutionService {
         steps_results: [],
         error_message: `Suite loading error: ${error}`,
         variables_captured: {},
+        available_variables: this.filterAvailableVariables({
+          ...this.globalVariables.getAllVariables(),
+          ...this.globalVariables.getVariablesByScope("runtime"),
+        }),
       };
 
       return errorResult;
     }
+  }
+
+  /**
+   * Filters out environment variables from available variables
+   */
+  private filterAvailableVariables(
+    variables: Record<string, any>
+  ): Record<string, any> {
+    const filtered: Record<string, any> = {};
+
+    // Get environment variables to exclude
+    const envVarsToExclude = this.getEnvironmentVariablesToExclude();
+
+    for (const [key, value] of Object.entries(variables)) {
+      // Skip if it's an environment variable
+      if (!envVarsToExclude.has(key)) {
+        filtered[key] = value;
+      }
+    }
+
+    return filtered;
+  }
+
+  /**
+   * Gets all environment variables that should be excluded from available variables
+   */
+  private getEnvironmentVariablesToExclude(): Set<string> {
+    const envVars = new Set<string>();
+
+    // Add all system environment variables
+    Object.keys(process.env).forEach((key) => {
+      envVars.add(key);
+    });
+
+    // Try to read .env file if it exists
+    try {
+      const envFilePath = path.join(process.cwd(), ".env");
+      if (fs.existsSync(envFilePath)) {
+        const envContent = fs.readFileSync(envFilePath, "utf8");
+        const envLines = envContent.split("\n");
+
+        for (const line of envLines) {
+          const trimmedLine = line.trim();
+          // Skip comments and empty lines
+          if (trimmedLine && !trimmedLine.startsWith("#")) {
+            const equalIndex = trimmedLine.indexOf("=");
+            if (equalIndex > 0) {
+              const key = trimmedLine.substring(0, equalIndex).trim();
+              envVars.add(key);
+            }
+          }
+        }
+      }
+    } catch (error) {
+      // Silently ignore .env file reading errors
+      this.logger.debug("Could not read .env file for variable filtering", {
+        error: error as Error,
+      });
+    }
+
+    return envVars;
   }
 
   /**
@@ -596,6 +677,13 @@ export class ExecutionService {
           httpResult
         );
         httpResult.captured_variables = capturedVariables;
+
+        // Immediately update runtime variables so they're available for next steps
+        if (Object.keys(capturedVariables).length > 0) {
+          this.globalVariables.setRuntimeVariables(
+            this.processCapturedVariables(capturedVariables, suite)
+          );
+        }
       }
 
       const stepEndTime = Date.now();
@@ -609,6 +697,10 @@ export class ExecutionService {
         response_details: httpResult.response_details,
         assertions_results: assertionResults,
         captured_variables: capturedVariables,
+        available_variables: this.filterAvailableVariables({
+          ...this.globalVariables.getAllVariables(),
+          ...this.globalVariables.getVariablesByScope("runtime"),
+        }),
         error_message: httpResult.error_message,
       };
 
@@ -626,6 +718,10 @@ export class ExecutionService {
         duration_ms: stepDuration,
         error_message: `Step execution error: ${error}`,
         captured_variables: {},
+        available_variables: this.filterAvailableVariables({
+          ...this.globalVariables.getAllVariables(),
+          ...this.globalVariables.getVariablesByScope("runtime"),
+        }),
       };
 
       // Fires step end hook even with error
@@ -662,8 +758,12 @@ export class ExecutionService {
   ): void {
     if (!test.exports || test.exports.length === 0) return;
 
+    const runtimeVars = this.globalVariables.getVariablesByScope("runtime");
+
     for (const exportName of test.exports) {
-      const value = result.variables_captured[exportName];
+      // Look for the variable in runtime (it should be there if it was captured)
+      const value = runtimeVars[exportName];
+
       if (value !== undefined) {
         this.globalRegistry.setExportedVariable(
           test.node_id,
@@ -676,6 +776,48 @@ export class ExecutionService {
         );
       }
     }
+  }
+
+  /**
+   * Gets only the variables that should be exported for a test
+   */
+  private getExportedVariables(test: DiscoveredTest): Record<string, any> {
+    const exportedVars: Record<string, any> = {};
+
+    if (test.exports && test.exports.length > 0) {
+      // Get exported variables from Global Registry
+      const allExportedVars = this.globalRegistry.getAllExportedVariables(
+        this.globalVariables.getVariablesByScope("runtime")
+      );
+
+      for (const exportName of test.exports) {
+        const namespacedKey = `${test.node_id}.${exportName}`;
+        const value = allExportedVars[namespacedKey];
+
+        if (value !== undefined) {
+          exportedVars[exportName] = value;
+        }
+      }
+    }
+
+    return exportedVars;
+  }
+
+  /**
+   * Processes captured variables, applying namespace for exported variables
+   */
+  private processCapturedVariables(
+    capturedVariables: Record<string, any>,
+    suite: TestSuite
+  ): Record<string, any> {
+    const processedVariables: Record<string, any> = {};
+
+    for (const [variableName, value] of Object.entries(capturedVariables)) {
+      // Add all captured variables to runtime for interpolation in subsequent steps
+      processedVariables[variableName] = value;
+    }
+
+    return processedVariables;
   }
 
   /**
@@ -742,7 +884,7 @@ export class ExecutionService {
       success_rate: 0,
       steps_results: [],
       error_message: `Execution error: ${error.message}`,
-      variables_captured: {},
+      variables_captured: this.getExportedVariables(test),
     };
   }
 

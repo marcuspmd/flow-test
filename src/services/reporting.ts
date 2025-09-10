@@ -356,6 +356,8 @@ export class ReportingService {
         .assertion.fail { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
         .variables { background: #e7f3ff; padding: 10px; border-radius: 4px; margin: 10px 0; }
         .variables h5 { margin: 0 0 8px 0; color: #0066cc; font-size: 0.9em; }
+        .available-variables { background: #f0f8e7; padding: 10px; border-radius: 4px; margin: 10px 0; }
+        .available-variables h5 { margin: 0 0 8px 0; color: #2e7d32; font-size: 0.9em; }
         .variable-item { font-family: monospace; font-size: 0.85em; margin: 2px 0; word-wrap: break-word; overflow-wrap: break-word; white-space: pre-wrap; }
         .error-message { background: #f8d7da; color: #721c24; padding: 10px; border-radius: 4px; border: 1px solid #f5c6cb; margin: 10px 0; }
     </style>
@@ -497,6 +499,9 @@ export class ReportingService {
     const variablesHtml = step.captured_variables
       ? this.buildVariablesSection(step.captured_variables)
       : "";
+    const availableVariablesHtml = step.available_variables
+      ? this.buildAvailableVariablesSection(step.available_variables)
+      : "";
     const errorHtml = step.error_message
       ? `<div class="error-message"><strong>Error:</strong> ${this.escapeHtml(
           step.error_message
@@ -533,6 +538,7 @@ export class ReportingService {
                 ${requestResponseHtml}
                 ${assertionsHtml}
                 ${variablesHtml}
+                ${availableVariablesHtml}
             </div>
         </div>`;
   }
@@ -644,6 +650,28 @@ export class ReportingService {
   }
 
   /**
+   * Builds available variables section for HTML
+   */
+  private buildAvailableVariablesSection(
+    variables: Record<string, any>
+  ): string {
+    const variablesHtml = Object.entries(variables)
+      .map(
+        ([key, value]) => `
+        <div class="variable-item"><strong>${key}:</strong> ${this.escapeHtml(
+          JSON.stringify(value)
+        )}</div>`
+      )
+      .join("");
+
+    return `
+        <div class="available-variables">
+            <h5>🔍 Available Variables</h5>
+            ${variablesHtml}
+        </div>`;
+  }
+
+  /**
    * Builds suite section for HTML
    */
   private buildSuiteSection(suite: any): string {
@@ -685,6 +713,13 @@ export class ReportingService {
                     ? `<br><div class="error-message"><strong>Error:</strong> ${this.escapeHtml(
                         suite.error_message
                       )}</div>`
+                    : ""
+                }
+                ${
+                  suite.available_variables
+                    ? this.buildAvailableVariablesSection(
+                        suite.available_variables
+                      )
                     : ""
                 }
             </div>

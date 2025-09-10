@@ -131,7 +131,9 @@ export class GlobalVariablesService {
 
     // Adds exported variables if registry is available
     if (this.globalRegistry) {
-      const exportedVariables = this.globalRegistry.getAllExportedVariables();
+      const exportedVariables = this.globalRegistry.getAllExportedVariables(
+        this.context.runtime
+      );
       return {
         ...baseVariables,
         ...exportedVariables,

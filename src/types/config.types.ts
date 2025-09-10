@@ -1,5 +1,5 @@
 // Import types from engine.types to avoid circular import
-import type { FlowDependency } from './engine.types';
+import type { FlowDependency } from "./engine.types";
 
 /**
  * Configuração global do Flow Test Engine
@@ -48,7 +48,7 @@ export interface PriorityConfig {
  * Configuração de execução
  */
 export interface ExecutionConfig {
-  mode: 'sequential' | 'parallel';
+  mode: "sequential" | "parallel";
   max_parallel?: number;
   timeout?: number;
   continue_on_failure?: boolean;
@@ -70,7 +70,7 @@ export interface ReportingConfig {
   include_variables_state?: boolean;
 }
 
-export type ReportFormat = 'json' | 'junit' | 'html' | 'console';
+export type ReportFormat = "json" | "junit" | "html" | "console";
 
 /**
  * Contexto de variáveis hierárquico
@@ -125,7 +125,7 @@ export interface SuiteExecutionResult {
   start_time: string;
   end_time: string;
   duration_ms: number;
-  status: 'success' | 'failure' | 'skipped';
+  status: "success" | "failure" | "skipped";
   steps_executed: number;
   steps_successful: number;
   steps_failed: number;
@@ -133,6 +133,7 @@ export interface SuiteExecutionResult {
   steps_results: StepExecutionResult[];
   error_message?: string;
   variables_captured: Record<string, any>;
+  available_variables?: Record<string, any>;
 }
 
 /**
@@ -140,7 +141,7 @@ export interface SuiteExecutionResult {
  */
 export interface StepExecutionResult {
   step_name: string;
-  status: 'success' | 'failure' | 'skipped';
+  status: "success" | "failure" | "skipped";
   duration_ms: number;
   request_details?: {
     method: string;
@@ -156,6 +157,7 @@ export interface StepExecutionResult {
   };
   assertions_results?: AssertionResult[];
   captured_variables?: Record<string, any>;
+  available_variables?: Record<string, any>;
   error_message?: string;
 }
 
@@ -193,7 +195,7 @@ export interface EngineExecutionOptions {
   config_file?: string;
   test_directory?: string;
   environment?: string;
-  verbosity?: 'silent' | 'simple' | 'detailed' | 'verbose';
+  verbosity?: "silent" | "simple" | "detailed" | "verbose";
   filters?: {
     priority?: string[];
     node_ids?: string[];
