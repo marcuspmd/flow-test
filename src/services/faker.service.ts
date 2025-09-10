@@ -34,18 +34,25 @@ export class FakerService {
     "location.state", 
     "location.streetAddress",
     "location.zipCode",
+    "location.latitude",
+    "location.longitude",
     
     // Person
     "person.firstName",
     "person.lastName",
     "person.fullName",
     "person.jobTitle",
+    "person.gender",
+    "person.jobArea",
     
     // Internet
     "internet.email",
     "internet.url",
     "internet.domainName",
     "internet.userName",
+    "internet.ip",
+    "internet.mac",
+    "internet.userAgent",
     
     // Phone
     "phone.number",
@@ -67,6 +74,7 @@ export class FakerService {
     "lorem.sentences",
     "lorem.paragraph",
     "lorem.text",
+    "lorem.lines",
     
     // Number
     "number.int",
@@ -91,16 +99,38 @@ export class FakerService {
     "finance.amount",
     "finance.currencyCode",
     "finance.currencyName",
+    "finance.accountNumber",
+    "finance.routingNumber", 
+    "finance.creditCardNumber",
+    "finance.creditCardCVV",
     
     // Company
     "company.name",
     "company.catchPhrase",
+    "company.buzzPhrase",
+    "company.companySuffix",
     
     // Commerce
     "commerce.product",
     "commerce.productName",
+    "commerce.productDescription",
     "commerce.price",
     "commerce.department",
+    "commerce.productMaterial",
+    
+    // Vehicle
+    "vehicle.manufacturer",
+    "vehicle.model",
+    "vehicle.type",
+    "vehicle.fuel",
+    "vehicle.vin",
+    
+    // Image
+    "image.avatar",
+    
+    // Science
+    "science.chemicalElement.name",
+    "science.unit.name",
     
     // Database
     "database.engine",

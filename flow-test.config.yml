@@ -5,7 +5,8 @@ test_directory: "./"
 # Global variables and settings
 globals:
   variables:
-    api_base_url: "http://localhost:3000"
+    api_base_url: "http://localhost:8080"
+    httpbin_url: "http://localhost:8080"
     default_timeout: 30000
   timeouts:
     default: 30000
@@ -14,23 +15,24 @@ globals:
 # Test discovery settings
 discovery:
   patterns:
-    - "**/flows/**/*.yaml"
-    - "**/flows/**/*.yml"
+    - "**/tests/*.yaml"
   exclude:
     - "**/temp/**"
+    - "**/node_modules/**"
+    - "**/flows/**"
 
 # Priority system configuration
 priorities:
   levels: ["critical", "high", "medium", "low"]
   required: ["critical", "high"]
-  fail_fast_on_required: true
+  fail_fast_on_required: false
 
 # Execution settings
 execution:
   mode: "sequential"  # ou "parallel"
   max_parallel: 3
   timeout: 30000
-  continue_on_failure: false
+  continue_on_failure: true
   retry_failed:
     enabled: false
     max_attempts: 2

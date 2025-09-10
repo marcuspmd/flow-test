@@ -1,0 +1,347 @@
+# Teste de Edge Cases e Validações de Erro
+suite_name: "Teste de Edge Cases e Tratamento de Erros"
+node_id: "edge_cases"
+description: "Valida comportamentos em cenários extremos, erros e situações não convencionais"
+
+base_url: "{{httpbin_url}}"
+
+variables:
+  timeout_short: 100
+  timeout_long: 10000
+  large_text: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."
+  empty_string: ""
+  null_value: null
+  special_chars: "!@#$%^&*()_+-=[]{}|;':\",./<>?"
+
+exports:
+  - error_handling_results
+  - timeout_test_results
+  - edge_case_summary
+
+steps:
+  # Teste 1: Diferentes Status Codes de Erro
+  - name: "Test Error Status Codes"
+    request:
+      method: GET
+      url: "/status/404"  # Força 404
+
+    scenarios:
+      # Tratamento de 404
+      - condition: "status_code == `404`"
+        then:
+          capture:
+            error_404_handled: "`true`"
+            error_type: "'not_found'"
+            error_message: "'Resource not found'"
+
+      # Caso inesperado (não deveria acontecer)
+      - condition: "status_code != `404`"
+        then:
+          capture:
+            error_404_handled: "`false`"
+            unexpected_status: "status_code"
+
+    continue_on_failure: true
+
+  # Teste 2: Teste com 500 Internal Server Error
+  - name: "Test Internal Server Error"
+    request:
+      method: GET
+      url: "/status/500"  # Força 500
+
+    scenarios:
+      # Tratamento de 500
+      - condition: "status_code == `500`"
+        then:
+          capture:
+            error_500_handled: "`true`"
+            server_error_type: "'internal_server_error'"
+            retry_recommended: "`true`"
+
+      # Status não esperado
+      - condition: "status_code != `500`"
+        then:
+          capture:
+            error_500_handled: "`false`"
+            actual_status: "status_code"
+
+    continue_on_failure: true
+
+  # Teste 3: Teste com Timeout (usando delay longo)
+  - name: "Test Request Timeout"
+    request:
+      method: GET
+      url: "/delay/5"  # 5 segundos de delay
+
+    scenarios:
+      # Resposta muito lenta
+      - condition: "duration_ms > `3000`"
+        then:
+          capture:
+            timeout_risk: "`true`"
+            response_too_slow: "`true`"
+            actual_duration: "duration_ms"
+
+      # Resposta dentro do limite
+      - condition: "duration_ms <= `3000`"
+        then:
+          capture:
+            timeout_risk: "`false`"
+            response_acceptable: "`true`"
+            actual_duration: "duration_ms"
+
+    continue_on_failure: true
+
+  # Teste 4: Dados com Caracteres Especiais
+  - name: "Test Special Characters Handling"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Special-Header: "{{special_chars}}"
+      body:
+        special_data:
+          special_chars: "{{special_chars}}"
+          empty_string: "{{empty_string}}"
+          null_value: "{{null_value}}"
+          unicode_text: "Olá! こんにちは 🌟 Ñoño café naïve résumé"
+          html_entities: "<script>alert('test')</script>"
+          sql_injection: "'; DROP TABLE users; --"
+          json_escape: "{\"nested\": \"value with \\\"quotes\\\"\"}"
+
+    assert:
+      status_code: 200
+      body:
+        json.special_data.special_chars:
+          equals: "{{special_chars}}"
+
+    capture:
+      special_chars_handled: "`true`"
+      unicode_preserved: "body.json.special_data.unicode_text"
+      security_test_result: "body.json.special_data.html_entities"
+
+  # Teste 5: Payload Muito Grande
+  - name: "Test Large Payload"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        large_payload:
+          description: "{{large_text}}"
+          repeated_data:
+            - "{{large_text}}"
+            - "{{large_text}}"
+            - "{{large_text}}"
+            - "{{large_text}}"
+            - "{{large_text}}"
+          nested_object:
+            level1:
+              level2:
+                level3:
+                  data: "{{large_text}}"
+                  more_data: "{{large_text}}"
+
+    scenarios:
+      # Payload aceito normalmente
+      - condition: "status_code == `200`"
+        then:
+          capture:
+            large_payload_accepted: "`true`"
+            payload_size_bytes: "size_bytes"
+
+      # Payload rejeitado
+      - condition: "status_code != `200`"
+        then:
+          capture:
+            large_payload_accepted: "`false`"
+            rejection_status: "status_code"
+
+    continue_on_failure: true
+
+  # Teste 6: Headers Malformados e Inválidos
+  - name: "Test Invalid Headers"
+    request:
+      method: GET
+      url: "/headers"
+      headers:
+        # Headers com valores edge case
+        X-Empty-Header: ""
+        X-Very-Long-Header: "{{large_text}}"
+        X-Special-Chars: "{{special_chars}}"
+        X-Unicode-Header: "Café naïve résumé 🌟"
+        # Header sem valor seria inválido, mas vamos testar string vazia
+        X-Null-Value: "{{null_value}}"
+
+    assert:
+      status_code: 200
+
+    capture:
+      headers_test_passed: "`true`"
+      received_headers: "body.headers"
+
+  # Teste 7: Teste de Authenticação com Token Inválido
+  - name: "Test Invalid Authentication"
+    request:
+      method: GET
+      url: "/bearer"
+      headers:
+        Authorization: "Bearer invalid_token_12345"
+
+    scenarios:
+      # Token inválido rejeitado
+      - condition: "status_code == `401`"
+        then:
+          capture:
+            auth_validation_working: "`true`"
+            invalid_token_rejected: "`true`"
+
+      # Token inválido aceito (problema de segurança)
+      - condition: "status_code == `200`"
+        then:
+          capture:
+            auth_validation_working: "`false`"
+            security_concern: "`true`"
+
+      # Outro status
+      - condition: "status_code != `401` && status_code != `200`"
+        then:
+          capture:
+            auth_validation_working: "`unknown`"
+            unexpected_auth_status: "status_code"
+
+    continue_on_failure: true
+
+  # Teste 8: Teste com Métodos HTTP Não Suportados
+  - name: "Test Unsupported HTTP Method"
+    request:
+      method: PATCH
+      url: "/patch"  # httpbin suporta PATCH, mas vamos testar
+      headers:
+        Content-Type: "application/json"
+      body:
+        test_data: "patch_method_test"
+
+    scenarios:
+      # Método suportado
+      - condition: "status_code >= `200` && status_code < `300`"
+        then:
+          capture:
+            patch_method_supported: "`true`"
+            patch_status: "status_code"
+
+      # Método não suportado
+      - condition: "status_code == `405`"
+        then:
+          capture:
+            patch_method_supported: "`false`"
+            method_not_allowed: "`true`"
+
+      # Outro erro
+      - condition: "status_code >= `400`"
+        then:
+          capture:
+            patch_method_supported: "`unknown`"
+            error_status: "status_code"
+
+    continue_on_failure: true
+
+  # Teste 9: Teste de Redirecionamento
+  - name: "Test HTTP Redirects"
+    request:
+      method: GET
+      url: "/redirect/3"  # 3 redirects
+
+    scenarios:
+      # Redirecionamento seguido com sucesso
+      - condition: "status_code == `200`"
+        then:
+          capture:
+            redirect_handled: "`true`"
+            final_status: "status_code"
+
+      # Muitos redirects
+      - condition: "status_code == `302` || status_code == `301`"
+        then:
+          capture:
+            redirect_handled: "`false`"
+            redirect_status: "status_code"
+
+    continue_on_failure: true
+
+  # Teste 10: Teste de Estruturas JSON Aninhadas Complexas
+  - name: "Test Complex Nested JSON"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        complex_structure:
+          level1:
+            array1:
+              - {"id": 1, "data": null}
+              - {"id": 2, "data": ""}
+              - {"id": 3, "data": {"nested": {"deep": {"value": "found"}}}}
+          mixed_types:
+            string_val: "text"
+            number_val: 42
+            boolean_val: true
+            null_val: null
+            empty_array: []
+            empty_object: {}
+            special_numbers:
+              zero: 0
+              negative: -1
+              decimal: 3.14159
+
+    assert:
+      status_code: 200
+
+    capture:
+      # Teste de acesso a estruturas complexas
+      deep_nested_value: "body.json.complex_structure.level1.array1[2].data.nested.deep.value"
+      null_value_test: "body.json.complex_structure.mixed_types.null_val"
+      empty_array_length: "length(body.json.complex_structure.mixed_types.empty_array)"
+      decimal_value: "body.json.complex_structure.mixed_types.special_numbers.decimal"
+
+  # Teste 11: Summarização Final dos Edge Cases
+  - name: "Edge Cases Summary"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        edge_cases_summary:
+          error_handling:
+            status_404: "{{error_404_handled}}"
+            status_500: "{{error_500_handled}}"
+            timeout_risk: "{{timeout_risk}}"
+          data_handling:
+            special_chars: "{{special_chars_handled}}"
+            large_payload: "{{large_payload_accepted}}"
+            headers_test: "{{headers_test_passed}}"
+          security_tests:
+            auth_validation: "{{auth_validation_working}}"
+            invalid_token: "{{invalid_token_rejected}}"
+          http_features:
+            patch_method: "{{patch_method_supported}}"
+            redirects: "{{redirect_handled}}"
+          complex_data:
+            nested_access: "{{deep_nested_value}}"
+            null_handling: "{{null_value_test == null}}"
+
+    assert:
+      status_code: 200
+      body:
+        json.edge_cases_summary.data_handling.special_chars:
+          equals: true
+
+    capture:
+      error_handling_results: "body.json.edge_cases_summary.error_handling"
+      # timeout_test_results: "{{timeout_risk}} && {{actual_duration}}"  # Operadores && não suportados
+      edge_case_summary: "body.json.edge_cases_summary"
+      total_edge_cases_tested: "`11`"

@@ -24,7 +24,12 @@
  */
 
 import { FlowTestEngine } from "./core/engine";
-import { EngineExecutionOptions } from "./types/engine.types";
+import {
+  EngineExecutionOptions,
+  DiscoveredTest,
+  SuiteExecutionResult,
+} from "./types/config.types";
+import { ExecutionStats, TestSuite } from "./types/engine.types";
 
 /**
  * Função principal do CLI
@@ -148,19 +153,21 @@ async function main() {
 
     // Cria o engine
     const engine = new FlowTestEngine(engineOptions, {
-      onExecutionStart: (stats) => {
+      onExecutionStart: (stats: ExecutionStats) => {
         if (options.verbosity !== "silent") {
           console.log(
             `🚀 Starting execution of ${stats.tests_discovered} test(s)`
           );
         }
       },
-      onTestDiscovered: (test) => {
+      onTestDiscovered: (test: DiscoveredTest) => {
         if (options.verbosity === "verbose") {
-          console.log(`📋 Discovered: ${test.node_id} - ${test.suite_name} (${test.priority})`);
+          console.log(
+            `📋 Discovered: ${test.node_id} - ${test.suite_name} (${test.priority})`
+          );
         }
       },
-      onSuiteStart: (suite) => {
+      onSuiteStart: (suite: TestSuite) => {
         if (
           options.verbosity === "detailed" ||
           options.verbosity === "verbose"
@@ -168,7 +175,7 @@ async function main() {
           console.log(`▶️  Starting: ${suite.suite_name}`);
         }
       },
-      onSuiteEnd: (suite, result) => {
+      onSuiteEnd: (suite: TestSuite, result: SuiteExecutionResult) => {
         if (
           options.verbosity === "detailed" ||
           options.verbosity === "verbose"
@@ -179,7 +186,7 @@ async function main() {
           );
         }
       },
-      onError: (error) => {
+      onError: (error: Error) => {
         console.error(`💥 Engine error: ${error.message}`);
         if (options.verbosity === "verbose") {
           console.error(error.stack);
@@ -192,7 +199,7 @@ async function main() {
       const plan = await engine.dryRun();
 
       console.log(`\n📊 Execution plan would run ${plan.length} test(s):`);
-      plan.forEach((test, index) => {
+      plan.forEach((test: DiscoveredTest, index: number) => {
         console.log(
           `  ${index + 1}. ${test.suite_name} (${test.priority || "medium"})`
         );

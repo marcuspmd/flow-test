@@ -1,0 +1,260 @@
+# Teste Avançado de Scenarios - Happy/Sad Path Testing
+suite_name: "Teste Avançado de Scenarios Condicionais"
+node_id: "advanced_scenarios"
+description: "Valida scenarios condicionais com Happy/Sad paths baseados em diferentes condições"
+
+base_url: "{{httpbin_url}}"
+
+variables:
+  username: "scenario_test_user"
+  test_mode: true
+  timeout_threshold: 2000
+
+exports:
+  - auth_status
+  - performance_rating
+  - error_count
+  - final_scenario_result
+
+steps:
+  # Teste 1: Scenarios baseados em Status Code
+  - name: "Login com Scenarios de Status Code"
+    request:
+      method: POST
+      url: "/status/200"  # Força status 200
+      headers:
+        Content-Type: "application/json"
+      body:
+        username: "{{username}}"
+        password: "test123"
+        action: "login"
+
+    scenarios:
+      # Happy Path: Login bem-sucedido
+      - condition: "status_code == `200`"
+        then:
+          assert:
+            status_code: 200
+          capture:
+            auth_status: "'authenticated'"
+            login_timestamp: "'2024-01-01T10:00:00Z'"
+            session_valid: "`true`"
+
+      # Sad Path: Credenciais inválidas
+      - condition: "status_code == `401`"
+        then:
+          assert:
+            status_code: 401
+          capture:
+            auth_status: "'unauthorized'"
+            error_reason: "'invalid_credentials'"
+            session_valid: "`false`"
+
+      # Sad Path: Erro interno do servidor
+      - condition: "status_code == `500`"
+        then:
+          assert:
+            status_code: 500
+          capture:
+            auth_status: "'server_error'"
+            error_reason: "'internal_error'"
+            session_valid: "`false`"
+
+  # Teste 2: Scenarios baseados em Performance (Response Time)
+  - name: "Teste de Performance com Scenarios"
+    request:
+      method: GET
+      url: "/delay/1"  # 1 segundo de delay
+
+    scenarios:
+      # Happy Path: Resposta rápida
+      - condition: "duration_ms < `2000`"
+        then:
+          capture:
+            performance_rating: "'excellent'"
+            response_category: "'fast'"
+            meets_sla: "`true`"
+
+      # Sad Path: Resposta lenta
+      - condition: "duration_ms >= `2000`"
+        then:
+          capture:
+            performance_rating: "'poor'"
+            response_category: "'slow'"
+            meets_sla: "`false`"
+
+    continue_on_failure: true
+
+  # Teste 3: Scenarios baseados em Tamanho da Resposta
+  - name: "Análise de Payload com Scenarios"
+    request:
+      method: GET
+      url: "/json"  # Retorna JSON grande
+
+    scenarios:
+      # Payload pequeno
+      - condition: "size_bytes < `1000`"
+        then:
+          capture:
+            payload_type: "'compact'"
+            bandwidth_usage: "'low'"
+            caching_strategy: "'memory'"
+
+      # Payload médio
+      - condition: "size_bytes >= `1000` && size_bytes < `5000`"
+        then:
+          capture:
+            payload_type: "'medium'"
+            bandwidth_usage: "'moderate'"
+            caching_strategy: "'disk'"
+
+      # Payload grande
+      - condition: "size_bytes >= `5000`"
+        then:
+          capture:
+            payload_type: "'large'"
+            bandwidth_usage: "'high'"
+            caching_strategy: "'stream'"
+
+  # Teste 4: Scenarios com Múltiplas Condições Complexas
+  - name: "Teste com Conditions Complexas"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        data_size: 1500
+        user_type: "premium"
+        feature_enabled: true
+
+    scenarios:
+      # Happy Path: Usuário premium com feature habilitada
+      - condition: "status_code == `200` && body.json.user_type == 'premium' && body.json.feature_enabled == `true`"
+        then:
+          assert:
+            status_code: 200
+            body:
+              json.user_type:
+                equals: "premium"
+              json.feature_enabled:
+                equals: true
+          capture:
+            access_level: "'full'"
+            feature_access: "'enabled'"
+            billing_tier: "'premium'"
+
+      # Sad Path: Usuário básico
+      - condition: "body.json.user_type != 'premium'"
+        then:
+          capture:
+            access_level: "'limited'"
+            feature_access: "'restricted'"
+            billing_tier: "'basic'"
+
+      # Edge Case: Feature desabilitada
+      - condition: "body.json.feature_enabled == `false`"
+        then:
+          capture:
+            access_level: "'disabled'"
+            feature_access: "'maintenance_mode'"
+            billing_tier: "'suspended'"
+
+  # Teste 5: Scenarios com Error Handling
+  - name: "Teste de Error Handling com 404"
+    request:
+      method: GET
+      url: "/status/404"  # Força 404
+
+    scenarios:
+      # Erro esperado - Recurso não encontrado
+      - condition: "status_code == `404`"
+        then:
+          assert:
+            status_code: 404
+          capture:
+            error_handled: "`true`"
+            error_type: "'not_found'"
+            error_count: "`1`"
+            recovery_action: "'redirect_to_home'"
+
+      # Erro inesperado
+      - condition: "status_code != `404`"
+        then:
+          capture:
+            error_handled: "`false`"
+            error_type: "'unexpected'"
+            error_count: "`1`"
+            recovery_action: "'log_and_retry'"
+
+    continue_on_failure: true
+
+  # Teste 6: Scenarios Baseados em Headers da Resposta
+  - name: "Análise de Headers com Scenarios"
+    request:
+      method: GET
+      url: "/response-headers?X-Custom-Header=test-value&Cache-Control=max-age=3600"
+
+    scenarios:
+      # Cache habilitado
+      - condition: "headers.\"Cache-Control\" != null"
+        then:
+          capture:
+            caching_enabled: "`true`"
+            cache_strategy: "'browser_cache'"
+            cache_duration: "headers.\"Cache-Control\""
+
+      # Headers customizados presentes
+      - condition: "headers.\"X-Custom-Header\" != null"
+        then:
+          capture:
+            custom_headers: "`true`"
+            header_value: "headers.\"X-Custom-Header\""
+
+      # Sem cache
+      - condition: "headers.\"Cache-Control\" == null"
+        then:
+          capture:
+            caching_enabled: "`false`"
+            cache_strategy: "'no_cache'"
+
+  # Teste 7: Cenário Final - Aggregação de Resultados
+  - name: "Aggregação Final de Scenarios"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        test_summary:
+          auth_status: "{{auth_status}}"
+          performance_rating: "{{performance_rating}}"
+          payload_type: "{{payload_type}}"
+          access_level: "{{access_level}}"
+          error_handled: "{{error_handled}}"
+          caching_enabled: "{{caching_enabled}}"
+
+    scenarios:
+      # Teste completamente bem-sucedido
+      - condition: "body.json.test_summary.auth_status == 'authenticated' && body.json.test_summary.error_handled == `true`"
+        then:
+          capture:
+            final_scenario_result: "'all_scenarios_passed'"
+            test_success_rate: "`100`"
+            recommendation: "'deploy_to_production'"
+
+      # Teste com alguns problemas
+      - condition: "body.json.test_summary.auth_status == 'authenticated' && body.json.test_summary.error_handled == `false`"
+        then:
+          capture:
+            final_scenario_result: "'partial_success'"
+            test_success_rate: "`75`"
+            recommendation: "'review_error_handling'"
+
+      # Teste com falhas críticas
+      - condition: "body.json.test_summary.auth_status != 'authenticated'"
+        then:
+          capture:
+            final_scenario_result: "'critical_failures'"
+            test_success_rate: "`25`"
+            recommendation: "'fix_authentication_before_deploy'"

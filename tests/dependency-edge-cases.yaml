@@ -1,4 +1,5 @@
 suite_name: "dependency-edge-cases"
+node_id: "dependency_edge_cases"
 description: "Test edge cases for dependency system"
 
 # Test case 1: Self-referencing (should be caught)
@@ -17,26 +18,26 @@ exports:
 
 variables:
   test_value: "edge-case-value"
-  api_url: "https://httpbin.org"
+  api_url: "{{httpbin_url}}"
 
 steps:
   - name: "Test basic functionality"
     request:
       method: GET
       url: "{{api_url}}/get"
-    
+
     assertions:
       - type: status_code
         expected: 200
-    
+
     capture:
       computed_result: "response.json.url"
 
   - name: "Verify exported variables are set"
     request:
-      method: GET  
+      method: GET
       url: "{{api_url}}/get?test={{test_value}}&result={{computed_result}}"
-    
+
     assertions:
       - type: status_code
         expected: 200

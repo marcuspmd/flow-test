@@ -1,0 +1,307 @@
+# Teste Abrangente de Capture de Variáveis e Interpolação
+suite_name: "Teste de Capture de Variáveis e Interpolação"
+node_id: "variable_interpolation"
+description: "Valida captura de variáveis com JMESPath, interpolação e scoping hierárquico"
+
+base_url: "{{httpbin_url}}"
+
+variables:
+  base_user_id: 1000
+  company_name: "TechCorp"
+  initial_balance: 5000.50
+  test_array: ["item1", "item2", "item3"]
+  nested_config:
+    api:
+      version: "v3.0"
+      timeout: 30
+    features:
+      enabled: true
+      beta: false
+
+exports:
+  - captured_user_data
+  - extracted_numbers
+  - processed_array
+  - nested_extraction
+  - final_computed_value
+
+steps:
+  # Teste 1: Capture Básico com JMESPath
+  - name: "Basic JMESPath Capture"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        user:
+          id: "{{base_user_id}}"
+          name: "John Doe"
+          email: "john@{{company_name}}.com"
+          profile:
+            age: 30
+            department: "Engineering"
+            salary: 75000
+        company:
+          name: "{{company_name}}"
+          balance: "{{initial_balance}}"
+        metadata:
+          timestamp: "2024-01-01T10:00:00Z"
+          version: "{{nested_config.api.version}}"
+
+    assert:
+      status_code: 200
+      body:
+        json.user.id:
+          equals: 1000
+        json.company.name:
+          equals: "TechCorp"
+
+    capture:
+      # Capture simples
+      user_id: "body.json.user.id"
+      user_name: "body.json.user.name"
+      user_email: "body.json.user.email"
+
+      # Capture de nested objects
+      user_profile: "body.json.user.profile"
+      department: "body.json.user.profile.department"
+      salary: "body.json.user.profile.salary"
+
+      # Capture com computed values - REMOVIDO split() que não é suportado
+      # email_domain será extraído usando string manipulation ou scenarios
+
+      # Capture de arrays e objetos completos
+      full_user_data: "body.json.user"
+      company_data: "body.json.company"
+
+  # Teste 2: Interpolação Complexa com Variáveis Capturadas
+  - name: "Complex Variable Interpolation"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-User-ID: "{{user_id}}"
+        X-Department: "{{department}}"
+      body:
+        operation: "update_user"
+        data:
+          user_id: "{{user_id}}"
+          current_name: "{{user_name}}"
+          new_email: "{{user_name | lower | replace(' ', '.')}}@newdomain.com"
+          salary_update:
+            current: "{{salary}}"
+            new: "{{salary * 1.1}}"  # 10% increase
+            currency: "USD"
+          profile_summary: "{{user_name}} works in {{department}} with salary {{salary}}"
+        computed_fields:
+          user_key: "user_{{user_id}}_{{department}}"
+          # email_prefix: "{{user_email | split('@') | [0]}}"  # split() não suportado
+          full_profile: "{{full_user_data}}"
+
+    assert:
+      status_code: 200
+      body:
+        json.data.user_id:
+          equals: 1000
+        json.data.salary_update.current:
+          equals: 75000
+        json.computed_fields.email_prefix:
+          equals: "john"
+
+    capture:
+      # Capture de valores computados
+      updated_salary: "body.json.data.salary_update.new"
+      user_key: "body.json.computed_fields.user_key"
+      profile_summary: "body.json.data.profile_summary"
+
+      # Capture com transformações JMESPath
+      operation_timestamp: "'2024-01-01T11:00:00Z'"
+      department_lower: "body.json.data.salary_update.currency | lower"
+
+  # Teste 3: Capture de Arrays e Manipulação
+  - name: "Array Capture and Manipulation"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        arrays_test:
+          simple_array: ["alpha", "beta", "gamma", "delta"]
+          numbers: [10, 25, 30, 45, 50]
+          mixed_array: [1, "text", true, {"key": "value"}]
+          nested_arrays:
+            - ["a", "b", "c"]
+            - ["x", "y", "z"]
+          objects_array:
+            - {"id": 1, "name": "First", "active": true}
+            - {"id": 2, "name": "Second", "active": false}
+            - {"id": 3, "name": "Third", "active": true}
+
+    assert:
+      status_code: 200
+      body:
+        json.arrays_test.simple_array:
+          contains: "alpha"
+        json.arrays_test.numbers:
+          contains: 25
+
+    capture:
+      # Capture de elementos específicos de arrays
+      first_item: "body.json.arrays_test.simple_array[0]"
+      last_item: "body.json.arrays_test.simple_array[-1]"
+      middle_numbers: "body.json.arrays_test.numbers[1:4]"
+
+      # Capture com filtering
+      active_objects: "body.json.arrays_test.objects_array[?active == `true`]"
+      object_names: "body.json.arrays_test.objects_array[*].name"
+      active_names: "body.json.arrays_test.objects_array[?active == `true`].name"
+
+      # Capture de length e counts
+      array_length: "length(body.json.arrays_test.simple_array)"
+      active_count: "length(body.json.arrays_test.objects_array[?active == `true`])"
+
+      # Capture de somas e agregações
+      numbers_sum: "sum(body.json.arrays_test.numbers)"
+      max_number: "max(body.json.arrays_test.numbers)"
+
+  # Teste 4: Nested Object Deep Capture
+  - name: "Deep Nested Object Capture"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        deep_structure:
+          level1:
+            level2:
+              level3:
+                data: "deep_value"
+                config:
+                  settings:
+                    timeout: 300
+                    retries: 3
+                    endpoints:
+                      primary: "https://api.example.com"
+                      fallback: "https://backup.example.com"
+          matrix:
+            - [1, 2, 3]
+            - [4, 5, 6]
+            - [7, 8, 9]
+          complex_data:
+            users:
+              admins:
+                - {"name": "Admin1", "permissions": ["read", "write", "delete"]}
+                - {"name": "Admin2", "permissions": ["read", "write"]}
+              regular:
+                - {"name": "User1", "permissions": ["read"]}
+                - {"name": "User2", "permissions": ["read", "write"]}
+
+    assert:
+      status_code: 200
+      body:
+        json.deep_structure.level1.level2.level3.data:
+          equals: "deep_value"
+
+    capture:
+      # Deep nested capture
+      deep_value: "body.json.deep_structure.level1.level2.level3.data"
+      timeout_setting: "body.json.deep_structure.level1.level2.level3.config.settings.timeout"
+      primary_endpoint: "body.json.deep_structure.level1.level2.level3.config.settings.endpoints.primary"
+
+      # Matrix operations - correção da sintaxe
+      # matrix_diagonal: "body.json.deep_structure.matrix[0][0], body.json.deep_structure.matrix[1][1], body.json.deep_structure.matrix[2][2]"  # Sintaxe inválida
+      matrix_center: "body.json.deep_structure.matrix[1][1]"
+
+      # Complex queries
+      all_permissions: "body.json.deep_structure.complex_data.users.*.*.permissions[]"
+      admin_names: "body.json.deep_structure.complex_data.users.admins[*].name"
+      users_with_write: "body.json.deep_structure.complex_data.users.*[?contains(permissions, 'write')].name"
+
+  # Teste 5: Conditional Capture com Expressões
+  - name: "Conditional Capture with Expressions"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        conditional_data:
+          status: "success"
+          error_code: null
+          response_time: 150
+          data_size: 2048
+          user_level: "premium"
+          features_enabled: ["api_access", "bulk_operations", "analytics"]
+
+    assert:
+      status_code: 200
+      body:
+        json.conditional_data.status:
+          equals: "success"
+
+    capture:
+      # Conditional captures - Corrigidas para JMESPath válido
+      status_ok: "body.json.conditional_data.status == 'success'"
+      has_errors: "body.json.conditional_data.error_code != null"
+      # is_fast_response: "body.json.conditional_data.response_time < 200"  # Operadores não suportados
+      # is_large_data: "body.json.conditional_data.data_size > 1000"  # Operadores não suportados
+      is_premium_user: "body.json.conditional_data.user_level == 'premium'"
+
+      # Feature checks - estas funcionam
+      has_api_access: "contains(body.json.conditional_data.features_enabled, 'api_access')"
+      feature_count: "length(body.json.conditional_data.features_enabled)"
+
+      # Capturar valores para usar em scenarios
+      response_time: "body.json.conditional_data.response_time"
+      data_size: "body.json.conditional_data.data_size"
+      # performance_rating: "body.json.conditional_data.response_time < 100 && 'excellent' || body.json.conditional_data.response_time < 200 && 'good' || 'needs_improvement'"  # Sintaxe inválida
+
+  # Teste 6: Final Aggregation usando todas as variáveis capturadas
+  - name: "Final Variable Aggregation"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-User-Key: "{{user_key}}"
+      body:
+        aggregation_summary:
+          user_info:
+            id: "{{user_id}}"
+            name: "{{user_name}}"
+            email: "{{user_email}}"
+            department: "{{department}}"
+            salary: "{{salary}}"
+            updated_salary: "{{updated_salary}}"
+          array_analysis:
+            first_item: "{{first_item}}"
+            active_count: "{{active_count}}"
+            numbers_sum: "{{numbers_sum}}"
+            max_number: "{{max_number}}"
+          deep_data:
+            deep_value: "{{deep_value}}"
+            timeout_setting: "{{timeout_setting}}"
+            admin_names: "{{admin_names}}"
+          performance:
+            is_fast: "{{is_fast_response}}"
+            is_premium: "{{is_premium_user}}"
+            rating: "{{performance_rating}}"
+
+    assert:
+      status_code: 200
+      body:
+        json.aggregation_summary.user_info.id:
+          equals: 1000
+        json.aggregation_summary.performance.is_premium:
+          equals: true
+
+    capture:
+      captured_user_data: "body.json.aggregation_summary.user_info"
+      extracted_numbers: "body.json.aggregation_summary.array_analysis"
+      # processed_array: "{{active_names}}"  # Interpolação não funciona em capture
+      nested_extraction: "body.json.aggregation_summary.deep_data"
+      # final_computed_value: "{{user_id}} + {{numbers_sum}} + {{timeout_setting}}"  # Operações matemáticas não suportadas

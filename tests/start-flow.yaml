@@ -3,7 +3,7 @@ node_id: "httpbin-test"
 suite_name: "Fluxo de Teste com httpbin.org"
 
 # URL base para todas as requisições.
-base_url: "https://httpbin.org"
+base_url: "{{httpbin_url}}"
 
 # Variáveis locais que podem ser usadas dentro desta suite apenas.
 variables:
@@ -19,7 +19,7 @@ steps:
   - name: "Enviar dados via POST e capturar valores"
     request:
       method: POST
-      url: "/post" # Concatena com base_url -> https://httpbin.org/post
+      url: "/post" # Concatena com base_url -> {{httpbin_url}}/post
       headers:
         Content-Type: "application/json"
         X-Custom-Header: "Meu-Teste"

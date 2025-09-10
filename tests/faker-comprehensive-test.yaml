@@ -1,0 +1,379 @@
+# Teste Abrangente com Faker.js
+suite_name: "Teste Abrangente de Integração Faker.js"
+node_id: "faker_comprehensive"
+description: "Valida geração de dados dinâmicos com Faker.js em cenários realistas"
+
+base_url: "{{httpbin_url}}"
+
+# Configuração do Faker
+faker:
+  locale: "pt_BR"
+  seed: 42  # Para resultados reproduzíveis
+
+variables:
+  api_version: "v2.0"
+  test_environment: "staging"
+  batch_size: 5
+
+exports:
+  - generated_user_profile
+  - financial_data
+  - business_data
+  - validation_results
+
+steps:
+  # Teste 1: Dados Pessoais Completos com Faker
+  - name: "Generate Complete User Profile"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-API-Version: "{{api_version}}"
+        X-Test-Environment: "{{test_environment}}"
+      body:
+        user_profile:
+          # Dados pessoais básicos
+          id: "{{faker.string.uuid}}"
+          first_name: "{{faker.person.firstName}}"
+          last_name: "{{faker.person.lastName}}"
+          full_name: "{{faker.person.fullName}}"
+          gender: "{{faker.person.gender}}"
+
+          # Dados de contato
+          email: "{{faker.internet.email}}"
+          phone: "{{faker.phone.number}}"
+          website: "{{faker.internet.url}}"
+
+          # Endereço completo
+          address:
+            street: "{{faker.location.streetAddress}}"
+            city: "{{faker.location.city}}"
+            state: "{{faker.location.state}}"
+            country: "{{faker.location.country}}"
+            zip_code: "{{faker.location.zipCode}}"
+            latitude: "{{faker.location.latitude}}"
+            longitude: "{{faker.location.longitude}}"
+
+          # Dados profissionais
+          job:
+            title: "{{faker.person.jobTitle}}"
+            department: "{{faker.person.jobArea}}"
+            company: "{{faker.company.name}}"
+            company_suffix: "{{faker.company.companySuffix}}"
+
+          # Dados temporais
+          birth_date: "{{faker.date.birthdate}}"
+          created_at: "{{faker.date.recent}}"
+          last_login: "{{faker.date.recent}}"
+
+          # Dados diversos
+          avatar: "{{faker.image.avatar}}"
+          bio: "{{faker.lorem.paragraph}}"
+          username: "{{faker.internet.userName}}"
+
+    assert:
+      status_code: 200
+      body:
+        json.user_profile.id:
+          regex: "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        json.user_profile.email:
+          contains: "@"
+        json.user_profile.phone:
+          type: "string"
+
+    capture:
+      generated_user_profile: "body.json.user_profile"
+      user_id: "body.json.user_profile.id"
+      user_email: "body.json.user_profile.email"
+      user_company: "body.json.user_profile.job.company"
+
+  # Teste 2: Dados Financeiros e Comerciais
+  - name: "Generate Financial and Commerce Data"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-User-ID: "{{user_id}}"
+      body:
+        financial_profile:
+          # Dados financeiros
+          account_number: "{{faker.finance.accountNumber}}"
+          routing_number: "{{faker.finance.routingNumber}}"
+          credit_card: "{{faker.finance.creditCardNumber}}"
+          credit_card_cvv: "{{faker.finance.creditCardCVV}}"
+          amount: "{{faker.finance.amount}}"
+          currency_code: "{{faker.finance.currencyCode}}"
+          currency_name: "{{faker.finance.currencyName}}"
+
+          # Dados de comércio
+          product:
+            name: "{{faker.commerce.productName}}"
+            description: "{{faker.commerce.productDescription}}"
+            price: "{{faker.commerce.price}}"
+            department: "{{faker.commerce.department}}"
+            material: "{{faker.commerce.productMaterial}}"
+
+          # Dados de veículo
+          vehicle:
+            manufacturer: "{{faker.vehicle.manufacturer}}"
+            model: "{{faker.vehicle.model}}"
+            type: "{{faker.vehicle.type}}"
+            fuel: "{{faker.vehicle.fuel}}"
+            vin: "{{faker.vehicle.vin}}"
+
+          # Transações simuladas
+          transactions:
+            - id: "{{faker.string.uuid}}"
+              amount: "{{faker.finance.amount}}"
+              description: "{{faker.commerce.productName}}"
+              date: "{{faker.date.recent}}"
+            - id: "{{faker.string.uuid}}"
+              amount: "{{faker.finance.amount}}"
+              description: "{{faker.commerce.productName}}"
+              date: "{{faker.date.recent}}"
+
+    assert:
+      status_code: 200
+      body:
+        json.financial_profile.account_number:
+          type: "string"
+        json.financial_profile.currency_code:
+          regex: "^[A-Z]{3}$"
+        json.financial_profile.product.price:
+          type: "string"
+
+    capture:
+      financial_data: "body.json.financial_profile"
+      product_name: "body.json.financial_profile.product.name"
+      transaction_count: "length(body.json.financial_profile.transactions)"
+
+  # Teste 3: Dados de Empresa e Negócios
+  - name: "Generate Business and Company Data"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        business_data:
+          company:
+            name: "{{faker.company.name}}"
+            catch_phrase: "{{faker.company.catchPhrase}}"
+            buzz_phrase: "{{faker.company.buzzPhrase}}"
+            suffix: "{{faker.company.companySuffix}}"
+
+          # Dados de internet/sistema
+          system:
+            domain: "{{faker.internet.domainName}}"
+            ip_address: "{{faker.internet.ip}}"
+            mac_address: "{{faker.internet.mac}}"
+            user_agent: "{{faker.internet.userAgent}}"
+
+          # Dados científicos
+          science:
+            chemical_element: "{{faker.science.chemicalElement.name}}"
+            unit: "{{faker.science.unit.name}}"
+
+          # Dados de texto
+          content:
+            word: "{{faker.lorem.word}}"
+            sentence: "{{faker.lorem.sentence}}"
+            paragraph: "{{faker.lorem.paragraph}}"
+            lines: "{{faker.lorem.lines}}"
+
+          # Dados com arrays helpers
+          priorities: "{{faker.helpers.arrayElement(['high', 'medium', 'low', 'critical'])}}"
+          status: "{{faker.helpers.arrayElement(['active', 'inactive', 'pending', 'suspended'])}}"
+
+          # Dados booleanos e números
+          is_active: "{{faker.datatype.boolean}}"
+          random_number: "{{faker.number.int}}"
+          float_number: "{{faker.number.float}}"
+
+    assert:
+      status_code: 200
+      body:
+        json.business_data.system.ip_address:
+          regex: "^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$"
+        json.business_data.is_active:
+          type: "boolean"
+        json.business_data.random_number:
+          type: "number"
+
+    capture:
+      business_data: "body.json.business_data"
+      company_name: "body.json.business_data.company.name"
+      domain_name: "body.json.business_data.system.domain"
+
+  # Teste 4: Validação de Formato e Consistência
+  - name: "Validate Faker Data Formats"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        validation_test:
+          # Dados para validação de formato
+          emails:
+            - "{{faker.internet.email}}"
+            - "{{faker.internet.email}}"
+            - "{{faker.internet.email}}"
+          uuids:
+            - "{{faker.string.uuid}}"
+            - "{{faker.string.uuid}}"
+            - "{{faker.string.uuid}}"
+          phone_numbers:
+            - "{{faker.phone.number}}"
+            - "{{faker.phone.number}}"
+            - "{{faker.phone.number}}"
+          dates:
+            past: "{{faker.date.past}}"
+            future: "{{faker.date.future}}"
+            recent: "{{faker.date.recent}}"
+            birthdate: "{{faker.date.birthdate}}"
+
+          # Dados com seed (devem ser consistentes)
+          consistent_data:
+            name1: "{{faker.person.fullName}}"
+            name2: "{{faker.person.fullName}}"
+            email1: "{{faker.internet.email}}"
+            email2: "{{faker.internet.email}}"
+
+    assert:
+      status_code: 200
+      body:
+        # Validar que todos os emails têm @
+        json.validation_test.emails[0]:
+          contains: "@"
+        json.validation_test.emails[1]:
+          contains: "@"
+        json.validation_test.emails[2]:
+          contains: "@"
+        # Validar formato UUID
+        json.validation_test.uuids[0]:
+          regex: "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+
+    capture:
+      validation_results: "body.json.validation_test"
+      email_count: "length(body.json.validation_test.emails)"
+      uuid_count: "length(body.json.validation_test.uuids)"
+
+  # Teste 5: Integração com Variáveis Anteriores
+  - name: "Integration with Previous Variables"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-User-Company: "{{user_company}}"
+        X-Generated-Domain: "{{domain_name}}"
+      body:
+        integration_data:
+          # Misturar dados gerados com faker e variáveis capturadas
+          user_summary:
+            profile: "{{generated_user_profile}}"
+            financial: "{{financial_data}}"
+            business: "{{business_data}}"
+
+          # Novos dados faker baseados em contexto
+          related_data:
+            # Novo usuário relacionado
+            related_user:
+              name: "{{faker.person.fullName}}"
+              email: "{{faker.internet.email}}"
+              company: "{{user_company}}"  # Usar empresa do usuário anterior
+
+            # Novos produtos da mesma categoria
+            related_products:
+              - name: "{{faker.commerce.productName}}"
+                price: "{{faker.commerce.price}}"
+                category: "electronics"
+              - name: "{{faker.commerce.productName}}"
+                price: "{{faker.commerce.price}}"
+                category: "clothing"
+
+          # Dados de auditoria
+          audit:
+            generated_by: "faker.js"
+            test_batch: "{{batch_size}}"
+            environment: "{{test_environment}}"
+            timestamp: "{{faker.date.recent}}"
+
+    assert:
+      status_code: 200
+      body:
+        json.integration_data.related_data.related_user.company:
+          equals: "{{user_company}}"
+        json.integration_data.audit.environment:
+          equals: "staging"
+
+    capture:
+      integration_summary: "body.json.integration_data"
+      related_user_count: "length(body.json.integration_data.related_data)"
+      final_timestamp: "body.json.integration_data.audit.timestamp"
+
+  # Teste 6: Cenário Complexo com Múltiplos Fakers
+  - name: "Complex Multi-Faker Scenario"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        complex_scenario:
+          # E-commerce order simulation
+          order:
+            id: "{{faker.string.uuid}}"
+            customer:
+              name: "{{faker.person.fullName}}"
+              email: "{{faker.internet.email}}"
+              phone: "{{faker.phone.number}}"
+              address:
+                street: "{{faker.location.streetAddress}}"
+                city: "{{faker.location.city}}"
+                zip: "{{faker.location.zipCode}}"
+
+            items:
+              - id: "{{faker.string.uuid}}"
+                name: "{{faker.commerce.productName}}"
+                price: "{{faker.commerce.price}}"
+                quantity: "{{faker.number.int}}"
+              - id: "{{faker.string.uuid}}"
+                name: "{{faker.commerce.productName}}"
+                price: "{{faker.commerce.price}}"
+                quantity: "{{faker.number.int}}"
+
+            payment:
+              method: "{{faker.helpers.arrayElement(['credit_card', 'debit_card', 'paypal', 'bank_transfer'])}}"
+              card_number: "{{faker.finance.creditCardNumber}}"
+              amount: "{{faker.finance.amount}}"
+              currency: "{{faker.finance.currencyCode}}"
+
+            shipping:
+              carrier: "{{faker.helpers.arrayElement(['FedEx', 'UPS', 'DHL', 'USPS'])}}"
+              tracking: "{{faker.string.uuid}}"
+              estimated_delivery: "{{faker.date.future}}"
+
+            metadata:
+              created_at: "{{faker.date.recent}}"
+              user_agent: "{{faker.internet.userAgent}}"
+              ip_address: "{{faker.internet.ip}}"
+
+    assert:
+      status_code: 200
+      body:
+        json.complex_scenario.order.id:
+          regex: "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        json.complex_scenario.order.customer.email:
+          contains: "@"
+        json.complex_scenario.order.payment.currency:
+          regex: "^[A-Z]{3}$"
+
+    capture:
+      order_data: "body.json.complex_scenario.order"
+      customer_email: "body.json.complex_scenario.order.customer.email"
+      total_items: "length(body.json.complex_scenario.order.items)"
+      payment_method: "body.json.complex_scenario.order.payment.method"

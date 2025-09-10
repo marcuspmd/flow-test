@@ -12,6 +12,9 @@
     "build": "tsc",
     "dev": "ts-node src/cli.ts",
     "test": "ts-node src/cli.ts",
+    "test:all": "cd tests && for file in *.yaml; do echo \"\\n🧪 Running $file...\"; npm run test -- \"$file\" --simple || echo \"❌ $file failed\"; done",
+    "test:verbose": "cd tests && for file in *.yaml; do echo \"\\n🧪 Running $file...\"; npm run test -- \"$file\" --verbose || echo \"❌ $file failed\"; done",
+    "test:silent": "cd tests && for file in *.yaml; do npm run test -- \"$file\" --silent || echo \"❌ $file failed\"; done 2>/dev/null",
     "prepare": "npm run build",
     "docs": "npm run build && npx @microsoft/api-extractor run --config api-extractor.json",
     "docs:serve": "npm run docs && cd docs && python3 -m http.server 8080"

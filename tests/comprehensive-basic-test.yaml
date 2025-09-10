@@ -1,0 +1,211 @@
+# Teste Básico Abrangente - Funcionalidades Core do Flow Test Engine
+project_name: "Flow Test Validation Suite"
+suite_name: "Teste Básico Abrangente das Funcionalidades Core"
+node_id: "comprehensive_basic"
+description: "Valida requests HTTP básicos, assertions, captures e interpolação de variáveis"
+
+base_url: "{{httpbin_url}}"
+
+variables:
+  test_user: "flow_test_user"
+  test_id: 12345
+  api_version: "v2.1"
+  content_type: "application/json"
+
+exports:
+  - captured_echo_data
+  - generated_uuid
+  - final_status
+
+steps:
+  # Teste 1: GET Request com validações básicas
+  - name: "GET Request com Headers Customizados"
+    request:
+      method: GET
+      url: "/get"
+      headers:
+        User-Agent: "FlowTestEngine/{{api_version}}"
+        X-Test-User: "{{test_user}}"
+        X-Test-ID: "{{test_id}}"
+
+    assert:
+      status_code: 200
+      headers:
+        content-type:
+          contains: "application/json"
+      body:
+        headers:
+          X-Test-User:
+            equals: "flow_test_user"
+          X-Test-ID:
+            equals: "12345"
+        args:
+          # httpbin retorna objeto vazio {} para GET sem query params
+          equals: {}
+
+    capture:
+      request_url: "body.url"
+      user_agent_echo: "body.headers.\"User-Agent\""
+
+  # Teste 2: POST Request com Body JSON
+  - name: "POST Request com JSON Body"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "{{content_type}}"
+        Authorization: "Bearer test-token-{{test_id}}"
+      body:
+        username: "{{test_user}}"
+        user_id: "{{test_id}}"
+        action: "create_resource"
+        metadata:
+          api_version: "{{api_version}}"
+          timestamp: "2024-01-01T00:00:00Z"
+          test_mode: true
+
+    assert:
+      status_code: 200
+      body:
+        json:
+          username:
+            equals: "flow_test_user"
+          user_id:
+            equals: 12345
+          action:
+            equals: "create_resource"
+          metadata.api_version:
+            equals: "v2.1"
+          metadata.test_mode:
+            equals: true
+        headers:
+          Authorization:
+            contains: "Bearer test-token-12345"
+
+    capture:
+      captured_echo_data: "body.json"
+      post_url: "body.url"
+
+  # Teste 3: PUT Request para atualização
+  - name: "PUT Request para Atualização"
+    request:
+      method: PUT
+      url: "/put"
+      headers:
+        Content-Type: "application/json"
+        If-Match: "etag-{{test_id}}"
+      body:
+        id: "{{test_id}}"
+        username: "{{captured_echo_data.username}}_updated"
+        status: "active"
+        last_modified: "2024-01-02T00:00:00Z"
+
+    assert:
+      status_code: 200
+      body:
+        json:
+          username:
+            contains: "_updated"
+          status:
+            equals: "active"
+          id:
+            equals: 12345
+
+    capture:
+      updated_username: "body.json.username"
+      update_timestamp: "body.json.last_modified"
+
+  # Teste 4: DELETE Request
+  - name: "DELETE Request"
+    request:
+      method: DELETE
+      url: "/delete"
+      headers:
+        Authorization: "Bearer test-token-{{test_id}}"
+        X-Reason: "Test cleanup for {{updated_username}}"
+
+    assert:
+      status_code: 200
+      body:
+        headers:
+          X-Reason:
+            contains: "Test cleanup"
+
+    capture:
+      delete_confirmation: "body.url"
+
+  # Teste 5: Validações de Response Time e Content
+  - name: "GET com Validações de Performance"
+    request:
+      method: GET
+      url: "/delay/1"  # 1 segundo de delay
+
+    assert:
+      status_code: 200
+      response_time_ms:
+        greater_than: 900   # Pelo menos 900ms devido ao delay
+        less_than: 3000     # Máximo 3 segundos
+
+    capture:
+      performance_url: "body.url"
+
+  # Teste 6: Teste com Query Parameters
+  - name: "GET com Query Parameters"
+    request:
+      method: GET
+      url: "/get?search={{test_user}}&limit=10&version={{api_version}}"
+
+    assert:
+      status_code: 200
+      body:
+        args:
+          search:
+            equals: "flow_test_user"
+          limit:
+            equals: "10"
+          version:
+            equals: "v2.1"
+
+    capture:
+      query_params: "body.args"
+
+  # Teste 7: Headers com diferentes tipos de dados
+  - name: "POST com Headers Diversos"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Numeric-ID: "{{test_id}}"
+        X-Boolean-Flag: "true"
+        X-Array-Data: "item1,item2,item3"
+        X-Nested-Info: "user={{test_user}}&id={{test_id}}"
+      body:
+        final_test: true
+        summary:
+          total_requests: 7
+          user: "{{test_user}}"
+          captured_data: "{{captured_echo_data.action}}"
+
+    assert:
+      status_code: 200
+      body:
+        json:
+          final_test:
+            equals: true
+          summary.total_requests:
+            equals: 7
+          summary.captured_data:
+            equals: "create_resource"
+        headers:
+          X-Numeric-ID:
+            equals: "12345"
+          X-Boolean-Flag:
+            equals: "true"
+          X-Array-Data:
+            contains: "item1,item2,item3"
+
+    capture:
+      generated_uuid: "body.headers.Host"  # Usando host como mock UUID
+      final_status: "'completed'"
+      test_summary: "body.json.summary"
