@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: index.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: index.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>"use strict";
+/**
+ * Flow Test Engine v2.0
+ *
+ * API principal do package para uso programático.
+ *
+ * Este módulo exporta todas as classes, tipos e funções necessárias
+ * para integrar o Flow Test Engine em aplicações ou scripts personalizados.
+ *
+ * @example
+ * ```typescript
+ * import { FlowTestEngine, createEngine, runTests } from 'flow-test-engine';
+ *
+ * // Uso direto da classe
+ * const engine = new FlowTestEngine('./config.yml');
+ * const result = await engine.run();
+ *
+ * // Usando função de conveniência
+ * const result2 = await runTests('./config.yml');
+ *
+ * // Criação simplificada
+ * const engine2 = createEngine('./config.yml');
+ * ```
+ */
+var __createBinding = (this &amp;&amp; this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __exportStar = (this &amp;&amp; this.__exportStar) || function(m, exports) {
+    for (var p in m) if (p !== "default" &amp;&amp; !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
+};
+var __awaiter = (this &amp;&amp; this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.PACKAGE_INFO = exports.VERSION = exports.CaptureService = exports.AssertionService = exports.HttpService = exports.ExecutionService = exports.ReportingService = exports.PriorityService = exports.GlobalVariablesService = exports.TestDiscovery = exports.ConfigManager = exports.FlowTestEngine = void 0;
+exports.createEngine = createEngine;
+exports.runTests = runTests;
+exports.planTests = planTests;
+// Exporta a classe principal do engine
+var engine_1 = require("./core/engine");
+Object.defineProperty(exports, "FlowTestEngine", { enumerable: true, get: function () { return engine_1.FlowTestEngine; } });
+var config_1 = require("./core/config");
+Object.defineProperty(exports, "ConfigManager", { enumerable: true, get: function () { return config_1.ConfigManager; } });
+var discovery_1 = require("./core/discovery");
+Object.defineProperty(exports, "TestDiscovery", { enumerable: true, get: function () { return discovery_1.TestDiscovery; } });
+// Exporta serviços para uso avançado
+var global_variables_1 = require("./services/global-variables");
+Object.defineProperty(exports, "GlobalVariablesService", { enumerable: true, get: function () { return global_variables_1.GlobalVariablesService; } });
+var priority_1 = require("./services/priority");
+Object.defineProperty(exports, "PriorityService", { enumerable: true, get: function () { return priority_1.PriorityService; } });
+var reporting_1 = require("./services/reporting");
+Object.defineProperty(exports, "ReportingService", { enumerable: true, get: function () { return reporting_1.ReportingService; } });
+var execution_1 = require("./services/execution");
+Object.defineProperty(exports, "ExecutionService", { enumerable: true, get: function () { return execution_1.ExecutionService; } });
+// Exporta todos os tipos
+__exportStar(require("./types/engine.types"), exports);
+__exportStar(require("./types/config.types"), exports);
+// Exporta serviços legados compatíveis (para migration)
+var http_service_1 = require("./services/http.service");
+Object.defineProperty(exports, "HttpService", { enumerable: true, get: function () { return http_service_1.HttpService; } });
+var assertion_service_1 = require("./services/assertion.service");
+Object.defineProperty(exports, "AssertionService", { enumerable: true, get: function () { return assertion_service_1.AssertionService; } });
+var capture_service_1 = require("./services/capture.service");
+Object.defineProperty(exports, "CaptureService", { enumerable: true, get: function () { return capture_service_1.CaptureService; } });
+/**
+ * Função de conveniência para criação rápida do engine
+ *
+ * Cria uma instância do FlowTestEngine com configuração mínima,
+ * ideal para uso em scripts ou integração simples.
+ *
+ * @param configPath - Caminho opcional para arquivo de configuração
+ * @returns Nova instância do FlowTestEngine configurada
+ *
+ * @example
+ * ```typescript
+ * const engine = createEngine('./my-config.yml');
+ * const result = await engine.run();
+ * ```
+ */
+function createEngine(configPath) {
+    const { FlowTestEngine } = require("./core/engine");
+    return new FlowTestEngine(configPath);
+}
+/**
+ * Função de conveniência para execução one-shot
+ *
+ * Cria um engine, executa todos os testes e retorna o resultado.
+ * Ideal para automação e integração em pipelines de CI/CD.
+ *
+ * @param configPath - Caminho opcional para arquivo de configuração
+ * @returns Promise que resolve para o resultado agregado da execução
+ *
+ * @example
+ * ```typescript
+ * // Execução simples
+ * const result = await runTests();
+ * console.log(`Success rate: ${result.success_rate}%`);
+ *
+ * // Com configuração específica
+ * const result2 = await runTests('./prod-config.yml');
+ * if (result2.failed_tests > 0) {
+ *   process.exit(1);
+ * }
+ * ```
+ */
+function runTests(configPath) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const { FlowTestEngine } = require("./core/engine");
+        const engine = new FlowTestEngine(configPath);
+        return yield engine.run();
+    });
+}
+/**
+ * Função para dry-run (apenas descoberta e planejamento)
+ *
+ * Executa apenas a fase de descoberta e planejamento dos testes
+ * sem executar as requisições HTTP. Útil para validar configuração
+ * e visualizar o plano de execução.
+ *
+ * @param configPath - Caminho opcional para arquivo de configuração
+ * @returns Promise que resolve para informações sobre testes descobertos
+ *
+ * @example
+ * ```typescript
+ * const plan = await planTests('./config.yml');
+ * console.log(`Found ${plan.total_tests} tests to execute`);
+ * plan.suites_results.forEach(suite => {
+ *   console.log(`- ${suite.suite_name} (${suite.total_steps} steps)`);
+ * });
+ * ```
+ */
+function planTests(configPath) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const { FlowTestEngine } = require("./core/engine");
+        const engine = new FlowTestEngine(configPath);
+        return yield engine.dryRun();
+    });
+}
+/**
+ * Versão do package
+ *
+ * Versão atual do Flow Test Engine, seguindo semantic versioning.
+ */
+exports.VERSION = "2.0.0";
+/**
+ * Informações do package
+ *
+ * Metadados sobre o Flow Test Engine incluindo nome, versão e descrição.
+ * Útil para integração em ferramentas que precisam identificar a versão.
+ *
+ * @example
+ * ```typescript
+ * console.log(`Using ${PACKAGE_INFO.name} v${PACKAGE_INFO.version}`);
+ * ```
+ */
+exports.PACKAGE_INFO = {
+    name: "flow-test-engine",
+    version: exports.VERSION,
+    description: "A comprehensive API testing engine with directory-based execution, global variables, and priority-driven test management.",
+};
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#PACKAGE_INFO">PACKAGE_INFO</a></li><li><a href="global.html#VERSION">VERSION</a></li><li><a href="global.html#__awaiter">__awaiter</a></li><li><a href="global.html#__createBinding">__createBinding</a></li><li><a href="global.html#createEngine">createEngine</a></li><li><a href="global.html#main">main</a></li><li><a href="global.html#planTests">planTests</a></li><li><a href="global.html#printHelp">printHelp</a></li><li><a href="global.html#runTests">runTests</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.4</a> on Tue Sep 09 2025 22:08:47 GMT-0300 (Horário Padrão de Brasília)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

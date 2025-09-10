@@ -12,7 +12,11 @@
     "build": "tsc",
     "dev": "ts-node src/cli.ts",
     "test": "ts-node src/cli.ts",
-    "prepare": "npm run build"
+    "prepare": "npm run build",
+    "docs": "npm run build && npx jsdoc -c jsdoc.json",
+    "docs:typedoc": "npx typedoc --options typedoc.json",
+    "docs:serve": "npm run docs && cd docs/jsdoc && python3 -m http.server 8080",
+    "docs:serve:typedoc": "npm run docs:typedoc && cd docs/typedoc && python3 -m http.server 8081"
   },
   "keywords": [
     "api",
@@ -32,15 +36,18 @@
   ],
   "dependencies": {
     "axios": "^1.7.2",
+    "fast-glob": "^3.3.0",
     "jmespath": "^0.15.0",
-    "js-yaml": "^4.1.0",
-    "fast-glob": "^3.3.0"
+    "js-yaml": "^4.1.0"
   },
   "devDependencies": {
     "@types/jmespath": "^0.15.2",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^20.14.2",
+    "jsdoc": "^4.0.4",
     "ts-node": "^10.9.2",
+    "typedoc": "^0.28.12",
+    "typedoc-theme-hierarchy": "^6.0.0",
     "typescript": "^5.4.5"
   },
   "engines": {

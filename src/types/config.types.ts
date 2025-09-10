@@ -1,3 +1,6 @@
+// Import types from engine.types to avoid circular import
+import type { FlowDependency } from './engine.types';
+
 /**
  * Configuração global do Flow Test Engine
  */
@@ -86,7 +89,9 @@ export interface DiscoveredTest {
   file_path: string;
   suite_name: string;
   priority?: string;
-  dependencies?: string[];
+  dependencies?: string[]; // Legacy format
+  depends?: FlowDependency[]; // New dependency format
+  exports?: string[];
   estimated_duration?: number;
 }
 

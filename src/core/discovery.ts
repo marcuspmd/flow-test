@@ -3,7 +3,7 @@ import path from 'path';
 import fg from 'fast-glob';
 import yaml from 'js-yaml';
 import { ConfigManager } from './config';
-import { DiscoveredTest, TestSuite } from '../types/engine.types';
+import { DiscoveredTest, TestSuite, FlowDependency } from '../types/engine.types';
 
 /**
  * Serviço de descoberta de testes
@@ -76,6 +76,8 @@ export class TestDiscovery {
         suite_name: suite.suite_name,
         priority: suite.metadata?.priority || this.inferPriorityFromName(suite.suite_name),
         dependencies: this.extractDependencies(suite),
+        depends: this.extractFlowDependencies(suite),
+        exports: this.extractExports(suite),
         estimated_duration: suite.metadata?.estimated_duration_ms || this.estimateDuration(suite)
       };
 
@@ -129,6 +131,39 @@ export class TestDiscovery {
     }
 
     return [...new Set(dependencies)]; // Remove duplicatas
+  }
+
+  /**
+   * Extrai dependências de fluxo no novo formato
+   */
+  private extractFlowDependencies(suite: TestSuite): FlowDependency[] {
+    const dependencies: FlowDependency[] = [];
+
+    // Dependências diretas especificadas na suite
+    if (suite.depends) {
+      dependencies.push(...suite.depends);
+    }
+
+    // Converte dependências do formato simples (array de strings) para FlowDependency
+    if (Array.isArray((suite as any).depends)) {
+      const simpleDeps = (suite as any).depends as string[];
+      for (const dep of simpleDeps) {
+        dependencies.push({
+          path: dep,
+          required: true, // Assume required by default
+          cache: true
+        });
+      }
+    }
+
+    return dependencies;
+  }
+
+  /**
+   * Extrai lista de variáveis exportadas
+   */
+  private extractExports(suite: TestSuite): string[] {
+    return suite.exports || [];
   }
 
   /**

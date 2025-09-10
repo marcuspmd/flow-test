@@ -1,40 +1,54 @@
-import { ConfigManager } from '../core/config';
-import { GlobalVariableContext } from '../types/engine.types';
+import { ConfigManager } from "../core/config";
+import { GlobalVariableContext } from "../types/engine.types";
+import { GlobalRegistryService } from "./global-registry.service";
 
 /**
- * Serviço de gerenciamento de variáveis globais com hierarquia e cache
+ * Service for managing global variables with hierarchy and cache
  */
 export class GlobalVariablesService {
   private context: GlobalVariableContext;
   private configManager: ConfigManager;
+  private globalRegistry: GlobalRegistryService | null = null;
   private interpolationCache: Map<string, string> = new Map();
   private cacheEnabled: boolean = true;
 
-  constructor(configManager: ConfigManager) {
+  constructor(
+    configManager: ConfigManager,
+    globalRegistry?: GlobalRegistryService
+  ) {
     this.configManager = configManager;
+    this.globalRegistry = globalRegistry || null;
     this.context = this.initializeContext();
   }
 
   /**
-   * Inicializa o contexto de variáveis
+   * Sets the Global Registry for resolution of exported variables
+   */
+  setGlobalRegistry(globalRegistry: GlobalRegistryService): void {
+    this.globalRegistry = globalRegistry;
+    this.clearCache(); // Clears cache as new variables may be available
+  }
+
+  /**
+   * Initializes the variable context
    */
   private initializeContext(): GlobalVariableContext {
     return {
       environment: this.loadEnvironmentVariables(),
       global: this.configManager.getGlobalVariables(),
       suite: {},
-      runtime: {}
+      runtime: {},
     };
   }
 
   /**
-   * Carrega variáveis de ambiente relevantes
+   * Loads relevant environment variables
    */
   private loadEnvironmentVariables(): Record<string, any> {
     const envVars: Record<string, any> = {};
 
-    // Todas as variáveis de ambiente do processo
-    Object.keys(process.env).forEach(key => {
+    // All environment variables from the process
+    Object.keys(process.env).forEach((key) => {
       envVars[key] = process.env[key];
     });
 
@@ -42,15 +56,15 @@ export class GlobalVariablesService {
   }
 
   /**
-   * Define variáveis no escopo runtime
+   * Sets variables in runtime scope
    */
   setRuntimeVariables(variables: Record<string, any>): void {
     this.context.runtime = { ...this.context.runtime, ...variables };
-    this.clearCache(); // Limpa cache quando variáveis mudam
+    this.clearCache(); // Clears cache when variables change
   }
 
   /**
-   * Define variáveis no escopo suite
+   * Sets variables in suite scope
    */
   setSuiteVariables(variables: Record<string, any>): void {
     this.context.suite = { ...this.context.suite, ...variables };
@@ -58,60 +72,75 @@ export class GlobalVariablesService {
   }
 
   /**
-   * Define uma variável específica em runtime
+   * Sets a specific variable in runtime
    */
-  setVariable(name: string, value: any, scope: keyof GlobalVariableContext = 'runtime'): void {
+  setVariable(
+    name: string,
+    value: any,
+    scope: keyof GlobalVariableContext = "runtime"
+  ): void {
     this.context[scope][name] = value;
-    
-    // Remove entradas de cache que podem ser afetadas
+
+    // Removes cache entries that may be affected
     this.invalidateCacheForVariable(name);
   }
 
   /**
-   * Obtém uma variável específica seguindo a hierarquia
+   * Gets a specific variable following the hierarchy
    */
   getVariable(name: string): any {
-    // Hierarquia: runtime > suite > global > environment
+    // Hierarchy: runtime > suite > global > environment
     if (this.context.runtime.hasOwnProperty(name)) {
       return this.context.runtime[name];
     }
-    
+
     if (this.context.suite.hasOwnProperty(name)) {
       return this.context.suite[name];
     }
-    
+
     if (this.context.global.hasOwnProperty(name)) {
       return this.context.global[name];
     }
-    
+
     if (this.context.environment.hasOwnProperty(name)) {
       return this.context.environment[name];
     }
-    
+
     return undefined;
   }
 
   /**
-   * Obtém todas as variáveis mescladas por hierarquia
+   * Gets all variables merged by hierarchy
    */
   getAllVariables(): Record<string, any> {
-    return {
+    const baseVariables = {
       ...this.context.environment,
       ...this.context.global,
       ...this.context.suite,
-      ...this.context.runtime
+      ...this.context.runtime,
     };
+
+    // Adds exported variables if registry is available
+    if (this.globalRegistry) {
+      const exportedVariables = this.globalRegistry.getAllExportedVariables();
+      return {
+        ...baseVariables,
+        ...exportedVariables,
+      };
+    }
+
+    return baseVariables;
   }
 
   /**
-   * Interpola uma string substituindo {{variavel}} pelos valores
+   * Interpolates a string replacing {{variable}} with values
    */
   interpolateString(template: string): string {
-    if (!template || typeof template !== 'string') {
+    if (!template || typeof template !== "string") {
       return template;
     }
 
-    // Verifica cache primeiro
+    // Checks cache first
     if (this.cacheEnabled && this.interpolationCache.has(template)) {
       return this.interpolationCache.get(template)!;
     }
@@ -123,18 +152,20 @@ export class GlobalVariablesService {
     while ((match = variablePattern.exec(template)) !== null) {
       const fullMatch = match[0]; // {{variable_name}}
       const variableName = match[1].trim(); // variable_name
-      
+
       const value = this.resolveVariableExpression(variableName);
-      
+
       if (value !== undefined) {
         result = result.replace(fullMatch, this.convertValueToString(value));
       } else {
-        console.warn(`⚠️  Warning: Variable '${variableName}' not found during interpolation`);
-        // Mantém a expressão original se variável não encontrada
+        console.warn(
+          `⚠️  Warning: Variable '${variableName}' not found during interpolation`
+        );
+        // Keeps original expression if variable not found
       }
     }
 
-    // Armazena no cache
+    // Stores in cache
     if (this.cacheEnabled) {
       this.interpolationCache.set(template, result);
     }
@@ -143,45 +174,53 @@ export class GlobalVariablesService {
   }
 
   /**
-   * Interpola qualquer objeto (strings, objetos, arrays)
+   * Interpolates any object (strings, objects, arrays)
    */
   interpolate<T>(obj: T): T {
     if (obj === null || obj === undefined) {
       return obj;
     }
 
-    if (typeof obj === 'string') {
+    if (typeof obj === "string") {
       return this.interpolateString(obj) as unknown as T;
     }
 
     if (Array.isArray(obj)) {
-      return obj.map(item => this.interpolate(item)) as unknown as T;
+      return obj.map((item) => this.interpolate(item)) as unknown as T;
     }
 
-    if (typeof obj === 'object') {
+    if (typeof obj === "object") {
       const result: any = {};
-      Object.keys(obj).forEach(key => {
+      Object.keys(obj).forEach((key) => {
         result[key] = this.interpolate((obj as any)[key]);
       });
       return result as T;
     }
 
-    return obj; // Números, booleans, etc.
+    return obj; // Numbers, booleans, etc.
   }
 
   /**
-   * Resolve expressões de variáveis com suporte a caminhos
+   * Resolves variable expressions with support for paths and exported variables
    */
   private resolveVariableExpression(expression: string): any {
-    // Suporte a caminhos como: user.name, config.timeout
-    const parts = expression.split('.');
+    // First, tries to resolve as exported variable (suite.variable)
+    if (expression.includes(".") && this.globalRegistry) {
+      const exportedValue = this.globalRegistry.getExportedVariable(expression);
+      if (exportedValue !== undefined) {
+        return exportedValue;
+      }
+    }
+
+    // Support for paths like: user.name, config.timeout
+    const parts = expression.split(".");
     const baseName = parts[0];
-    
+
     let value = this.getVariable(baseName);
-    
-    // Navega pelo caminho se existir
+
+    // Navigates through path if it exists
     for (let i = 1; i < parts.length && value !== undefined; i++) {
-      if (typeof value === 'object' && value !== null) {
+      if (typeof value === "object" && value !== null) {
         value = value[parts[i]];
       } else {
         value = undefined;
@@ -193,51 +232,51 @@ export class GlobalVariablesService {
   }
 
   /**
-   * Converte qualquer valor para string para interpolação
+   * Converts any value to string for interpolation
    */
   private convertValueToString(value: any): string {
     if (value === null || value === undefined) {
-      return '';
+      return "";
     }
-    
-    if (typeof value === 'string') {
+
+    if (typeof value === "string") {
       return value;
     }
-    
-    if (typeof value === 'number' || typeof value === 'boolean') {
+
+    if (typeof value === "number" || typeof value === "boolean") {
       return String(value);
     }
-    
-    if (typeof value === 'object') {
+
+    if (typeof value === "object") {
       return JSON.stringify(value);
     }
-    
+
     return String(value);
   }
 
   /**
-   * Obtém contexto completo de variáveis
+   * Gets complete variable context
    */
   getContext(): GlobalVariableContext {
     return { ...this.context };
   }
 
   /**
-   * Obtém variáveis de um escopo específico
+   * Gets variables from a specific scope
    */
   getVariablesByScope(scope: keyof GlobalVariableContext): Record<string, any> {
     return { ...this.context[scope] };
   }
 
   /**
-   * Verifica se uma variável existe
+   * Checks if a variable exists
    */
   hasVariable(name: string): boolean {
     return this.getVariable(name) !== undefined;
   }
 
   /**
-   * Lista nomes de todas as variáveis disponíveis
+   * Lists names of all available variables
    */
   getAvailableVariableNames(): string[] {
     const allVars = this.getAllVariables();
@@ -245,7 +284,7 @@ export class GlobalVariablesService {
   }
 
   /**
-   * Obtém estatísticas do sistema de variáveis
+   * Gets statistics of the variable system
    */
   getStats() {
     return {
@@ -254,23 +293,23 @@ export class GlobalVariablesService {
       suite_vars: Object.keys(this.context.suite).length,
       runtime_vars: Object.keys(this.context.runtime).length,
       cache_size: this.interpolationCache.size,
-      cache_enabled: this.cacheEnabled
+      cache_enabled: this.cacheEnabled,
     };
   }
 
   /**
-   * Limpa o cache de interpolação
+   * Clears the interpolation cache
    */
   clearCache(): void {
     this.interpolationCache.clear();
   }
 
   /**
-   * Invalida entradas de cache que usam uma variável específica
+   * Invalidates cache entries that use a specific variable
    */
   private invalidateCacheForVariable(variableName: string): void {
     const pattern = new RegExp(`\\{\\{[^}]*${variableName}[^}]*\\}\\}`);
-    
+
     for (const [template] of this.interpolationCache) {
       if (pattern.test(template)) {
         this.interpolationCache.delete(template);
@@ -279,7 +318,7 @@ export class GlobalVariablesService {
   }
 
   /**
-   * Habilita/desabilita cache de interpolação
+   * Enables/disables interpolation cache
    */
   setCacheEnabled(enabled: boolean): void {
     this.cacheEnabled = enabled;
@@ -289,21 +328,25 @@ export class GlobalVariablesService {
   }
 
   /**
-   * Exporta estado atual das variáveis para debug
+   * Exports current variable state for debug
    */
   exportState(): string {
-    return JSON.stringify({
-      context: this.context,
-      cache_stats: {
-        size: this.interpolationCache.size,
-        enabled: this.cacheEnabled
+    return JSON.stringify(
+      {
+        context: this.context,
+        cache_stats: {
+          size: this.interpolationCache.size,
+          enabled: this.cacheEnabled,
+        },
+        available_variables: this.getAvailableVariableNames(),
       },
-      available_variables: this.getAvailableVariableNames()
-    }, null, 2);
+      null,
+      2
+    );
   }
 
   /**
-   * Restaura contexto a partir de um estado exportado
+   * Restores context from an exported state
    */
   importState(state: string): void {
     try {
@@ -318,11 +361,11 @@ export class GlobalVariablesService {
   }
 
   /**
-   * Cria um snapshot do estado atual das variáveis
+   * Creates a snapshot of the current variable state
    */
   createSnapshot(): () => void {
     const snapshot = JSON.parse(JSON.stringify(this.context));
-    
+
     return () => {
       this.context = snapshot;
       this.clearCache();
@@ -330,11 +373,14 @@ export class GlobalVariablesService {
   }
 
   /**
-   * Mergia variáveis de outro contexto
+   * Merges variables from another context
    */
   mergeContext(otherContext: Partial<GlobalVariableContext>): void {
     if (otherContext.environment) {
-      this.context.environment = { ...this.context.environment, ...otherContext.environment };
+      this.context.environment = {
+        ...this.context.environment,
+        ...otherContext.environment,
+      };
     }
     if (otherContext.global) {
       this.context.global = { ...this.context.global, ...otherContext.global };
@@ -343,9 +389,12 @@ export class GlobalVariablesService {
       this.context.suite = { ...this.context.suite, ...otherContext.suite };
     }
     if (otherContext.runtime) {
-      this.context.runtime = { ...this.context.runtime, ...otherContext.runtime };
+      this.context.runtime = {
+        ...this.context.runtime,
+        ...otherContext.runtime,
+      };
     }
-    
+
     this.clearCache();
   }
 }

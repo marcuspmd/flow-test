@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: cli.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: cli.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>#!/usr/bin/env node
+"use strict";
+/**
+ * CLI do Flow Test Engine v2.0
+ *
+ * Interface de linha de comando para o Flow Test Engine.
+ * Permite executar testes com diversas opções de configuração,
+ * filtros e níveis de verbosidade.
+ *
+ * @example
+ * ```bash
+ * # Execução básica
+ * flow-test
+ *
+ * # Com arquivo de configuração específico
+ * flow-test -c ./config/prod.yml
+ *
+ * # Com filtros
+ * flow-test --priority high,critical --verbose
+ *
+ * # Dry run para planejar execução
+ * flow-test --dry-run --detailed
+ * ```
+ */
+var __awaiter = (this &amp;&amp; this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const engine_1 = require("./core/engine");
+/**
+ * Função principal do CLI
+ *
+ * Processa argumentos da linha de comando, configura o engine
+ * e executa os testes com as opções especificadas.
+ *
+ * @returns Promise&lt;void>
+ */
+function main() {
+    return __awaiter(this, void 0, void 0, function* () {
+        const args = process.argv.slice(2);
+        // Parsing dos argumentos
+        const options = {
+            verbosity: "simple",
+        };
+        let configFile;
+        let showHelp = false;
+        let dryRun = false;
+        for (let i = 0; i &lt; args.length; i++) {
+            const arg = args[i];
+            switch (arg) {
+                case "-c":
+                case "--config":
+                    if (i + 1 &lt; args.length) {
+                        configFile = args[++i];
+                    }
+                    break;
+                case "-d":
+                case "--directory":
+                    if (i + 1 &lt; args.length) {
+                        options.test_directory = args[++i];
+                    }
+                    break;
+                case "-e":
+                case "--environment":
+                    if (i + 1 &lt; args.length) {
+                        options.environment = args[++i];
+                    }
+                    break;
+                case "--verbose":
+                    options.verbosity = "verbose";
+                    break;
+                case "--detailed":
+                    options.verbosity = "detailed";
+                    break;
+                case "--simple":
+                    options.verbosity = "simple";
+                    break;
+                case "--silent":
+                    options.verbosity = "silent";
+                    break;
+                case "--priority":
+                    if (i + 1 &lt; args.length) {
+                        const priorities = args[++i].split(",");
+                        options.filters = Object.assign(Object.assign({}, options.filters), { priority: priorities });
+                    }
+                    break;
+                case "--suite":
+                    if (i + 1 &lt; args.length) {
+                        const suites = args[++i].split(",");
+                        options.filters = Object.assign(Object.assign({}, options.filters), { suite_names: suites });
+                    }
+                    break;
+                case "--dry-run":
+                    dryRun = true;
+                    break;
+                case "-h":
+                case "--help":
+                    showHelp = true;
+                    break;
+                case "-v":
+                case "--version":
+                    console.log("Flow Test Engine v2.0.0");
+                    process.exit(0);
+                    break;
+                default:
+                    if (!arg.startsWith("-")) {
+                        // Assume que é um arquivo de configuração
+                        configFile = arg;
+                    }
+                    else {
+                        console.error(`❌ Unknown argument: ${arg}`);
+                        showHelp = true;
+                    }
+                    break;
+            }
+        }
+        if (showHelp) {
+            printHelp();
+            process.exit(0);
+        }
+        try {
+            // Configura opções com arquivo de config se especificado
+            const engineOptions = configFile
+                ? Object.assign(Object.assign({}, options), { config_file: configFile }) : options;
+            // Cria o engine
+            const engine = new engine_1.FlowTestEngine(engineOptions, {
+                onExecutionStart: (stats) => {
+                    if (options.verbosity !== "silent") {
+                        console.log(`🚀 Starting execution of ${stats.tests_discovered} test(s)`);
+                    }
+                },
+                onTestDiscovered: (test) => {
+                    if (options.verbosity === "verbose") {
+                        console.log(`📋 Discovered: ${test.suite_name} (${test.priority})`);
+                    }
+                },
+                onSuiteStart: (suite) => {
+                    if (options.verbosity === "detailed" ||
+                        options.verbosity === "verbose") {
+                        console.log(`▶️  Starting: ${suite.suite_name}`);
+                    }
+                },
+                onSuiteEnd: (suite, result) => {
+                    if (options.verbosity === "detailed" ||
+                        options.verbosity === "verbose") {
+                        const status = result.status === "success" ? "✅" : "❌";
+                        console.log(`${status} Finished: ${suite.suite_name} (${result.duration_ms}ms)`);
+                    }
+                },
+                onError: (error) => {
+                    console.error(`💥 Engine error: ${error.message}`);
+                    if (options.verbosity === "verbose") {
+                        console.error(error.stack);
+                    }
+                },
+            });
+            if (dryRun) {
+                // Execução em modo dry-run
+                const plan = yield engine.dryRun();
+                console.log(`\n📊 Execution plan would run ${plan.length} test(s):`);
+                plan.forEach((test, index) => {
+                    console.log(`  ${index + 1}. ${test.suite_name} (${test.priority || "medium"})`);
+                });
+                process.exit(0);
+            }
+            else {
+                // Execução normal
+                const result = yield engine.run();
+                // Exit code baseado no resultado
+                const exitCode = result.success_rate === 100 ? 0 : 1;
+                if (options.verbosity !== "silent") {
+                    console.log(`\n🏁 Execution completed with ${result.success_rate.toFixed(1)}% success rate`);
+                }
+                process.exit(exitCode);
+            }
+        }
+        catch (error) {
+            console.error("❌ Fatal error:", error);
+            if (options.verbosity === "verbose") {
+                console.error(error.stack);
+            }
+            process.exit(1);
+        }
+    });
+}
+/**
+ * Exibe a mensagem de ajuda do CLI
+ *
+ * Mostra todas as opções disponíveis, exemplos de uso
+ * e informações sobre arquivos de configuração.
+ *
+ * @example
+ * ```bash
+ * flow-test --help
+ * # ou
+ * flow-test -h
+ * ```
+ */
+function printHelp() {
+    console.log(`
+🚀 Flow Test Engine v2.0.0
+
+USAGE:
+  flow-test [CONFIG_FILE] [OPTIONS]
+
+ARGUMENTS:
+  CONFIG_FILE              Path to configuration file (default: flow-test.config.yml)
+
+OPTIONS:
+  -c, --config &lt;file>      Configuration file path
+  -d, --directory &lt;dir>    Test directory override
+  -e, --environment &lt;env>  Environment name for variable resolution
+
+VERBOSITY:
+  --verbose               Show detailed output including request/response data
+  --detailed              Show detailed progress without full request/response
+  --simple                Show basic progress (default)
+  --silent                Silent execution, errors only
+
+FILTERING:
+  --priority &lt;levels>     Run only tests with specified priorities (comma-separated)
+                         Example: --priority critical,high
+  --suite &lt;names>         Run only specified test suites (comma-separated)
+                         Example: --suite "login,checkout"
+
+EXECUTION:
+  --dry-run              Show execution plan without running tests
+
+OTHER:
+  -h, --help             Show this help message
+  -v, --version          Show version information
+
+EXAMPLES:
+  flow-test                                    # Run with default config
+  flow-test my-config.yml                      # Run with specific config
+  flow-test --priority critical,high          # Run only critical and high priority tests
+  flow-test --dry-run                         # Show what would be executed
+  flow-test --directory ./api-tests --verbose # Run from specific directory with verbose output
+  flow-test --environment staging --silent    # Run in staging environment silently
+
+CONFIGURATION:
+  The engine looks for configuration files in this order:
+  1. Specified via --config or as argument
+  2. flow-test.config.yml
+  3. flow-test.config.yaml
+  4. flow-test.yml
+  5. flow-test.yaml
+
+  For configuration file format and options, see documentation.
+`);
+}
+// Tratamento de sinais para cleanup graceful
+process.on("SIGINT", () => {
+    console.log("\n🛑 Received SIGINT, shutting down gracefully...");
+    process.exit(130);
+});
+process.on("SIGTERM", () => {
+    console.log("\n🛑 Received SIGTERM, shutting down gracefully...");
+    process.exit(143);
+});
+// Tratamento de exceções não capturadas
+process.on("uncaughtException", (error) => {
+    console.error("💥 Uncaught Exception:", error);
+    process.exit(1);
+});
+process.on("unhandledRejection", (reason, promise) => {
+    console.error("💥 Unhandled Rejection at:", promise, "reason:", reason);
+    process.exit(1);
+});
+// Executa o CLI
+main().catch((error) => {
+    console.error("💥 CLI execution failed:", error);
+    process.exit(1);
+});
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#PACKAGE_INFO">PACKAGE_INFO</a></li><li><a href="global.html#VERSION">VERSION</a></li><li><a href="global.html#__awaiter">__awaiter</a></li><li><a href="global.html#__createBinding">__createBinding</a></li><li><a href="global.html#createEngine">createEngine</a></li><li><a href="global.html#main">main</a></li><li><a href="global.html#planTests">planTests</a></li><li><a href="global.html#printHelp">printHelp</a></li><li><a href="global.html#runTests">runTests</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.4</a> on Tue Sep 09 2025 22:08:47 GMT-0300 (Horário Padrão de Brasília)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

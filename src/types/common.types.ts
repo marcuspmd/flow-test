@@ -2,7 +2,22 @@
 // Garante que o código e o arquivo YAML tenham a mesma estrutura.
 
 /**
- * Detalhes de uma única requisição HTTP.
+ * Detalhes de uma única requisição HTTP
+ *
+ * Define todos os parâmetros necessários para executar uma requisição HTTP,
+ * incluindo método, URL, headers e body da requisição.
+ *
+ * @example
+ * ```yaml
+ * request:
+ *   method: POST
+ *   url: /api/login
+ *   headers:
+ *     Content-Type: application/json
+ *   body:
+ *     username: "{{username}}"
+ *     password: "{{password}}"
+ * ```
  */
 export interface RequestDetails {
   method: "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
@@ -12,7 +27,24 @@ export interface RequestDetails {
 }
 
 /**
- * Regras de validação para um campo específico.
+ * Regras de validação para um campo específico
+ *
+ * Define os operadores disponíveis para validar valores em assertions.
+ * Cada operador pode ser usado para validar campos do body, headers, etc.
+ *
+ * @example
+ * ```yaml
+ * assert:
+ *   body:
+ *     status:
+ *       equals: "success"
+ *     count:
+ *       greater_than: 0
+ *       less_than: 100
+ *     message:
+ *       contains: "completed"
+ *       regex: "^[A-Z].*$"
+ * ```
  */
 export interface AssertionChecks {
   equals?: any;
@@ -24,7 +56,26 @@ export interface AssertionChecks {
 }
 
 /**
- * O conjunto de validações para uma resposta.
+ * O conjunto de validações para uma resposta HTTP
+ *
+ * Define todas as validações que podem ser aplicadas a uma resposta,
+ * incluindo status code, conteúdo do body, headers e tempo de resposta.
+ *
+ * @example
+ * ```yaml
+ * assert:
+ *   status_code: 200
+ *   body:
+ *     message:
+ *       equals: "success"
+ *     data.user.id:
+ *       not_equals: null
+ *   headers:
+ *     content-type:
+ *       contains: "application/json"
+ *   response_time_ms:
+ *     less_than: 1000
+ * ```
  */
 export interface Assertions {
   status_code?: number;
@@ -37,7 +88,26 @@ export interface Assertions {
 }
 
 /**
- * Cenários condicionais para happy/sad paths.
+ * Cenários condicionais para happy/sad paths
+ *
+ * Permite definir validações e capturas condicionais baseadas
+ * em expressões JMESPath aplicadas à resposta.
+ *
+ * @example
+ * ```yaml
+ * scenarios:
+ *   - condition: "body.status == 'success'"
+ *     then:
+ *       assert:
+ *         body.data:
+ *           not_equals: null
+ *       capture:
+ *         user_id: "body.data.user.id"
+ *     else:
+ *       assert:
+ *         body.error:
+ *           not_equals: null
+ * ```
  */
 export interface ConditionalScenario {
   condition: string; // JMESPath expression
@@ -52,7 +122,29 @@ export interface ConditionalScenario {
 }
 
 /**
- * Define uma única etapa no fluxo de teste.
+ * Define uma única etapa no fluxo de teste
+ *
+ * Representa um step individual de um teste, contendo a requisição
+ * a ser executada, validações, capturas e cenários condicionais.
+ *
+ * @example
+ * ```yaml
+ * steps:
+ *   - name: "Login do usuário"
+ *     request:
+ *       method: POST
+ *       url: /auth/login
+ *       body:
+ *         username: "{{test_user}}"
+ *         password: "{{test_password}}"
+ *     assert:
+ *       status_code: 200
+ *       body.token:
+ *         not_equals: null
+ *     capture:
+ *       auth_token: "body.token"
+ *     continue_on_failure: false
+ * ```
  */
 export interface TestStep {
   name: string;
@@ -87,9 +179,9 @@ export interface ReusableFlow {
  * Configuração de relatórios e verbosidade.
  */
 export interface ReportingConfig {
-  verbosity: 'silent' | 'simple' | 'detailed' | 'verbose';
+  verbosity: "silent" | "simple" | "detailed" | "verbose";
   output_file?: string;
-  format: 'console' | 'json' | 'html';
+  format: "console" | "json" | "html";
   include_request_response: boolean;
   include_variables: boolean;
 }
@@ -110,7 +202,7 @@ export interface AssertionResult {
  */
 export interface ExecutionResult {
   step_name: string;
-  status: 'success' | 'failure' | 'skipped';
+  status: "success" | "failure" | "skipped";
   duration_ms: number;
   request_details?: RequestDetails;
   response_details?: {
@@ -154,9 +246,9 @@ export interface TestSuite {
  * Opções de execução passadas via CLI.
  */
 export interface ExecutionOptions {
-  verbosity?: 'silent' | 'simple' | 'detailed' | 'verbose';
+  verbosity?: "silent" | "simple" | "detailed" | "verbose";
   outputFile?: string;
-  format?: 'console' | 'json' | 'html';
+  format?: "console" | "json" | "html";
   continueOnFailure?: boolean;
   timeout?: number;
 }

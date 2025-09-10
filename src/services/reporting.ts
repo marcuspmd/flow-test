@@ -1,10 +1,10 @@
-import fs from 'fs';
-import path from 'path';
-import { ConfigManager } from '../core/config';
-import { AggregatedResult, ReportFormat } from '../types/engine.types';
+import fs from "fs";
+import path from "path";
+import { ConfigManager } from "../core/config";
+import { AggregatedResult, ReportFormat } from "../types/engine.types";
 
 /**
- * Serviço de geração de relatórios em múltiplos formatos
+ * Service for generating reports in multiple formats
  */
 export class ReportingService {
   private configManager: ConfigManager;
@@ -14,26 +14,32 @@ export class ReportingService {
   }
 
   /**
-   * Gera todos os relatórios configurados
+   * Generates all configured reports
    */
   async generateReports(result: AggregatedResult): Promise<void> {
     const config = this.configManager.getConfig();
     const formats = config.reporting!.formats;
     const outputDir = config.reporting!.output_dir;
 
-    // Garante que o diretório de output existe
+    // Ensures output directory exists
     if (!fs.existsSync(outputDir)) {
       fs.mkdirSync(outputDir, { recursive: true });
     }
 
-    // Gera timestamp para nomes de arquivo únicos
+    // Generates timestamp for unique file names
     const timestamp = this.generateTimestamp();
     const baseName = this.sanitizeFileName(result.project_name);
 
-    // Gera cada formato solicitado
+    // Generates each requested format
     for (const format of formats) {
       try {
-        await this.generateReport(result, format, outputDir, baseName, timestamp);
+        await this.generateReport(
+          result,
+          format,
+          outputDir,
+          baseName,
+          timestamp
+        );
       } catch (error) {
         console.error(`❌ Failed to generate ${format} report: ${error}`);
       }
@@ -41,7 +47,7 @@ export class ReportingService {
   }
 
   /**
-   * Gera um relatório específico
+   * Generates a specific report
    */
   private async generateReport(
     result: AggregatedResult,
@@ -51,16 +57,16 @@ export class ReportingService {
     timestamp: string
   ): Promise<void> {
     switch (format) {
-      case 'json':
+      case "json":
         await this.generateJsonReport(result, outputDir, baseName, timestamp);
         break;
-      case 'junit':
+      case "junit":
         await this.generateJunitReport(result, outputDir, baseName, timestamp);
         break;
-      case 'html':
+      case "html":
         await this.generateHtmlReport(result, outputDir, baseName, timestamp);
         break;
-      case 'console':
+      case "console":
         this.generateConsoleReport(result);
         break;
       default:
@@ -69,7 +75,7 @@ export class ReportingService {
   }
 
   /**
-   * Gera relatório JSON
+   * Generates JSON report
    */
   private async generateJsonReport(
     result: AggregatedResult,
@@ -79,30 +85,30 @@ export class ReportingService {
   ): Promise<void> {
     const fileName = `${baseName}_${timestamp}.json`;
     const filePath = path.join(outputDir, fileName);
-    const latestPath = path.join(outputDir, 'latest.json');
+    const latestPath = path.join(outputDir, "latest.json");
 
     const reportData = {
       ...result,
       report_metadata: {
         generated_at: new Date().toISOString(),
-        format: 'json',
-        version: '2.0.0'
-      }
+        format: "json",
+        version: "2.0.0",
+      },
     };
 
     const jsonContent = JSON.stringify(reportData, null, 2);
-    
-    // Salva arquivo com timestamp
-    fs.writeFileSync(filePath, jsonContent, 'utf8');
+
+    // Saves file with timestamp
+    fs.writeFileSync(filePath, jsonContent, "utf8");
     console.log(`📄 JSON report: ${filePath}`);
-    
-    // Salva cópia como latest.json
-    fs.writeFileSync(latestPath, jsonContent, 'utf8');
+
+    // Saves copy as latest.json
+    fs.writeFileSync(latestPath, jsonContent, "utf8");
     console.log(`📄 Latest JSON: ${latestPath}`);
   }
 
   /**
-   * Gera relatório JUnit XML
+   * Generates JUnit XML report
    */
   private async generateJunitReport(
     result: AggregatedResult,
@@ -112,21 +118,21 @@ export class ReportingService {
   ): Promise<void> {
     const fileName = `${baseName}_${timestamp}.xml`;
     const filePath = path.join(outputDir, fileName);
-    const latestPath = path.join(outputDir, 'latest.xml');
+    const latestPath = path.join(outputDir, "latest.xml");
 
     const xml = this.buildJunitXml(result);
-    
-    // Salva arquivo com timestamp
-    fs.writeFileSync(filePath, xml, 'utf8');
+
+    // Saves file with timestamp
+    fs.writeFileSync(filePath, xml, "utf8");
     console.log(`📄 JUnit report: ${filePath}`);
-    
-    // Salva cópia como latest.xml
-    fs.writeFileSync(latestPath, xml, 'utf8');
+
+    // Saves copy as latest.xml
+    fs.writeFileSync(latestPath, xml, "utf8");
     console.log(`📄 Latest JUnit: ${latestPath}`);
   }
 
   /**
-   * Gera relatório HTML
+   * Generates HTML report
    */
   private async generateHtmlReport(
     result: AggregatedResult,
@@ -136,46 +142,60 @@ export class ReportingService {
   ): Promise<void> {
     const fileName = `${baseName}_${timestamp}.html`;
     const filePath = path.join(outputDir, fileName);
-    const latestPath = path.join(outputDir, 'latest.html');
+    const latestPath = path.join(outputDir, "latest.html");
 
     const html = this.buildHtmlReport(result);
-    
-    // Salva arquivo com timestamp
-    fs.writeFileSync(filePath, html, 'utf8');
+
+    // Saves file with timestamp
+    fs.writeFileSync(filePath, html, "utf8");
     console.log(`📄 HTML report: ${filePath}`);
-    
-    // Salva cópia como latest.html
-    fs.writeFileSync(latestPath, html, 'utf8');
+
+    // Saves copy as latest.html
+    fs.writeFileSync(latestPath, html, "utf8");
     console.log(`📄 Latest HTML: ${latestPath}`);
   }
 
   /**
-   * Gera relatório no console
+   * Generates console report
    */
   private generateConsoleReport(result: AggregatedResult): void {
     console.log(`\n📋 Detailed Console Report`);
     console.log(`═══════════════════════════`);
-    
+
     // Summary section
     console.log(`\n📊 Summary:`);
     console.log(`   Project: ${result.project_name}`);
-    console.log(`   Duration: ${this.formatDuration(result.total_duration_ms)}`);
+    console.log(
+      `   Duration: ${this.formatDuration(result.total_duration_ms)}`
+    );
     console.log(`   Success Rate: ${result.success_rate.toFixed(1)}%`);
-    console.log(`   Tests: ${result.successful_tests}✅ ${result.failed_tests}❌ ${result.skipped_tests}⏭️`);
+    console.log(
+      `   Tests: ${result.successful_tests}✅ ${result.failed_tests}❌ ${result.skipped_tests}⏭️`
+    );
 
     // Performance section
     if (result.performance_summary) {
       const perf = result.performance_summary;
       console.log(`\n🚀 Performance:`);
       console.log(`   Total Requests: ${perf.total_requests}`);
-      console.log(`   Avg Response Time: ${perf.average_response_time_ms.toFixed(0)}ms`);
-      console.log(`   Min/Max Response: ${perf.min_response_time_ms}ms / ${perf.max_response_time_ms}ms`);
+      console.log(
+        `   Avg Response Time: ${perf.average_response_time_ms.toFixed(0)}ms`
+      );
+      console.log(
+        `   Min/Max Response: ${perf.min_response_time_ms}ms / ${perf.max_response_time_ms}ms`
+      );
       console.log(`   Requests/Second: ${perf.requests_per_second.toFixed(1)}`);
 
       if (perf.slowest_endpoints && perf.slowest_endpoints.length > 0) {
         console.log(`\n🐌 Slowest Endpoints:`);
         perf.slowest_endpoints.slice(0, 3).forEach((endpoint, index) => {
-          console.log(`   ${index + 1}. ${endpoint.url} (${endpoint.average_time_ms.toFixed(0)}ms avg, ${endpoint.call_count} calls)`);
+          console.log(
+            `   ${index + 1}. ${
+              endpoint.url
+            } (${endpoint.average_time_ms.toFixed(0)}ms avg, ${
+              endpoint.call_count
+            } calls)`
+          );
         });
       }
     }
@@ -184,32 +204,52 @@ export class ReportingService {
     if (result.suites_results.length > 0) {
       console.log(`\n📋 Suite Details:`);
       result.suites_results.forEach((suite, index) => {
-        const status = suite.status === 'success' ? '✅' : suite.status === 'failure' ? '❌' : '⏭️';
-        console.log(`   ${index + 1}. ${status} ${suite.suite_name} (${suite.duration_ms}ms)`);
-        
-        if (suite.status === 'failure' && suite.error_message) {
+        const status =
+          suite.status === "success"
+            ? "✅"
+            : suite.status === "failure"
+            ? "❌"
+            : "⏭️";
+        console.log(
+          `   ${index + 1}. ${status} ${suite.suite_name} (${
+            suite.duration_ms
+          }ms)`
+        );
+
+        if (suite.status === "failure" && suite.error_message) {
           console.log(`      ↳ Error: ${suite.error_message}`);
         }
-        
+
         if (suite.steps_failed > 0) {
-          console.log(`      ↳ Failed Steps: ${suite.steps_failed}/${suite.steps_executed}`);
+          console.log(
+            `      ↳ Failed Steps: ${suite.steps_failed}/${suite.steps_executed}`
+          );
         }
       });
     }
 
     // Variables state
-    if (result.global_variables_final_state && Object.keys(result.global_variables_final_state).length > 0) {
+    if (
+      result.global_variables_final_state &&
+      Object.keys(result.global_variables_final_state).length > 0
+    ) {
       console.log(`\n🔧 Final Variables State:`);
-      Object.entries(result.global_variables_final_state).forEach(([key, value]) => {
-        const displayValue = typeof value === 'string' ? value : JSON.stringify(value);
-        const truncated = displayValue.length > 50 ? displayValue.substring(0, 47) + '...' : displayValue;
-        console.log(`   ${key}: ${truncated}`);
-      });
+      Object.entries(result.global_variables_final_state).forEach(
+        ([key, value]) => {
+          const displayValue =
+            typeof value === "string" ? value : JSON.stringify(value);
+          const truncated =
+            displayValue.length > 50
+              ? displayValue.substring(0, 47) + "..."
+              : displayValue;
+          console.log(`   ${key}: ${truncated}`);
+        }
+      );
     }
   }
 
   /**
-   * Constrói XML no formato JUnit
+   * Builds XML in JUnit format
    */
   private buildJunitXml(result: AggregatedResult): string {
     const totalTests = result.suites_results.length;
@@ -221,19 +261,23 @@ export class ReportingService {
     xml += `tests="${totalTests}" failures="${failures}" `;
     xml += `time="${time}" timestamp="${result.start_time}">\n`;
 
-    result.suites_results.forEach(suite => {
+    result.suites_results.forEach((suite) => {
       const suiteTime = (suite.duration_ms / 1000).toFixed(3);
       xml += `  <testcase name="${this.escapeXml(suite.suite_name)}" `;
       xml += `classname="${this.escapeXml(suite.file_path)}" `;
       xml += `time="${suiteTime}"`;
 
-      if (suite.status === 'failure') {
+      if (suite.status === "failure") {
         xml += `>\n`;
-        xml += `    <failure message="${this.escapeXml(suite.error_message || 'Test failed')}">\n`;
-        xml += `      <![CDATA[${suite.error_message || 'No detailed error message available'}]]>\n`;
+        xml += `    <failure message="${this.escapeXml(
+          suite.error_message || "Test failed"
+        )}">\n`;
+        xml += `      <![CDATA[${
+          suite.error_message || "No detailed error message available"
+        }]]>\n`;
         xml += `    </failure>\n`;
         xml += `  </testcase>\n`;
-      } else if (suite.status === 'skipped') {
+      } else if (suite.status === "skipped") {
         xml += `>\n`;
         xml += `    <skipped/>\n`;
         xml += `  </testcase>\n`;
@@ -247,11 +291,12 @@ export class ReportingService {
   }
 
   /**
-   * Constrói relatório HTML
+   * Builds HTML report
    */
   private buildHtmlReport(result: AggregatedResult): string {
     const successRate = result.success_rate;
-    const statusColor = successRate >= 90 ? '#28a745' : successRate >= 70 ? '#ffc107' : '#dc3545';
+    const statusColor =
+      successRate >= 90 ? "#28a745" : successRate >= 70 ? "#ffc107" : "#dc3545";
 
     return `<!DOCTYPE html>
 <html lang="en">
@@ -295,7 +340,9 @@ export class ReportingService {
 
         <div class="metrics">
             <div class="metric">
-                <div class="metric-value">${result.success_rate.toFixed(1)}%</div>
+                <div class="metric-value">${result.success_rate.toFixed(
+                  1
+                )}%</div>
                 <div class="metric-label">Success Rate</div>
             </div>
             <div class="metric">
@@ -303,19 +350,29 @@ export class ReportingService {
                 <div class="metric-label">Total Tests</div>
             </div>
             <div class="metric">
-                <div class="metric-value">${this.formatDuration(result.total_duration_ms)}</div>
+                <div class="metric-value">${this.formatDuration(
+                  result.total_duration_ms
+                )}</div>
                 <div class="metric-label">Duration</div>
             </div>
             <div class="metric">
-                <div class="metric-value">${result.successful_tests}/${result.failed_tests}</div>
+                <div class="metric-value">${result.successful_tests}/${
+      result.failed_tests
+    }</div>
                 <div class="metric-label">Pass/Fail</div>
             </div>
         </div>
 
-        ${result.performance_summary ? this.buildPerformanceSection(result.performance_summary) : ''}
+        ${
+          result.performance_summary
+            ? this.buildPerformanceSection(result.performance_summary)
+            : ""
+        }
 
         <h3>Test Suites</h3>
-        ${result.suites_results.map(suite => this.buildSuiteSection(suite)).join('')}
+        ${result.suites_results
+          .map((suite) => this.buildSuiteSection(suite))
+          .join("")}
 
         <div class="timestamp">
             Generated on ${new Date().toLocaleString()}
@@ -328,7 +385,7 @@ export class ReportingService {
   }
 
   /**
-   * Constrói seção de performance para HTML
+   * Builds performance section for HTML
    */
   private buildPerformanceSection(perf: any): string {
     return `
@@ -340,11 +397,15 @@ export class ReportingService {
                     <div class="perf-label">Requests</div>
                 </div>
                 <div class="perf-item">
-                    <div class="perf-value">${perf.average_response_time_ms.toFixed(0)}ms</div>
+                    <div class="perf-value">${perf.average_response_time_ms.toFixed(
+                      0
+                    )}ms</div>
                     <div class="perf-label">Avg Response</div>
                 </div>
                 <div class="perf-item">
-                    <div class="perf-value">${perf.requests_per_second.toFixed(1)}</div>
+                    <div class="perf-value">${perf.requests_per_second.toFixed(
+                      1
+                    )}</div>
                     <div class="perf-label">Req/Sec</div>
                 </div>
                 <div class="perf-item">
@@ -360,29 +421,46 @@ export class ReportingService {
   }
 
   /**
-   * Constrói seção de suite para HTML
+   * Builds suite section for HTML
    */
   private buildSuiteSection(suite: any): string {
     const statusClass = `status-${suite.status}`;
-    const statusIcon = suite.status === 'success' ? '✅' : suite.status === 'failure' ? '❌' : '⏭️';
+    const statusIcon =
+      suite.status === "success"
+        ? "✅"
+        : suite.status === "failure"
+        ? "❌"
+        : "⏭️";
 
     return `
         <div class="suite">
             <div class="suite-header">
-                <div class="suite-name">${this.escapeHtml(suite.suite_name)}</div>
-                <div class="suite-status ${statusClass}">${statusIcon} ${suite.status}</div>
+                <div class="suite-name">${this.escapeHtml(
+                  suite.suite_name
+                )}</div>
+                <div class="suite-status ${statusClass}">${statusIcon} ${
+      suite.status
+    }</div>
             </div>
             <div class="suite-details">
                 <strong>Duration:</strong> ${suite.duration_ms}ms<br>
-                <strong>Steps:</strong> ${suite.steps_successful}/${suite.steps_executed} successful<br>
+                <strong>Steps:</strong> ${suite.steps_successful}/${
+      suite.steps_executed
+    } successful<br>
                 <strong>File:</strong> ${this.escapeHtml(suite.file_path)}
-                ${suite.error_message ? `<br><strong>Error:</strong> ${this.escapeHtml(suite.error_message)}` : ''}
+                ${
+                  suite.error_message
+                    ? `<br><strong>Error:</strong> ${this.escapeHtml(
+                        suite.error_message
+                      )}`
+                    : ""
+                }
             </div>
         </div>`;
   }
 
   /**
-   * Utilitários de formatação
+   * Formatting utilities
    */
   private formatDuration(ms: number): string {
     if (ms < 1000) return `${ms}ms`;
@@ -393,36 +471,37 @@ export class ReportingService {
   }
 
   private generateTimestamp(): string {
-    return new Date().toISOString()
-      .replace(/[:.]/g, '-')
-      .replace(/T/, '_')
+    return new Date()
+      .toISOString()
+      .replace(/[:.]/g, "-")
+      .replace(/T/, "_")
       .slice(0, 19);
   }
 
   private sanitizeFileName(name: string): string {
     return name
       .toLowerCase()
-      .replace(/[^a-z0-9\s-]/g, '')
-      .replace(/\s+/g, '-')
-      .replace(/-+/g, '-')
-      .replace(/^-|-$/g, '');
+      .replace(/[^a-z0-9\s-]/g, "")
+      .replace(/\s+/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-|-$/g, "");
   }
 
   private escapeXml(text: string): string {
     return text
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&apos;');
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&apos;");
   }
 
   private escapeHtml(text: string): string {
     return text
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#x27;');
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#x27;");
   }
 }

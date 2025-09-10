@@ -6,9 +6,45 @@ import {
   ExecutionResult,
 } from "../types/common.types";
 
+/**
+ * Service responsible for validating assertions in HTTP responses
+ *
+ * This service processes and validates all assertions defined in tests,
+ * including status code, headers, body and response time validations.
+ * Supports flat syntax (body.status) and structured syntax (body: {status}).
+ *
+ * @example
+ * ```typescript
+ * const assertionService = new AssertionService();
+ * const results = assertionService.validateAssertions({
+ *   status_code: 200,
+ *   'body.message': { equals: 'success' }
+ * }, executionResult);
+ *
+ * results.forEach(result => {
+ *   console.log(`${result.field}: ${result.passed ? 'PASS' : 'FAIL'}`);
+ * });
+ * ```
+ */
 export class AssertionService {
   /**
-   * Valida todas as assertions de uma resposta HTTP.
+   * Validates all assertions of an HTTP response
+   *
+   * Main method that processes all configured assertions
+   * and returns an array with the results of each validation.
+   *
+   * @param assertions - Object with assertions to be validated
+   * @param result - HTTP execution result containing response
+   * @returns Array of validation results
+   *
+   * @example
+   * ```typescript
+   * const results = assertionService.validateAssertions({
+   *   status_code: 200,
+   *   'body.data.id': { not_null: true },
+   *   'headers.content-type': { contains: 'application/json' }
+   * }, executionResult);
+   * ```
    */
   validateAssertions(
     assertions: Assertions,
@@ -23,7 +59,7 @@ export class AssertionService {
           "exists",
           null,
           false,
-          "Resposta não disponível"
+          "Response not available"
         ),
       ];
     }
@@ -66,30 +102,46 @@ export class AssertionService {
   }
 
   /**
-   * Pré-processa assertions para suportar tanto sintaxe flat (body.status) quanto estruturada (body: {status}).
+   * Pre-processes assertions to support flat and structured syntax
+   *
+   * Converts flat assertions (like 'body.status') into hierarchical structure
+   * for uniform processing. Also processes 'headers.header-name'.
+   *
+   * @param assertions - Object with assertions in mixed format
+   * @returns Normalized object with hierarchical structure
+   * @private
+   *
+   * @example
+   * ```typescript
+   * // Input: { 'body.status': 'success', 'headers.auth': 'Bearer xyz' }
+   * // Output: {
+   * //   body: { status: 'success' },
+   * //   headers: { auth: 'Bearer xyz' }
+   * // }
+   * ```
    */
   private preprocessAssertions(assertions: any): Assertions {
     const processed: any = { ...assertions };
 
-    // Processa propriedades flat que começam com "body."
+    // Process flat properties that start with "body."
     const bodyFlat: Record<string, any> = {};
     const headersFlat: Record<string, any> = {};
 
     for (const [key, value] of Object.entries(assertions)) {
       if (key.startsWith("body.")) {
-        // Extrai o caminho do campo (ex: "body.status" -> "status")
+        // Extract the field path (ex: "body.status" -> "status")
         const fieldPath = key.substring(5); // Remove "body."
-        bodyFlat[fieldPath] = { equals: value }; // Converte para AssertionChecks
-        delete processed[key]; // Remove a propriedade flat
+        bodyFlat[fieldPath] = { equals: value }; // Convert to AssertionChecks
+        delete processed[key]; // Remove the flat property
       } else if (key.startsWith("headers.")) {
-        // Extrai o nome do header (ex: "headers.content-type" -> "content-type")
+        // Extract the header name (ex: "headers.content-type" -> "content-type")
         const headerName = key.substring(8); // Remove "headers."
-        headersFlat[headerName] = { equals: value }; // Converte para AssertionChecks
-        delete processed[key]; // Remove a propriedade flat
+        headersFlat[headerName] = { equals: value }; // Convert to AssertionChecks
+        delete processed[key]; // Remove the flat property
       }
     }
 
-    // Combina body flat com body estruturado existente
+    // Combine flat body with existing structured body
     if (Object.keys(bodyFlat).length > 0) {
       processed.body = {
         ...processed.body,
@@ -97,7 +149,7 @@ export class AssertionService {
       };
     }
 
-    // Combina headers flat com headers estruturados existentes
+    // Combine flat headers with existing structured headers
     if (Object.keys(headersFlat).length > 0) {
       processed.headers = {
         ...processed.headers,
@@ -109,7 +161,7 @@ export class AssertionService {
   }
 
   /**
-   * Valida o status code da resposta.
+   * Validates the response status code.
    */
   private validateStatusCode(
     expected: number,
@@ -123,12 +175,12 @@ export class AssertionService {
       expected,
       actual,
       passed,
-      passed ? undefined : `Esperado: ${expected}, Recebido: ${actual}`
+      passed ? undefined : `Expected: ${expected}, Received: ${actual}`
     );
   }
 
   /**
-   * Valida os headers da resposta.
+   * Validates the response headers.
    */
   private validateHeaders(
     expectedHeaders: Record<string, AssertionChecks>,
@@ -153,7 +205,7 @@ export class AssertionService {
   }
 
   /**
-   * Valida o body da resposta usando JMESPath.
+   * Validates the response body using JMESPath.
    */
   private validateBody(
     expectedBody: Record<string, AssertionChecks>,
@@ -174,7 +226,7 @@ export class AssertionService {
             checks,
             undefined,
             false,
-            `Erro ao avaliar JMESPath: ${error}`
+            `Error evaluating JMESPath: ${error}`
           )
         );
         continue;
@@ -189,7 +241,7 @@ export class AssertionService {
   }
 
   /**
-   * Valida o tempo de resposta.
+   * Validates the response time.
    */
   private validateResponseTime(
     timeChecks: { less_than?: number; greater_than?: number },
@@ -208,7 +260,7 @@ export class AssertionService {
           passed,
           passed
             ? undefined
-            : `Tempo de resposta ${actualTime}ms excede o limite de ${timeChecks.less_than}ms`
+            : `Response time ${actualTime}ms exceeds limit of ${timeChecks.less_than}ms`
         )
       );
     }
@@ -223,7 +275,7 @@ export class AssertionService {
           passed,
           passed
             ? undefined
-            : `Tempo de resposta ${actualTime}ms é menor que o mínimo de ${timeChecks.greater_than}ms`
+            : `Response time ${actualTime}ms is less than minimum of ${timeChecks.greater_than}ms`
         )
       );
     }
@@ -232,7 +284,7 @@ export class AssertionService {
   }
 
   /**
-   * Valida um conjunto de checks para um campo específico.
+   * Validates a set of checks for a specific field.
    */
   private validateFieldChecks(
     fieldName: string,
@@ -273,7 +325,7 @@ export class AssertionService {
           checks.contains,
           actualValue,
           passed,
-          passed ? undefined : `Valor não contém: ${checks.contains}`
+          passed ? undefined : `Value does not contain: ${checks.contains}`
         )
       );
     }
@@ -314,7 +366,7 @@ export class AssertionService {
           passed,
           passed
             ? undefined
-            : `Valor não corresponde ao padrão: ${checks.regex}`
+            : `Value does not match pattern: ${checks.regex}`
         )
       );
     }
@@ -323,7 +375,7 @@ export class AssertionService {
   }
 
   /**
-   * Verifica se dois valores são profundamente iguais.
+   * Checks if two values are deeply equal.
    */
   private deepEqual(a: any, b: any): boolean {
     if (a === b) return true;
@@ -351,7 +403,7 @@ export class AssertionService {
   }
 
   /**
-   * Verifica se um valor contém outro (para strings, arrays, ou objetos).
+   * Checks if a value contains another (for strings, arrays, or objects).
    */
   private contains(haystack: any, needle: any): boolean {
     if (typeof haystack === "string" && typeof needle === "string") {
@@ -372,7 +424,7 @@ export class AssertionService {
   }
 
   /**
-   * Verifica se um valor corresponde a uma expressão regular.
+   * Checks if a value matches a regular expression.
    */
   private matchesRegex(value: any, pattern: string): boolean {
     if (typeof value !== "string") return false;
@@ -386,7 +438,7 @@ export class AssertionService {
   }
 
   /**
-   * Cria um resultado de assertion padronizado.
+   * Creates a standardized assertion result.
    */
   private createAssertionResult(
     field: string,
@@ -402,7 +454,7 @@ export class AssertionService {
       passed,
       message:
         message ||
-        (passed ? "OK" : `Esperado: ${expected}, Recebido: ${actual}`),
+        (passed ? "OK" : `Expected: ${expected}, Received: ${actual}`),
     };
   }
 }

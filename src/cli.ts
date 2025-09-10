@@ -2,95 +2,122 @@
 
 /**
  * CLI do Flow Test Engine v2.0
+ *
+ * Interface de linha de comando para o Flow Test Engine.
+ * Permite executar testes com diversas opções de configuração,
+ * filtros e níveis de verbosidade.
+ *
+ * @example
+ * ```bash
+ * # Execução básica
+ * flow-test
+ *
+ * # Com arquivo de configuração específico
+ * flow-test -c ./config/prod.yml
+ *
+ * # Com filtros
+ * flow-test --priority high,critical --verbose
+ *
+ * # Dry run para planejar execução
+ * flow-test --dry-run --detailed
+ * ```
  */
 
-import { FlowTestEngine } from './core/engine';
-import { EngineExecutionOptions } from './types/engine.types';
+import { FlowTestEngine } from "./core/engine";
+import { EngineExecutionOptions } from "./types/engine.types";
 
+/**
+ * Função principal do CLI
+ *
+ * Processa argumentos da linha de comando, configura o engine
+ * e executa os testes com as opções especificadas.
+ *
+ * @returns Promise<void>
+ */
 async function main() {
   const args = process.argv.slice(2);
-  
+
   // Parsing dos argumentos
   const options: EngineExecutionOptions = {
-    verbosity: 'simple'
+    verbosity: "simple",
   };
-  
+
   let configFile: string | undefined;
   let showHelp = false;
   let dryRun = false;
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
-    
+
     switch (arg) {
-      case '-c':
-      case '--config':
+      case "-c":
+      case "--config":
         if (i + 1 < args.length) {
           configFile = args[++i];
         }
         break;
-        
-      case '-d':
-      case '--directory':
+
+      case "-d":
+      case "--directory":
         if (i + 1 < args.length) {
           options.test_directory = args[++i];
         }
         break;
-        
-      case '-e':
-      case '--environment':
+
+      case "-e":
+      case "--environment":
         if (i + 1 < args.length) {
           options.environment = args[++i];
         }
         break;
-        
-      case '--verbose':
-        options.verbosity = 'verbose';
+
+      case "--verbose":
+        options.verbosity = "verbose";
         break;
-        
-      case '--detailed':
-        options.verbosity = 'detailed';
+
+      case "--detailed":
+        options.verbosity = "detailed";
         break;
-        
-      case '--simple':
-        options.verbosity = 'simple';
+
+      case "--simple":
+        options.verbosity = "simple";
         break;
-        
-      case '--silent':
-        options.verbosity = 'silent';
+
+      case "--silent":
+        options.verbosity = "silent";
         break;
-        
-      case '--priority':
+
+      case "--priority":
         if (i + 1 < args.length) {
-          const priorities = args[++i].split(',');
+          const priorities = args[++i].split(",");
           options.filters = { ...options.filters, priority: priorities };
         }
         break;
-        
-      case '--suite':
+
+      case "--suite":
         if (i + 1 < args.length) {
-          const suites = args[++i].split(',');
+          const suites = args[++i].split(",");
           options.filters = { ...options.filters, suite_names: suites };
         }
         break;
-        
-      case '--dry-run':
+
+      case "--dry-run":
         dryRun = true;
         break;
-        
-      case '-h':
-      case '--help':
+
+      case "-h":
+      case "--help":
         showHelp = true;
         break;
-        
-      case '-v':
-      case '--version':
-        console.log('Flow Test Engine v2.0.0');
+
+      case "-v":
+      case "--version":
+        console.log("Flow Test Engine v2.0.0");
         process.exit(0);
         break;
-        
+
       default:
-        if (!arg.startsWith('-')) {
+        if (!arg.startsWith("-")) {
           // Assume que é um arquivo de configuração
           configFile = arg;
         } else {
@@ -108,74 +135,104 @@ async function main() {
 
   try {
     // Configura opções com arquivo de config se especificado
-    const engineOptions = configFile ? { ...options, config_file: configFile } : options;
-    
+    const engineOptions = configFile
+      ? { ...options, config_file: configFile }
+      : options;
+
     // Cria o engine
     const engine = new FlowTestEngine(engineOptions, {
       onExecutionStart: (stats) => {
-        if (options.verbosity !== 'silent') {
-          console.log(`🚀 Starting execution of ${stats.tests_discovered} test(s)`);
+        if (options.verbosity !== "silent") {
+          console.log(
+            `🚀 Starting execution of ${stats.tests_discovered} test(s)`
+          );
         }
       },
       onTestDiscovered: (test) => {
-        if (options.verbosity === 'verbose') {
+        if (options.verbosity === "verbose") {
           console.log(`📋 Discovered: ${test.suite_name} (${test.priority})`);
         }
       },
       onSuiteStart: (suite) => {
-        if (options.verbosity === 'detailed' || options.verbosity === 'verbose') {
+        if (
+          options.verbosity === "detailed" ||
+          options.verbosity === "verbose"
+        ) {
           console.log(`▶️  Starting: ${suite.suite_name}`);
         }
       },
       onSuiteEnd: (suite, result) => {
-        if (options.verbosity === 'detailed' || options.verbosity === 'verbose') {
-          const status = result.status === 'success' ? '✅' : '❌';
-          console.log(`${status} Finished: ${suite.suite_name} (${result.duration_ms}ms)`);
+        if (
+          options.verbosity === "detailed" ||
+          options.verbosity === "verbose"
+        ) {
+          const status = result.status === "success" ? "✅" : "❌";
+          console.log(
+            `${status} Finished: ${suite.suite_name} (${result.duration_ms}ms)`
+          );
         }
       },
       onError: (error) => {
         console.error(`💥 Engine error: ${error.message}`);
-        if (options.verbosity === 'verbose') {
+        if (options.verbosity === "verbose") {
           console.error(error.stack);
         }
-      }
+      },
     });
 
     if (dryRun) {
       // Execução em modo dry-run
       const plan = await engine.dryRun();
-      
+
       console.log(`\n📊 Execution plan would run ${plan.length} test(s):`);
       plan.forEach((test, index) => {
-        console.log(`  ${index + 1}. ${test.suite_name} (${test.priority || 'medium'})`);
+        console.log(
+          `  ${index + 1}. ${test.suite_name} (${test.priority || "medium"})`
+        );
       });
-      
+
       process.exit(0);
     } else {
       // Execução normal
       const result = await engine.run();
-      
+
       // Exit code baseado no resultado
       const exitCode = result.success_rate === 100 ? 0 : 1;
-      
-      if (options.verbosity !== 'silent') {
-        console.log(`\n🏁 Execution completed with ${result.success_rate.toFixed(1)}% success rate`);
+
+      if (options.verbosity !== "silent") {
+        console.log(
+          `\n🏁 Execution completed with ${result.success_rate.toFixed(
+            1
+          )}% success rate`
+        );
       }
-      
+
       process.exit(exitCode);
     }
-
   } catch (error) {
-    console.error('❌ Fatal error:', error);
-    
-    if (options.verbosity === 'verbose') {
+    console.error("❌ Fatal error:", error);
+
+    if (options.verbosity === "verbose") {
       console.error((error as Error).stack);
     }
-    
+
     process.exit(1);
   }
 }
 
+/**
+ * Exibe a mensagem de ajuda do CLI
+ *
+ * Mostra todas as opções disponíveis, exemplos de uso
+ * e informações sobre arquivos de configuração.
+ *
+ * @example
+ * ```bash
+ * flow-test --help
+ * # ou
+ * flow-test -h
+ * ```
+ */
 function printHelp() {
   console.log(`
 🚀 Flow Test Engine v2.0.0
@@ -190,7 +247,7 @@ OPTIONS:
   -c, --config <file>      Configuration file path
   -d, --directory <dir>    Test directory override
   -e, --environment <env>  Environment name for variable resolution
-  
+
 VERBOSITY:
   --verbose               Show detailed output including request/response data
   --detailed              Show detailed progress without full request/response
@@ -231,29 +288,29 @@ CONFIGURATION:
 }
 
 // Tratamento de sinais para cleanup graceful
-process.on('SIGINT', () => {
-  console.log('\n🛑 Received SIGINT, shutting down gracefully...');
+process.on("SIGINT", () => {
+  console.log("\n🛑 Received SIGINT, shutting down gracefully...");
   process.exit(130);
 });
 
-process.on('SIGTERM', () => {
-  console.log('\n🛑 Received SIGTERM, shutting down gracefully...');
+process.on("SIGTERM", () => {
+  console.log("\n🛑 Received SIGTERM, shutting down gracefully...");
   process.exit(143);
 });
 
 // Tratamento de exceções não capturadas
-process.on('uncaughtException', (error) => {
-  console.error('💥 Uncaught Exception:', error);
+process.on("uncaughtException", (error) => {
+  console.error("💥 Uncaught Exception:", error);
   process.exit(1);
 });
 
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('💥 Unhandled Rejection at:', promise, 'reason:', reason);
+process.on("unhandledRejection", (reason, promise) => {
+  console.error("💥 Unhandled Rejection at:", promise, "reason:", reason);
   process.exit(1);
 });
 
 // Executa o CLI
-main().catch(error => {
-  console.error('💥 CLI execution failed:', error);
+main().catch((error) => {
+  console.error("💥 CLI execution failed:", error);
   process.exit(1);
 });

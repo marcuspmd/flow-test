@@ -1,41 +1,53 @@
-import fs from 'fs';
-import path from 'path';
-import yaml from 'js-yaml';
-import { FlowImport, ReusableFlow, TestStep, VariableContext } from '../types/common.types';
-import { VariableService } from './variable.service';
+import fs from "fs";
+import path from "path";
+import yaml from "js-yaml";
+import {
+  FlowImport,
+  ReusableFlow,
+  TestStep,
+  VariableContext,
+} from "../types/common.types";
+import { VariableService } from "./variable.service";
 
 export class FlowManager {
   private readonly loadedFlows: Map<string, ReusableFlow> = new Map();
   private readonly variableService: VariableService;
   private readonly verbosity: string;
 
-  constructor(variableService: VariableService, verbosity: string = 'simple') {
+  constructor(variableService: VariableService, verbosity: string = "simple") {
     this.variableService = variableService;
     this.verbosity = verbosity;
   }
 
   /**
-   * Carrega e processa todas as importações de fluxos.
+   * Loads and processes all flow imports.
    */
-  async loadImports(imports: FlowImport[], basePath: string): Promise<TestStep[]> {
+  async loadImports(
+    imports: FlowImport[],
+    basePath: string
+  ): Promise<TestStep[]> {
     const allSteps: TestStep[] = [];
 
     for (const flowImport of imports) {
-      if (this.verbosity !== 'silent') {
-        console.log(`[INFO] Carregando fluxo: ${flowImport.name} de ${flowImport.path}`);
+      if (this.verbosity !== "silent") {
+        console.log(
+          `[INFO] Loading flow: ${flowImport.name} from ${flowImport.path}`
+        );
       }
 
       const flow = await this.loadFlow(flowImport.path, basePath);
       const processedSteps = this.processFlowImport(flow, flowImport);
-      
+
       allSteps.push(...processedSteps);
 
-      // Adiciona variáveis do fluxo ao contexto
+      // Adds flow variables to context
       const flowVariables = this.collectFlowVariables(flow, flowImport);
       this.variableService.addImportedFlow(flowImport.name, flowVariables);
 
-      if (this.verbosity === 'detailed' || this.verbosity === 'verbose') {
-        console.log(`  [✓] Fluxo "${flow.flow_name}" carregado com ${processedSteps.length} etapa(s)`);
+      if (this.verbosity === "detailed" || this.verbosity === "verbose") {
+        console.log(
+          `  [✓] Flow "${flow.flow_name}" loaded with ${processedSteps.length} step(s)`
+        );
       }
     }
 
@@ -43,117 +55,127 @@ export class FlowManager {
   }
 
   /**
-   * Carrega um fluxo de um arquivo YAML.
+   * Loads a flow from a YAML file.
    */
-  private async loadFlow(flowPath: string, basePath: string): Promise<ReusableFlow> {
-    // Verifica se já foi carregado (cache)
+  private async loadFlow(
+    flowPath: string,
+    basePath: string
+  ): Promise<ReusableFlow> {
+    // Checks if already loaded (cache)
     const cacheKey = path.resolve(basePath, flowPath);
     if (this.loadedFlows.has(cacheKey)) {
       return this.loadedFlows.get(cacheKey)!;
     }
 
     try {
-      // Resolve o caminho do arquivo
+      // Resolves the file path
       const fullPath = this.resolveFlowPath(flowPath, basePath);
-      
+
       if (!fs.existsSync(fullPath)) {
-        throw new Error(`Arquivo de fluxo não encontrado: ${fullPath}`);
+        throw new Error(`Flow file not found: ${fullPath}`);
       }
 
-      // Carrega e parseia o arquivo
-      const fileContent = fs.readFileSync(fullPath, 'utf8');
+      // Loads and parses the file
+      const fileContent = fs.readFileSync(fullPath, "utf8");
       const flow = yaml.load(fileContent) as ReusableFlow;
 
-      // Validação básica
+      // Basic validation
       this.validateFlow(flow, fullPath);
 
-      // Armazena no cache
+      // Stores in cache
       this.loadedFlows.set(cacheKey, flow);
-      
+
       return flow;
     } catch (error) {
-      throw new Error(`Erro ao carregar fluxo "${flowPath}": ${error}`);
+      throw new Error(`Error loading flow "${flowPath}": ${error}`);
     }
   }
 
   /**
-   * Resolve o caminho completo do arquivo de fluxo.
+   * Resolves the complete path of the flow file.
    */
   private resolveFlowPath(flowPath: string, basePath: string): string {
-    // Se é caminho absoluto, usa como está
+    // If it's an absolute path, use as is
     if (path.isAbsolute(flowPath)) {
       return flowPath;
     }
 
-    // Resolve relativo ao arquivo base
+    // Resolve relative to the base file
     const baseDir = path.dirname(basePath);
     return path.resolve(baseDir, flowPath);
   }
 
   /**
-   * Valida a estrutura de um fluxo.
+   * Validates the structure of a flow.
    */
   private validateFlow(flow: ReusableFlow, filePath: string): void {
-    if (!flow.flow_name || typeof flow.flow_name !== 'string') {
-      throw new Error(`Campo 'flow_name' obrigatório em ${filePath}`);
+    if (!flow.flow_name || typeof flow.flow_name !== "string") {
+      throw new Error(`Required 'flow_name' field in ${filePath}`);
     }
 
     if (!Array.isArray(flow.steps) || flow.steps.length === 0) {
-      throw new Error(`Campo 'steps' deve ser um array não vazio em ${filePath}`);
+      throw new Error(`'steps' field must be a non-empty array in ${filePath}`);
     }
 
-    // Valida cada etapa
+    // Validates each step
     flow.steps.forEach((step, index) => {
-      if (!step.name || typeof step.name !== 'string') {
-        throw new Error(`Etapa ${index + 1} deve ter um 'name' válido em ${filePath}`);
+      if (!step.name || typeof step.name !== "string") {
+        throw new Error(
+          `Step ${index + 1} must have a valid 'name' in ${filePath}`
+        );
       }
-      if (!step.request || typeof step.request !== 'object') {
-        throw new Error(`Etapa ${index + 1} deve ter um 'request' válido em ${filePath}`);
+      if (!step.request || typeof step.request !== "object") {
+        throw new Error(
+          `Step ${index + 1} must have a valid 'request' in ${filePath}`
+        );
       }
     });
   }
 
   /**
-   * Processa a importação de um fluxo, aplicando override de variáveis.
+   * Processes the import of a flow, applying variable overrides.
    */
-  private processFlowImport(flow: ReusableFlow, flowImport: FlowImport): TestStep[] {
-    // Cria um contexto temporário para este fluxo
+  private processFlowImport(
+    flow: ReusableFlow,
+    flowImport: FlowImport
+  ): TestStep[] {
+    // Creates a temporary context for this flow
     const flowContext: VariableContext = {
       global: {},
       imported: {},
       suite: { ...(flow.variables || {}), ...(flowImport.variables || {}) },
-      runtime: {}
+      runtime: {},
     };
 
     const tempVariableService = new VariableService(flowContext);
 
-    // Processa cada etapa aplicando interpolação
-    return flow.steps.map(step => {
+    // Processes each step applying interpolation
+    return flow.steps.map((step) => {
       const interpolatedStep: TestStep = {
         ...step,
         name: `[${flowImport.name}] ${step.name}`,
-        request: tempVariableService.interpolate(step.request)
+        request: tempVariableService.interpolate(step.request),
       };
 
-      // Interpola outras propriedades se existirem
+      // Interpolates other properties if they exist
       if (step.assert) {
         interpolatedStep.assert = tempVariableService.interpolate(step.assert);
       }
-      
-      // Modifica a captura para incluir o prefixo do fluxo nas variáveis exportadas
+
+      // Modifies capture to include flow prefix in exported variables
       if (step.capture) {
         const modifiedCapture: Record<string, string> = {};
         const exportedVars = flow.exports || [];
-        
+
         for (const [varName, jmesPath] of Object.entries(step.capture)) {
-          // Se a variável está na lista de exports, cria também a versão com prefixo
+          // If the variable is in the exports list, creates the prefixed version too
           if (exportedVars.includes(varName)) {
             modifiedCapture[`${flowImport.name}.${varName}`] = jmesPath;
           }
-          // Mantém a versão original também
+          // Keeps the original version too
           modifiedCapture[varName] = jmesPath;
         }
-        
+
         interpolatedStep.capture = modifiedCapture;
       }
 
@@ -162,17 +184,20 @@ export class FlowManager {
   }
 
   /**
-   * Coleta as variáveis finais de um fluxo após a importação.
+   * Collects the final variables of a flow after import.
    */
-  private collectFlowVariables(flow: ReusableFlow, flowImport: FlowImport): Record<string, any> {
+  private collectFlowVariables(
+    flow: ReusableFlow,
+    flowImport: FlowImport
+  ): Record<string, any> {
     const variables: Record<string, any> = {};
 
-    // Variáveis padrão do fluxo
+    // Default flow variables
     if (flow.variables) {
       Object.assign(variables, flow.variables);
     }
 
-    // Override com variáveis da importação
+    // Override with import variables
     if (flowImport.variables) {
       Object.assign(variables, flowImport.variables);
     }
@@ -181,24 +206,24 @@ export class FlowManager {
   }
 
   /**
-   * Lista todos os fluxos carregados.
+   * Lists all loaded flows.
    */
   getLoadedFlows(): Array<{ path: string; flow: ReusableFlow }> {
     return Array.from(this.loadedFlows.entries()).map(([path, flow]) => ({
       path,
-      flow
+      flow,
     }));
   }
 
   /**
-   * Limpa o cache de fluxos carregados.
+   * Clears the cache of loaded flows.
    */
   clearCache(): void {
     this.loadedFlows.clear();
   }
 
   /**
-   * Verifica se um fluxo está no cache.
+   * Checks if a flow is in cache.
    */
   isFlowCached(flowPath: string, basePath: string): boolean {
     const cacheKey = path.resolve(basePath, flowPath);
@@ -206,22 +231,22 @@ export class FlowManager {
   }
 
   /**
-   * Obtém informações de debug sobre fluxos carregados.
+   * Gets debug information about loaded flows.
    */
   getDebugInfo(): any {
     const info: any = {
       totalFlows: this.loadedFlows.size,
-      flows: []
+      flows: [],
     };
 
     for (const [path, flow] of this.loadedFlows.entries()) {
       info.flows.push({
         path,
         name: flow.flow_name,
-        description: flow.description || 'Sem descrição',
+        description: flow.description || "No description",
         stepsCount: flow.steps.length,
         variablesCount: flow.variables ? Object.keys(flow.variables).length : 0,
-        exports: flow.exports || []
+        exports: flow.exports || [],
       });
     }
 
