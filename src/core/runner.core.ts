@@ -7,6 +7,7 @@ import { AssertionService } from "../services/assertion.service";
 import { CaptureService } from "../services/capture.service";
 import { FlowManager } from "../services/flow.service";
 import { ScenarioService } from "../services/scenario.service";
+import { getLogger } from "../services/logger.service";
 
 class Runner {
   private readonly suite: TestSuite;
@@ -20,6 +21,7 @@ class Runner {
   private readonly results: ExecutionResult[] = [];
   private readonly filePath: string;
   private allSteps: TestStep[] = [];
+  private readonly logger = getLogger();
 
   /**
    * Carrega e inicializa a suíte de testes a partir de um arquivo.
@@ -37,9 +39,7 @@ class Runner {
         ...options
       };
 
-      if (this.options.verbosity !== 'silent') {
-        console.log(`[INFO] A carregar a suíte de testes de: ${filePath}`);
-      }
+      this.logger.info('Carregando suíte de testes', { filePath });
       
       const fileContent = fs.readFileSync(filePath, "utf8");
       this.suite = yaml.load(fileContent) as TestSuite;
@@ -60,11 +60,15 @@ class Runner {
       this.flowManager = new FlowManager(this.variableService, this.options.verbosity);
       this.scenarioService = new ScenarioService();
       
-      if (this.options.verbosity !== 'silent') {
-        console.log(`[INFO] Suíte "${this.suite.suite_name}" carregada com sucesso.`);
-      }
+      this.logger.info('Suíte carregada com sucesso', { 
+        suiteName: this.suite.suite_name,
+        nodeId: this.suite.node_id 
+      });
     } catch (error) {
-      console.error("[ERRO] Falha ao carregar ou interpretar o arquivo de teste:", error);
+      this.logger.error('Falha ao carregar ou interpretar o arquivo de teste', { 
+        error: error as Error,
+        filePath 
+      });
       process.exit(1);
     }
   }
@@ -75,9 +79,10 @@ class Runner {
   public async run(): Promise<SuiteResult> {
     const startTime = new Date();
     
-    if (this.options.verbosity !== 'silent') {
-      console.log(`\n--- A iniciar a suíte: ${this.suite.suite_name} ---\n`);
-    }
+    this.logger.info('Iniciando execução da suíte', {
+      suiteName: this.suite.suite_name,
+      nodeId: this.suite.node_id
+    });
 
     // Processa importações de fluxos
     await this.processFlowImports();
@@ -248,6 +253,7 @@ class Runner {
     const successRate = this.results.length > 0 ? (successfulSteps / this.results.length) * 100 : 0;
 
     return {
+      node_id: this.suite.node_id,
       suite_name: this.suite.suite_name,
       start_time: startTime.toISOString(),
       end_time: endTime.toISOString(),

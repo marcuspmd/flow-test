@@ -1,4 +1,5 @@
 import { VariableContext } from "../types/common.types";
+import { GlobalRegistryService } from "./global-registry.service";
 
 /**
  * Service responsible for variable interpolation and resolution
@@ -26,14 +27,19 @@ import { VariableContext } from "../types/common.types";
 export class VariableService {
   /** Hierarchical context of variables with different scopes */
   private context: VariableContext;
+  
+  /** Global registry service for exported variables */
+  private globalRegistry?: GlobalRegistryService;
 
   /**
    * VariableService constructor
    *
    * @param context - Hierarchical context of variables organized by scope
+   * @param globalRegistry - Optional global registry for exported variables
    */
-  constructor(context: VariableContext) {
+  constructor(context: VariableContext, globalRegistry?: GlobalRegistryService) {
     this.context = context;
+    this.globalRegistry = globalRegistry;
   }
 
   /**
@@ -88,8 +94,8 @@ export class VariableService {
   /**
    * Resolves a variable following the scope hierarchy
    *
-   * Searches for a variable in precedence order: runtime > suite > imported > global.
-   * Supports dot notation for imported variables (ex: auth.token).
+   * Searches for a variable in precedence order: runtime > suite > imported > global > globalRegistry.
+   * Supports dot notation for exported variables (ex: auth.token).
    *
    * @param variablePath - Variable path (can use dot notation)
    * @returns Variable value or undefined if not found
@@ -98,7 +104,7 @@ export class VariableService {
    * @example
    * ```typescript
    * resolveVariable('username') // Searches in all scopes
-   * resolveVariable('auth.token') // Searches specifically in imported.auth.token
+   * resolveVariable('auth.token') // Searches specifically for exported variable from nodeId 'auth'
    * ```
    */
   private resolveVariable(variablePath: string): any {
@@ -107,7 +113,15 @@ export class VariableService {
       return this.context.runtime[variablePath];
     }
 
-    // Checks if it's an imported flow variable (ex: auth.token)
+    // Checks if it's a global exported variable (ex: auth.token)
+    if (variablePath.includes(".") && this.globalRegistry) {
+      const globalValue = this.globalRegistry.getExportedVariable(variablePath);
+      if (globalValue !== undefined) {
+        return globalValue;
+      }
+    }
+
+    // Checks if it's an imported flow variable (legacy support)
     if (variablePath.includes(".")) {
       const [flowName, ...pathParts] = variablePath.split(".");
       const flowVariables = this.context.imported[flowName];
@@ -192,5 +206,77 @@ export class VariableService {
       }
     }
     return allImported;
+  }
+
+  /**
+   * Exports variables from runtime to global registry
+   * Only variables listed in exports will be made available globally
+   *
+   * @param nodeId - Unique node identifier
+   * @param suiteName - Descriptive suite name
+   * @param exports - Array of variable names to export
+   * @param capturedVariables - Variables captured during execution
+   */
+  exportVariables(
+    nodeId: string,
+    suiteName: string,
+    exports: string[],
+    capturedVariables: Record<string, any>
+  ): void {
+    if (!this.globalRegistry) {
+      console.warn(`Cannot export variables: Global registry not available for node '${nodeId}'`);
+      return;
+    }
+
+    // Register node with its exports
+    this.globalRegistry.registerNode(nodeId, suiteName, exports, '');
+
+    // Export only the variables that are in the exports list
+    for (const variableName of exports) {
+      if (variableName in capturedVariables) {
+        this.globalRegistry.setExportedVariable(nodeId, variableName, capturedVariables[variableName]);
+      } else if (variableName in this.context.runtime) {
+        this.globalRegistry.setExportedVariable(nodeId, variableName, this.context.runtime[variableName]);
+      } else {
+        console.warn(`Export variable '${variableName}' not found in captured variables or runtime context for node '${nodeId}'`);
+      }
+    }
+  }
+
+  /**
+   * Gets all available global exported variables
+   */
+  getGlobalExportedVariables(): Record<string, any> {
+    if (!this.globalRegistry) {
+      return {};
+    }
+    return this.globalRegistry.getAllExportedVariables();
+  }
+
+  /**
+   * Checks if a variable is available (including global exports)
+   */
+  hasVariable(variablePath: string): boolean {
+    return this.resolveVariable(variablePath) !== undefined;
+  }
+
+  /**
+   * Gets all available variables including global exports
+   */
+  getAllAvailableVariables(): Record<string, any> {
+    const localVariables = this.getAllVariables();
+    const globalVariables = this.getGlobalExportedVariables();
+    
+    return {
+      ...localVariables,
+      ...globalVariables,
+    };
+  }
+
+  /**
+   * Sets the global registry service
+   */
+  setGlobalRegistry(globalRegistry: GlobalRegistryService): void {
+    this.globalRegistry = globalRegistry;
   }
 }

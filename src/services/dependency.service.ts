@@ -10,8 +10,8 @@ import {
  */
 interface DependencyNode {
   test: DiscoveredTest;
-  dependencies: Set<string>; // suite_names das dependências
-  dependents: Set<string>; // suite_names que dependem deste
+  dependencies: Set<string>; // nodeIds das dependências
+  dependents: Set<string>; // nodeIds que dependem deste
   resolved: boolean;
   executing: boolean;
 }
@@ -35,9 +35,9 @@ export class DependencyService {
   buildDependencyGraph(tests: DiscoveredTest[]): void {
     this.graph.clear();
 
-    // First pass: create nodes
+    // First pass: create nodes using nodeId as key
     for (const test of tests) {
-      this.graph.set(test.suite_name, {
+      this.graph.set(test.node_id, {
         test,
         dependencies: new Set(),
         dependents: new Set(),
@@ -48,36 +48,36 @@ export class DependencyService {
 
     // Second pass: connect dependencies
     for (const test of tests) {
-      const node = this.graph.get(test.suite_name)!;
+      const node = this.graph.get(test.node_id)!;
 
       // Process new format dependencies
       if (test.depends) {
         for (const dependency of test.depends) {
-          const dependencySuiteName = this.extractSuiteNameFromPath(
+          const dependencyNodeId = this.extractNodeIdFromPath(
             dependency.path
           );
-          if (dependencySuiteName && this.graph.has(dependencySuiteName)) {
-            node.dependencies.add(dependencySuiteName);
+          if (dependencyNodeId && this.graph.has(dependencyNodeId)) {
+            node.dependencies.add(dependencyNodeId);
             this.graph
-              .get(dependencySuiteName)!
-              .dependents.add(test.suite_name);
+              .get(dependencyNodeId)!
+              .dependents.add(test.node_id);
           } else {
             console.warn(
-              `⚠️  Dependency '${dependency.path}' not found for test '${test.suite_name}'`
+              `⚠️  Dependency '${dependency.path}' not found for test '${test.node_id}' (${test.suite_name})`
             );
           }
         }
       }
 
-      // Process legacy format dependencies
+      // Process legacy format dependencies (now expecting nodeIds)
       if (test.dependencies) {
-        for (const dep of test.dependencies) {
-          if (this.graph.has(dep)) {
-            node.dependencies.add(dep);
-            this.graph.get(dep)!.dependents.add(test.suite_name);
+        for (const depNodeId of test.dependencies) {
+          if (this.graph.has(depNodeId)) {
+            node.dependencies.add(depNodeId);
+            this.graph.get(depNodeId)!.dependents.add(test.node_id);
           } else {
             console.warn(
-              `⚠️  Legacy dependency '${dep}' not found for test '${test.suite_name}'`
+              `⚠️  Legacy dependency '${depNodeId}' not found for test '${test.node_id}' (${test.suite_name})`
             );
           }
         }
@@ -86,36 +86,36 @@ export class DependencyService {
   }
 
   /**
-   * Extracts the suite_name from the dependency file path
+   * Extracts the nodeId from the dependency file path
    */
-  private extractSuiteNameFromPath(dependencyPath: string): string | null {
+  private extractNodeIdFromPath(dependencyPath: string): string | null {
     if (!dependencyPath || typeof dependencyPath !== "string") {
       return null;
     }
 
-    // Simplified implementation: search for suite_name in map
-    // In a more robust implementation, could parse the file
-    for (const [suiteName, node] of this.graph) {
+    // Search for nodeId in map by matching file path
+    for (const [nodeId, node] of this.graph) {
       if (
         node &&
         node.test &&
         node.test.file_path &&
         (node.test.file_path.includes(dependencyPath) ||
-          dependencyPath.includes(suiteName))
+          dependencyPath.includes(node.test.file_path))
       ) {
-        return suiteName;
+        return nodeId;
       }
     }
 
-    // Fallback: extract filename
+    // Fallback: try to extract nodeId from filename
+    // This is a heuristic - in real usage, the YAML file should specify the nodeId
     const filename = path.basename(
       dependencyPath,
       path.extname(dependencyPath)
     );
-    const possibleSuiteName = filename.replace(/-flow$/, "").replace(/-/g, "");
+    const possibleNodeId = filename.replace(/-flow$/, "").replace(/-/g, "-");
 
-    if (this.graph.has(possibleSuiteName)) {
-      return possibleSuiteName;
+    if (this.graph.has(possibleNodeId)) {
+      return possibleNodeId;
     }
 
     return null;
@@ -129,38 +129,38 @@ export class DependencyService {
     const recursionStack = new Set<string>();
     const cycles: string[] = [];
 
-    const dfs = (suiteName: string, path: string[]): boolean => {
-      if (recursionStack.has(suiteName)) {
+    const dfs = (nodeId: string, path: string[]): boolean => {
+      if (recursionStack.has(nodeId)) {
         // Found cycle
-        const cycleStart = path.indexOf(suiteName);
-        const cycle = [...path.slice(cycleStart), suiteName].join(" → ");
+        const cycleStart = path.indexOf(nodeId);
+        const cycle = [...path.slice(cycleStart), nodeId].join(" → ");
         cycles.push(cycle);
         return true;
       }
 
-      if (visited.has(suiteName)) {
+      if (visited.has(nodeId)) {
         return false;
       }
 
-      visited.add(suiteName);
-      recursionStack.add(suiteName);
+      visited.add(nodeId);
+      recursionStack.add(nodeId);
 
-      const node = this.graph.get(suiteName);
+      const node = this.graph.get(nodeId);
       if (node) {
         for (const dependency of node.dependencies) {
-          if (dfs(dependency, [...path, suiteName])) {
+          if (dfs(dependency, [...path, nodeId])) {
             return true;
           }
         }
       }
 
-      recursionStack.delete(suiteName);
+      recursionStack.delete(nodeId);
       return false;
     };
 
-    for (const suiteName of this.graph.keys()) {
-      if (!visited.has(suiteName)) {
-        dfs(suiteName, []);
+    for (const nodeId of this.graph.keys()) {
+      if (!visited.has(nodeId)) {
+        dfs(nodeId, []);
       }
     }
 
@@ -181,18 +181,18 @@ export class DependencyService {
     const resolved = new Set<string>();
     const tempMarked = new Set<string>();
 
-    const visit = (suiteName: string): void => {
-      if (tempMarked.has(suiteName)) {
-        throw new Error(`Circular dependency detected involving: ${suiteName}`);
+    const visit = (nodeId: string): void => {
+      if (tempMarked.has(nodeId)) {
+        throw new Error(`Circular dependency detected involving: ${nodeId}`);
       }
 
-      if (resolved.has(suiteName)) {
+      if (resolved.has(nodeId)) {
         return;
       }
 
-      tempMarked.add(suiteName);
+      tempMarked.add(nodeId);
 
-      const node = this.graph.get(suiteName);
+      const node = this.graph.get(nodeId);
       if (node) {
         // Visits all dependencies first
         for (const dependency of node.dependencies) {
@@ -201,16 +201,16 @@ export class DependencyService {
 
         // Adds the current node after its dependencies
         result.push(node.test);
-        resolved.add(suiteName);
+        resolved.add(nodeId);
       }
 
-      tempMarked.delete(suiteName);
+      tempMarked.delete(nodeId);
     };
 
     // Visits all nodes
     for (const test of tests) {
-      if (!resolved.has(test.suite_name)) {
-        visit(test.suite_name);
+      if (!resolved.has(test.node_id)) {
+        visit(test.node_id);
       }
     }
 
@@ -220,13 +220,13 @@ export class DependencyService {
   /**
    * Gets direct dependencies of a test
    */
-  getDirectDependencies(suiteName: string): DiscoveredTest[] {
-    const node = this.graph.get(suiteName);
+  getDirectDependencies(nodeId: string): DiscoveredTest[] {
+    const node = this.graph.get(nodeId);
     if (!node) return [];
 
     const dependencies: DiscoveredTest[] = [];
-    for (const depSuiteName of node.dependencies) {
-      const depNode = this.graph.get(depSuiteName);
+    for (const depNodeId of node.dependencies) {
+      const depNode = this.graph.get(depNodeId);
       if (depNode) {
         dependencies.push(depNode.test);
       }
@@ -238,39 +238,39 @@ export class DependencyService {
   /**
    * Gets all transitive dependencies of a test
    */
-  getTransitiveDependencies(suiteName: string): DiscoveredTest[] {
+  getTransitiveDependencies(nodeId: string): DiscoveredTest[] {
     const visited = new Set<string>();
     const result: DiscoveredTest[] = [];
 
-    const visit = (name: string): void => {
-      if (visited.has(name)) return;
-      visited.add(name);
+    const visit = (id: string): void => {
+      if (visited.has(id)) return;
+      visited.add(id);
 
-      const node = this.graph.get(name);
+      const node = this.graph.get(id);
       if (!node) return;
 
       for (const depName of node.dependencies) {
         visit(depName);
         const depNode = this.graph.get(depName);
-        if (depNode && !result.some((t) => t.suite_name === depName)) {
+        if (depNode && !result.some((t) => t.node_id === depName)) {
           result.push(depNode.test);
         }
       }
     };
 
-    visit(suiteName);
+    visit(nodeId);
     return result;
   }
 
   /**
    * Checks if a test can be executed (all its dependencies have been resolved)
    */
-  canExecute(suiteName: string): boolean {
-    const node = this.graph.get(suiteName);
+  canExecute(nodeId: string): boolean {
+    const node = this.graph.get(nodeId);
     if (!node) return true;
 
-    for (const depName of node.dependencies) {
-      const depNode = this.graph.get(depName);
+    for (const depId of node.dependencies) {
+      const depNode = this.graph.get(depId);
       if (!depNode || !depNode.resolved) {
         return false;
       }
@@ -282,8 +282,8 @@ export class DependencyService {
   /**
    * Marks a test as resolved and stores its result
    */
-  markResolved(suiteName: string, result: DependencyResult): void {
-    const node = this.graph.get(suiteName);
+  markResolved(nodeId: string, result: DependencyResult): void {
+    const node = this.graph.get(nodeId);
     if (node) {
       node.resolved = true;
       node.executing = false;
@@ -291,7 +291,7 @@ export class DependencyService {
 
     // Stores in cache if enabled
     if (this.cacheEnabled && result.success) {
-      this.cache.set(suiteName, {
+      this.cache.set(nodeId, {
         ...result,
         cached: true,
       });
@@ -301,8 +301,8 @@ export class DependencyService {
   /**
    * Marks a test as executing
    */
-  markExecuting(suiteName: string): void {
-    const node = this.graph.get(suiteName);
+  markExecuting(nodeId: string): void {
+    const node = this.graph.get(nodeId);
     if (node) {
       node.executing = true;
     }
@@ -311,9 +311,9 @@ export class DependencyService {
   /**
    * Checks if there is a cached result for a test
    */
-  getCachedResult(suiteName: string): DependencyResult | null {
+  getCachedResult(nodeId: string): DependencyResult | null {
     if (!this.cacheEnabled) return null;
-    return this.cache.get(suiteName) || null;
+    return this.cache.get(nodeId) || null;
   }
 
   /**
@@ -331,7 +331,7 @@ export class DependencyService {
     let totalEdges = 0;
     let maxDepth = 0;
 
-    for (const [suiteName, node] of this.graph) {
+    for (const [nodeId, node] of this.graph) {
       if (node.dependencies.size > 0) {
         testsWithDependencies++;
         totalEdges += node.dependencies.size;
@@ -342,7 +342,7 @@ export class DependencyService {
       }
 
       // Calculates maximum dependency depth
-      const depth = this.calculateDependencyDepth(suiteName);
+      const depth = this.calculateDependencyDepth(nodeId);
       maxDepth = Math.max(maxDepth, depth);
     }
 
@@ -359,19 +359,19 @@ export class DependencyService {
    * Calculates the maximum depth of dependencies of a test
    */
   private calculateDependencyDepth(
-    suiteName: string,
+    nodeId: string,
     visited = new Set<string>()
   ): number {
-    if (visited.has(suiteName)) return 0; // Avoids infinite loops
-    visited.add(suiteName);
+    if (visited.has(nodeId)) return 0; // Avoids infinite loops
+    visited.add(nodeId);
 
-    const node = this.graph.get(suiteName);
+    const node = this.graph.get(nodeId);
     if (!node || node.dependencies.size === 0) return 0;
 
     let maxDepth = 0;
-    for (const depName of node.dependencies) {
+    for (const depId of node.dependencies) {
       const depth =
-        1 + this.calculateDependencyDepth(depName, new Set(visited));
+        1 + this.calculateDependencyDepth(depId, new Set(visited));
       maxDepth = Math.max(maxDepth, depth);
     }
 
@@ -403,9 +403,9 @@ export class DependencyService {
     lines.push("Dependency Graph:");
     lines.push("================");
 
-    for (const [suiteName, node] of this.graph) {
+    for (const [nodeId, node] of this.graph) {
       const status = node.resolved ? "✅" : node.executing ? "⏳" : "⏸️";
-      lines.push(`${status} ${suiteName}`);
+      lines.push(`${status} ${nodeId} (${node.test.suite_name})`);
 
       if (node.dependencies.size > 0) {
         lines.push(

@@ -66,13 +66,14 @@ export class TestDiscovery {
       const fileContent = fs.readFileSync(filePath, 'utf8');
       const suite = yaml.load(fileContent) as TestSuite;
 
-      if (!suite || !suite.suite_name) {
-        console.warn(`⚠️  Warning: Invalid test suite in ${filePath} - missing suite_name`);
+      if (!suite || !suite.suite_name || !suite.node_id) {
+        console.warn(`⚠️  Warning: Invalid test suite in ${filePath} - missing suite_name or node_id`);
         return null;
       }
 
       const discoveredTest: DiscoveredTest = {
         file_path: filePath,
+        node_id: suite.node_id,
         suite_name: suite.suite_name,
         priority: suite.metadata?.priority || this.inferPriorityFromName(suite.suite_name),
         dependencies: this.extractDependencies(suite),
@@ -199,10 +200,10 @@ export class TestDiscovery {
    * Resolve dependências entre testes
    */
   private resolveDependencies(tests: DiscoveredTest[]): DiscoveredTest[] {
-    // Cria mapa de nome -> teste para lookup rápido
+    // Cria mapa de nodeId -> teste para lookup rápido
     const testMap = new Map<string, DiscoveredTest>();
     tests.forEach(test => {
-      testMap.set(test.suite_name, test);
+      testMap.set(test.node_id, test);
     });
 
     // Valida dependências e atualiza lista
@@ -212,7 +213,7 @@ export class TestDiscovery {
         const validDependencies = test.dependencies.filter(dep => {
           const exists = testMap.has(dep);
           if (!exists) {
-            console.warn(`⚠️  Warning: Dependency '${dep}' not found for test '${test.suite_name}'`);
+            console.warn(`⚠️  Warning: Dependency '${dep}' not found for test '${test.node_id}' (${test.suite_name})`);
           }
           return exists;
         });
@@ -308,7 +309,7 @@ export class TestDiscovery {
     // Encontra testes que não têm dependências E ninguém depende deles
     return tests.filter(test => {
       const hasNoDependencies = !test.dependencies || test.dependencies.length === 0;
-      const nobodyDependsOnIt = !allDependencies.has(test.suite_name);
+      const nobodyDependsOnIt = !allDependencies.has(test.node_id);
       
       return hasNoDependencies && nobodyDependsOnIt;
     });

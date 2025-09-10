@@ -1,11 +1,14 @@
 /**
  * Entry in the global variable registry
  *
- * Represents a variable exported by a suite with metadata
+ * Represents a variable exported by a node with metadata
  * for tracking and debugging.
  */
 interface GlobalVariableEntry {
-  /** Name of the suite that exported the variable */
+  /** Node ID that exported the variable */
+  nodeId: string;
+
+  /** Name of the suite (for display) */
   suiteName: string;
 
   /** Name of the exported variable */
@@ -22,16 +25,19 @@ interface GlobalVariableEntry {
 }
 
 /**
- * Namespace of variables exported by a suite
+ * Namespace of variables exported by a node
  *
- * Groups all variables exported by a specific suite
+ * Groups all variables exported by a specific node
  * with control metadata.
  */
-interface SuiteNamespace {
-  /** Name of the owning suite */
+interface NodeNamespace {
+  /** Node ID of the owning node */
+  nodeId: string;
+
+  /** Name of the suite (for display) */
   suiteName: string;
 
-  /** Map of variables exported by this suite */
+  /** Map of variables exported by this node */
   variables: Map<string, GlobalVariableEntry>;
 
   /** List of variable names that should be exported */
@@ -47,31 +53,31 @@ interface SuiteNamespace {
 /**
  * Global registry service for variables exported between flows
  *
- * Manages variable sharing between different test suites,
- * allowing one suite to export variables that can be consumed
- * by other suites using the notation `suite_name.variable_name`.
+ * Manages variable sharing between different test nodes,
+ * allowing one node to export variables that can be consumed
+ * by other nodes using the notation `nodeId.variable_name`.
  *
  * @example
  * ```typescript
  * const registry = new GlobalRegistryService();
  *
- * // Register suite that exports variables
- * registry.registerSuite('auth-suite', ['user_token', 'user_id'], './auth.yaml');
+ * // Register node that exports variables
+ * registry.registerNode('auth', 'Authentication Flow', ['user_token', 'user_id'], './auth.yaml');
  *
  * // Set values of exported variables
- * registry.setExportedVariable('auth-suite', 'user_token', 'abc123');
- * registry.setExportedVariable('auth-suite', 'user_id', 'user-456');
+ * registry.setExportedVariable('auth', 'user_token', 'abc123');
+ * registry.setExportedVariable('auth', 'user_id', 'user-456');
  *
- * // Consume variables in other suites
- * const token = registry.getExportedVariable('auth-suite.user_token');
- * const userId = registry.getExportedVariable('auth-suite.user_id');
+ * // Consume variables in other nodes
+ * const token = registry.getExportedVariable('auth.user_token');
+ * const userId = registry.getExportedVariable('auth.user_id');
  * ```
  */
 export class GlobalRegistryService {
-  /** Main registry mapping suite name to its namespace */
-  private registry: Map<string, SuiteNamespace> = new Map();
+  /** Main registry mapping node ID to its namespace */
+  private registry: Map<string, NodeNamespace> = new Map();
 
-  /** Fast search index mapping full name (suite.variable) to suite name */
+  /** Fast search index mapping full name (nodeId.variable) to node ID */
   private variableIndex: Map<string, string> = new Map();
 
   /**
@@ -85,24 +91,26 @@ export class GlobalRegistryService {
   }
 
   /**
-   * Registers a suite and its exported variables
+   * Registers a node and its exported variables
    *
-   * Creates a namespace for the suite in the global registry and configures
-   * which variables this suite intends to export to others.
+   * Creates a namespace for the node in the global registry and configures
+   * which variables this node intends to export to others.
    *
-   * @param suiteName - Unique name of the suite
+   * @param nodeId - Unique node identifier
+   * @param suiteName - Descriptive name of the suite (for display)
    * @param exports - Array with names of variables to be exported
    * @param filePath - Path of the suite file for reference
    *
    * @example
    * ```typescript
-   * // Register suite that exports token and user_id
-   * registry.registerSuite('auth-flow', ['token', 'user_id'], './flows/auth.yaml');
+   * // Register node that exports token and user_id
+   * registry.registerNode('auth', 'Authentication Flow', ['token', 'user_id'], './flows/auth.yaml');
    * ```
    */
-  registerSuite(suiteName: string, exports: string[], filePath: string): void {
-    if (!this.registry.has(suiteName)) {
-      this.registry.set(suiteName, {
+  registerNode(nodeId: string, suiteName: string, exports: string[], filePath: string): void {
+    if (!this.registry.has(nodeId)) {
+      this.registry.set(nodeId, {
+        nodeId,
         suiteName,
         variables: new Map(),
         exports: [],
@@ -111,53 +119,65 @@ export class GlobalRegistryService {
       });
     }
 
-    const namespace = this.registry.get(suiteName)!;
+    const namespace = this.registry.get(nodeId)!;
     namespace.exports = exports;
+    namespace.suiteName = suiteName;
     namespace.filePath = filePath;
     namespace.lastUpdated = Date.now();
 
     // Updates variable index
     for (const variableName of exports) {
-      const fullName = `${suiteName}.${variableName}`;
-      this.variableIndex.set(fullName, suiteName);
+      const fullName = `${nodeId}.${variableName}`;
+      this.variableIndex.set(fullName, nodeId);
     }
 
     console.log(
-      `📝 Registered suite '${suiteName}' with exports: [${exports.join(", ")}]`
+      `📝 Registered node '${nodeId}' (${suiteName}) with exports: [${exports.join(", ")}]`
     );
   }
 
   /**
-   * Sets an exported variable for a suite
+   * @deprecated Use registerNode instead
+   * Backwards compatibility method
+   */
+  registerSuite(suiteName: string, exports: string[], filePath: string): void {
+    console.warn('registerSuite is deprecated. Use registerNode(nodeId, suiteName, exports, filePath) instead.');
+    this.registerNode(suiteName, suiteName, exports, filePath);
+  }
+
+  /**
+   * Sets an exported variable for a node
    */
   setExportedVariable(
-    suiteName: string,
+    nodeId: string,
     variableName: string,
     value: any
   ): void {
-    let namespace = this.registry.get(suiteName);
+    let namespace = this.registry.get(nodeId);
 
     if (!namespace) {
       // Creates namespace if it doesn't exist
       namespace = {
-        suiteName,
+        nodeId,
+        suiteName: nodeId, // fallback to nodeId as suite name
         variables: new Map(),
         exports: [variableName],
         filePath: "",
         lastUpdated: Date.now(),
       };
-      this.registry.set(suiteName, namespace);
+      this.registry.set(nodeId, namespace);
     }
 
     // Verifica se a variável está na lista de exports
     if (!namespace.exports.includes(variableName)) {
       console.warn(
-        `⚠️  Variable '${variableName}' is not in exports list for suite '${suiteName}'`
+        `⚠️  Variable '${variableName}' is not in exports list for node '${nodeId}'`
       );
     }
 
     const entry: GlobalVariableEntry = {
-      suiteName,
+      nodeId,
+      suiteName: namespace.suiteName,
       variableName,
       value,
       timestamp: Date.now(),
@@ -168,35 +188,35 @@ export class GlobalRegistryService {
     namespace.lastUpdated = Date.now();
 
     // Updates index
-    const fullName = `${suiteName}.${variableName}`;
-    this.variableIndex.set(fullName, suiteName);
+    const fullName = `${nodeId}.${variableName}`;
+    this.variableIndex.set(fullName, nodeId);
 
     console.log(`📥 Exported: ${fullName} = ${this.formatValue(value)}`);
   }
 
   /**
-   * Gets an exported variable using the suite.variable pattern
+   * Gets an exported variable using the nodeId.variable pattern
    */
   getExportedVariable(fullName: string): any {
-    const [suiteName, variableName] = fullName.split(".", 2);
+    const [nodeId, variableName] = fullName.split(".", 2);
 
-    if (!suiteName || !variableName) {
+    if (!nodeId || !variableName) {
       console.warn(
-        `⚠️  Invalid variable name format: '${fullName}'. Expected: 'suite.variable'`
+        `⚠️  Invalid variable name format: '${fullName}'. Expected: 'nodeId.variable'`
       );
       return undefined;
     }
 
-    const namespace = this.registry.get(suiteName);
+    const namespace = this.registry.get(nodeId);
     if (!namespace) {
-      console.warn(`⚠️  Suite '${suiteName}' not found in global registry`);
+      console.warn(`⚠️  Node '${nodeId}' not found in global registry`);
       return undefined;
     }
 
     const entry = namespace.variables.get(variableName);
     if (!entry) {
       console.warn(
-        `⚠️  Variable '${variableName}' not found in suite '${suiteName}'`
+        `⚠️  Variable '${variableName}' not found in node '${nodeId}'`
       );
       return undefined;
     }
@@ -212,10 +232,10 @@ export class GlobalRegistryService {
   }
 
   /**
-   * Gets all exported variables from a suite
+   * Gets all exported variables from a node
    */
-  getSuiteVariables(suiteName: string): Record<string, any> {
-    const namespace = this.registry.get(suiteName);
+  getNodeVariables(nodeId: string): Record<string, any> {
+    const namespace = this.registry.get(nodeId);
     if (!namespace) {
       return {};
     }
@@ -229,14 +249,23 @@ export class GlobalRegistryService {
   }
 
   /**
+   * @deprecated Use getNodeVariables instead
+   * Backwards compatibility method
+   */
+  getSuiteVariables(suiteName: string): Record<string, any> {
+    console.warn('getSuiteVariables is deprecated. Use getNodeVariables instead.');
+    return this.getNodeVariables(suiteName);
+  }
+
+  /**
    * Gets all exported variables with full namespace
    */
   getAllExportedVariables(): Record<string, any> {
     const result: Record<string, any> = {};
 
-    for (const [suiteName, namespace] of this.registry) {
+    for (const [nodeId, namespace] of this.registry) {
       for (const [variableName, entry] of namespace.variables) {
-        const fullName = `${suiteName}.${variableName}`;
+        const fullName = `${nodeId}.${variableName}`;
         result[fullName] = entry.value;
       }
     }
@@ -252,28 +281,30 @@ export class GlobalRegistryService {
   }
 
   /**
-   * Lists all registered suites
+   * Lists all registered nodes
    */
-  getRegisteredSuites(): string[] {
+  getRegisteredNodes(): string[] {
     return Array.from(this.registry.keys()).sort();
   }
 
   /**
-   * Gets detailed information of a suite
+   * Gets detailed information of a node
    */
-  getSuiteInfo(suiteName: string): {
+  getNodeInfo(nodeId: string): {
+    nodeId: string;
     suiteName: string;
     exports: string[];
     filePath: string;
     variableCount: number;
     lastUpdated: Date;
   } | null {
-    const namespace = this.registry.get(suiteName);
+    const namespace = this.registry.get(nodeId);
     if (!namespace) {
       return null;
     }
 
     return {
+      nodeId: namespace.nodeId,
       suiteName: namespace.suiteName,
       exports: namespace.exports,
       filePath: namespace.filePath,
@@ -283,38 +314,69 @@ export class GlobalRegistryService {
   }
 
   /**
-   * Removes a suite from the registry
+   * @deprecated Use getRegisteredNodes instead
    */
-  unregisterSuite(suiteName: string): void {
-    const namespace = this.registry.get(suiteName);
+  getRegisteredSuites(): string[] {
+    console.warn('getRegisteredSuites is deprecated. Use getRegisteredNodes instead.');
+    return this.getRegisteredNodes();
+  }
+
+  /**
+   * @deprecated Use getNodeInfo instead
+   */
+  getSuiteInfo(suiteName: string): {
+    suiteName: string;
+    exports: string[];
+    filePath: string;
+    variableCount: number;
+    lastUpdated: Date;
+  } | null {
+    console.warn('getSuiteInfo is deprecated. Use getNodeInfo instead.');
+    const nodeInfo = this.getNodeInfo(suiteName);
+    if (!nodeInfo) return null;
+    
+    return {
+      suiteName: nodeInfo.suiteName,
+      exports: nodeInfo.exports,
+      filePath: nodeInfo.filePath,
+      variableCount: nodeInfo.variableCount,
+      lastUpdated: nodeInfo.lastUpdated,
+    };
+  }
+
+  /**
+   * Removes a node from the registry
+   */
+  unregisterNode(nodeId: string): void {
+    const namespace = this.registry.get(nodeId);
     if (!namespace) {
       return;
     }
 
     // Removes from variable index
     for (const variableName of namespace.variables.keys()) {
-      const fullName = `${suiteName}.${variableName}`;
+      const fullName = `${nodeId}.${variableName}`;
       this.variableIndex.delete(fullName);
     }
 
     // Removes namespace
-    this.registry.delete(suiteName);
+    this.registry.delete(nodeId);
 
-    console.log(`🗑️  Unregistered suite '${suiteName}'`);
+    console.log(`🗑️  Unregistered node '${nodeId}' (${namespace.suiteName})`);
   }
 
   /**
-   * Clears all exported variables from a suite
+   * Clears all exported variables from a node
    */
-  clearSuiteVariables(suiteName: string): void {
-    const namespace = this.registry.get(suiteName);
+  clearNodeVariables(nodeId: string): void {
+    const namespace = this.registry.get(nodeId);
     if (!namespace) {
       return;
     }
 
     // Removes variables from index
     for (const variableName of namespace.variables.keys()) {
-      const fullName = `${suiteName}.${variableName}`;
+      const fullName = `${nodeId}.${variableName}`;
       this.variableIndex.delete(fullName);
     }
 
@@ -322,7 +384,23 @@ export class GlobalRegistryService {
     namespace.variables.clear();
     namespace.lastUpdated = Date.now();
 
-    console.log(`🧹 Cleared variables for suite '${suiteName}'`);
+    console.log(`🧹 Cleared variables for node '${nodeId}' (${namespace.suiteName})`);
+  }
+
+  /**
+   * @deprecated Use unregisterNode instead
+   */
+  unregisterSuite(suiteName: string): void {
+    console.warn('unregisterSuite is deprecated. Use unregisterNode instead.');
+    this.unregisterNode(suiteName);
+  }
+
+  /**
+   * @deprecated Use clearNodeVariables instead
+   */
+  clearSuiteVariables(suiteName: string): void {
+    console.warn('clearSuiteVariables is deprecated. Use clearNodeVariables instead.');
+    this.clearNodeVariables(suiteName);
   }
 
   /**
@@ -338,15 +416,15 @@ export class GlobalRegistryService {
    * Gets registry statistics
    */
   getStats(): {
-    total_suites: number;
+    total_nodes: number;
     total_exported_variables: number;
-    suites_with_variables: number;
-    average_variables_per_suite: number;
+    nodes_with_variables: number;
+    average_variables_per_node: number;
     most_recent_update: Date | null;
   } {
-    const totalSuites = this.registry.size;
+    const totalNodes = this.registry.size;
     let totalVariables = 0;
-    let suitesWithVariables = 0;
+    let nodesWithVariables = 0;
     let mostRecentUpdate = 0;
 
     for (const namespace of this.registry.values()) {
@@ -354,18 +432,18 @@ export class GlobalRegistryService {
       totalVariables += variableCount;
 
       if (variableCount > 0) {
-        suitesWithVariables++;
+        nodesWithVariables++;
       }
 
       mostRecentUpdate = Math.max(mostRecentUpdate, namespace.lastUpdated);
     }
 
     return {
-      total_suites: totalSuites,
+      total_nodes: totalNodes,
       total_exported_variables: totalVariables,
-      suites_with_variables: suitesWithVariables,
-      average_variables_per_suite:
-        totalSuites > 0 ? totalVariables / totalSuites : 0,
+      nodes_with_variables: nodesWithVariables,
+      average_variables_per_node:
+        totalNodes > 0 ? totalVariables / totalNodes : 0,
       most_recent_update:
         mostRecentUpdate > 0 ? new Date(mostRecentUpdate) : null,
     };
@@ -377,8 +455,9 @@ export class GlobalRegistryService {
   exportState(): string {
     const state = {
       registry: Array.from(this.registry.entries()).map(
-        ([suiteName, namespace]) => ({
-          suiteName,
+        ([nodeId, namespace]) => ({
+          nodeId,
+          suiteName: namespace.suiteName,
           exports: namespace.exports,
           filePath: namespace.filePath,
           variables: Array.from(namespace.variables.entries()).map(
@@ -432,18 +511,18 @@ export class GlobalRegistryService {
     const warnings: string[] = [];
 
     // Checks if index is synchronized with registry
-    for (const [fullName, suiteName] of this.variableIndex) {
-      const [expectedSuiteName, variableName] = fullName.split(".", 2);
+    for (const [fullName, nodeId] of this.variableIndex) {
+      const [expectedNodeId, variableName] = fullName.split(".", 2);
 
-      if (expectedSuiteName !== suiteName) {
+      if (expectedNodeId !== nodeId) {
         errors.push(
-          `Index mismatch: ${fullName} points to ${suiteName} but should point to ${expectedSuiteName}`
+          `Index mismatch: ${fullName} points to ${nodeId} but should point to ${expectedNodeId}`
         );
       }
 
-      const namespace = this.registry.get(suiteName);
+      const namespace = this.registry.get(nodeId);
       if (!namespace) {
-        errors.push(`Index references non-existent suite: ${suiteName}`);
+        errors.push(`Index references non-existent node: ${nodeId}`);
         continue;
       }
 
@@ -453,9 +532,9 @@ export class GlobalRegistryService {
     }
 
     // Checks if all variables are in the index
-    for (const [suiteName, namespace] of this.registry) {
+    for (const [nodeId, namespace] of this.registry) {
       for (const variableName of namespace.variables.keys()) {
-        const fullName = `${suiteName}.${variableName}`;
+        const fullName = `${nodeId}.${variableName}`;
         if (!this.variableIndex.has(fullName)) {
           errors.push(`Variable ${fullName} exists but is not in index`);
         }

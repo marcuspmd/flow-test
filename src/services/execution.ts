@@ -285,6 +285,7 @@ export class ExecutionService {
         );
 
         const errorResult: SuiteExecutionResult = {
+          node_id: test.node_id,
           suite_name: test.suite_name,
           file_path: test.file_path,
           priority: test.priority,
@@ -351,6 +352,7 @@ export class ExecutionService {
         } else {
           // Error handling in parallel execution
           const errorResult: SuiteExecutionResult = {
+            node_id: test.node_id,
             suite_name: test.suite_name,
             file_path: test.file_path,
             priority: test.priority,
@@ -472,6 +474,7 @@ export class ExecutionService {
         totalSteps > 0 ? (successfulSteps / totalSteps) * 100 : 0;
 
       const result: SuiteExecutionResult = {
+        node_id: suite.node_id,
         suite_name: suite.suite_name,
         file_path: discoveredTest.file_path,
         priority: discoveredTest.priority,
@@ -495,6 +498,7 @@ export class ExecutionService {
       const endTime = new Date();
 
       const errorResult: SuiteExecutionResult = {
+        node_id: discoveredTest.node_id,
         suite_name: discoveredTest.suite_name,
         file_path: discoveredTest.file_path,
         priority: discoveredTest.priority,
@@ -683,6 +687,7 @@ export class ExecutionService {
   ): SuiteExecutionResult {
     const now = new Date();
     return {
+      node_id: test.node_id,
       suite_name: test.suite_name,
       file_path: test.file_path,
       priority: test.priority,
@@ -708,6 +713,7 @@ export class ExecutionService {
   ): SuiteExecutionResult {
     const now = new Date();
     return {
+      node_id: test.node_id,
       suite_name: test.suite_name,
       file_path: test.file_path,
       priority: test.priority,

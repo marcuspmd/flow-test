@@ -168,6 +168,7 @@ export interface FlowImport {
  * Estrutura de um fluxo reutilizável.
  */
 export interface ReusableFlow {
+  node_id: string;
   flow_name: string;
   description?: string;
   variables?: Record<string, any>;
@@ -220,6 +221,7 @@ export interface ExecutionResult {
  * Resultado da execução de uma suíte completa.
  */
 export interface SuiteResult {
+  node_id: string;
   suite_name: string;
   start_time: string;
   end_time: string;
@@ -232,14 +234,30 @@ export interface SuiteResult {
 
 /**
  * A estrutura completa do nosso arquivo de suíte de testes.
+ *
+ * @example
+ * ```yaml
+ * node_id: "auth"                    # Identificador único técnico
+ * suite_name: "Authentication Flow"  # Nome descritivo
+ * exports: ["token", "user_id"]      # Variáveis exportadas globalmente
+ * variables:
+ *   username: "test@example.com"     # Variáveis locais privadas
+ * steps:
+ *   - name: "Login"
+ *     capture:
+ *       token: "body.access_token"   # Será exportado como "auth.token"
+ *       session_id: "body.session"   # Permanece local (não está em exports)
+ * ```
  */
 export interface TestSuite {
+  node_id: string;
   suite_name: string;
   base_url?: string;
   imports?: FlowImport[];
   variables?: Record<string, any>;
   steps: TestStep[];
   reporting?: ReportingConfig;
+  exports?: string[];
 }
 
 /**
@@ -258,7 +276,7 @@ export interface ExecutionOptions {
  */
 export interface VariableContext {
   global: Record<string, any>;
-  imported: Record<string, Record<string, any>>; // flow_name -> variables
+  imported: Record<string, Record<string, any>>; // nodeId -> variables
   suite: Record<string, any>;
   runtime: Record<string, any>;
 }

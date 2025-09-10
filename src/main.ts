@@ -3,6 +3,7 @@ import path from "path";
 import yaml from "js-yaml";
 import { Runner } from "./core/runner.core";
 import { ExecutionOptions } from "./types/common.types";
+import { setupLogger, getLogger } from "./services/logger.service";
 
 // Ponto de entrada da aplicação
 async function main() {
@@ -19,6 +20,10 @@ async function main() {
   
   let generateLog = true; // Por padrão, sempre gera log
 
+  // Initialize logger with default options (will be updated based on verbosity)
+  setupLogger('console', { verbosity: options.verbosity });
+  const logger = getLogger();
+
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
     
@@ -26,15 +31,19 @@ async function main() {
       switch (arg) {
         case '--verbose':
           options.verbosity = 'verbose';
+          setupLogger('console', { verbosity: 'verbose' });
           break;
         case '--detailed':
           options.verbosity = 'detailed';
+          setupLogger('console', { verbosity: 'detailed' });
           break;
         case '--simple':
           options.verbosity = 'simple';
+          setupLogger('console', { verbosity: 'simple' });
           break;
         case '--silent':
           options.verbosity = 'silent';
+          setupLogger('console', { verbosity: 'silent' });
           break;
         case '--continue':
           options.continueOnFailure = true;
@@ -67,7 +76,7 @@ async function main() {
           printHelp();
           return;
         default:
-          console.error(`[ERRO] Argumento desconhecido: ${arg}`);
+          logger.error(`Argumento desconhecido: ${arg}`);
           printHelp();
           return;
       }
@@ -78,7 +87,7 @@ async function main() {
   }
 
   if (!fs.existsSync(testFile)) {
-    console.error(`[ERRO] Arquivo de teste não encontrado: ${testFile}`);
+    logger.error(`Arquivo de teste não encontrado: ${testFile}`, { filePath: testFile });
     return;
   }
 
@@ -112,7 +121,7 @@ async function main() {
         fs.mkdirSync(resultsDir, { recursive: true });
       }
     } catch (error) {
-      console.warn('[AVISO] Não foi possível gerar nome automático do log, usando padrão');
+      logger.warn('Não foi possível gerar nome automático do log, usando padrão', { error: error as Error });
       const timestamp = new Date().toISOString()
         .replace(/[:.]/g, '-')
         .replace(/T/, '_')
@@ -136,6 +145,7 @@ async function main() {
 }
 
 function printHelp() {
+  // Help output should always be visible regardless of log level
   console.log(`
 Motor de Testes de API - Flow Test
 
@@ -170,6 +180,8 @@ Logs automáticos:
 }
 
 main().catch(error => {
-  console.error('[ERRO] Falha na execução:', error);
+  // Use logger if available, otherwise fall back to console for critical errors
+  const logger = getLogger();
+  logger.error('Falha na execução', { error: error as Error });
   process.exit(1);
 });

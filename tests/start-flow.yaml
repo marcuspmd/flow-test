@@ -1,13 +1,17 @@
 # Usaremos httpbin.org, uma API pública excelente para testar clientes HTTP.
+node_id: "httpbin-test"
 suite_name: "Fluxo de Teste com httpbin.org"
 
 # URL base para todas as requisições.
 base_url: "https://httpbin.org"
 
-# Variáveis globais que podem ser usadas em qualquer etapa.
+# Variáveis locais que podem ser usadas dentro desta suite apenas.
 variables:
   user_id: 123
   user_name: "alpha_user"
+
+# Variáveis que serão exportadas globalmente como httpbin-test.captured_username e httpbin-test.auth_token
+exports: ["captured_username", "auth_token"]
 
 # A lista de etapas do nosso fluxo de teste.
 steps:

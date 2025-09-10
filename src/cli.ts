@@ -101,6 +101,13 @@ async function main() {
         }
         break;
 
+      case "--node":
+        if (i + 1 < args.length) {
+          const nodeIds = args[++i].split(",");
+          options.filters = { ...options.filters, node_ids: nodeIds };
+        }
+        break;
+
       case "--dry-run":
         dryRun = true;
         break;
@@ -150,7 +157,7 @@ async function main() {
       },
       onTestDiscovered: (test) => {
         if (options.verbosity === "verbose") {
-          console.log(`📋 Discovered: ${test.suite_name} (${test.priority})`);
+          console.log(`📋 Discovered: ${test.node_id} - ${test.suite_name} (${test.priority})`);
         }
       },
       onSuiteStart: (suite) => {

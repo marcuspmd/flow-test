@@ -87,9 +87,10 @@ export interface GlobalVariableContext {
  */
 export interface DiscoveredTest {
   file_path: string;
+  node_id: string;
   suite_name: string;
   priority?: string;
-  dependencies?: string[]; // Legacy format
+  dependencies?: string[]; // Legacy format - nodeIds
   depends?: FlowDependency[]; // New dependency format
   exports?: string[];
   estimated_duration?: number;
@@ -117,6 +118,7 @@ export interface AggregatedResult {
  * Resultado de execução de uma suíte individual
  */
 export interface SuiteExecutionResult {
+  node_id: string;
   suite_name: string;
   file_path: string;
   priority?: string;
@@ -194,6 +196,7 @@ export interface EngineExecutionOptions {
   verbosity?: 'silent' | 'simple' | 'detailed' | 'verbose';
   filters?: {
     priority?: string[];
+    node_ids?: string[];
     suite_names?: string[];
     tags?: string[];
   };

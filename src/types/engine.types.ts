@@ -386,6 +386,7 @@ export interface ReusableFlow {
  * @example
  * ```typescript
  * const testSuite: TestSuite = {
+ *   node_id: "user-mgmt-e2e",
  *   suite_name: "E2E User Management Tests",
  *   description: "Complete end-to-end testing of user management features",
  *   base_url: "https://api.example.com",
@@ -428,6 +429,8 @@ export interface ReusableFlow {
  * ```
  */
 export interface TestSuite {
+  /** Unique node identifier for this test suite */
+  node_id: string;
   /** Name of the test suite */
   suite_name: string;
   /** Description of what this suite tests */
@@ -780,6 +783,7 @@ export interface EngineHooks {
  */
 export interface ExecutionFilters {
   priorities?: string[];
+  node_ids?: string[];
   suite_names?: string[];
   tags?: string[];
   file_patterns?: string[];
