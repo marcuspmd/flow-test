@@ -358,6 +358,67 @@ export class ReportingService {
         .variables h5 { margin: 0 0 8px 0; color: #0066cc; font-size: 0.9em; }
         .available-variables { background: #f0f8e7; padding: 10px; border-radius: 4px; margin: 10px 0; }
         .available-variables h5 { margin: 0 0 8px 0; color: #2e7d32; font-size: 0.9em; }
+        .variables-toggle { cursor: pointer; user-select: none; }
+        .variables-toggle:hover { background: rgba(46, 125, 50, 0.1); border-radius: 4px; padding: 2px 4px; margin: -2px -4px; }
+        .toggle-icon { font-size: 0.8em; margin-left: 8px; transition: transform 0.2s ease; }
+        .toggle-icon.expanded { transform: rotate(90deg); }
+        .variables-content { margin-top: 10px; padding-top: 10px; border-top: 1px solid #c8e6c9; }
+        .variable-code-block {
+          background: #1a1a1a;
+          border: 1px solid #444444;
+          border-radius: 4px;
+          margin: 4px 0;
+          padding: 8px 12px;
+          display: grid;
+          grid-template-columns: 160px 1fr 40px;
+          gap: 12px;
+          align-items: start;
+          transition: box-shadow 0.2s ease;
+          min-height: 36px;
+        }
+        .variable-code-block:hover { box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4); }
+        .variable-name {
+          font-family: 'Monaco', 'Menlo', monospace;
+          font-size: 0.85em;
+          color: #00ff88;
+          font-weight: 600;
+          text-align: left;
+          padding-top: 2px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .variable-value-inline {
+          font-family: 'Monaco', 'Menlo', monospace;
+          font-size: 0.85em;
+          color: #e0e0e0;
+          word-wrap: break-word;
+          overflow-wrap: break-word;
+          white-space: pre-wrap;
+          line-height: 1.4;
+          padding-top: 2px;
+          overflow: hidden;
+        }
+        .copy-btn {
+          background: #404040;
+          color: #ffffff;
+          border: none;
+          border-radius: 3px;
+          padding: 6px 10px;
+          cursor: pointer;
+          font-size: 0.8em;
+          transition: all 0.2s ease;
+          width: 40px;
+          height: 28px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin-top: 2px;
+          justify-self: center;
+        }
+        .copy-btn:hover { background: #606060; transform: translateY(-1px); }
+        .copy-btn:active { background: #808080; transform: translateY(0); }
+        .copy-btn.copied { background: #00aa44; }
         .variable-item { font-family: monospace; font-size: 0.85em; margin: 2px 0; word-wrap: break-word; overflow-wrap: break-word; white-space: pre-wrap; }
         .error-message { background: #f8d7da; color: #721c24; padding: 10px; border-radius: 4px; border: 1px solid #f5c6cb; margin: 10px 0; }
     </style>
@@ -383,6 +444,71 @@ export class ReportingService {
                 content.classList.toggle('expanded');
                 toggle.classList.toggle('expanded');
             }
+        }
+
+        function toggleVariables(id) {
+            const content = document.getElementById('content-' + id);
+            const icon = document.getElementById('icon-' + id);
+
+            if (content.style.display === 'none') {
+                content.style.display = 'block';
+                icon.textContent = '▼';
+                icon.classList.add('expanded');
+            } else {
+                content.style.display = 'none';
+                icon.textContent = '▶';
+                icon.classList.remove('expanded');
+            }
+        }
+
+        function copyToClipboard(text, button) {
+            // Use modern Clipboard API if available
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(text).then(() => {
+                    showCopyFeedback(button);
+                }).catch(() => {
+                    // Fallback to older method
+                    fallbackCopy(text, button);
+                });
+            } else {
+                // Fallback for older browsers or non-secure contexts
+                fallbackCopy(text, button);
+            }
+        }
+
+        function fallbackCopy(text, button) {
+            const textArea = document.createElement('textarea');
+            textArea.value = text;
+            textArea.style.position = 'fixed';
+            textArea.style.left = '-999999px';
+            textArea.style.top = '-999999px';
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+
+            try {
+                document.execCommand('copy');
+                showCopyFeedback(button);
+            } catch (err) {
+                console.error('Failed to copy: ', err);
+                button.textContent = '❌';
+                setTimeout(() => {
+                    button.textContent = '📋';
+                }, 1000);
+            }
+
+            document.body.removeChild(textArea);
+        }
+
+        function showCopyFeedback(button) {
+            const originalText = button.textContent;
+            button.textContent = '✅';
+            button.classList.add('copied');
+
+            setTimeout(() => {
+                button.textContent = originalText;
+                button.classList.remove('copied');
+            }, 1000);
         }
     </script>
 </head>
@@ -655,19 +781,35 @@ export class ReportingService {
   private buildAvailableVariablesSection(
     variables: Record<string, any>
   ): string {
+    const variableCount = Object.keys(variables).length;
+    const randomId = Math.random().toString(36).substr(2, 9);
+
     const variablesHtml = Object.entries(variables)
-      .map(
-        ([key, value]) => `
-        <div class="variable-item"><strong>${key}:</strong> ${this.escapeHtml(
-          JSON.stringify(value)
-        )}</div>`
-      )
+      .sort(([a], [b]) => a.localeCompare(b)) // Sort alphabetically
+      .map(([key, value]) => {
+        const jsonValue = JSON.stringify(value);
+        const escapedValue = this.escapeHtml(jsonValue).replace(/'/g, "\\'");
+        return `
+        <div class="variable-code-block">
+          <code class="variable-name">${this.escapeHtml(key)}</code>
+          <code class="variable-value-inline">${this.escapeHtml(
+            jsonValue
+          )}</code>
+          <button class="copy-btn" onclick="copyToClipboard('${escapedValue}', this)" title="Copy variable value">
+            📋
+          </button>
+        </div>`;
+      })
       .join("");
 
     return `
         <div class="available-variables">
-            <h5>🔍 Available Variables</h5>
-            ${variablesHtml}
+            <div class="variables-toggle" onclick="toggleVariables('${randomId}')">
+                <h5>🔍 Available Variables (${variableCount}) <span class="toggle-icon" id="icon-${randomId}">▶</span></h5>
+            </div>
+            <div class="variables-content" id="content-${randomId}" style="display: none;">
+                ${variablesHtml}
+            </div>
         </div>`;
   }
 
