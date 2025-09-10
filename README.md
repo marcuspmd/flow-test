@@ -53,10 +53,10 @@ npm install
 npm start
 
 # Execute a specific file
-npm start flows/auth/simple-login-flow.yaml
+npm start tests/start-flow.yaml
 
 # With detailed verbosity
-npm start meu-teste.yaml --detailed
+npm start tests/start-flow.yaml --detailed
 ```
 
 ### Command Line Options
@@ -78,6 +78,420 @@ npm start meu-teste.yaml --format json|console|html
 
 # Help
 npm start --help
+```
+
+## � Documentation
+
+### �📋 Complete Examples
+- **[Documentation Index](./docs/INDEX.md)**: Complete navigation guide for all documentation resources organized by user type and use case.
+- **[YAML Examples](./docs/YAML_EXAMPLES.md)**: Comprehensive collection of YAML test suite examples covering authentication, CRUD operations, data-driven testing, error handling, performance testing, and advanced scenarios.
+- **[API Documentation](./docs/API_DOCUMENTATION.md)**: Detailed API reference with usage examples for all services and components.
+- **[Best Practices](./docs/BEST_PRACTICES.md)**: Guidelines for writing maintainable, scalable test suites with proven patterns and recommendations.
+- **[Troubleshooting Guide](./docs/TROUBLESHOOTING.md)**: Comprehensive guide for diagnosing and resolving common issues, debugging techniques, and performance optimization.
+- **[Configuration Guide](./docs/CONFIGURATION.md)**: Complete configuration examples for different environments, CI/CD integration, and performance tuning.
+- **[Automation Scripts](./docs/AUTOMATION.md)**: Ready-to-use scripts for test execution, parallel testing, performance testing, and CI/CD integration.
+- **[Changelog](./CHANGELOG.md)**: Complete history of changes, new features, and improvements.
+- **[Enhancement Summary](./docs/ENHANCEMENT_SUMMARY.md)**: Overview of all documentation improvements and new features.
+
+### Quick Start Examples
+
+### 1. Basic API Test Flow
+```yaml
+# File: tests/basic-api-test.yaml
+suite_name: "Basic API Test"
+base_url: "https://jsonplaceholder.typicode.com"
+
+variables:
+  user_id: 1
+
+steps:
+  - name: "Get user data"
+    request:
+      method: GET
+      url: "/users/{{user_id}}"
+      headers:
+        Accept: "application/json"
+
+    assert:
+      status_code: 200
+      body:
+        id:
+          equals: 1
+        name:
+          contains: "Leanne"
+
+    capture:
+      user_email: "body.email"
+      user_name: "body.name"
+
+  - name: "Create new post"
+    request:
+      method: POST
+      url: "/posts"
+      headers:
+        Content-Type: "application/json"
+      body:
+        title: "Test Post"
+        body: "This is a test post by {{user_name}}"
+        userId: "{{user_id}}"
+
+    assert:
+      status_code: 201
+      body:
+        id:
+          greater_than: 100
+
+    capture:
+      post_id: "body.id"
+```
+
+### 2. Authentication Flow with Token Management
+```yaml
+# File: tests/auth-flow.yaml
+suite_name: "Authentication Flow"
+base_url: "https://api.example.com"
+
+# Export variables for use in other flows
+exports: ["auth_token", "user_id", "refresh_token"]
+
+variables:
+  username: "test@example.com"
+  password: "secure_password"
+
+steps:
+  - name: "User Login"
+    request:
+      method: POST
+      url: "/auth/login"
+      headers:
+        Content-Type: "application/json"
+      body:
+        email: "{{username}}"
+        password: "{{password}}"
+
+    assert:
+      status_code: 200
+      body:
+        success: true
+        token:
+          regex: "^[A-Za-z0-9-_]+\\.[A-Za-z0-9-_]+\\.[A-Za-z0-9-_]+$"
+
+    capture:
+      auth_token: "body.token"
+      user_id: "body.user.id"
+      refresh_token: "body.refresh_token"
+
+  - name: "Verify Token"
+    request:
+      method: GET
+      url: "/auth/verify"
+      headers:
+        Authorization: "Bearer {{auth_token}}"
+
+    assert:
+      status_code: 200
+      body:
+        valid: true
+        user_id:
+          equals: "{{user_id}}"
+```
+
+### 3. E-commerce Flow with Multiple Scenarios
+```yaml
+# File: tests/ecommerce-flow.yaml
+suite_name: "E-commerce Purchase Flow"
+base_url: "https://api.store.com"
+
+imports:
+  - name: "auth"
+    path: "./auth-flow.yaml"
+    variables:
+      username: "customer@example.com"
+
+variables:
+  product_id: "PROD-123"
+  quantity: 2
+
+steps:
+  - name: "Add to Cart"
+    request:
+      method: POST
+      url: "/cart/items"
+      headers:
+        Authorization: "Bearer {{auth.auth_token}}"
+        Content-Type: "application/json"
+      body:
+        product_id: "{{product_id}}"
+        quantity: "{{quantity}}"
+
+    assert:
+      status_code: 201
+      body:
+        cart_id:
+          regex: "^CART-[0-9]+$"
+        total_items:
+          equals: "{{quantity}}"
+
+    capture:
+      cart_id: "body.cart_id"
+      item_price: "body.items[0].price"
+
+  - name: "Checkout Process"
+    request:
+      method: POST
+      url: "/checkout"
+      headers:
+        Authorization: "Bearer {{auth.auth_token}}"
+        Content-Type: "application/json"
+      body:
+        cart_id: "{{cart_id}}"
+        shipping_address:
+          street: "123 Main St"
+          city: "Anytown"
+          zip: "12345"
+
+    scenarios:
+      - condition: "status_code == `200`"
+        then:
+          assert:
+            body:
+              order_id:
+                regex: "^ORD-[0-9]+$"
+              status: "confirmed"
+              total_amount:
+                greater_than: 0
+          capture:
+            order_id: "body.order_id"
+            order_status: "body.status"
+
+      - condition: "status_code == `400`"
+        then:
+          assert:
+            body:
+              error: "insufficient_inventory"
+          capture:
+            error_code: "body.error_code"
+            available_quantity: "body.available_quantity"
+```
+
+### 4. Data-Driven Testing with Multiple Test Cases
+```yaml
+# File: tests/data-driven-test.yaml
+suite_name: "Data Driven User Registration"
+base_url: "https://api.users.com"
+
+variables:
+  test_cases:
+    - name: "valid_user"
+      email: "john.doe@example.com"
+      password: "SecurePass123!"
+      expected_status: 201
+    - name: "invalid_email"
+      email: "invalid-email"
+      password: "SecurePass123!"
+      expected_status: 400
+    - name: "weak_password"
+      email: "jane.doe@example.com"
+      password: "123"
+      expected_status: 400
+
+steps:
+  - name: "Register User - {{test_cases[0].name}}"
+    request:
+      method: POST
+      url: "/users/register"
+      headers:
+        Content-Type: "application/json"
+      body:
+        email: "{{test_cases[0].email}}"
+        password: "{{test_cases[0].password}}"
+
+    assert:
+      status_code: "{{test_cases[0].expected_status}}"
+
+    scenarios:
+      - condition: "status_code == `201`"
+        then:
+          capture:
+            user_id: "body.user_id"
+            registration_token: "body.token"
+
+      - condition: "status_code == `400`"
+        then:
+          capture:
+            error_message: "body.message"
+
+  - name: "Register User - {{test_cases[1].name}}"
+    request:
+      method: POST
+      url: "/users/register"
+      headers:
+        Content-Type: "application/json"
+      body:
+        email: "{{test_cases[1].email}}"
+        password: "{{test_cases[1].password}}"
+
+    assert:
+      status_code: "{{test_cases[1].expected_status}}"
+      body:
+        message:
+          contains: "invalid email"
+
+  - name: "Register User - {{test_cases[2].name}}"
+    request:
+      method: POST
+      url: "/users/register"
+      headers:
+        Content-Type: "application/json"
+      body:
+        email: "{{test_cases[2].email}}"
+        password: "{{test_cases[2].password}}"
+
+    assert:
+      status_code: "{{test_cases[2].expected_status}}"
+      body:
+        message:
+          contains: "password too weak"
+```
+
+### 5. Performance Testing with Response Time Validation
+```yaml
+# File: tests/performance-test.yaml
+suite_name: "API Performance Test"
+base_url: "https://api.performance.com"
+
+variables:
+  concurrent_users: 10
+  test_duration: 60
+
+steps:
+  - name: "Health Check"
+    request:
+      method: GET
+      url: "/health"
+      headers:
+        Accept: "application/json"
+
+    assert:
+      status_code: 200
+      response_time_ms:
+        less_than: 100
+      body:
+        status: "healthy"
+
+  - name: "Database Query Performance"
+    request:
+      method: GET
+      url: "/users?limit=100&page=1"
+      headers:
+        Authorization: "Bearer {{auth_token}}"
+        Accept: "application/json"
+
+    assert:
+      status_code: 200
+      response_time_ms:
+        less_than: 500
+      body:
+        data:
+          length:
+            equals: 100
+
+    capture:
+      query_time: "response_time_ms"
+
+  - name: "File Upload Performance"
+    request:
+      method: POST
+      url: "/files/upload"
+      headers:
+        Authorization: "Bearer {{auth_token}}"
+        Content-Type: "multipart/form-data"
+      body:
+        file: "@test-file-1MB.jpg"
+        metadata:
+          name: "performance_test.jpg"
+          size: 1048576
+
+    assert:
+      status_code: 201
+      response_time_ms:
+        less_than: 2000
+      body:
+        upload_id:
+          regex: "^UPLOAD-[0-9]+$"
+
+    capture:
+      upload_time: "response_time_ms"
+      file_url: "body.url"
+```
+
+### 6. Error Handling and Recovery Flow
+```yaml
+# File: tests/error-handling-test.yaml
+suite_name: "Error Handling and Recovery"
+base_url: "https://api.unreliable.com"
+
+variables:
+  max_retries: 3
+  retry_delay: 1000
+
+steps:
+  - name: "Test Circuit Breaker Pattern"
+    request:
+      method: GET
+      url: "/unstable-endpoint"
+      headers:
+        Accept: "application/json"
+
+    scenarios:
+      - condition: "status_code == `200`"
+        then:
+          assert:
+            body:
+              data:
+                not_equals: null
+          capture:
+            response_data: "body.data"
+
+      - condition: "status_code >= `500`"
+        then:
+          assert:
+            status_code:
+              greater_than: 499
+          capture:
+            error_code: "status_code"
+            retry_after: "headers.retry-after || '60'"
+
+  - name: "Graceful Degradation"
+    request:
+      method: GET
+      url: "/fallback-endpoint"
+      headers:
+        Accept: "application/json"
+
+    assert:
+      status_code: 200
+      body:
+        fallback_mode: true
+        limited_data: true
+
+    capture:
+      fallback_data: "body.data"
+
+  - name: "Recovery Test"
+    request:
+      method: POST
+      url: "/recovery-test"
+      headers:
+        Content-Type: "application/json"
+      body:
+        previous_error: "{{error_code}}"
+        fallback_data: "{{fallback_data}}"
+
+    assert:
+      status_code: 200
+      body:
+        recovery_successful: true
 ```
 
 ## 📋 YAML File Structure
