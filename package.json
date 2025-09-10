@@ -1,24 +1,40 @@
 {
   "$schema": "https://json.schemastore.org/package.json",
-  "name": "flow-test",
-  "version": "1.0.0",
-  "description": "Um motor de testes de API configurável via YAML, feito em TypeScript.",
-  "main": "dist/main.js",
+  "name": "flow-test-engine",
+  "version": "2.0.0",
+  "description": "A comprehensive API testing engine with directory-based execution, global variables, and priority-driven test management.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "flow-test": "dist/cli.js"
+  },
   "scripts": {
-    "start": "ts-node src/main.ts",
-    "build": "tsc"
+    "build": "tsc",
+    "dev": "ts-node src/cli.ts",
+    "test": "ts-node src/cli.ts",
+    "prepare": "npm run build"
   },
   "keywords": [
     "api",
     "testing",
-    "typescript"
+    "typescript",
+    "yaml",
+    "automation",
+    "flow",
+    "engine",
+    "package"
   ],
-  "author": "",
-  "license": "ISC",
+  "author": "Marcus",
+  "license": "MIT",
+  "files": [
+    "dist/**/*",
+    "README.md"
+  ],
   "dependencies": {
     "axios": "^1.7.2",
     "jmespath": "^0.15.0",
-    "js-yaml": "^4.1.0"
+    "js-yaml": "^4.1.0",
+    "fast-glob": "^3.3.0"
   },
   "devDependencies": {
     "@types/jmespath": "^0.15.2",
@@ -26,5 +42,8 @@
     "@types/node": "^20.14.2",
     "ts-node": "^10.9.2",
     "typescript": "^5.4.5"
+  },
+  "engines": {
+    "node": ">=16.0.0"
   }
 }

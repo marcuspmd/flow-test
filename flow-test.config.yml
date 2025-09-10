@@ -1,0 +1,45 @@
+# Flow Test Engine v2.0 Configuration
+project_name: "Flow Test Demo Project"
+test_directory: "./"
+
+# Global variables and settings
+globals:
+  variables:
+    api_base_url: "http://localhost:3000"
+    default_timeout: 30000
+  timeouts:
+    default: 30000
+    slow_tests: 60000
+
+# Test discovery settings
+discovery:
+  patterns:
+    - "**/flows/**/*.yaml"
+    - "**/flows/**/*.yml"
+  exclude:
+    - "**/temp/**"
+
+# Priority system configuration
+priorities:
+  levels: ["critical", "high", "medium", "low"]
+  required: ["critical", "high"]
+  fail_fast_on_required: true
+
+# Execution settings
+execution:
+  mode: "sequential"  # ou "parallel"
+  max_parallel: 3
+  timeout: 30000
+  continue_on_failure: false
+  retry_failed:
+    enabled: false
+    max_attempts: 2
+    delay_ms: 1000
+
+# Reporting configuration
+reporting:
+  formats: ["html", "json"]
+  output_dir: "./results"
+  aggregate: true
+  include_performance_metrics: true
+  include_variables_state: true
