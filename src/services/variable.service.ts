@@ -1,5 +1,7 @@
 import { VariableContext } from "../types/common.types";
 import { GlobalRegistryService } from "./global-registry.service";
+import { fakerService } from "./faker.service";
+import { javascriptService, JavaScriptExecutionContext } from "./javascript.service";
 
 /**
  * Service responsible for variable interpolation and resolution
@@ -30,6 +32,9 @@ export class VariableService {
   
   /** Global registry service for exported variables */
   private globalRegistry?: GlobalRegistryService;
+  
+  /** Current execution context for JavaScript expressions */
+  private currentExecutionContext: JavaScriptExecutionContext = {};
 
   /**
    * VariableService constructor
@@ -94,10 +99,10 @@ export class VariableService {
   /**
    * Resolves a variable following the scope hierarchy
    *
-   * Searches for a variable in precedence order: runtime > suite > imported > global > globalRegistry.
-   * Supports dot notation for exported variables (ex: auth.token).
+   * Searches for a variable in precedence order: Faker > runtime > suite > imported > global > globalRegistry.
+   * Supports dot notation for exported variables (ex: auth.token) and Faker expressions (ex: faker.person.firstName).
    *
-   * @param variablePath - Variable path (can use dot notation)
+   * @param variablePath - Variable path (can use dot notation or Faker syntax)
    * @returns Variable value or undefined if not found
    * @private
    *
@@ -105,9 +110,40 @@ export class VariableService {
    * ```typescript
    * resolveVariable('username') // Searches in all scopes
    * resolveVariable('auth.token') // Searches specifically for exported variable from nodeId 'auth'
+   * resolveVariable('faker.person.firstName') // Generates fake first name
+   * resolveVariable('faker.helpers.arrayElement') // Generates random array element
    * ```
    */
   private resolveVariable(variablePath: string): any {
+    // Check if it's a JavaScript expression (starts with 'js:')
+    if (variablePath.startsWith('js:')) {
+      try {
+        const jsExpression = javascriptService.parseJavaScriptExpression(variablePath);
+        if (jsExpression) {
+          // Update execution context with current variables
+          const context: JavaScriptExecutionContext = {
+            ...this.currentExecutionContext,
+            variables: this.getAllAvailableVariables()
+          };
+          return javascriptService.executeExpression(jsExpression, context);
+        }
+        return undefined;
+      } catch (error) {
+        console.warn(`Error resolving JavaScript expression '${variablePath}': ${error}`);
+        return undefined;
+      }
+    }
+
+    // Check if it's a Faker expression (starts with 'faker.')
+    if (variablePath.startsWith('faker.')) {
+      try {
+        return fakerService.parseFakerExpression(variablePath);
+      } catch (error) {
+        console.warn(`Error resolving Faker expression '${variablePath}': ${error}`);
+        return undefined;
+      }
+    }
+
     // First, checks in runtime if the exact variable exists (including dots)
     if (this.context.runtime[variablePath] !== undefined) {
       return this.context.runtime[variablePath];
@@ -267,6 +303,18 @@ export class VariableService {
     return {
       ...localVariables,
       ...globalVariables,
+    };
+  }
+
+  /**
+   * Updates the current execution context for JavaScript expressions
+   */
+  setExecutionContext(context: Partial<JavaScriptExecutionContext>): void {
+    this.currentExecutionContext = { 
+      ...this.currentExecutionContext, 
+      ...context,
+      // Always provide current variables
+      variables: this.getAllVariables()
     };
   }
 

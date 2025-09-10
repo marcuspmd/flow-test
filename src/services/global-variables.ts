@@ -1,6 +1,8 @@
 import { ConfigManager } from "../core/config";
 import { GlobalVariableContext } from "../types/engine.types";
 import { GlobalRegistryService } from "./global-registry.service";
+import { fakerService } from "./faker.service";
+import { javascriptService, JavaScriptExecutionContext } from "./javascript.service";
 
 /**
  * Service for managing global variables with hierarchy and cache
@@ -12,6 +14,7 @@ export class GlobalVariablesService {
   private interpolationCache: Map<string, string> = new Map();
   private cacheEnabled: boolean = true;
   private dependencies: string[] = []; // node_ids dos flows dependentes
+  private currentExecutionContext: JavaScriptExecutionContext = {};
 
   constructor(
     configManager: ConfigManager,
@@ -36,6 +39,19 @@ export class GlobalVariablesService {
   setDependencies(dependencies: string[]): void {
     this.dependencies = dependencies;
     this.clearCache(); // Clears cache as dependency resolution may change
+  }
+
+  /**
+   * Updates the current execution context for JavaScript expressions
+   */
+  setExecutionContext(context: Partial<JavaScriptExecutionContext>): void {
+    this.currentExecutionContext = { 
+      ...this.currentExecutionContext, 
+      ...context,
+      // Always provide current variables
+      variables: this.getAllVariables()
+    };
+    this.clearCache(); // Clear cache when context changes
   }
 
   /**
@@ -213,6 +229,35 @@ export class GlobalVariablesService {
    * Resolves variable expressions with support for paths and exported variables
    */
   private resolveVariableExpression(expression: string): any {
+    // Check if it's a JavaScript expression (starts with 'js:')
+    if (expression.startsWith('js:')) {
+      try {
+        const jsExpression = javascriptService.parseJavaScriptExpression(expression);
+        if (jsExpression) {
+          // Update execution context with current variables
+          const context: JavaScriptExecutionContext = {
+            ...this.currentExecutionContext,
+            variables: this.getAllVariables()
+          };
+          return javascriptService.executeExpression(jsExpression, context);
+        }
+        return undefined;
+      } catch (error) {
+        console.warn(`Error resolving JavaScript expression '${expression}': ${error}`);
+        return undefined;
+      }
+    }
+
+    // Check if it's a Faker expression (starts with 'faker.')
+    if (expression.startsWith('faker.')) {
+      try {
+        return fakerService.parseFakerExpression(expression);
+      } catch (error) {
+        console.warn(`Error resolving Faker expression '${expression}': ${error}`);
+        return undefined;
+      }
+    }
+
     // First, tries to resolve as exported variable (suite.variable)
     if (expression.includes(".") && this.globalRegistry) {
       const exportedValue = this.globalRegistry.getExportedVariable(expression);

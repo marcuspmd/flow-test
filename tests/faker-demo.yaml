@@ -1,0 +1,110 @@
+suite_name: "Faker Integration Demo"
+node_id: "faker_demo"
+description: "Demonstrates Faker.js integration with dynamic data generation"
+base_url: "https://httpbin.org"
+
+# Optional Faker configuration
+faker:
+  locale: "pt_BR"
+  seed: 12345
+
+variables:
+  # Static variables
+  api_version: "v1"
+  test_env: "development"
+
+steps:
+  - name: "Test Faker person data"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        User-Agent: "FlowTest/{{api_version}}"
+      body:
+        # Faker person data
+        firstName: "{{faker.person.firstName}}"
+        lastName: "{{faker.person.lastName}}"
+        fullName: "{{faker.person.fullName}}"
+        email: "{{faker.internet.email}}"
+        phone: "{{faker.phone.number}}"
+        jobTitle: "{{faker.person.jobTitle}}"
+        
+        # Faker location data
+        city: "{{faker.location.city}}"
+        country: "{{faker.location.country}}"
+        streetAddress: "{{faker.location.streetAddress}}"
+        zipCode: "{{faker.location.zipCode}}"
+        
+        # Faker date/time data
+        birthDate: "{{faker.date.birthdate}}"
+        appointmentDate: "{{faker.date.future}}"
+        lastLogin: "{{faker.date.recent}}"
+        
+        # Faker lorem text
+        description: "{{faker.lorem.sentence}}"
+        notes: "{{faker.lorem.paragraph}}"
+        
+        # Faker numbers and identifiers
+        userId: "{{faker.number.int}}"
+        accountBalance: "{{faker.finance.amount}}"
+        currency: "{{faker.finance.currencyCode}}"
+        uuid: "{{faker.string.uuid}}"
+        
+        # Faker helpers with arrays (requires arguments)
+        status: "{{faker.helpers.arrayElement(['active', 'inactive', 'pending'])}}"
+        priority: "{{faker.helpers.arrayElement(['high', 'medium', 'low'])}}"
+        
+        # Faker boolean
+        isActive: "{{faker.datatype.boolean}}"
+        
+        # Mixed static and dynamic
+        environment: "{{test_env}}"
+        apiVersion: "{{api_version}}"
+        generatedAt: "{{faker.date.recent}}"
+        
+    assertions:
+      status_code:
+        equals: 200
+      body:
+        data:
+          firstName:
+            type: "string"
+          email:
+            contains: "@"
+          userId:
+            type: "number"
+          uuid:
+            regex: "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+
+  - name: "Test Faker with method arguments"
+    request:
+      method: POST 
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        # Faker with arguments (when supported)
+        randomText: "{{faker.lorem.words}}"
+        smallNumber: "{{faker.number.int}}"
+        companyName: "{{faker.company.name}}"
+        productName: "{{faker.commerce.productName}}"
+        price: "{{faker.commerce.price}}"
+    
+    assertions:
+      status_code:
+        equals: 200
+      body:
+        data:
+          randomText:
+            type: "string"
+          companyName:
+            type: "string"
+
+exports:
+  - generatedEmail
+  - generatedUserId
+
+capture:
+  generatedEmail: "json.data.email"
+  generatedUserId: "json.data.userId"

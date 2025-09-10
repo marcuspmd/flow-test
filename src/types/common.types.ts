@@ -280,3 +280,55 @@ export interface VariableContext {
   suite: Record<string, any>;
   runtime: Record<string, any>;
 }
+
+/**
+ * Configuration for Faker.js integration
+ * 
+ * @example
+ * ```yaml
+ * faker:
+ *   locale: "pt_BR"
+ *   seed: 12345
+ * ```
+ */
+export interface FakerConfig {
+  /** Locale for generated data (e.g., 'pt_BR', 'en_US') */
+  locale?: string;
+  /** Seed for reproducible data generation */
+  seed?: number;
+}
+
+/**
+ * Extended test suite with Faker configuration
+ */
+export interface TestSuiteWithFaker extends TestSuite {
+  /** Faker configuration for this suite */
+  faker?: FakerConfig;
+}
+
+/**
+ * Configuration for JavaScript expressions
+ * 
+ * @example
+ * ```yaml
+ * javascript:
+ *   timeout: 5000
+ *   enableConsole: true
+ * ```
+ */
+export interface JavaScriptConfig {
+  /** Execution timeout in milliseconds (default: 5000) */
+  timeout?: number;
+  /** Allow console.log in expressions (default: false) */
+  enableConsole?: boolean;
+  /** Memory limit in bytes (default: 8MB) */
+  maxMemory?: number;
+}
+
+/**
+ * Extended test suite with JavaScript configuration
+ */
+export interface TestSuiteWithJavaScript extends TestSuite {
+  /** JavaScript configuration for this suite */
+  javascript?: JavaScriptConfig;
+}
