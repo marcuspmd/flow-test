@@ -356,7 +356,7 @@ export class ReportingService {
         .assertion.fail { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
         .variables { background: #e7f3ff; padding: 10px; border-radius: 4px; margin: 10px 0; }
         .variables h5 { margin: 0 0 8px 0; color: #0066cc; font-size: 0.9em; }
-        .variable-item { font-family: monospace; font-size: 0.85em; margin: 2px 0; }
+        .variable-item { font-family: monospace; font-size: 0.85em; margin: 2px 0; word-wrap: break-word; overflow-wrap: break-word; white-space: pre-wrap; }
         .error-message { background: #f8d7da; color: #721c24; padding: 10px; border-radius: 4px; border: 1px solid #f5c6cb; margin: 10px 0; }
     </style>
     <script>
