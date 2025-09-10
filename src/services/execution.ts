@@ -305,10 +305,9 @@ export class ExecutionService {
           steps_results: [],
           error_message: `Unexpected error: ${error}`,
           variables_captured: this.getExportedVariables(test),
-          available_variables: this.filterAvailableVariables({
-            ...this.globalVariables.getAllVariables(),
-            ...this.globalVariables.getVariablesByScope("runtime"),
-          }),
+          available_variables: this.filterAvailableVariables(
+            this.globalVariables.getAllVariables()
+          ),
         };
 
         results.push(errorResult);
@@ -515,10 +514,9 @@ export class ExecutionService {
         success_rate: Math.round(successRate * 100) / 100,
         steps_results: stepResults,
         variables_captured: this.getExportedVariables(discoveredTest),
-        available_variables: this.filterAvailableVariables({
-          ...this.globalVariables.getAllVariables(),
-          ...this.globalVariables.getVariablesByScope("runtime"),
-        }),
+        available_variables: this.filterAvailableVariables(
+          this.globalVariables.getAllVariables()
+        ),
       };
 
       // Fires suite end hook
@@ -544,10 +542,9 @@ export class ExecutionService {
         steps_results: [],
         error_message: `Suite loading error: ${error}`,
         variables_captured: {},
-        available_variables: this.filterAvailableVariables({
-          ...this.globalVariables.getAllVariables(),
-          ...this.globalVariables.getVariablesByScope("runtime"),
-        }),
+        available_variables: this.filterAvailableVariables(
+          this.globalVariables.getAllVariables()
+        ),
       };
 
       return errorResult;
@@ -555,7 +552,7 @@ export class ExecutionService {
   }
 
   /**
-   * Filters out environment variables from available variables
+   * Filters out environment variables and duplicate exported variables from available variables
    */
   private filterAvailableVariables(
     variables: Record<string, any>
@@ -565,9 +562,27 @@ export class ExecutionService {
     // Get environment variables to exclude
     const envVarsToExclude = this.getEnvironmentVariablesToExclude();
 
+    // Get all exported variables (with namespaces) to identify duplicates
+    const exportedVariables = this.globalRegistry.getAllExportedVariables();
+    const exportedVariableNames = new Set(Object.keys(exportedVariables));
+
     for (const [key, value] of Object.entries(variables)) {
       // Skip if it's an environment variable
-      if (!envVarsToExclude.has(key)) {
+      if (envVarsToExclude.has(key)) {
+        continue;
+      }
+
+      // Check if this variable has a namespaced exported version
+      // If it does, skip the non-namespaced version
+      let hasNamespacedVersion = false;
+      for (const exportedVarName of exportedVariableNames) {
+        if (exportedVarName.endsWith(`.${key}`)) {
+          hasNamespacedVersion = true;
+          break;
+        }
+      }
+
+      if (!hasNamespacedVersion) {
         filtered[key] = value;
       }
     }
@@ -697,10 +712,9 @@ export class ExecutionService {
         response_details: httpResult.response_details,
         assertions_results: assertionResults,
         captured_variables: capturedVariables,
-        available_variables: this.filterAvailableVariables({
-          ...this.globalVariables.getAllVariables(),
-          ...this.globalVariables.getVariablesByScope("runtime"),
-        }),
+        available_variables: this.filterAvailableVariables(
+          this.globalVariables.getAllVariables()
+        ),
         error_message: httpResult.error_message,
       };
 
@@ -718,10 +732,9 @@ export class ExecutionService {
         duration_ms: stepDuration,
         error_message: `Step execution error: ${error}`,
         captured_variables: {},
-        available_variables: this.filterAvailableVariables({
-          ...this.globalVariables.getAllVariables(),
-          ...this.globalVariables.getVariablesByScope("runtime"),
-        }),
+        available_variables: this.filterAvailableVariables(
+          this.globalVariables.getAllVariables()
+        ),
       };
 
       // Fires step end hook even with error
@@ -786,9 +799,7 @@ export class ExecutionService {
 
     if (test.exports && test.exports.length > 0) {
       // Get exported variables from Global Registry
-      const allExportedVars = this.globalRegistry.getAllExportedVariables(
-        this.globalVariables.getVariablesByScope("runtime")
-      );
+      const allExportedVars = this.globalRegistry.getAllExportedVariables();
 
       for (const exportName of test.exports) {
         const namespacedKey = `${test.node_id}.${exportName}`;
@@ -804,17 +815,21 @@ export class ExecutionService {
   }
 
   /**
-   * Processes captured variables, applying namespace for exported variables
+   * Processes captured variables, optionally applying namespace for exported variables
    */
   private processCapturedVariables(
     capturedVariables: Record<string, any>,
-    suite: TestSuite
+    suite: TestSuite,
+    applyNamespace: boolean = false
   ): Record<string, any> {
     const processedVariables: Record<string, any> = {};
 
     for (const [variableName, value] of Object.entries(capturedVariables)) {
-      // Add all captured variables to runtime for interpolation in subsequent steps
-      processedVariables[variableName] = value;
+      const finalName = applyNamespace
+        ? `${suite.node_id}.${variableName}`
+        : variableName;
+
+      processedVariables[finalName] = value;
     }
 
     return processedVariables;

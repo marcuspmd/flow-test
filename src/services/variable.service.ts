@@ -198,11 +198,8 @@ export class VariableService {
     const allImported: Record<string, any> = {};
     for (const [flowName, variables] of Object.entries(this.context.imported)) {
       for (const [key, value] of Object.entries(variables)) {
-        // Adds with flow prefix and without prefix (for compatibility)
+        // Always use namespaced format for imported variables
         allImported[`${flowName}.${key}`] = value;
-        if (!(key in allImported)) {
-          allImported[key] = value;
-        }
       }
     }
     return allImported;

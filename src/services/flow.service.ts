@@ -164,18 +164,19 @@ export class FlowManager {
         interpolatedStep.assert = tempVariableService.interpolate(step.assert);
       }
 
-      // Modifies capture to include flow prefix in exported variables
+      // Modifies capture to include flow prefix for exported variables only
       if (step.capture) {
         const modifiedCapture: Record<string, string> = {};
         const exportedVars = flow.exports || [];
 
         for (const [varName, jmesPath] of Object.entries(step.capture)) {
-          // If the variable is in the exports list, creates the prefixed version too
           if (exportedVars.includes(varName)) {
+            // Only create namespaced version for exported variables
             modifiedCapture[`${flowImport.name}.${varName}`] = jmesPath;
+          } else {
+            // Keep original name for non-exported variables
+            modifiedCapture[varName] = jmesPath;
           }
-          // Keeps the original version too
-          modifiedCapture[varName] = jmesPath;
         }
 
         interpolatedStep.capture = modifiedCapture;
