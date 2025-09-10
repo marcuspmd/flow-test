@@ -11,6 +11,7 @@ export class GlobalVariablesService {
   private globalRegistry: GlobalRegistryService | null = null;
   private interpolationCache: Map<string, string> = new Map();
   private cacheEnabled: boolean = true;
+  private dependencies: string[] = []; // node_ids dos flows dependentes
 
   constructor(
     configManager: ConfigManager,
@@ -27,6 +28,14 @@ export class GlobalVariablesService {
   setGlobalRegistry(globalRegistry: GlobalRegistryService): void {
     this.globalRegistry = globalRegistry;
     this.clearCache(); // Clears cache as new variables may be available
+  }
+
+  /**
+   * Sets the dependencies for this flow (node_ids of dependent flows)
+   */
+  setDependencies(dependencies: string[]): void {
+    this.dependencies = dependencies;
+    this.clearCache(); // Clears cache as dependency resolution may change
   }
 
   /**
@@ -217,6 +226,23 @@ export class GlobalVariablesService {
     const baseName = parts[0];
 
     let value = this.getVariable(baseName);
+
+    // If not found in regular scopes, try to resolve from dependent flows' exports
+    if (
+      value === undefined &&
+      this.globalRegistry &&
+      this.dependencies.length > 0
+    ) {
+      for (const dependencyNodeId of this.dependencies) {
+        const exportedValue = this.globalRegistry.getExportedVariable(
+          `${dependencyNodeId}.${baseName}`
+        );
+        if (exportedValue !== undefined) {
+          value = exportedValue;
+          break;
+        }
+      }
+    }
 
     // Navigates through path if it exists
     for (let i = 1; i < parts.length && value !== undefined; i++) {

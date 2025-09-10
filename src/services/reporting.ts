@@ -312,7 +312,7 @@ export class ReportingService {
     <title>Flow Test Report - ${this.escapeHtml(result.project_name)}</title>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; margin: 40px; background: #f8f9fa; }
-        .container { max-width: 1200px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .container { max-width: 1400px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); overflow-x: auto; }
         .header { border-bottom: 2px solid #e9ecef; padding-bottom: 20px; margin-bottom: 30px; }
         .title { color: #343a40; margin: 0; font-size: 2.5em; font-weight: 300; }
         .subtitle { color: #6c757d; margin: 5px 0 0 0; font-size: 1.2em; }
@@ -321,13 +321,17 @@ export class ReportingService {
         .metric-value { font-size: 2em; font-weight: bold; color: ${statusColor}; margin: 0; }
         .metric-label { color: #6c757d; margin: 5px 0 0 0; font-size: 0.9em; text-transform: uppercase; letter-spacing: 0.5px; }
         .suite { border: 1px solid #e9ecef; border-radius: 6px; margin: 15px 0; overflow: hidden; }
-        .suite-header { padding: 15px 20px; background: #f8f9fa; border-bottom: 1px solid #e9ecef; display: flex; justify-content: space-between; align-items: center; }
+        .suite-header { padding: 15px 20px; background: #f8f9fa; border-bottom: 1px solid #e9ecef; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
         .suite-name { font-weight: 600; color: #343a40; }
         .suite-status { padding: 4px 12px; border-radius: 20px; font-size: 0.8em; font-weight: 500; }
         .status-success { background: #d4edda; color: #155724; }
         .status-failure { background: #f8d7da; color: #721c24; }
         .status-skipped { background: #fff3cd; color: #856404; }
         .suite-details { padding: 15px 20px; background: white; }
+        .suite-toggle { font-size: 1.2em; color: #6c757d; transition: transform 0.2s; }
+        .suite-toggle.expanded { transform: rotate(90deg); }
+        .suite-content { display: none; }
+        .suite-content.expanded { display: block; }
         .performance { background: #e3f2fd; padding: 20px; border-radius: 6px; margin: 30px 0; }
         .performance h3 { margin-top: 0; color: #1976d2; }
         .perf-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-top: 15px; }
@@ -335,7 +339,50 @@ export class ReportingService {
         .perf-value { font-size: 1.4em; font-weight: bold; color: #1976d2; }
         .perf-label { font-size: 0.9em; color: #666; }
         .timestamp { color: #6c757d; font-size: 0.9em; margin-top: 20px; text-align: center; }
+        .step { border: 1px solid #e9ecef; border-radius: 4px; margin: 10px 0; background: #fafafa; }
+        .step-header { padding: 10px 15px; background: #f8f9fa; border-bottom: 1px solid #e9ecef; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+        .step-name { font-weight: 500; color: #343a40; }
+        .step-status { padding: 2px 8px; border-radius: 12px; font-size: 0.75em; font-weight: 500; }
+        .step-toggle { font-size: 1em; color: #6c757d; transition: transform 0.2s; }
+        .step-toggle.expanded { transform: rotate(90deg); }
+        .step-content { display: none; padding: 15px; }
+        .step-content.expanded { display: block; }
+        .request-response { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 15px 0; }
+        .request, .response { background: #f8f9fa; padding: 15px; border-radius: 4px; border: 1px solid #e9ecef; overflow: hidden; }
+        .request h4, .response h4 { margin: 0 0 10px 0; color: #495057; font-size: 1em; }
+        .code-block { background: #2d3748; color: #e2e8f0; padding: 10px; border-radius: 4px; font-family: 'Monaco', 'Menlo', monospace; font-size: 0.85em; overflow-x: auto; overflow-y: auto; max-height: 400px; white-space: pre-wrap; word-break: break-all; line-height: 1.4; }
+        .assertion { margin: 5px 0; padding: 8px; border-radius: 4px; font-size: 0.9em; }
+        .assertion.pass { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .assertion.fail { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .variables { background: #e7f3ff; padding: 10px; border-radius: 4px; margin: 10px 0; }
+        .variables h5 { margin: 0 0 8px 0; color: #0066cc; font-size: 0.9em; }
+        .variable-item { font-family: monospace; font-size: 0.85em; margin: 2px 0; }
+        .error-message { background: #f8d7da; color: #721c24; padding: 10px; border-radius: 4px; border: 1px solid #f5c6cb; margin: 10px 0; }
     </style>
+    <script>
+        function toggleSuite(element) {
+            // Navegar da suite-header para suite-content
+            const suiteElement = element.closest('.suite');
+            const content = suiteElement.querySelector('.suite-content');
+            const toggle = suiteElement.querySelector('.suite-toggle');
+
+            if (content && toggle) {
+                content.classList.toggle('expanded');
+                toggle.classList.toggle('expanded');
+            }
+        }
+
+        function toggleStep(element) {
+            const stepElement = element.closest('.step');
+            const content = stepElement.querySelector('.step-content');
+            const toggle = stepElement.querySelector('.step-toggle');
+
+            if (content && toggle) {
+                content.classList.toggle('expanded');
+                toggle.classList.toggle('expanded');
+            }
+        }
+    </script>
 </head>
 <body>
     <div class="container">
@@ -427,6 +474,176 @@ export class ReportingService {
   }
 
   /**
+   * Builds step section for HTML
+   */
+  private buildStepSection(step: any, index: number): string {
+    const statusClass = `status-${step.status}`;
+    const statusIcon =
+      step.status === "success"
+        ? "✅"
+        : step.status === "failure"
+        ? "❌"
+        : "⏭️";
+
+    const requestHtml = step.request_details
+      ? this.buildRequestSection(step.request_details)
+      : "";
+    const responseHtml = step.response_details
+      ? this.buildResponseSection(step.response_details)
+      : "";
+    const assertionsHtml = step.assertions_results
+      ? this.buildAssertionsSection(step.assertions_results)
+      : "";
+    const variablesHtml = step.captured_variables
+      ? this.buildVariablesSection(step.captured_variables)
+      : "";
+    const errorHtml = step.error_message
+      ? `<div class="error-message"><strong>Error:</strong> ${this.escapeHtml(
+          step.error_message
+        )}</div>`
+      : "";
+
+    const requestResponseHtml =
+      requestHtml || responseHtml
+        ? `
+        <div class="request-response">
+            ${requestHtml}
+            ${responseHtml}
+        </div>`
+        : "";
+
+    return `
+        <div class="step">
+            <div class="step-header" onclick="toggleStep(this)">
+                <div class="step-name">${index + 1}. ${this.escapeHtml(
+      step.step_name
+    )}</div>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div class="step-status ${statusClass}">${statusIcon} ${
+      step.status
+    }</div>
+                    <div class="step-toggle">▶</div>
+                </div>
+            </div>
+            <div class="step-content">
+                <div style="margin-bottom: 10px;">
+                    <strong>Duration:</strong> ${step.duration_ms}ms
+                </div>
+                ${errorHtml}
+                ${requestResponseHtml}
+                ${assertionsHtml}
+                ${variablesHtml}
+            </div>
+        </div>`;
+  }
+
+  /**
+   * Builds request section for HTML
+   */
+  private buildRequestSection(request: any): string {
+    const headers = request.headers
+      ? Object.entries(request.headers)
+          .map(([k, v]) => `${k}: ${v}`)
+          .join("\n")
+      : "";
+    const body = request.body ? JSON.stringify(request.body, null, 2) : "";
+
+    return `
+        <div class="request">
+            <h4>📤 Request</h4>
+            <div><strong>Method:</strong> ${request.method}</div>
+            <div><strong>URL:</strong> ${this.escapeHtml(request.url)}</div>
+            ${
+              headers
+                ? `<div><strong>Headers:</strong></div><div class="code-block">${this.escapeHtml(
+                    headers
+                  )}</div>`
+                : ""
+            }
+            ${
+              body
+                ? `<div><strong>Body:</strong></div><div class="code-block">${this.escapeHtml(
+                    body
+                  )}</div>`
+                : ""
+            }
+        </div>`;
+  }
+
+  /**
+   * Builds response section for HTML
+   */
+  private buildResponseSection(response: any): string {
+    const headers = Object.entries(response.headers)
+      .map(([k, v]) => `${k}: ${v}`)
+      .join("\n");
+    const body =
+      typeof response.body === "string"
+        ? response.body
+        : JSON.stringify(response.body, null, 2);
+
+    return `
+        <div class="response">
+            <h4>📥 Response</h4>
+            <div><strong>Status:</strong> ${response.status_code}</div>
+            <div><strong>Size:</strong> ${response.size_bytes} bytes</div>
+            <div><strong>Headers:</strong></div>
+            <div class="code-block">${this.escapeHtml(headers)}</div>
+            <div><strong>Body:</strong></div>
+            <div class="code-block">${this.escapeHtml(body)}</div>
+        </div>`;
+  }
+
+  /**
+   * Builds assertions section for HTML
+   */
+  private buildAssertionsSection(assertions: any[]): string {
+    if (assertions.length === 0) return "";
+
+    const assertionsHtml = assertions
+      .map(
+        (assertion) => `
+        <div class="assertion ${assertion.passed ? "pass" : "fail"}">
+            <strong>${this.escapeHtml(assertion.field)}:</strong>
+            Expected: ${this.escapeHtml(JSON.stringify(assertion.expected))}
+            Actual: ${this.escapeHtml(JSON.stringify(assertion.actual))}
+            ${
+              assertion.message
+                ? `<br><em>${this.escapeHtml(assertion.message)}</em>`
+                : ""
+            }
+        </div>`
+      )
+      .join("");
+
+    return `
+        <div>
+            <h4 style="margin: 15px 0 10px 0; color: #495057;">🧪 Assertions</h4>
+            ${assertionsHtml}
+        </div>`;
+  }
+
+  /**
+   * Builds variables section for HTML
+   */
+  private buildVariablesSection(variables: Record<string, any>): string {
+    const variablesHtml = Object.entries(variables)
+      .map(
+        ([key, value]) => `
+        <div class="variable-item"><strong>${key}:</strong> ${this.escapeHtml(
+          JSON.stringify(value)
+        )}</div>`
+      )
+      .join("");
+
+    return `
+        <div class="variables">
+            <h5>📋 Captured Variables</h5>
+            ${variablesHtml}
+        </div>`;
+  }
+
+  /**
    * Builds suite section for HTML
    */
   private buildSuiteSection(suite: any): string {
@@ -438,15 +655,24 @@ export class ReportingService {
         ? "❌"
         : "⏭️";
 
+    const stepsHtml = suite.steps_results
+      ? suite.steps_results
+          .map((step: any, index: number) => this.buildStepSection(step, index))
+          .join("")
+      : "";
+
     return `
         <div class="suite">
-            <div class="suite-header">
+            <div class="suite-header" onclick="toggleSuite(this)">
                 <div class="suite-name">${this.escapeHtml(
                   suite.suite_name
                 )}</div>
-                <div class="suite-status ${statusClass}">${statusIcon} ${
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div class="suite-status ${statusClass}">${statusIcon} ${
       suite.status
     }</div>
+                    <div class="suite-toggle">▶</div>
+                </div>
             </div>
             <div class="suite-details">
                 <strong>Duration:</strong> ${suite.duration_ms}ms<br>
@@ -456,11 +682,17 @@ export class ReportingService {
                 <strong>File:</strong> ${this.escapeHtml(suite.file_path)}
                 ${
                   suite.error_message
-                    ? `<br><strong>Error:</strong> ${this.escapeHtml(
+                    ? `<br><div class="error-message"><strong>Error:</strong> ${this.escapeHtml(
                         suite.error_message
-                      )}`
+                      )}</div>`
                     : ""
                 }
+            </div>
+            <div class="suite-content">
+                <div style="padding: 15px 20px; border-top: 1px solid #e9ecef;">
+                    <h4 style="margin: 0 0 15px 0; color: #495057;">Test Steps</h4>
+                    ${stepsHtml}
+                </div>
             </div>
         </div>`;
   }

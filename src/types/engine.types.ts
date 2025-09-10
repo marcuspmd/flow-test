@@ -282,8 +282,10 @@ export interface FlowImport {
  * ```
  */
 export interface FlowDependency {
-  /** Path to the dependency flow */
-  path: string;
+  /** Path to the dependency flow or node_id for direct reference */
+  path?: string;
+  /** Node ID for direct reference to another test suite */
+  node_id?: string;
   /** Whether this dependency is required for execution */
   required?: boolean;
   /** Cache configuration: true, false, or TTL in seconds */
@@ -320,6 +322,8 @@ export interface FlowDependency {
 export interface DependencyResult {
   /** Path to the executed dependency flow */
   flowPath: string;
+  /** Node ID of the executed dependency */
+  nodeId: string;
   /** Name of the executed suite */
   suiteName: string;
   /** Whether the dependency executed successfully */

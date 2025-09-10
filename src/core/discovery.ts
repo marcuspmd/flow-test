@@ -1,9 +1,13 @@
-import fs from 'fs';
-import path from 'path';
-import fg from 'fast-glob';
-import yaml from 'js-yaml';
-import { ConfigManager } from './config';
-import { DiscoveredTest, TestSuite, FlowDependency } from '../types/engine.types';
+import fs from "fs";
+import path from "path";
+import fg from "fast-glob";
+import yaml from "js-yaml";
+import { ConfigManager } from "./config";
+import {
+  DiscoveredTest,
+  TestSuite,
+  FlowDependency,
+} from "../types/engine.types";
 
 /**
  * Serviço de descoberta de testes
@@ -34,7 +38,7 @@ export class TestDiscovery {
       const files = await fg(fullPattern, {
         ignore: config.discovery!.exclude,
         absolute: true,
-        onlyFiles: true
+        onlyFiles: true,
       });
 
       for (const filePath of files) {
@@ -44,7 +48,9 @@ export class TestDiscovery {
             discoveredTests.push(test);
           }
         } catch (error) {
-          console.warn(`⚠️  Warning: Failed to parse test file ${filePath}: ${error}`);
+          console.warn(
+            `⚠️  Warning: Failed to parse test file ${filePath}: ${error}`
+          );
         }
       }
     }
@@ -61,13 +67,17 @@ export class TestDiscovery {
   /**
    * Analisa um arquivo de teste individual
    */
-  private async parseTestFile(filePath: string): Promise<DiscoveredTest | null> {
+  private async parseTestFile(
+    filePath: string
+  ): Promise<DiscoveredTest | null> {
     try {
-      const fileContent = fs.readFileSync(filePath, 'utf8');
+      const fileContent = fs.readFileSync(filePath, "utf8");
       const suite = yaml.load(fileContent) as TestSuite;
 
       if (!suite || !suite.suite_name || !suite.node_id) {
-        console.warn(`⚠️  Warning: Invalid test suite in ${filePath} - missing suite_name or node_id`);
+        console.warn(
+          `⚠️  Warning: Invalid test suite in ${filePath} - missing suite_name or node_id`
+        );
         return null;
       }
 
@@ -75,11 +85,14 @@ export class TestDiscovery {
         file_path: filePath,
         node_id: suite.node_id,
         suite_name: suite.suite_name,
-        priority: suite.metadata?.priority || this.inferPriorityFromName(suite.suite_name),
+        priority:
+          suite.metadata?.priority ||
+          this.inferPriorityFromName(suite.suite_name),
         dependencies: this.extractDependencies(suite),
         depends: this.extractFlowDependencies(suite),
         exports: this.extractExports(suite),
-        estimated_duration: suite.metadata?.estimated_duration_ms || this.estimateDuration(suite)
+        estimated_duration:
+          suite.metadata?.estimated_duration_ms || this.estimateDuration(suite),
       };
 
       return discoveredTest;
@@ -93,24 +106,36 @@ export class TestDiscovery {
    */
   private inferPriorityFromName(suiteName: string): string {
     const name = suiteName.toLowerCase();
-    
+
     // Palavras-chave que indicam prioridade crítica
-    if (name.includes('critical') || name.includes('smoke') || name.includes('health')) {
-      return 'critical';
+    if (
+      name.includes("critical") ||
+      name.includes("smoke") ||
+      name.includes("health")
+    ) {
+      return "critical";
     }
-    
+
     // Palavras-chave que indicam alta prioridade
-    if (name.includes('auth') || name.includes('login') || name.includes('core')) {
-      return 'high';
+    if (
+      name.includes("auth") ||
+      name.includes("login") ||
+      name.includes("core")
+    ) {
+      return "high";
     }
-    
+
     // Palavras-chave que indicam baixa prioridade
-    if (name.includes('edge') || name.includes('optional') || name.includes('experimental')) {
-      return 'low';
+    if (
+      name.includes("edge") ||
+      name.includes("optional") ||
+      name.includes("experimental")
+    ) {
+      return "low";
     }
-    
+
     // Padrão é média prioridade
-    return 'medium';
+    return "medium";
   }
 
   /**
@@ -126,7 +151,7 @@ export class TestDiscovery {
 
     // Dependências implícitas através de imports
     if (suite.imports) {
-      suite.imports.forEach(imp => {
+      suite.imports.forEach((imp) => {
         dependencies.push(imp.name);
       });
     }
@@ -143,18 +168,6 @@ export class TestDiscovery {
     // Dependências diretas especificadas na suite
     if (suite.depends) {
       dependencies.push(...suite.depends);
-    }
-
-    // Converte dependências do formato simples (array de strings) para FlowDependency
-    if (Array.isArray((suite as any).depends)) {
-      const simpleDeps = (suite as any).depends as string[];
-      for (const dep of simpleDeps) {
-        dependencies.push({
-          path: dep,
-          required: true, // Assume required by default
-          cache: true
-        });
-      }
     }
 
     return dependencies;
@@ -187,7 +200,7 @@ export class TestDiscovery {
    */
   private removeDuplicates(tests: DiscoveredTest[]): DiscoveredTest[] {
     const seen = new Set<string>();
-    return tests.filter(test => {
+    return tests.filter((test) => {
       if (seen.has(test.file_path)) {
         return false;
       }
@@ -202,25 +215,27 @@ export class TestDiscovery {
   private resolveDependencies(tests: DiscoveredTest[]): DiscoveredTest[] {
     // Cria mapa de nodeId -> teste para lookup rápido
     const testMap = new Map<string, DiscoveredTest>();
-    tests.forEach(test => {
+    tests.forEach((test) => {
       testMap.set(test.node_id, test);
     });
 
     // Valida dependências e atualiza lista
-    return tests.map(test => {
+    return tests.map((test) => {
       if (test.dependencies && test.dependencies.length > 0) {
         // Filtra dependências que realmente existem
-        const validDependencies = test.dependencies.filter(dep => {
+        const validDependencies = test.dependencies.filter((dep) => {
           const exists = testMap.has(dep);
           if (!exists) {
-            console.warn(`⚠️  Warning: Dependency '${dep}' not found for test '${test.node_id}' (${test.suite_name})`);
+            console.warn(
+              `⚠️  Warning: Dependency '${dep}' not found for test '${test.node_id}' (${test.suite_name})`
+            );
           }
           return exists;
         });
 
         return {
           ...test,
-          dependencies: validDependencies
+          dependencies: validDependencies,
         };
       }
       return test;
@@ -236,12 +251,12 @@ export class TestDiscovery {
       by_priority: {} as Record<string, number>,
       total_estimated_duration: 0,
       with_dependencies: 0,
-      files_scanned: 0
+      files_scanned: 0,
     };
 
-    tests.forEach(test => {
+    tests.forEach((test) => {
       // Contagem por prioridade
-      const priority = test.priority || 'medium';
+      const priority = test.priority || "medium";
       stats.by_priority[priority] = (stats.by_priority[priority] || 0) + 1;
 
       // Duração total estimada
@@ -261,12 +276,11 @@ export class TestDiscovery {
    */
   async isValidTestFile(filePath: string): Promise<boolean> {
     try {
-      const fileContent = fs.readFileSync(filePath, 'utf8');
-      const firstLines = fileContent.split('\n').slice(0, 10).join('\n');
-      
+      const fileContent = fs.readFileSync(filePath, "utf8");
+      const firstLines = fileContent.split("\n").slice(0, 10).join("\n");
+
       // Verifica se tem estrutura básica de um teste
-      return firstLines.includes('suite_name') && 
-             firstLines.includes('steps');
+      return firstLines.includes("suite_name") && firstLines.includes("steps");
     } catch (error) {
       return false;
     }
@@ -279,11 +293,11 @@ export class TestDiscovery {
     const tests = await this.discoverTests();
     const groups = new Map<string, DiscoveredTest[]>();
 
-    tests.forEach(test => {
+    tests.forEach((test) => {
       // Agrupa por diretório
       const dir = path.dirname(test.file_path);
       const dirName = path.basename(dir);
-      
+
       if (!groups.has(dirName)) {
         groups.set(dirName, []);
       }
@@ -298,19 +312,20 @@ export class TestDiscovery {
    */
   findOrphanTests(tests: DiscoveredTest[]): DiscoveredTest[] {
     const allDependencies = new Set<string>();
-    
+
     // Coleta todas as dependências
-    tests.forEach(test => {
+    tests.forEach((test) => {
       if (test.dependencies) {
-        test.dependencies.forEach(dep => allDependencies.add(dep));
+        test.dependencies.forEach((dep) => allDependencies.add(dep));
       }
     });
 
     // Encontra testes que não têm dependências E ninguém depende deles
-    return tests.filter(test => {
-      const hasNoDependencies = !test.dependencies || test.dependencies.length === 0;
+    return tests.filter((test) => {
+      const hasNoDependencies =
+        !test.dependencies || test.dependencies.length === 0;
       const nobodyDependsOnIt = !allDependencies.has(test.node_id);
-      
+
       return hasNoDependencies && nobodyDependsOnIt;
     });
   }

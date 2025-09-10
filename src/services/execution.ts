@@ -132,7 +132,8 @@ export class ExecutionService {
   private registerSuitesWithExports(tests: DiscoveredTest[]): void {
     for (const test of tests) {
       if (test.exports && test.exports.length > 0) {
-        this.globalRegistry.registerSuite(
+        this.globalRegistry.registerNode(
+          test.node_id,
           test.suite_name,
           test.exports,
           test.file_path
@@ -195,6 +196,7 @@ export class ExecutionService {
         // Marks as resolved in dependency graph
         const dependencyResult: DependencyResult = {
           flowPath: test.file_path,
+          nodeId: test.node_id,
           suiteName: test.suite_name,
           success: result.status === "success",
           executionTime: result.duration_ms,
@@ -401,6 +403,14 @@ export class ExecutionService {
       // Configures suite variables
       if (suite.variables) {
         this.globalVariables.setSuiteVariables(suite.variables);
+      }
+
+      // Configures dependencies for variable resolution
+      if (discoveredTest.depends && discoveredTest.depends.length > 0) {
+        const dependencyNodeIds = discoveredTest.depends
+          .map((dep) => (typeof dep === "string" ? dep : dep.node_id))
+          .filter((nodeId): nodeId is string => nodeId !== undefined);
+        this.globalVariables.setDependencies(dependencyNodeIds);
       }
 
       // Interpolates and configures suite base_url if specified
@@ -656,7 +666,7 @@ export class ExecutionService {
       const value = result.variables_captured[exportName];
       if (value !== undefined) {
         this.globalRegistry.setExportedVariable(
-          test.suite_name,
+          test.node_id,
           exportName,
           value
         );
@@ -676,7 +686,7 @@ export class ExecutionService {
       cachedResult.exportedVariables
     )) {
       this.globalRegistry.setExportedVariable(
-        cachedResult.suiteName,
+        cachedResult.nodeId,
         variableName,
         value
       );

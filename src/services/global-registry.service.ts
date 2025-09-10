@@ -148,17 +148,6 @@ export class GlobalRegistryService {
   }
 
   /**
-   * @deprecated Use registerNode instead
-   * Backwards compatibility method
-   */
-  registerSuite(suiteName: string, exports: string[], filePath: string): void {
-    console.warn(
-      "registerSuite is deprecated. Use registerNode(nodeId, suiteName, exports, filePath) instead."
-    );
-    this.registerNode(suiteName, suiteName, exports, filePath);
-  }
-
-  /**
    * Sets an exported variable for a node
    */
   setExportedVariable(nodeId: string, variableName: string, value: any): void {
@@ -258,17 +247,6 @@ export class GlobalRegistryService {
   }
 
   /**
-   * @deprecated Use getNodeVariables instead
-   * Backwards compatibility method
-   */
-  getSuiteVariables(suiteName: string): Record<string, any> {
-    console.warn(
-      "getSuiteVariables is deprecated. Use getNodeVariables instead."
-    );
-    return this.getNodeVariables(suiteName);
-  }
-
-  /**
    * Gets all exported variables with full namespace
    */
   getAllExportedVariables(): Record<string, any> {
@@ -325,39 +303,6 @@ export class GlobalRegistryService {
   }
 
   /**
-   * @deprecated Use getRegisteredNodes instead
-   */
-  getRegisteredSuites(): string[] {
-    console.warn(
-      "getRegisteredSuites is deprecated. Use getRegisteredNodes instead."
-    );
-    return this.getRegisteredNodes();
-  }
-
-  /**
-   * @deprecated Use getNodeInfo instead
-   */
-  getSuiteInfo(suiteName: string): {
-    suiteName: string;
-    exports: string[];
-    filePath: string;
-    variableCount: number;
-    lastUpdated: Date;
-  } | null {
-    console.warn("getSuiteInfo is deprecated. Use getNodeInfo instead.");
-    const nodeInfo = this.getNodeInfo(suiteName);
-    if (!nodeInfo) return null;
-
-    return {
-      suiteName: nodeInfo.suiteName,
-      exports: nodeInfo.exports,
-      filePath: nodeInfo.filePath,
-      variableCount: nodeInfo.variableCount,
-      lastUpdated: nodeInfo.lastUpdated,
-    };
-  }
-
-  /**
    * Removes a node from the registry
    */
   unregisterNode(nodeId: string): void {
@@ -400,24 +345,6 @@ export class GlobalRegistryService {
     this.logger.info(
       `Cleared variables for node '${nodeId}' (${namespace.suiteName})`
     );
-  }
-
-  /**
-   * @deprecated Use unregisterNode instead
-   */
-  unregisterSuite(suiteName: string): void {
-    console.warn("unregisterSuite is deprecated. Use unregisterNode instead.");
-    this.unregisterNode(suiteName);
-  }
-
-  /**
-   * @deprecated Use clearNodeVariables instead
-   */
-  clearSuiteVariables(suiteName: string): void {
-    console.warn(
-      "clearSuiteVariables is deprecated. Use clearNodeVariables instead."
-    );
-    this.clearNodeVariables(suiteName);
   }
 
   /**

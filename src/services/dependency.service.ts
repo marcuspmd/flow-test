@@ -53,17 +53,28 @@ export class DependencyService {
       // Process new format dependencies
       if (test.depends) {
         for (const dependency of test.depends) {
-          const dependencyNodeId = this.extractNodeIdFromPath(
-            dependency.path
-          );
+          let dependencyNodeId: string | null = null;
+
+          // Handle different dependency formats
+          if (typeof dependency === "string") {
+            // Simple string format: "auth"
+            dependencyNodeId = dependency;
+          } else if (typeof dependency === "object" && dependency.node_id) {
+            // Object format with node_id: { node_id: "auth" }
+            dependencyNodeId = dependency.node_id;
+          } else if (typeof dependency === "object" && dependency.path) {
+            // Legacy path format: { path: "./auth-flow.yaml" }
+            dependencyNodeId = this.extractNodeIdFromPath(dependency.path);
+          }
+
           if (dependencyNodeId && this.graph.has(dependencyNodeId)) {
             node.dependencies.add(dependencyNodeId);
-            this.graph
-              .get(dependencyNodeId)!
-              .dependents.add(test.node_id);
+            this.graph.get(dependencyNodeId)!.dependents.add(test.node_id);
           } else {
             console.warn(
-              `⚠️  Dependency '${dependency.path}' not found for test '${test.node_id}' (${test.suite_name})`
+              `⚠️  Dependency '${JSON.stringify(
+                dependency
+              )}' not found for test '${test.node_id}' (${test.suite_name})`
             );
           }
         }
@@ -370,8 +381,7 @@ export class DependencyService {
 
     let maxDepth = 0;
     for (const depId of node.dependencies) {
-      const depth =
-        1 + this.calculateDependencyDepth(depId, new Set(visited));
+      const depth = 1 + this.calculateDependencyDepth(depId, new Set(visited));
       maxDepth = Math.max(maxDepth, depth);
     }
 
