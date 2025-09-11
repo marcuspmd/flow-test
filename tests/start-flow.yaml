@@ -2,6 +2,11 @@
 node_id: "httpbin-test"
 suite_name: "Fluxo de Teste com httpbin.org"
 
+metadata:
+  priority: "medium"
+  tags: ["basic", "smoke", "httpbin", "getting-started"]
+  description: "Basic flow test demonstrating core engine functionality"
+
 # URL base para todas as requisições.
 base_url: "{{httpbin_url}}"
 

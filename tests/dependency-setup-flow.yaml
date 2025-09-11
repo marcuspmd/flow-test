@@ -1,0 +1,83 @@
+node_id: "dependency-setup"
+suite_name: "Dependency Setup Flow"
+description: "Sets up authentication and basic configuration for dependency testing"
+base_url: "http://localhost:3000"
+
+metadata:
+  priority: "high"
+  tags: ["dependency", "setup", "auth"]
+  estimated_duration_ms: 3000
+
+variables:
+  auth_username: "test_user"
+  auth_password: "secure_password"
+  api_version: "v2"
+
+steps:
+  - name: "Initialize authentication"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        username: "{{auth_username}}"
+        password: "{{auth_password}}"
+        action: "login"
+    assert:
+      status_code: 200
+      body:
+        json:
+          username:
+            equals: "{{auth_username}}"
+    capture:
+      auth_token: "body.json.username"  # Simulating token capture
+      session_id: "body.origin"
+    metadata:
+      description: "Creates authentication session for dependent tests"
+
+  - name: "Setup API configuration"
+    request:
+      method: "PUT"
+      url: "/put"
+      headers:
+        Content-Type: "application/json"
+        Authorization: "Bearer {{auth_token}}"
+      body:
+        api_version: "{{api_version}}"
+        environment: "test"
+        configured: true
+    assert:
+      status_code: 200
+      body:
+        json:
+          api_version:
+            equals: "{{api_version}}"
+          configured:
+            equals: true
+    capture:
+      config_id: "body.json.api_version"
+      setup_timestamp: "body.json.configured"
+
+  - name: "Verify setup completion"
+    request:
+      method: "GET"
+      url: "/get"
+      headers:
+        Authorization: "Bearer {{auth_token}}"
+        X-Config-ID: "{{config_id}}"
+    assert:
+      status_code: 200
+      body:
+        headers:
+          Authorization:
+            contains: "{{auth_token}}"
+    metadata:
+      description: "Verifies that setup was completed successfully"
+      continue_on_failure: true
+
+exports:
+  - auth_token
+  - session_id
+  - config_id
+  - setup_timestamp

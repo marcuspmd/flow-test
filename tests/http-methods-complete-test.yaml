@@ -1,0 +1,145 @@
+node_id: "http-methods-complete"
+suite_name: "Complete HTTP Methods Test Suite"
+description: "Comprehensive test coverage for all supported HTTP methods including HEAD and OPTIONS"
+base_url: "http://localhost:3000"
+
+metadata:
+  priority: "high"
+  tags: ["http", "methods", "regression"]
+  estimated_duration_ms: 8000
+
+variables:
+  test_data: "Complete HTTP methods test"
+  api_version: "v1"
+
+steps:
+  - name: "Test GET method"
+    request:
+      method: "GET"
+      url: "/get"
+      headers:
+        User-Agent: "FlowTestEngine/2.0"
+    assert:
+      status_code: 200
+      headers:
+        content-type:
+          contains: "application/json"
+      body:
+        url:
+          contains: "httpbin.org/get"
+    capture:
+      get_response_url: "body.url"
+
+  - name: "Test POST method"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        message: "{{test_data}}"
+        version: "{{api_version}}"
+    assert:
+      status_code: 200
+      body:
+        json:
+          message:
+            equals: "{{test_data}}"
+
+  - name: "Test PUT method"
+    request:
+      method: "PUT"
+      url: "/put"
+      headers:
+        Content-Type: "application/json"
+      body:
+        action: "update"
+        data: "{{test_data}}"
+    assert:
+      status_code: 200
+      body:
+        json:
+          action:
+            equals: "update"
+
+  - name: "Test DELETE method"
+    request:
+      method: "DELETE"
+      url: "/delete"
+    assert:
+      status_code: 200
+      body:
+        url:
+          contains: "/delete"
+
+  - name: "Test PATCH method"
+    request:
+      method: "PATCH"
+      url: "/patch"
+      headers:
+        Content-Type: "application/json"
+      body:
+        operation: "patch"
+        value: "{{test_data}}"
+    assert:
+      status_code: 200
+      body:
+        json:
+          operation:
+            equals: "patch"
+
+  - name: "Test HEAD method"
+    request:
+      method: "HEAD"
+      url: "/status/200"
+    assert:
+      status_code: 200
+      headers:
+        content-type:
+          exists: true
+      # HEAD responses should have no body
+      body:
+        equals: null
+    metadata:
+      description: "HEAD method should return headers without body content"
+
+  - name: "Test OPTIONS method"
+    request:
+      method: "OPTIONS"
+      url: "/status/200"
+    assert:
+      status_code: 200
+      headers:
+        allow:
+          exists: true
+    metadata:
+      description: "OPTIONS method should return allowed methods in Allow header"
+
+  - name: "Test HEAD method with different endpoint"
+    request:
+      method: "HEAD"
+      url: "/json"
+    assert:
+      status_code: 200
+      headers:
+        content-length:
+          exists: true
+        content-type:
+          contains: "application/json"
+    metadata:
+      description: "HEAD should return same headers as GET but without body"
+
+  - name: "Test OPTIONS method with CORS"
+    request:
+      method: "OPTIONS"
+      url: "/get"
+      headers:
+        Origin: "https://example.com"
+        Access-Control-Request-Method: "GET"
+    assert:
+      status_code: 200
+      headers:
+        access-control-allow-origin:
+          exists: true
+    metadata:
+      description: "OPTIONS should handle CORS preflight requests"

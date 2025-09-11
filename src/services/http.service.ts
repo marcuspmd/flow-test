@@ -47,7 +47,7 @@ export class HttpService {
    * const service = new HttpService();
    * ```
    */
-  constructor(baseUrl?: string, timeout: number = 30000) {
+  constructor(baseUrl?: string, timeout: number = 60000) {
     this.baseUrl = baseUrl;
     this.timeout = timeout;
   }

@@ -203,5 +203,8 @@ export interface EngineExecutionOptions {
     suite_names?: string[];
     tags?: string[];
   };
+  logging?: {
+    enabled?: boolean;
+  };
   dry_run?: boolean;
 }

@@ -1,0 +1,220 @@
+node_id: "logging-system-test"
+suite_name: "Automatic Logging System Test"
+description: "Tests automatic log generation, --no-log flag, and log file format verification"
+base_url: "http://localhost:3000"
+
+metadata:
+  priority: "medium"
+  tags: ["logging", "system", "cli", "verification"]
+  estimated_duration_ms: 4000
+  description: "Validates automatic logging functionality and CLI logging options"
+
+variables:
+  log_test_suite: "logging-system-verification"
+  test_execution_id: "log-test-{{$faker.uuid}}"
+  log_data_marker: "AUTO_LOG_TEST_MARKER"
+
+steps:
+  - name: "Generate complex request for logging"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Execution-ID: "{{test_execution_id}}"
+        X-Log-Test: "{{log_data_marker}}"
+        User-Agent: "FlowTestEngine/2.0-LogTest"
+      body:
+        test_purpose: "automatic_logging_verification"
+        execution_id: "{{test_execution_id}}"
+        complex_data:
+          nested_object:
+            field1: "value1"
+            field2: 42
+            field3: true
+          array_data: [1, "two", 3, "four"]
+          special_characters: "àáâãäåæçèéêëìíîïñòóôõöø"
+        metadata:
+          suite_name: "{{log_test_suite}}"
+          log_marker: "{{log_data_marker}}"
+          timestamp: "{{$faker.date.recent}}"
+    assert:
+      status_code: 200
+      body:
+        json:
+          test_purpose:
+            equals: "automatic_logging_verification"
+          execution_id:
+            equals: "{{test_execution_id}}"
+          complex_data:
+            nested_object:
+              field1:
+                equals: "value1"
+              field2:
+                equals: 42
+    capture:
+      log_test_response_url: "body.url"
+      log_test_timestamp: "body.json.metadata.timestamp"
+      log_test_response_size: "headers.content-length"
+    metadata:
+      description: "Generates complex request/response data for log file verification"
+
+  - name: "Test request with authentication headers for logging"
+    request:
+      method: "GET"
+      url: "/bearer"
+      headers:
+        Authorization: "Bearer test-token-for-logging-{{$faker.string.alphanumeric}}"
+        X-Session-ID: "session-{{$faker.uuid}}"
+        X-Log-Test: "{{log_data_marker}}"
+    assert:
+      status_code: 200
+      body:
+        authenticated:
+          equals: true
+        token:
+          contains: "test-token-for-logging"
+    capture:
+      auth_log_token: "body.token"
+      auth_log_result: "body.authenticated"
+    metadata:
+      description: "Tests logging of authentication-related requests"
+
+  - name: "Generate error response for error logging"
+    request:
+      method: "GET"
+      url: "/status/404"
+      headers:
+        X-Error-Test: "intentional-404-for-logging"
+        X-Log-Test: "{{log_data_marker}}"
+    assert:
+      status_code: 404
+    continue_on_failure: true
+    metadata:
+      description: "Generates intentional error for error logging verification"
+
+  - name: "Test file upload scenario for logging"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "multipart/form-data"
+        X-Upload-Test: "logging-file-upload-simulation"
+        X-Log-Test: "{{log_data_marker}}"
+      body:
+        file_content: "This is simulated file content for logging test\nLine 2\nLine 3"
+        file_name: "log-test-file.txt"
+        upload_metadata:
+          purpose: "logging_verification"
+          size: 58
+    assert:
+      status_code: 200
+      body:
+        json:
+          file_name:
+            equals: "log-test-file.txt"
+    metadata:
+      description: "Tests logging of file upload requests"
+
+  - name: "Test performance timing for logging"
+    request:
+      method: "GET"
+      url: "/delay/2"
+      headers:
+        X-Performance-Test: "timing-for-logging"
+        X-Log-Test: "{{log_data_marker}}"
+    assert:
+      status_code: 200
+      response_time_ms:
+        greater_than: 1900
+        less_than: 3000
+    capture:
+      performance_timing: "response_time_ms"
+      performance_headers: "headers"
+    metadata:
+      description: "Tests performance timing capture in logs"
+
+  - name: "Test scenarios for conditional logging"
+    request:
+      method: "GET"
+      url: "/json"
+      headers:
+        X-Scenario-Test: "conditional-logging"
+        X-Log-Test: "{{log_data_marker}}"
+    assert:
+      status_code: 200
+      body:
+        slideshow:
+          exists: true
+    scenarios:
+      - name: "Log success scenario"
+        condition: "status_code == 200"
+        then:
+          capture:
+            scenario_success: "body.slideshow.title"
+          variables:
+            scenario_logged: true
+        else:
+          variables:
+            scenario_logged: false
+    metadata:
+      description: "Tests scenario-based conditional logic in logging"
+
+  - name: "Test large response for logging efficiency"
+    request:
+      method: "GET"
+      url: "/json"
+      headers:
+        X-Large-Response-Test: "logging-efficiency"
+        X-Log-Test: "{{log_data_marker}}"
+    assert:
+      status_code: 200
+      body:
+        slideshow:
+          slides:
+            type: array
+    capture:
+      large_response_slides: "body.slideshow.slides"
+      large_response_author: "body.slideshow.author"
+      large_response_date: "body.slideshow.date"
+      large_response_title: "body.slideshow.title"
+    metadata:
+      description: "Tests logging efficiency with large response payloads"
+
+  - name: "Final logging verification step"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Final-Log-Test: "verification-complete"
+        X-Log-Test: "{{log_data_marker}}"
+      body:
+        verification:
+          test_suite: "{{log_test_suite}}"
+          execution_id: "{{test_execution_id}}"
+          captured_data:
+            response_url: "{{log_test_response_url}}"
+            auth_token: "{{auth_log_token}}"
+            performance_timing: "{{performance_timing}}"
+            scenario_success: "{{scenario_logged}}"
+          log_markers_used: ["{{log_data_marker}}"]
+          final_check: true
+    assert:
+      status_code: 200
+      body:
+        json:
+          verification:
+            final_check:
+              equals: true
+            execution_id:
+              equals: "{{test_execution_id}}"
+    metadata:
+      description: "Final step to verify all logging data is properly captured"
+
+# This test suite will help verify:
+# 1. That automatic logging is enabled by default
+# 2. That --no-log flag disables logging
+# 3. That log files contain proper JSON structure
+# 4. That complex data, errors, performance timing, and scenarios are logged
+# 5. That the log file format matches documentation

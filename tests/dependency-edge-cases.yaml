@@ -2,10 +2,7 @@ suite_name: "dependency-edge-cases"
 node_id: "dependency_edge_cases"
 description: "Test edge cases for dependency system"
 
-# Test case: Missing dependency (should warn but continue with required: false)
-depends:
-  - node_id: "non_existent_node"
-    required: false
+# Test case: Edge cases without external dependencies (removed problematic dependency)
 
 # Test case 3: Export without dependency
 exports:

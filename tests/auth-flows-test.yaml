@@ -3,7 +3,10 @@
 suite_name: "Teste de Fluxos de Autenticação"
 node_id: "auth_flows_test"
 description: "Testa diferentes fluxos de autenticação: JWT, OAuth2, refresh tokens, e validação de permissões"
-priority: "critical"
+
+metadata:
+  priority: "critical"
+  tags: ["auth", "security", "jwt", "oauth2", "critical-path"]
 
 base_url: "{{httpbin_url}}"
 

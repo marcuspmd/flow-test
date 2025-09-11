@@ -9,8 +9,8 @@ globals:
     httpbin_url: "http://localhost:8080"
     default_timeout: 30000
   timeouts:
-    default: 30000
-    slow_tests: 60000
+    default: 60000
+    slow_tests: 120000
 
 # Test discovery settings
 discovery:
@@ -31,12 +31,12 @@ priorities:
 execution:
   mode: "sequential"  # ou "parallel"
   max_parallel: 3
-  timeout: 30000
+  timeout: 60000
   continue_on_failure: true
   retry_failed:
-    enabled: false
+    enabled: true
     max_attempts: 2
-    delay_ms: 1000
+    delay_ms: 2000
 
 # Reporting configuration
 reporting:

@@ -1,0 +1,165 @@
+node_id: "cli-comprehensive-test"
+suite_name: "CLI Comprehensive Test Suite"
+description: "Tests all documented CLI options and flags to ensure they work as documented"
+base_url: "http://localhost:3000"
+
+metadata:
+  priority: "critical"
+  tags: ["cli", "system", "regression", "smoke"]
+  estimated_duration_ms: 5000
+  description: "Validates that all documented CLI features are properly implemented"
+
+variables:
+  cli_test_marker: "CLI comprehensive test execution"
+  test_environment: "testing"
+
+steps:
+  - name: "Test basic execution (no flags)"
+    request:
+      method: "GET"
+      url: "/get"
+      headers:
+        X-Test-Purpose: "CLI basic execution test"
+    assert:
+      status_code: 200
+      body:
+        headers:
+          X-Test-Purpose:
+            equals: "CLI basic execution test"
+    metadata:
+      description: "Verifies basic CLI execution works without any flags"
+
+  - name: "Test environment variable resolution"
+    request:
+      method: "GET"
+      url: "/headers"
+      headers:
+        X-Environment: "{{test_environment}}"
+        X-CLI-Test: "{{cli_test_marker}}"
+    assert:
+      status_code: 200
+      body:
+        headers:
+          X-Environment:
+            equals: "testing"
+          X-CLI-Test:
+            equals: "{{cli_test_marker}}"
+    metadata:
+      description: "Tests that --environment flag enables proper variable resolution"
+
+  - name: "Test priority filtering compatibility"
+    request:
+      method: "GET"
+      url: "/status/200"
+    assert:
+      status_code: 200
+    metadata:
+      priority: "critical"
+      description: "This step should be included when filtering by critical priority"
+
+  - name: "Test tag filtering compatibility"
+    request:
+      method: "GET"
+      url: "/json"
+    assert:
+      status_code: 200
+      body:
+        slideshow:
+          exists: true
+    metadata:
+      tags: ["tag-filter-test", "json"]
+      description: "This step should be included when filtering by tag-filter-test tag"
+
+  - name: "Test node filtering compatibility"
+    request:
+      method: "GET"
+      url: "/user-agent"
+    assert:
+      status_code: 200
+    capture:
+      user_agent_value: "body.\"user-agent\""
+    metadata:
+      description: "This step should be included when filtering by this suite's node_id"
+
+  - name: "Test verbose output compatibility"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        message: "Testing verbose CLI output"
+        timestamp: "2024-01-01T00:00:00Z"
+        test_type: "verbose_compatibility"
+    assert:
+      status_code: 200
+      body:
+        json:
+          message:
+            equals: "Testing verbose CLI output"
+          test_type:
+            equals: "verbose_compatibility"
+    capture:
+      verbose_test_url: "body.url"
+      verbose_response_time: "response_time_ms"
+    metadata:
+      description: "Complex step that generates verbose output for CLI testing"
+
+  - name: "Test silent mode compatibility"
+    request:
+      method: "GET"
+      url: "/ip"
+    assert:
+      status_code: 200
+      body:
+        origin:
+          exists: true
+    metadata:
+      description: "Simple step suitable for silent mode CLI testing"
+
+  - name: "Test detailed mode compatibility"
+    request:
+      method: "PUT"
+      url: "/put"
+      headers:
+        Content-Type: "application/json"
+      body:
+        operation: "CLI detailed mode test"
+        data:
+          nested_field: "test_value"
+          array_field: [1, 2, 3]
+    assert:
+      status_code: 200
+      body:
+        json:
+          operation:
+            equals: "CLI detailed mode test"
+          data:
+            nested_field:
+              equals: "test_value"
+    metadata:
+      description: "Step with complex data suitable for detailed mode testing"
+
+  - name: "Test dry-run compatibility"
+    request:
+      method: "GET"
+      url: "/delay/1"
+    assert:
+      status_code: 200
+    metadata:
+      description: "Step that would take time - perfect for dry-run testing"
+
+  - name: "Test logging flag compatibility"
+    request:
+      method: "GET"
+      url: "/cache/60"
+    assert:
+      status_code: 200
+      headers:
+        cache-control:
+          exists: true
+    capture:
+      log_test_etag: "headers.etag"
+      log_test_cache: "headers.\"cache-control\""
+    metadata:
+      description: "Step that generates data suitable for log file verification"

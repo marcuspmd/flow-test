@@ -113,6 +113,18 @@ async function main() {
         }
         break;
 
+      case "--tag":
+      case "--tags":
+        if (i + 1 < args.length) {
+          const tags = args[++i].split(",");
+          options.filters = { ...options.filters, tags };
+        }
+        break;
+
+      case "--no-log":
+        options.logging = { enabled: false };
+        break;
+
       case "--dry-run":
         dryRun = true;
         break;
@@ -268,9 +280,14 @@ FILTERING:
                          Example: --priority critical,high
   --suite <names>         Run only specified test suites (comma-separated)
                          Example: --suite "login,checkout"
+  --node <ids>           Run only specified test nodes (comma-separated)
+                         Example: --node auth-tests,api-tests
+  --tag <tags>           Run only tests with specified tags (comma-separated)
+                         Example: --tag smoke,regression
 
 EXECUTION:
   --dry-run              Show execution plan without running tests
+  --no-log               Disable automatic log file generation
 
 OTHER:
   -h, --help             Show this help message

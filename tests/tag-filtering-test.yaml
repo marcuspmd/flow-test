@@ -1,0 +1,180 @@
+node_id: "tag-filtering-comprehensive"
+suite_name: "Tag-based Filtering Comprehensive Test"
+description: "Comprehensive test suite demonstrating various tag combinations for CLI filtering"
+base_url: "http://localhost:3000"
+
+metadata:
+  priority: "high"
+  tags: ["tag-filtering", "cli", "system", "smoke", "regression"]
+  estimated_duration_ms: 6000
+  description: "Tests all tag-based filtering scenarios for CLI --tag option"
+
+variables:
+  tag_test_identifier: "tag-filtering-comprehensive-test"
+  filter_test_suite: "tag-based-filtering"
+
+steps:
+  - name: "Smoke test step"
+    request:
+      method: "GET"
+      url: "/get"
+      headers:
+        X-Test-Type: "smoke-test"
+        X-Tag-Filter: "smoke"
+    assert:
+      status_code: 200
+      body:
+        headers:
+          X-Test-Type:
+            equals: "smoke-test"
+    metadata:
+      tags: ["smoke"]
+      description: "Should be included when filtering by 'smoke' tag"
+
+  - name: "Regression test step"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        test_type: "regression"
+        suite_id: "{{filter_test_suite}}"
+    assert:
+      status_code: 200
+      body:
+        json:
+          test_type:
+            equals: "regression"
+    metadata:
+      tags: ["regression"]
+      description: "Should be included when filtering by 'regression' tag"
+
+  - name: "API integration test step"
+    request:
+      method: "PUT"
+      url: "/put"
+      headers:
+        Content-Type: "application/json"
+      body:
+        integration_test: true
+        api_endpoint: "/put"
+    assert:
+      status_code: 200
+      body:
+        json:
+          integration_test:
+            equals: true
+    metadata:
+      tags: ["api", "integration"]
+      description: "Should be included when filtering by 'api' or 'integration' tags"
+
+  - name: "Performance monitoring step"
+    request:
+      method: "GET"
+      url: "/delay/1"
+    assert:
+      status_code: 200
+      response_time_ms:
+        less_than: 2000
+        greater_than: 900
+    capture:
+      performance_response_time: "response_time_ms"
+    metadata:
+      tags: ["performance", "monitoring"]
+      description: "Should be included when filtering by 'performance' or 'monitoring' tags"
+
+  - name: "Security validation step"
+    request:
+      method: "GET"
+      url: "/basic-auth/secure_user/secure_pass"
+      headers:
+        Authorization: "Basic c2VjdXJlX3VzZXI6c2VjdXJlX3Bhc3M="
+    assert:
+      status_code: 200
+      body:
+        authenticated:
+          equals: true
+        user:
+          equals: "secure_user"
+    metadata:
+      tags: ["security", "auth"]
+      description: "Should be included when filtering by 'security' or 'auth' tags"
+
+  - name: "Multi-tag test step"
+    request:
+      method: "GET"
+      url: "/json"
+    assert:
+      status_code: 200
+      body:
+        slideshow:
+          exists: true
+    metadata:
+      tags: ["smoke", "api", "regression"]
+      description: "Should be included when filtering by any of: 'smoke', 'api', or 'regression'"
+
+  - name: "Critical path test step"
+    request:
+      method: "POST"
+      url: "/status/201"
+      headers:
+        Content-Type: "application/json"
+      body:
+        critical_operation: true
+        priority: "highest"
+    assert:
+      status_code: 201
+    metadata:
+      tags: ["critical", "critical-path"]
+      description: "Should be included when filtering by 'critical' or 'critical-path' tags"
+
+  - name: "Edge case test step"
+    request:
+      method: "GET"
+      url: "/status/418"
+    assert:
+      status_code: 418
+    continue_on_failure: true
+    metadata:
+      tags: ["edge-case", "error-handling"]
+      description: "Should be included when filtering by 'edge-case' or 'error-handling' tags"
+
+  - name: "Database interaction simulation"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        query_type: "SELECT"
+        table: "test_data"
+        simulated_db: true
+    assert:
+      status_code: 200
+      body:
+        json:
+          query_type:
+            equals: "SELECT"
+          simulated_db:
+            equals: true
+    metadata:
+      tags: ["database", "integration", "backend"]
+      description: "Should be included when filtering by 'database', 'integration', or 'backend' tags"
+
+  - name: "Frontend API test step"
+    request:
+      method: "GET"
+      url: "/headers"
+      headers:
+        X-Requested-With: "XMLHttpRequest"
+        Accept: "application/json"
+    assert:
+      status_code: 200
+      body:
+        headers:
+          Accept:
+            equals: "application/json"
+    metadata:
+      tags: ["frontend", "ui", "ajax"]
+      description: "Should be included when filtering by 'frontend', 'ui', or 'ajax' tags"

@@ -1,0 +1,192 @@
+node_id: "dependency-comprehensive-test"
+suite_name: "Dependency System Comprehensive Test"
+description: "Tests complex dependency management, caching, conditional execution, and retry logic"
+base_url: "http://localhost:3000"
+
+depends:
+  - node_id: "dependency-setup"
+    required: true
+    cache: true
+    variables:
+      auth_username: "dependency_test_user"
+      api_version: "v2"
+
+metadata:
+  priority: "high"
+  tags: ["dependency", "advanced", "integration"]
+  estimated_duration_ms: 8000
+
+variables:
+  test_suite_name: "dependency-comprehensive"
+  dependent_operation: "advanced_api_call"
+
+steps:
+  - name: "Use dependency exported variables"
+    request:
+      method: "GET"
+      url: "/bearer"
+      headers:
+        Authorization: "Bearer {{auth_token}}"
+        X-Session-ID: "{{session_id}}"
+        X-Config-ID: "{{config_id}}"
+    assert:
+      status_code: 200
+      body:
+        authenticated:
+          equals: true
+        token:
+          equals: "{{auth_token}}"
+    metadata:
+      description: "Verifies that dependency exports are available in dependent suite"
+
+  - name: "Test dependency variable scoping"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        Authorization: "Bearer {{auth_token}}"
+      body:
+        operation: "{{dependent_operation}}"
+        config_id: "{{config_id}}"
+        setup_time: "{{setup_timestamp}}"
+        current_suite: "{{test_suite_name}}"
+    assert:
+      status_code: 200
+      body:
+        json:
+          operation:
+            equals: "{{dependent_operation}}"
+          config_id:
+            equals: "{{config_id}}"
+          current_suite:
+            equals: "dependency-comprehensive"
+    metadata:
+      description: "Tests that both dependency and suite variables are properly scoped"
+
+  - name: "Test dependency conditional execution"
+    request:
+      method: "GET"
+      url: "/headers"
+      headers:
+        X-Dependency-Token: "{{auth_token}}"
+        X-Conditional-Test: "yes"
+    assert:
+      status_code: 200
+      body:
+        headers:
+          X-Dependency-Token:
+            equals: "{{auth_token}}"
+    scenarios:
+      - name: "Verify dependency data exists"
+        condition: "auth_token != null && auth_token != ''"
+        then:
+          assert:
+            body:
+              headers:
+                X-Conditional-Test:
+                  equals: "yes"
+          variables:
+            dependency_condition_met: true
+        else:
+          variables:
+            dependency_condition_met: false
+    metadata:
+      description: "Uses conditional scenarios to validate dependency data"
+
+  - name: "Test complex dependency data manipulation"
+    request:
+      method: "PUT"
+      url: "/put"
+      headers:
+        Content-Type: "application/json"
+        Authorization: "Bearer {{auth_token}}"
+      body:
+        original_token: "{{auth_token}}"
+        modified_config: "{{config_id}}_modified"
+        dependency_timestamp: "{{setup_timestamp}}"
+        current_operation: "dependency_data_manipulation"
+    assert:
+      status_code: 200
+      body:
+        json:
+          original_token:
+            equals: "{{auth_token}}"
+          modified_config:
+            contains: "{{config_id}}"
+          dependency_timestamp:
+            equals: "{{setup_timestamp}}"
+    capture:
+      modified_config_id: "body.json.modified_config"
+      manipulation_result: "body.json.current_operation"
+
+  - name: "Test dependency cache effectiveness"
+    request:
+      method: "GET"
+      url: "/cache"
+      headers:
+        Authorization: "Bearer {{auth_token}}"
+        X-Cache-Test: "dependency-cache-validation"
+        X-Original-Session: "{{session_id}}"
+    assert:
+      status_code: 200
+      headers:
+        X-Cache-Test:
+          equals: "dependency-cache-validation"
+    metadata:
+      description: "Validates that cached dependency data is consistently available"
+
+  - name: "Test dependency error handling"
+    request:
+      method: "POST"
+      url: "/status/400"
+      headers:
+        Authorization: "Bearer {{auth_token}}"
+        X-Error-Test: "dependency-error-handling"
+      body:
+        test_error_with_dependency: true
+        auth_context: "{{auth_token}}"
+    assert:
+      status_code: 400
+    continue_on_failure: true
+    metadata:
+      description: "Tests error handling when using dependency-provided data"
+
+  - name: "Verify dependency isolation"
+    request:
+      method: "GET"
+      url: "/json"
+    assert:
+      status_code: 200
+      body:
+        slideshow:
+          exists: true
+    capture:
+      isolation_test_data: "body.slideshow.title"
+    metadata:
+      description: "Ensures dependencies don't interfere with normal operations"
+
+  - name: "Test dependency variable inheritance chains"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        chain_test:
+          original_auth: "{{auth_token}}"
+          modified_config: "{{modified_config_id}}"
+          manipulation_result: "{{manipulation_result}}"
+          isolation_data: "{{isolation_test_data}}"
+        inheritance_verification: true
+    assert:
+      status_code: 200
+      body:
+        json:
+          chain_test:
+            inheritance_verification:
+              equals: true
+            original_auth:
+              equals: "{{auth_token}}"
+    metadata:
+      description: "Tests complex variable inheritance from dependencies through multiple steps"

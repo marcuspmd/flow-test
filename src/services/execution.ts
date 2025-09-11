@@ -71,7 +71,7 @@ export class ExecutionService {
     // Initializes HTTP services with global configuration
     this.httpService = new HttpService(
       config.globals?.base_url,
-      config.execution?.timeout || config.globals?.timeouts?.default || 30000
+      config.execution?.timeout || config.globals?.timeouts?.default || 60000
     );
     this.assertionService = new AssertionService();
     this.captureService = new CaptureService();
@@ -439,7 +439,7 @@ export class ExecutionService {
         );
         this.httpService = new HttpService(
           interpolatedBaseUrl,
-          this.configManager.getConfig().execution?.timeout || 30000
+          this.configManager.getConfig().execution?.timeout || 60000
         );
       }
 
