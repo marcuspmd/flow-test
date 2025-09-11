@@ -243,7 +243,8 @@ class Runner {
       if (step.capture && result.response_details) {
         const capturedVariables = this.captureService.captureVariables(
           step.capture,
-          result
+          result,
+          this.variableService.getAllAvailableVariables()
         );
         result.captured_variables = capturedVariables;
         this.variableService.setVariables(capturedVariables);
@@ -271,7 +272,8 @@ class Runner {
         this.scenarioService.processScenarios(
           step.scenarios,
           result,
-          this.options.verbosity || "simple"
+          this.options.verbosity || "simple",
+          this.variableService.getAllAvailableVariables()
         );
 
         // Atualiza variáveis se novos captures foram feitos pelos cenários

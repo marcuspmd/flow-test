@@ -32,6 +32,7 @@ export class CaptureService {
    *
    * @param captureConfig - Map of variable_name -> jmespath_expression
    * @param result - HTTP execution result containing the response
+   * @param variableContext - Current variable context for JavaScript expressions
    * @returns Object with captured variables
    *
    * @example
@@ -40,12 +41,13 @@ export class CaptureService {
    *   user_id: 'body.user.id',
    *   auth_token: 'body.token',
    *   response_time: 'duration_ms'
-   * }, executionResult);
+   * }, executionResult, currentVariables);
    * ```
    */
   captureVariables(
     captureConfig: Record<string, string>,
-    result: ExecutionResult
+    result: ExecutionResult,
+    variableContext?: Record<string, any>
   ): Record<string, any> {
     const capturedVariables: Record<string, any> = {};
 
@@ -56,7 +58,7 @@ export class CaptureService {
 
     for (const [variableName, jmesPath] of Object.entries(captureConfig)) {
       try {
-        const value = this.extractValue(jmesPath, result);
+        const value = this.extractValue(jmesPath, result, variableContext);
 
         if (value !== undefined) {
           capturedVariables[variableName] = value;
@@ -79,28 +81,93 @@ export class CaptureService {
   }
 
   /**
-   * Extracts a value from the response using JMESPath expression
+   * Extracts a value from the response using JMESPath or evaluates expressions
    *
-   * Applies a JMESPath expression to the response context to
-   * extract a specific value.
-   *
-   * @param jmesPath - JMESPath expression for extraction
-   * @param result - HTTP execution result
-   * @returns Extracted value or undefined if not found
-   * @throws Error if JMESPath expression is invalid
+   * @param expression - JMESPath expression, JavaScript expression, or direct value
+   * @param result - Execution result
+   * @param variableContext - Current variable context for JavaScript expressions
+   * @returns Extracted value
+   * @throws Error if expression is invalid
    * @private
    */
-  private extractValue(jmesPath: string, result: ExecutionResult): any {
-    // Prepares the complete context for JMESPath
-    const context = this.buildContext(result);
+  private extractValue(
+    expression: string,
+    result: ExecutionResult,
+    variableContext?: Record<string, any>
+  ): any {
+    // Handle different types of expressions
 
+    // Check if expression is a string
+    if (typeof expression !== "string") {
+      return expression; // Return as-is if not a string
+    }
+
+    // 1. Check for literal string values (quoted strings)
+    if (expression.startsWith('"') && expression.endsWith('"')) {
+      // Return the string without quotes as a literal value
+      return expression.slice(1, -1);
+    }
+
+    // 2. Check if it's wrapped in {{...}} (interpolation syntax)
+    if (expression.startsWith("{{") && expression.endsWith("}}")) {
+      const innerExpression = expression.slice(2, -2).trim();
+
+      // Check if it's a JavaScript expression
+      if (innerExpression.startsWith("js:")) {
+        const jsExpression = innerExpression.slice(3).trim();
+        try {
+          // Create a safe evaluation context with response data and variables
+          const context = this.buildContext(result);
+          const variables = variableContext || {};
+
+          // Use Function constructor for safer evaluation
+          const evalFunction = new Function(
+            "status_code",
+            "headers",
+            "body",
+            "duration_ms",
+            "variables",
+            `return ${jsExpression};`
+          );
+          return evalFunction(
+            context.status_code,
+            context.headers,
+            context.body,
+            context.duration_ms,
+            variables
+          );
+        } catch (error) {
+          throw new Error(
+            `Invalid JavaScript expression '${jsExpression}': ${error}`
+          );
+        }
+      } else {
+        // It's a variable reference, should not be processed here
+        // Return the expression as-is for later interpolation
+        return expression;
+      }
+    }
+
+    // 3. Try as direct JMESPath expression
+    const context = this.buildContext(result);
     try {
-      return jmespath.search(context, jmesPath);
+      return jmespath.search(context, expression);
     } catch (error) {
-      throw new Error(`Invalid JMESPath '${jmesPath}': ${error}`);
+      // If JMESPath fails, try to return as literal value or expression
+      // This handles cases where the expression might be a plain string or number
+      if (expression === "true") return true;
+      if (expression === "false") return false;
+      if (expression === "null") return null;
+      if (!isNaN(Number(expression))) return Number(expression);
+
+      // Check if it looks like a URL or other string that shouldn't be treated as JMESPath
+      if (expression.includes("://") || expression.includes("/")) {
+        return expression; // Return as literal string
+      }
+
+      throw new Error(`Invalid JMESPath '${expression}': ${error}`);
     }
   }
-
   /**
    * Builds the complete context for data extraction via JMESPath
    *

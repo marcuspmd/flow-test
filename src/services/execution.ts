@@ -9,6 +9,7 @@ import { GlobalRegistryService } from "./global-registry.service";
 import { HttpService } from "./http.service";
 import { AssertionService } from "./assertion.service";
 import { CaptureService } from "./capture.service";
+import { ScenarioService } from "./scenario.service";
 import { getLogger } from "./logger.service";
 import {
   DiscoveredTest,
@@ -37,6 +38,7 @@ export class ExecutionService {
   private httpService: HttpService;
   private assertionService: AssertionService;
   private captureService: CaptureService;
+  private scenarioService: ScenarioService;
 
   // Estatísticas de performance
   private performanceData: {
@@ -73,6 +75,7 @@ export class ExecutionService {
     );
     this.assertionService = new AssertionService();
     this.captureService = new CaptureService();
+    this.scenarioService = new ScenarioService();
 
     this.performanceData = {
       requests: [],
@@ -664,6 +667,195 @@ export class ExecutionService {
   }
 
   /**
+   * Executes a step that has scenarios (conditional execution)
+   */
+  private async executeScenarioStep(
+    step: any,
+    suite: TestSuite,
+    stepIndex: number,
+    stepStartTime: number,
+    context: any
+  ): Promise<StepExecutionResult> {
+    try {
+      // First, try to find a scenario that matches the current conditions
+      let executedScenario = false;
+      let httpResult: any = null;
+      let assertionResults: any[] = [];
+      let capturedVariables: Record<string, any> = {};
+
+      for (const scenario of step.scenarios) {
+        try {
+          // Evaluate the condition using current variables
+          const conditionMet = this.evaluateScenarioCondition(
+            scenario.condition
+          );
+
+          if (conditionMet && scenario.then) {
+            this.logger.info(`Executing scenario: ${scenario.condition}`);
+
+            // Execute the scenario's request if it exists
+            if (scenario.then.request) {
+              const interpolatedRequest = this.globalVariables.interpolate(
+                scenario.then.request
+              );
+              httpResult = await this.httpService.executeRequest(
+                step.name,
+                interpolatedRequest
+              );
+              this.recordPerformanceData(interpolatedRequest, httpResult);
+            }
+
+            // Execute assertions from scenario
+            if (scenario.then.assert && httpResult?.response_details) {
+              const interpolatedAssertions = this.globalVariables.interpolate(
+                scenario.then.assert
+              );
+              assertionResults = this.assertionService.validateAssertions(
+                interpolatedAssertions,
+                httpResult
+              );
+              httpResult.assertions_results = assertionResults;
+
+              const failedAssertions = assertionResults.filter(
+                (a) => !a.passed
+              );
+              if (failedAssertions.length > 0) {
+                httpResult.status = "failure";
+                httpResult.error_message = `${failedAssertions.length} assertion(s) failed`;
+              }
+            }
+
+            // Execute captures from scenario
+            if (scenario.then.capture && httpResult?.response_details) {
+              const currentVariables = this.globalVariables.getAllVariables();
+              capturedVariables = this.captureService.captureVariables(
+                scenario.then.capture,
+                httpResult,
+                currentVariables
+              );
+              httpResult.captured_variables = capturedVariables;
+
+              if (Object.keys(capturedVariables).length > 0) {
+                this.globalVariables.setRuntimeVariables(
+                  this.processCapturedVariables(capturedVariables, suite)
+                );
+              }
+            }
+
+            executedScenario = true;
+            break;
+          }
+        } catch (error) {
+          this.logger.warn(
+            `Error evaluating scenario condition: ${scenario.condition}`,
+            { error: error as Error }
+          );
+        }
+      }
+
+      const stepEndTime = Date.now();
+      const stepDuration = stepEndTime - stepStartTime;
+
+      if (!executedScenario) {
+        // No scenario matched - this is OK, just skip execution
+        this.logger.info(`No scenarios matched for step: ${step.name}`);
+        return {
+          step_name: step.name,
+          status: "skipped",
+          duration_ms: stepDuration,
+          captured_variables: {},
+          available_variables: this.filterAvailableVariables(
+            this.globalVariables.getAllVariables()
+          ),
+          error_message: "No matching scenario conditions",
+        };
+      }
+
+      const stepResult: StepExecutionResult = {
+        step_name: step.name,
+        status: httpResult?.status || "success",
+        duration_ms: stepDuration,
+        request_details: httpResult?.request_details,
+        response_details: httpResult?.response_details,
+        assertions_results: assertionResults,
+        captured_variables: capturedVariables,
+        available_variables: this.filterAvailableVariables(
+          this.globalVariables.getAllVariables()
+        ),
+        error_message: httpResult?.error_message,
+      };
+
+      await this.hooks.onStepEnd?.(step, stepResult, context);
+      return stepResult;
+    } catch (error) {
+      const stepEndTime = Date.now();
+      const stepDuration = stepEndTime - stepStartTime;
+
+      const errorResult: StepExecutionResult = {
+        step_name: step.name,
+        status: "failure",
+        duration_ms: stepDuration,
+        error_message: `Scenario execution error: ${error}`,
+        captured_variables: {},
+        available_variables: this.filterAvailableVariables(
+          this.globalVariables.getAllVariables()
+        ),
+      };
+
+      await this.hooks.onStepEnd?.(step, errorResult, context);
+      return errorResult;
+    }
+  }
+
+  /**
+   * Evaluates a scenario condition using current variables
+   */
+  private evaluateScenarioCondition(condition: string): boolean {
+    try {
+      // Get current variables for evaluation context
+      const allVars = this.globalVariables.getAllVariables();
+      const context = {
+        ...allVars,
+        variables: allVars,
+      };
+
+      // Simple evaluation for now - we can improve this later
+      // Handle common patterns like "payment_approved == 'true'"
+      const interpolatedCondition = this.globalVariables.interpolate(condition);
+
+      // If condition contains JavaScript-like operators, try to evaluate
+      if (
+        interpolatedCondition.includes("==") ||
+        interpolatedCondition.includes("!=") ||
+        interpolatedCondition.includes("&&") ||
+        interpolatedCondition.includes("||")
+      ) {
+        // Simple string-based evaluation for now
+        // This is a basic implementation - could be enhanced with proper JS evaluation
+        if (interpolatedCondition.includes("== 'true'")) {
+          const varName = interpolatedCondition.split("== 'true'")[0].trim();
+          return allVars[varName] === "true" || allVars[varName] === true;
+        }
+
+        if (interpolatedCondition.includes("== true")) {
+          const varName = interpolatedCondition.split("== true")[0].trim();
+          return allVars[varName] === true || allVars[varName] === "true";
+        }
+
+        return false;
+      }
+
+      // For simple variable checks
+      return Boolean(allVars[condition]);
+    } catch (error) {
+      this.logger.warn(`Error evaluating condition: ${condition}`, {
+        error: error as Error,
+      });
+      return false;
+    }
+  }
+
+  /**
    * Executes an individual step
    */
   private async executeStep(
@@ -687,6 +879,17 @@ export class ExecutionService {
     await this.hooks.onStepStart?.(step, context);
 
     try {
+      // Check if step has scenarios - if so, use scenario-based execution
+      if (step.scenarios && Array.isArray(step.scenarios)) {
+        return await this.executeScenarioStep(
+          step,
+          suite,
+          stepIndex,
+          stepStartTime,
+          context
+        );
+      }
+
       // 1. Interpolates variables in request
       const interpolatedRequest = this.globalVariables.interpolate(
         step.request
@@ -725,9 +928,13 @@ export class ExecutionService {
       // 4. Captures variables
       let capturedVariables: Record<string, any> = {};
       if (step.capture && httpResult.response_details) {
+        // Get current variables for capture context
+        const currentVariables = this.globalVariables.getAllVariables();
+
         capturedVariables = this.captureService.captureVariables(
           step.capture,
-          httpResult
+          httpResult,
+          currentVariables
         );
         httpResult.captured_variables = capturedVariables;
 

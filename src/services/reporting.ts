@@ -911,7 +911,13 @@ export class ReportingService {
       .replace(/'/g, "&apos;");
   }
 
-  private escapeHtml(text: string): string {
+  private escapeHtml(text: string | undefined | null): string {
+    if (text === undefined || text === null) {
+      return "";
+    }
+    if (typeof text !== "string") {
+      text = String(text);
+    }
     return text
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")

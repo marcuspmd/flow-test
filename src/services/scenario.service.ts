@@ -25,7 +25,8 @@ export class ScenarioService {
   processScenarios(
     scenarios: ConditionalScenario[],
     result: ExecutionResult,
-    verbosity: string
+    verbosity: string,
+    variableContext?: Record<string, any>
   ): void {
     for (const scenario of scenarios) {
       try {
@@ -42,7 +43,12 @@ export class ScenarioService {
         const scenarioBlock = conditionMet ? scenario.then : scenario.else;
 
         if (scenarioBlock) {
-          this.executeScenarioBlock(scenarioBlock, result, verbosity);
+          this.executeScenarioBlock(
+            scenarioBlock,
+            result,
+            verbosity,
+            variableContext
+          );
         }
       } catch (error) {
         this.logger.error(`Error evaluating scenario`, {
@@ -105,7 +111,8 @@ export class ScenarioService {
   private executeScenarioBlock(
     block: { assert?: Assertions; capture?: Record<string, string> },
     result: ExecutionResult,
-    verbosity: string
+    verbosity: string,
+    variableContext?: Record<string, any>
   ): void {
     // Executes scenario assertions
     if (block.assert) {
@@ -147,7 +154,8 @@ export class ScenarioService {
     if (block.capture) {
       const capturedVariables = this.captureService.captureVariables(
         block.capture,
-        result
+        result,
+        variableContext
       );
 
       // Adds captured variables to existing results

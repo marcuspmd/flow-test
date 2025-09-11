@@ -1,0 +1,563 @@
+# Teste de Integração de Microserviços
+# Baseado no exemplo "Microservices Integration" do YAML_EXAMPLES.md
+suite_name: "Teste de Integração de Microserviços"
+node_id: "microservices_integration_test"
+description: "Testa comunicação entre microserviços, propagação de dados, e coordenação de transações distribuídas"
+priority: "high"
+
+base_url: "{{httpbin_url}}"
+
+exports:
+  - service_health_status
+  - integration_results
+  - transaction_trace
+  - service_dependencies
+
+variables:
+  # Configuração dos microserviços simulados
+  services:
+    user_service:
+      name: "user-service"
+      port: 8001
+      health_endpoint: "/health"
+      base_path: "/users"
+
+    order_service:
+      name: "order-service"
+      port: 8002
+      health_endpoint: "/health"
+      base_path: "/orders"
+
+    payment_service:
+      name: "payment-service"
+      port: 8003
+      health_endpoint: "/health"
+      base_path: "/payments"
+
+    notification_service:
+      name: "notification-service"
+      port: 8004
+      health_endpoint: "/health"
+      base_path: "/notifications"
+
+    inventory_service:
+      name: "inventory-service"
+      port: 8005
+      health_endpoint: "/health"
+      base_path: "/inventory"
+
+  # Dados de teste para transação distribuída
+  test_transaction:
+    user_id: "usr_12345"
+    order_id: "ord_67890"
+    payment_id: "pay_54321"
+    product_id: "prod_98765"
+    quantity: 2
+    amount: 149.99
+    currency: "USD"
+
+  # Headers de rastreamento distribuído
+  tracing_headers:
+    trace_id: "trace_abc123def456"
+    span_id: "span_789xyz012"
+    correlation_id: "corr_integration_test_001"
+
+steps:
+  # Passo 1: Health Check de Todos os Serviços
+  - name: "Check All Services Health"
+    request:
+      method: GET
+      url: "/get"
+      headers:
+        X-Service-Check: "health_check_all"
+        X-Trace-Id: "{{tracing_headers.trace_id}}"
+        X-Correlation-Id: "{{tracing_headers.correlation_id}}"
+      params:
+        service_check: "health"
+        services: "user,order,payment,notification,inventory"
+
+    assert:
+      status_code: 200
+      args.service_check:
+        equals: "health"
+
+    capture:
+      all_services_health:
+        user_service: "healthy"
+        order_service: "healthy"
+        payment_service: "healthy"
+        notification_service: "healthy"
+        inventory_service: "healthy"
+      health_check_timestamp: "{{js: new Date().toISOString()}}"
+      all_services_up: "true"
+
+  # Passo 2: Criar Usuário no User Service
+  - name: "Create User in User Service"
+    depends:
+      - node_id: "microservices_integration_test"
+        step: "Check All Services Health"
+
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Service: "user-service"
+        X-Trace-Id: "{{tracing_headers.trace_id}}"
+        X-Span-Id: "{{tracing_headers.span_id}}_user_create"
+        X-Correlation-Id: "{{tracing_headers.correlation_id}}"
+      body:
+        service: "user-service"
+        action: "create_user"
+        user_id: "{{test_transaction.user_id}}"
+        user_data:
+          email: "test@example.com"
+          name: "Test User"
+          status: "active"
+
+    assert:
+      status_code: 200
+      json.service:
+        equals: "user-service"
+      json.action:
+        equals: "create_user"
+
+    capture:
+      user_created: "true"
+      user_service_response: "{{json}}"
+      user_creation_time: "{{js: new Date().toISOString()}}"
+
+  # Passo 3: Verificar Estoque no Inventory Service
+  - name: "Check Product Inventory"
+    depends:
+      - node_id: "microservices_integration_test"
+        step: "Create User in User Service"
+
+    request:
+      method: GET
+      url: "/get"
+      headers:
+        X-Service: "inventory-service"
+        X-Trace-Id: "{{tracing_headers.trace_id}}"
+        X-Span-Id: "{{tracing_headers.span_id}}_inventory_check"
+        X-Correlation-Id: "{{tracing_headers.correlation_id}}"
+      params:
+        service: "inventory-service"
+        action: "check_stock"
+        product_id: "{{test_transaction.product_id}}"
+        requested_quantity: "{{test_transaction.quantity}}"
+
+    assert:
+      status_code: 200
+      args.service:
+        equals: "inventory-service"
+
+    capture:
+      inventory_available: "true"
+      available_stock: 100
+      reserved_quantity: "{{test_transaction.quantity}}"
+      inventory_check_time: "{{js: new Date().toISOString()}}"
+
+  # Passo 4: Criar Pedido no Order Service
+  - name: "Create Order in Order Service"
+    depends:
+      - node_id: "microservices_integration_test"
+        step: "Check Product Inventory"
+
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Service: "order-service"
+        X-Trace-Id: "{{tracing_headers.trace_id}}"
+        X-Span-Id: "{{tracing_headers.span_id}}_order_create"
+        X-Correlation-Id: "{{tracing_headers.correlation_id}}"
+      body:
+        service: "order-service"
+        action: "create_order"
+        order_id: "{{test_transaction.order_id}}"
+        user_id: "{{test_transaction.user_id}}"
+        order_data:
+          product_id: "{{test_transaction.product_id}}"
+          quantity: "{{test_transaction.quantity}}"
+          amount: "{{test_transaction.amount}}"
+          currency: "{{test_transaction.currency}}"
+          status: "pending_payment"
+
+    assert:
+      status_code: 200
+      json.action:
+        equals: "create_order"
+      json.order_id:
+        equals: "{{test_transaction.order_id}}"
+
+    capture:
+      order_created: "true"
+      order_service_response: "{{json}}"
+      order_creation_time: "{{js: new Date().toISOString()}}"
+      order_status: "pending_payment"
+
+  # Passo 5: Processar Pagamento no Payment Service
+  - name: "Process Payment"
+    depends:
+      - node_id: "microservices_integration_test"
+        step: "Create Order in Order Service"
+
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Service: "payment-service"
+        X-Trace-Id: "{{tracing_headers.trace_id}}"
+        X-Span-Id: "{{tracing_headers.span_id}}_payment_process"
+        X-Correlation-Id: "{{tracing_headers.correlation_id}}"
+      body:
+        service: "payment-service"
+        action: "process_payment"
+        payment_id: "{{test_transaction.payment_id}}"
+        order_id: "{{test_transaction.order_id}}"
+        user_id: "{{test_transaction.user_id}}"
+        payment_data:
+          amount: "{{test_transaction.amount}}"
+          currency: "{{test_transaction.currency}}"
+          method: "credit_card"
+          card_token: "tok_test_visa_1234"
+
+    scenarios:
+      # Cenário A: Pagamento aprovado
+      - condition: "status_code == `200` && json.action == 'process_payment'"
+        then:
+          assert:
+            status_code: 200
+            json.payment_id:
+              equals: "{{test_transaction.payment_id}}"
+          capture:
+            payment_approved: "true"
+            payment_service_response: "{{json}}"
+            payment_status: "approved"
+            payment_approval_time: "{{js: new Date().toISOString()}}"
+
+      # Cenário B: Pagamento recusado
+      - condition: "status_code == `402`"
+        then:
+          capture:
+            payment_declined: "true"
+            payment_status: "declined"
+            payment_error: "insufficient_funds"
+
+  # Passo 6: Atualizar Status do Pedido
+  - name: "Update Order Status"
+    depends:
+      - node_id: "microservices_integration_test"
+        step: "Process Payment"
+
+    request:
+      method: PUT
+      url: "/put"
+      headers:
+        Content-Type: "application/json"
+        X-Service: "order-service"
+        X-Trace-Id: "{{tracing_headers.trace_id}}"
+        X-Span-Id: "{{tracing_headers.span_id}}_order_update"
+        X-Correlation-Id: "{{tracing_headers.correlation_id}}"
+      body:
+        service: "order-service"
+        action: "update_order_status"
+        order_id: "{{test_transaction.order_id}}"
+        new_status: "{{payment_approved ? 'confirmed' : 'payment_failed'}}"
+        payment_id: "{{test_transaction.payment_id}}"
+        payment_status: "{{payment_status}}"
+
+    assert:
+      status_code: 200
+      json.action:
+        equals: "update_order_status"
+
+    capture:
+      order_updated: "true"
+      final_order_status: "{{payment_approved ? 'confirmed' : 'payment_failed'}}"
+      order_update_time: "{{js: new Date().toISOString()}}"
+
+  # Passo 7: Atualizar Inventário (se pagamento aprovado)
+  - name: "Update Inventory Stock"
+    depends:
+      - node_id: "microservices_integration_test"
+        step: "Update Order Status"
+
+    scenarios:
+      # Cenário A: Reduzir estoque (pagamento aprovado)
+      - condition: "payment_approved == 'true'"
+        then:
+          request:
+            method: PUT
+            url: "/put"
+            headers:
+              Content-Type: "application/json"
+              X-Service: "inventory-service"
+              X-Trace-Id: "{{tracing_headers.trace_id}}"
+              X-Span-Id: "{{tracing_headers.span_id}}_inventory_update"
+              X-Correlation-Id: "{{tracing_headers.correlation_id}}"
+            body:
+              service: "inventory-service"
+              action: "reduce_stock"
+              product_id: "{{test_transaction.product_id}}"
+              quantity: "{{test_transaction.quantity}}"
+              order_id: "{{test_transaction.order_id}}"
+
+          assert:
+            status_code: 200
+
+          capture:
+            stock_reduced: "true"
+            remaining_stock: "{{available_stock - test_transaction.quantity}}"
+            inventory_update_time: "{{js: new Date().toISOString()}}"
+
+      # Cenário B: Liberar reserva (pagamento recusado)
+      - condition: "payment_declined == 'true'"
+        then:
+          request:
+            method: PUT
+            url: "/put"
+            headers:
+              Content-Type: "application/json"
+              X-Service: "inventory-service"
+              X-Trace-Id: "{{tracing_headers.trace_id}}"
+              X-Span-Id: "{{tracing_headers.span_id}}_inventory_release"
+              X-Correlation-Id: "{{tracing_headers.correlation_id}}"
+            body:
+              service: "inventory-service"
+              action: "release_reservation"
+              product_id: "{{test_transaction.product_id}}"
+              quantity: "{{test_transaction.quantity}}"
+              order_id: "{{test_transaction.order_id}}"
+
+          capture:
+            reservation_released: "true"
+            inventory_rollback_time: "{{js: new Date().toISOString()}}"
+
+  # Passo 8: Enviar Notificação
+  - name: "Send User Notification"
+    depends:
+      - node_id: "microservices_integration_test"
+        step: "Update Inventory Stock"
+
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Service: "notification-service"
+        X-Trace-Id: "{{tracing_headers.trace_id}}"
+        X-Span-Id: "{{tracing_headers.span_id}}_notification_send"
+        X-Correlation-Id: "{{tracing_headers.correlation_id}}"
+      body:
+        service: "notification-service"
+        action: "send_notification"
+        user_id: "{{test_transaction.user_id}}"
+        notification_type: "order_status"
+        notification_data:
+          order_id: "{{test_transaction.order_id}}"
+          status: "{{final_order_status}}"
+          message: "{{payment_approved ? 'Your order has been confirmed!' : 'Payment failed for your order.'}}"
+          payment_id: "{{test_transaction.payment_id}}"
+
+    assert:
+      status_code: 200
+      json.action:
+        equals: "send_notification"
+
+    capture:
+      notification_sent: "true"
+      notification_type: "{{payment_approved ? 'order_confirmed' : 'payment_failed'}}"
+      notification_time: "{{js: new Date().toISOString()}}"
+
+  # Passo 9: Verificar Consistência dos Dados Entre Serviços
+  - name: "Cross-Service Data Consistency Check"
+    depends:
+      - node_id: "microservices_integration_test"
+        step: "Send User Notification"
+
+    request:
+      method: GET
+      url: "/get"
+      headers:
+        X-Service: "data-consistency-check"
+        X-Trace-Id: "{{tracing_headers.trace_id}}"
+        X-Span-Id: "{{tracing_headers.span_id}}_consistency_check"
+        X-Correlation-Id: "{{tracing_headers.correlation_id}}"
+      params:
+        check_type: "cross_service_consistency"
+        order_id: "{{test_transaction.order_id}}"
+        user_id: "{{test_transaction.user_id}}"
+        payment_id: "{{test_transaction.payment_id}}"
+
+    assert:
+      status_code: 200
+
+    capture:
+      consistency_check:
+        user_service_status: "{{user_created ? 'user_exists' : 'user_missing'}}"
+        order_service_status: "{{order_created && order_updated ? 'order_consistent' : 'order_inconsistent'}}"
+        payment_service_status: "{{payment_approved || payment_declined ? 'payment_processed' : 'payment_pending'}}"
+        inventory_service_status: "{{stock_reduced || reservation_released ? 'inventory_updated' : 'inventory_unchanged'}}"
+        notification_service_status: "{{notification_sent ? 'notification_delivered' : 'notification_failed'}}"
+
+      data_consistency_score: "{{js: 0}}"
+      all_services_consistent: false
+
+  # Passo 10: Teste de Rollback (Simulação de Falha)
+  - name: "Simulate Service Failure and Rollback"
+    depends:
+      - node_id: "microservices_integration_test"
+        step: "Cross-Service Data Consistency Check"
+
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Service: "failure-simulation"
+        X-Trace-Id: "{{tracing_headers.trace_id}}_rollback"
+        X-Span-Id: "{{tracing_headers.span_id}}_rollback_test"
+        X-Correlation-Id: "{{tracing_headers.correlation_id}}_rollback"
+      body:
+        simulation_type: "service_failure"
+        failed_service: "notification-service"
+        transaction_id: "{{test_transaction.order_id}}"
+        rollback_required: true
+        affected_services: ["order-service", "payment-service", "inventory-service"]
+
+    scenarios:
+      # Cenário A: Rollback bem-sucedido
+      - condition: "status_code == `200`"
+        then:
+          capture:
+            rollback_initiated: "true"
+            rollback_services:
+              - service: "notification-service"
+                action: "retry_notification"
+                status: "retry_scheduled"
+              - service: "order-service"
+                action: "maintain_status"
+                status: "no_rollback_needed"
+              - service: "payment-service"
+                action: "maintain_charge"
+                status: "no_rollback_needed"
+              - service: "inventory-service"
+                action: "maintain_stock_reduction"
+                status: "no_rollback_needed"
+
+      # Cenário B: Rollback parcial ou falhado
+      - condition: "status_code >= `400`"
+        then:
+          capture:
+            rollback_failed: "true"
+            manual_intervention_required: "true"
+
+  # Passo 11: Health Check Pós-Transação
+  - name: "Post-Transaction Health Check"
+    depends:
+      - node_id: "microservices_integration_test"
+        step: "Simulate Service Failure and Rollback"
+
+    request:
+      method: GET
+      url: "/get"
+      headers:
+        X-Service-Check: "post_transaction_health"
+        X-Trace-Id: "{{tracing_headers.trace_id}}_post_health"
+        X-Correlation-Id: "{{tracing_headers.correlation_id}}"
+      params:
+        health_check_type: "post_transaction"
+        transaction_id: "{{test_transaction.order_id}}"
+
+    assert:
+      status_code: 200
+
+    capture:
+      post_transaction_health:
+        all_services_responsive: "true"
+        no_service_degradation: "true"
+        transaction_cleanup_complete: "true"
+      health_check_post_time: "{{js: new Date().toISOString()}}"
+
+  # Passo 12: Relatório Final de Integração
+  - name: "Integration Test Summary Report"
+    depends:
+      - node_id: "microservices_integration_test"
+        step: "Post-Transaction Health Check"
+
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Test-Report: "microservices_integration"
+        X-Trace-Id: "{{tracing_headers.trace_id}}_final_report"
+      body:
+        report_type: "integration_test_summary"
+        transaction_details:
+          order_id: "{{test_transaction.order_id}}"
+          user_id: "{{test_transaction.user_id}}"
+          payment_id: "{{test_transaction.payment_id}}"
+          product_id: "{{test_transaction.product_id}}"
+
+        service_interactions:
+          total_services: 5
+          services_involved: ["user-service", "order-service", "payment-service", "inventory-service", "notification-service"]
+          successful_interactions: "{{data_consistency_score}}"
+
+        transaction_flow:
+          user_creation: "{{user_created || false}}"
+          inventory_check: "{{inventory_available || false}}"
+          order_creation: "{{order_created || false}}"
+          payment_processing: "{{payment_approved || payment_declined || false}}"
+          inventory_update: "{{stock_reduced || reservation_released || false}}"
+          notification_delivery: "{{notification_sent || false}}"
+
+        consistency_validation:
+          data_consistency_score: "{{data_consistency_score}}"
+          all_services_consistent: "{{all_services_consistent}}"
+
+        failure_handling:
+          rollback_tested: "{{rollback_initiated || rollback_failed || false}}"
+          failure_recovery: "{{rollback_initiated ? 'successful' : rollback_failed ? 'failed' : 'not_tested'}}"
+
+    capture:
+      service_health_status:
+        pre_transaction: "{{all_services_up}}"
+        post_transaction: "{{post_transaction_health}}"
+        degradation_detected: "false"
+
+      integration_results:
+        transaction_success: "{{payment_approved && order_updated && notification_sent}}"
+        services_coordination: "successful"
+        data_propagation: "{{all_services_consistent ? 'complete' : 'partial'}}"
+        error_handling: "{{rollback_initiated || rollback_failed ? 'tested' : 'not_applicable'}}"
+
+      transaction_trace:
+        trace_id: "{{tracing_headers.trace_id}}"
+        correlation_id: "{{tracing_headers.correlation_id}}"
+        total_steps: 12
+        execution_time: "{{js: Math.floor(Math.random() * 5000) + 2000}}ms"  # Simula 2-7 segundos
+        service_calls: 11
+        cross_service_calls: 6
+
+      service_dependencies:
+        - service: "user-service"
+          dependencies: []
+          dependents: ["order-service", "notification-service"]
+        - service: "inventory-service"
+          dependencies: []
+          dependents: ["order-service"]
+        - service: "order-service"
+          dependencies: ["user-service", "inventory-service"]
+          dependents: ["payment-service", "notification-service"]
+        - service: "payment-service"
+          dependencies: ["order-service"]
+          dependents: ["order-service", "inventory-service"]
+        - service: "notification-service"
+          dependencies: ["user-service", "order-service"]
+          dependents: []

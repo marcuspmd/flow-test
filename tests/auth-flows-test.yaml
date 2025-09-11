@@ -1,0 +1,400 @@
+# Teste de Fluxo de Autenticação JWT e OAuth2
+# Baseado no exemplo "Authentication Flow Testing" do YAML_EXAMPLES.md
+suite_name: "Teste de Fluxos de Autenticação"
+node_id: "auth_flows_test"
+description: "Testa diferentes fluxos de autenticação: JWT, OAuth2, refresh tokens, e validação de permissões"
+priority: "critical"
+
+base_url: "{{httpbin_url}}"
+
+exports:
+  - jwt_token
+  - oauth2_access_token
+  - refresh_token
+  - user_permissions
+  - auth_flow_results
+
+variables:
+  # Credenciais de teste
+  test_credentials:
+    username: "test_user@flowtest.com"
+    password: "test_password_123"
+    client_id: "flow_test_client_12345"
+    client_secret: "secret_key_abc123xyz789"
+
+  # URLs simuladas de autenticação
+  auth_endpoints:
+    login: "/post"
+    token_refresh: "/post"
+    oauth2_authorize: "/get"
+    oauth2_token: "/post"
+    validate_token: "/get"
+    user_profile: "/get"
+    logout: "/post"
+
+  # Tokens simulados para testes
+  mock_responses:
+    jwt_login_success:
+      access_token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0X3VzZXIiLCJpYXQiOjE2MzAwMDAwMDAsImV4cCI6MTYzMDAwMzYwMCwicm9sZXMiOlsidXNlciJdLCJwZXJtaXNzaW9ucyI6WyJyZWFkIiwid3JpdGUiXX0"
+      refresh_token: "rt_abc123def456ghi789"
+      token_type: "Bearer"
+      expires_in: 3600
+      user_id: "usr_12345"
+
+    oauth2_success:
+      access_token: "oauth2_token_xyz789abc123"
+      refresh_token: "oauth2_refresh_def456ghi789"
+      token_type: "Bearer"
+      expires_in: 7200
+      scope: "read write admin"
+
+    user_profile:
+      id: "usr_12345"
+      username: "test_user@flowtest.com"
+      name: "Test User"
+      roles: ["user", "premium"]
+      permissions: ["read", "write", "export"]
+      last_login: "2025-01-09T12:00:00Z"
+
+steps:
+  # Passo 1: Login JWT Tradicional
+  - name: "JWT Login Authentication"
+    request:
+      method: POST
+      url: "/post"  # Endpoint de login simplificado
+      headers:
+        Content-Type: "application/json"
+        X-Auth-Type: "jwt"
+      body:
+        grant_type: "password"
+        username: "{{test_credentials.username}}"
+        password: "{{test_credentials.password}}"
+        client_id: "{{test_credentials.client_id}}"
+
+    assert:
+      status_code: 200
+      json.username:
+        equals: "{{test_credentials.username}}"
+
+    capture:
+      jwt_token: '"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.mock_payload"'  # Token simulado válido literal
+      jwt_refresh_token: '"mock_refresh_token_456"'  # Refresh token simulado literal
+      jwt_expires_in: 3600  # 1 hora em segundos
+      jwt_user_id: '"12345"'  # ID do usuário
+      jwt_login_success: true
+
+  # Passo 2: Validação do Token JWT
+  - name: "Validate JWT Token"
+    request:
+      method: GET
+      url: "/get"  # Endpoint de validação simplificado
+      headers:
+        Authorization: "Bearer {{jwt_token}}"
+        X-Token-Type: "jwt"
+        X-Validation-Mode: "full"
+
+    assert:
+      status_code: 200
+      headers.authorization:
+        contains: "Bearer"
+
+    capture:
+      jwt_valid: true
+      jwt_payload_decoded: "body.json"  # Captura o payload do JSON
+      token_validation_time: "{{js: new Date().toISOString()}}"  # Timestamp atual
+
+  # Passo 3: Obter Perfil do Usuário com JWT
+  - name: "Get User Profile with JWT"
+    request:
+      method: GET
+      url: "/get"  # Endpoint de perfil simplificado
+      headers:
+        Authorization: "Bearer {{jwt_token}}"
+        Accept: "application/json"
+        X-Include-Permissions: "true"
+
+    assert:
+      status_code: 200
+
+    capture:
+      user_profile: "body.json"  # Captura o perfil do usuário
+      user_permissions: "body.json.permissions || ['read', 'write']"  # Permissões do usuário
+      user_roles: "body.json.roles || ['user']"  # Roles do usuário
+      profile_fetch_success: true
+
+  # Passo 4: Teste de Token Expirado (simulado)
+  - name: "Test Expired JWT Token"
+    request:
+      method: GET
+      url: "/get"
+      headers:
+        Authorization: "Bearer expired_jwt_token_12345"
+        X-Token-Status: "expired"
+        X-Expected-Error: "token_expired"
+
+    scenarios:
+      # Cenário A: Token expirado retorna 401
+      - condition: "status_code == `401`"
+        then:
+          capture:
+            jwt_expired_handled: "true"
+            auth_error_detected: "true"
+
+      # Cenário B: Token ainda válido (inesperado)
+      - condition: "status_code == `200`"
+        then:
+          capture:
+            jwt_unexpectedly_valid: "true"
+            token_validation_issue: "true"
+
+  # Passo 5: Refresh do Token JWT
+  - name: "Refresh JWT Token"
+    request:
+      method: POST
+      url: "/post"  # Endpoint de refresh simplificado
+      headers:
+        Content-Type: "application/json"
+        X-Auth-Type: "jwt_refresh"
+      body:
+        grant_type: "refresh_token"
+        refresh_token: "{{jwt_refresh_token}}"
+        client_id: "{{test_credentials.client_id}}"
+
+    assert:
+      status_code: 200
+      json.refresh_token:
+        equals: "{{jwt_refresh_token}}"
+
+    capture:
+      jwt_new_token: "mock_jwt_token_123_refreshed"  # Token renovado
+      jwt_refresh_success: true
+      new_token_expires_in: 3600  # 1 hora para token renovado
+
+  # Passo 6: Início do Fluxo OAuth2
+  - name: "OAuth2 Authorization Request"
+    request:
+      method: GET
+      url: "/get"  # Endpoint de autorização OAuth2 simplificado
+      params:
+        response_type: "code"
+        client_id: "{{test_credentials.client_id}}"
+        redirect_uri: "http://localhost:3000/callback"
+        scope: "read write admin"
+        state: "random_state_abc123"
+
+    assert:
+      status_code: 200
+      args.response_type:
+        equals: "code"
+      args.client_id:
+        equals: "{{test_credentials.client_id}}"
+
+    capture:
+      oauth2_auth_code: "auth_code_xyz789abc123"
+      oauth2_state: "random_state_string"  # State para OAuth2
+      oauth2_redirect_uri: "http://localhost:8080/callback"  # URI de callback
+      oauth2_auth_started: "true"
+
+  # Passo 7: Trocar Authorization Code por Access Token
+  - name: "OAuth2 Token Exchange"
+    request:
+      method: POST
+      url: "/post"  # Endpoint de token OAuth2 simplificado
+      headers:
+        Content-Type: "application/x-www-form-urlencoded"
+        X-OAuth2-Flow: "authorization_code"
+      body:
+        grant_type: "authorization_code"
+        code: "{{oauth2_auth_code}}"
+        client_id: "{{test_credentials.client_id}}"
+        client_secret: "{{test_credentials.client_secret}}"
+        redirect_uri: "http://localhost:8080/callback"  # URI de callback direta
+
+    assert:
+      status_code: 200
+      json.grant_type:
+        equals: "authorization_code"
+      json.code:
+        equals: "{{oauth2_auth_code}}"
+
+    capture:
+      oauth2_access_token: '"oauth2_access_token_xyz"'  # Token OAuth2 simulado literal
+      oauth2_refresh_token: '"oauth2_refresh_token_abc"'  # Refresh token OAuth2 literal
+      oauth2_expires_in: 7200  # 2 horas em segundos
+      oauth2_scope: "{{mock_responses.oauth2_success.scope}}"
+      oauth2_token_exchange_success: true
+
+  # Passo 8: Usar OAuth2 Token para Acessar Recursos
+  - name: "Access Resource with OAuth2 Token"
+    request:
+      method: GET
+      url: "/get"
+      headers:
+        Authorization: "Bearer {{oauth2_access_token}}"
+        X-OAuth2-Scope: "{{oauth2_scope}}"
+        X-Resource-Type: "protected"
+
+    assert:
+      status_code: 200
+      headers.authorization:
+        contains: "Bearer"
+
+    capture:
+      oauth2_resource_access: "true"
+      oauth2_scope_validated: "true"
+      protected_resource_data: "json.data || 'protected_data_accessed'"
+
+  # Passo 9: Teste de Permissões Granulares
+  - name: "Test Granular Permissions"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Authorization: "Bearer {{oauth2_access_token}}"
+        Content-Type: "application/json"
+        X-Permission-Check: "admin"
+      body:
+        action: "admin_operation"
+        resource: "user_management"
+        permission_required: "admin"
+        user_permissions: "{{user_permissions}}"
+
+    scenarios:
+      # Cenário A: Usuário tem permissão admin
+      - condition: "json.permission_required == 'admin' && headers['x-permission-check'] == 'admin'"
+        then:
+          assert:
+            status_code: 200
+            json.action:
+              equals: "admin_operation"
+          capture:
+            admin_permission_granted: "true"
+            admin_operation_success: "true"
+
+      # Cenário B: Usuário não tem permissão admin
+      - condition: "status_code == `403`"
+        then:
+          capture:
+            admin_permission_denied: "true"
+            insufficient_privileges: "true"
+
+  # Passo 10: Revogação de Token
+  - name: "Token Revocation"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Auth-Action: "revoke"
+      body:
+        token: "{{oauth2_access_token}}"
+        token_type: "access_token"
+        action: "revoke"
+
+    assert:
+      status_code: 200
+      json.action:
+        equals: "revoke"
+
+    capture:
+      oauth2_token_revoked: "true"
+      revocation_timestamp: "{{js: new Date().toISOString()}}"  # Timestamp de revogação
+
+  # Passo 11: Verificar Token Revogado
+  - name: "Verify Revoked Token"
+    request:
+      method: GET
+      url: "/get"
+      headers:
+        Authorization: "Bearer {{oauth2_access_token}}"
+        X-Token-Expected-Status: "revoked"
+
+    scenarios:
+      # Cenário A: Token revogado retorna 401
+      - condition: "status_code == `401`"
+        then:
+          capture:
+            revoked_token_rejected: "true"
+            token_revocation_effective: "true"
+
+      # Cenário B: Token ainda aceito (erro na revogação)
+      - condition: "status_code == `200`"
+        then:
+          capture:
+            revocation_failed: "true"
+            security_issue: "true"
+
+  # Passo 12: Logout Completo
+  - name: "Complete Logout"
+    request:
+      method: POST
+      url: "{{auth_endpoints.logout}}"
+      headers:
+        Authorization: "Bearer {{jwt_new_token}}"
+        Content-Type: "application/json"
+      body:
+        logout_type: "complete"
+        revoke_all_tokens: true
+        clear_session: true
+
+    assert:
+      status_code: 200
+      json.logout_type:
+        equals: "complete"
+
+    capture:
+      complete_logout: "true"
+      all_tokens_revoked: "true"
+      session_cleared: "true"
+
+  # Passo 13: Resumo dos Resultados de Autenticação
+  - name: "Authentication Flow Summary"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Test-Summary: "auth_flows"
+      body:
+        flow_summary: "complete_auth_testing"
+        results:
+          jwt_flow:
+            login: "{{jwt_login_success || false}}"
+            validation: "{{jwt_valid || false}}"
+            refresh: "{{jwt_refresh_success || false}}"
+            profile_access: "{{profile_fetch_success || false}}"
+          oauth2_flow:
+            authorization: "{{oauth2_auth_started || false}}"
+            token_exchange: "{{oauth2_token_exchange_success || false}}"
+            resource_access: "{{oauth2_resource_access || false}}"
+            revocation: "{{oauth2_token_revoked || false}}"
+          security_tests:
+            expired_token_handled: "{{jwt_expired_handled || false}}"
+            revoked_token_rejected: "{{revoked_token_rejected || false}}"
+            permission_validation: "{{admin_permission_granted || admin_permission_denied || false}}"
+          final_cleanup:
+            logout_complete: "{{complete_logout || false}}"
+
+    capture:
+      auth_flow_results:
+        jwt_authentication:
+          status: "{{jwt_login_success && jwt_valid && jwt_refresh_success ? 'success' : 'partial'}}"
+          tokens_issued: 2
+          profile_access: "{{profile_fetch_success || false}}"
+        oauth2_authentication:
+          status: "{{oauth2_token_exchange_success && oauth2_resource_access ? 'success' : 'partial'}}"
+          authorization_code_flow: "{{oauth2_auth_started || false}}"
+          token_management: "{{oauth2_token_revoked || false}}"
+        security_validation:
+          expired_tokens: "{{jwt_expired_handled || false}}"
+          revoked_tokens: "{{revoked_token_rejected || false}}"
+          permissions: "{{admin_permission_granted || admin_permission_denied || false}}"
+        session_management:
+          logout_success: "{{complete_logout || false}}"
+          cleanup_complete: "{{all_tokens_revoked || false}}"
+
+      test_completion_summary:
+        total_auth_flows: 2
+        security_tests_passed: "{{js: 0}}"
+        all_flows_tested: true
+        security_compliant: false

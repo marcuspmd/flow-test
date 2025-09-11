@@ -1,0 +1,350 @@
+# Teste de Cenários Condicionais Avançados
+# Baseado no exemplo "Complex Conditional Scenarios" do YAML_EXAMPLES.md
+suite_name: "Teste de Cenários Condicionais Avançados"
+node_id: "complex_scenarios_test"
+description: "Testa lógica condicional complexa com múltiplos cenários baseados em diferentes condições"
+priority: "high"
+
+base_url: "{{httpbin_url}}"
+
+exports:
+  - user_access_matrix
+  - scenario_results
+  - conditional_flow_summary
+
+variables:
+  user_types: ["guest", "registered", "premium", "admin"]
+
+  test_matrix:
+    - user_type: "guest"
+      token: ""
+      expected_features: ["basic_search"]
+      expected_limits:
+        requests_per_hour: 10
+        data_export: false
+      expected_status: 200
+
+    - user_type: "registered"
+      token: "reg_token_abc123"
+      expected_features: ["basic_search", "save_searches"]
+      expected_limits:
+        requests_per_hour: 100
+        data_export: false
+      expected_status: 200
+
+    - user_type: "premium"
+      token: "premium_token_xyz789"
+      expected_features: ["basic_search", "save_searches", "advanced_filters", "export_data"]
+      expected_limits:
+        requests_per_hour: 1000
+        data_export: true
+      expected_status: 200
+
+    - user_type: "admin"
+      token: "admin_token_super456"
+      expected_features: ["all"]
+      expected_limits:
+        requests_per_hour: -1
+        data_export: true
+        admin_access: true
+      expected_status: 200
+
+  # Dados de teste para diferentes cenários
+  api_responses:
+    guest_response:
+      available_features: ["basic_search"]
+      limits:
+        requests_per_hour: 10
+        premium_required: true
+
+    registered_response:
+      available_features: ["basic_search", "save_searches"]
+      limits:
+        requests_per_hour: 100
+        premium_upgrade_available: true
+
+    premium_response:
+      available_features: ["basic_search", "save_searches", "advanced_filters", "export_data"]
+      limits:
+        requests_per_hour: 1000
+        unlimited_features: false
+
+    admin_response:
+      available_features: ["all"]
+      limits:
+        requests_per_hour: -1
+        unlimited_features: true
+        admin_panels: ["user_management", "system_monitoring"]
+
+steps:
+  # Cenário 1: Teste de Acesso Guest (sem autenticação)
+  - name: "Test Guest User Access"
+    request:
+      method: GET
+      url: "/get"
+      headers:
+        Accept: "application/json"
+        X-User-Type: "guest"
+      params:
+        action: "get_features"
+        user_type: "guest"
+
+    scenarios:
+      # Cenário A: Acesso bem-sucedido para guest
+      - condition: "status_code == `200`"
+        then:
+          assert:
+            status_code: 200
+            args.action:
+              equals: "get_features"
+          capture:
+            guest_access_granted: "true"
+            guest_features: "{{api_responses.guest_response.available_features}}"
+            guest_limits: "{{api_responses.guest_response.limits}}"
+
+      # Cenário B: Acesso negado
+      - condition: "status_code == `401`"
+        then:
+          assert:
+            status_code: 401
+          capture:
+            guest_access_denied: "true"
+            auth_required: "true"
+
+      # Cenário C: Rate limit excedido
+      - condition: "status_code == `429`"
+        then:
+          assert:
+            status_code: 429
+          capture:
+            guest_rate_limited: "true"
+            retry_after: "'60'"
+
+  # Cenário 2: Teste de Usuário Registrado
+  - name: "Test Registered User Access"
+    request:
+      method: GET
+      url: "/get"
+      headers:
+        Authorization: "Bearer {{test_matrix[1].token}}"
+        Accept: "application/json"
+        X-User-Type: "registered"
+      params:
+        action: "get_features"
+        user_type: "registered"
+
+    scenarios:
+      # Cenário A: Usuário registrado com acesso normal
+      - condition: "status_code == `200` && headers['x-user-type'] == 'registered'"
+        then:
+          assert:
+            status_code: 200
+            args.user_type:
+              equals: "registered"
+          capture:
+            registered_access: "true"
+            registered_features: "{{api_responses.registered_response.available_features}}"
+            registered_limits: "{{api_responses.registered_response.limits}}"
+            feature_count: "length({{api_responses.registered_response.available_features}})"
+
+      # Cenário B: Token inválido ou expirado
+      - condition: "status_code == `401`"
+        then:
+          assert:
+            status_code: 401
+          capture:
+            registered_token_invalid: "true"
+            reauth_required: "true"
+
+      # Cenário C: Upgrade para premium sugerido
+      - condition: "status_code == `200` && args.action == 'get_features'"
+        then:
+          capture:
+            upgrade_available: "{{api_responses.registered_response.limits.premium_upgrade_available}}"
+            current_tier: "'registered'"
+
+  # Cenário 3: Teste de Usuário Premium
+  - name: "Test Premium User Features"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Authorization: "Bearer {{test_matrix[2].token}}"
+        Content-Type: "application/json"
+        X-User-Type: "premium"
+      body:
+        action: "test_premium_features"
+        user_type: "premium"
+        requested_features: ["advanced_filters", "export_data"]
+
+    scenarios:
+      # Cenário A: Todas as funcionalidades premium disponíveis
+      - condition: "status_code == `200`"
+        then:
+          assert:
+            status_code: 200
+            json.action:
+              equals: "test_premium_features"
+          capture:
+            premium_access: "true"
+            premium_features: "{{api_responses.premium_response.available_features}}"
+            export_enabled: "{{api_responses.premium_response.available_features | contains('export_data')}}"
+            advanced_filters: "{{api_responses.premium_response.available_features | contains('advanced_filters')}}"
+
+      # Cenário B: Funcionalidade premium não disponível (downgrade?)
+      - condition: "status_code == `403`"
+        then:
+          assert:
+            status_code: 403
+          capture:
+            premium_access_denied: "true"
+            subscription_check_required: "true"
+
+      # Cenário C: Limite de uso excedido mesmo sendo premium
+      - condition: "status_code == `429`"
+        then:
+          capture:
+            premium_rate_limited: "true"
+            fair_usage_exceeded: "true"
+
+  # Cenário 4: Teste de Acesso Administrativo
+  - name: "Test Admin Capabilities"
+    request:
+      method: GET
+      url: "/get"
+      headers:
+        Authorization: "Bearer {{test_matrix[3].token}}"
+        Accept: "application/json"
+        X-User-Type: "admin"
+        X-Admin-Action: "dashboard"
+      params:
+        action: "admin_dashboard"
+        permissions: "all"
+
+    scenarios:
+      # Cenário A: Acesso administrativo completo
+      - condition: "status_code == `200`"
+        then:
+          assert:
+            status_code: 200
+            args.action:
+              equals: "admin_dashboard"
+          capture:
+            admin_access: "true"
+            admin_capabilities: "{{api_responses.admin_response.limits.admin_panels}}"
+            unlimited_access: "{{api_responses.admin_response.limits.unlimited_features}}"
+
+      # Cenário B: Admin com permissões limitadas
+      - condition: "status_code == `200` && headers['x-admin-action'] == 'dashboard'"
+        then:
+          capture:
+            admin_dashboard_access: "true"
+            admin_permissions: "['user_management', 'system_monitoring']"
+
+      # Cenário C: Acesso admin negado (token inválido)
+      - condition: "status_code == `403`"
+        then:
+          capture:
+            admin_access_denied: "true"
+            security_alert_triggered: "true"
+
+  # Cenário 5: Validação Cruzada de Tipos de Usuário
+  - name: "Cross-User-Type Validation"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Test-Validation: "cross_user_matrix"
+      body:
+        validation_type: "cross_user_access"
+        test_results:
+          guest:
+            access: "{{guest_access_granted || false}}"
+            features: "{{guest_features}}"
+            limits: "{{guest_limits}}"
+          registered:
+            access: "{{registered_access || false}}"
+            features: "{{registered_features}}"
+            feature_count: "{{feature_count || 0}}"
+          premium:
+            access: "{{premium_access || false}}"
+            export_enabled: "{{export_enabled || false}}"
+            advanced_filters: "{{advanced_filters || false}}"
+          admin:
+            access: "{{admin_access || false}}"
+            unlimited: "{{unlimited_access || false}}"
+            capabilities: "{{admin_capabilities}}"
+
+    scenarios:
+      # Cenário A: Matriz de acesso válida
+      - condition: "status_code == `200`"
+        then:
+          assert:
+            status_code: 200
+            json.validation_type:
+              equals: "cross_user_access"
+          capture:
+            validation_passed: "true"
+            access_matrix_valid: "true"
+
+      # Cenário B: Inconsistências detectadas
+      - condition: "status_code == `200`"
+        then:
+          capture:
+            user_access_matrix:
+              guest_valid: "{{guest_access_granted || false}}"
+              registered_valid: "{{registered_access || false}}"
+              premium_valid: "{{premium_access || false}}"
+              admin_valid: "{{admin_access || false}}"
+            hierarchy_respected: "true"
+
+  # Cenário 6: Teste de Fluxo Completo com Múltiplas Condições
+  - name: "Complete Multi-Scenario Flow"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        flow_test: "multi_scenario"
+        scenarios_tested:
+          - type: "guest"
+            success: "{{guest_access_granted || false}}"
+            features_count: "{{guest_features | length || 0}}"
+          - type: "registered"
+            success: "{{registered_access || false}}"
+            upgrade_available: "{{upgrade_available || false}}"
+          - type: "premium"
+            success: "{{premium_access || false}}"
+            export_enabled: "{{export_enabled || false}}"
+          - type: "admin"
+            success: "{{admin_access || false}}"
+            unlimited: "{{unlimited_access || false}}"
+
+    scenarios:
+      # Cenário Final A: Todos os testes passaram
+      - condition: "status_code == `200`"
+        then:
+          capture:
+            all_scenarios_tested: "true"
+            scenario_results:
+              guest_scenario: "{{guest_access_granted || 'not_tested'}}"
+              registered_scenario: "{{registered_access || 'not_tested'}}"
+              premium_scenario: "{{premium_access || 'not_tested'}}"
+              admin_scenario: "{{admin_access || 'not_tested'}}"
+              cross_validation: "{{validation_passed || 'not_tested'}}"
+
+            conditional_flow_summary:
+              total_scenarios: 6
+              conditions_tested: 12
+              user_types_validated: 4
+              matrix_validation: "{{access_matrix_valid || false}}"
+              test_complete: true
+
+      # Cenário Final B: Alguns testes falharam
+      - condition: "status_code >= `400`"
+        then:
+          capture:
+            some_scenarios_failed: "true"
+            failure_analysis: "Check individual scenario results"

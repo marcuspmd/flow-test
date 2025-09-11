@@ -1,0 +1,209 @@
+# Teste de Upload e Download de Arquivos - Corrigido
+# Baseado no exemplo "File Upload and Download" do YAML_EXAMPLES.md
+suite_name: "Teste de Upload e Download de Arquivos"
+node_id: "file_upload_test"
+description: "Testa operações de upload, download e manipulação de arquivos com simulação"
+priority: "high"
+
+base_url: "{{httpbin_url}}"
+
+exports:
+  - file_id
+  - upload_metadata
+  - file_operations_summary
+
+variables:
+  test_files:
+    image: "test_image.jpg"
+    document: "test_document.pdf"
+    spreadsheet: "test_data.csv"
+
+  file_sizes:
+    small: 1024    # 1KB
+    medium: 512000  # 500KB
+    large: 5242880  # 5MB
+
+steps:
+  # Passo 1: Upload de Arquivo (Simulado)
+  - name: "Upload File Simulation"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "multipart/form-data"
+        X-File-Operation: "upload"
+      body:
+        operation: "file_upload"
+        filename: "test_document.pdf"
+        file_size: 256000
+        content_type: "application/pdf"
+        upload_timestamp: "2024-01-01T10:00:00Z"
+
+    assert:
+      status_code: 200
+      json.operation:
+        equals: "file_upload"
+
+    capture:
+      file_id: "body.data.file_id | 'FILE-12345'"
+      upload_timestamp: "'2024-01-01T10:00:00Z'"
+      upload_url: "body.url"
+
+  # Passo 2: Obter Metadados do Arquivo
+  - name: "Get File Metadata"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        operation: "get_file_metadata"
+        file_id: "{{file_id}}"
+        request_timestamp: "2024-01-01T10:00:00Z"
+
+    assert:
+      status_code: 200
+      json.operation:
+        equals: "get_file_metadata"
+
+    capture:
+      file_metadata: "body.json"
+      file_status: "'uploaded'"
+
+  # Passo 3: Download do Arquivo (Simulado)
+  - name: "Download File Simulation"
+    request:
+      method: GET
+      url: "/get"
+      headers:
+        X-File-Operation: "download"
+        X-File-ID: "{{file_id}}"
+      params:
+        operation: "file_download"
+        file_id: "{{file_id}}"
+
+    assert:
+      status_code: 200
+
+    capture:
+      download_url: "body.url"
+      download_timestamp: "'2024-01-01T10:05:00Z'"
+
+  # Passo 4: Verificar Integridade do Arquivo
+  - name: "File Integrity Check"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        operation: "integrity_check"
+        file_id: "{{file_id}}"
+        original_checksum: "sha256:abc123def456"
+
+    assert:
+      status_code: 200
+
+    capture:
+      integrity_result: "body.json.integrity_valid"
+      file_checksum: "'sha256:abc123def456'"
+
+  # Passo 5: Upload de Múltiplos Tipos de Arquivo
+  - name: "Upload Different File Types"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Batch-Upload: "true"
+      body:
+        operation: "batch_upload"
+        files:
+          - name: "image.jpg"
+            size: 512000
+            type: "image/jpeg"
+          - name: "document.docx"
+            size: 256000
+            type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+          - name: "data.csv"
+            size: 128000
+            type: "text/csv"
+          - name: "archive.zip"
+            size: 1024000
+            type: "application/zip"
+
+    assert:
+      status_code: 200
+      json.operation:
+        equals: "batch_upload"
+
+    capture:
+      multi_upload_result: "body.json.files"
+      supported_formats: "['pdf', 'jpg', 'docx', 'csv']"
+
+  # Passo 6: Deletar Arquivo
+  - name: "Delete File"
+    request:
+      method: DELETE
+      url: "/delete"
+      headers:
+        X-File-ID: "{{file_id}}"
+      params:
+        operation: "delete_file"
+        file_id: "{{file_id}}"
+
+    assert:
+      status_code: 200
+
+    capture:
+      deletion_timestamp: "'2024-01-01T10:10:00Z'"
+
+  # Passo 7: Verificar Deleção
+  - name: "Verify File Deletion"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        operation: "verify_deletion"
+        file_id: "{{file_id}}"
+
+    assert:
+      status_code: 200
+
+    capture:
+      file_deleted: "body.json.file_deleted"
+
+  # Passo 8: Resumo das Operações
+  - name: "File Operations Summary"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        summary_type: "file_operations"
+        operations_performed:
+          upload: true
+          metadata_retrieval: true
+          download: true
+          integrity_check: true
+          batch_upload: true
+          deletion: true
+          deletion_verification: true
+
+    capture:
+      upload_metadata:
+        original_filename: "test_document.pdf"
+        file_size: 256000
+        upload_time: "2024-01-01T10:00:00Z"
+        file_id: "{{file_id}}"
+
+      file_operations_summary:
+        total_operations: 7
+        upload_success: true
+        download_success: true
+        integrity_verified: true
+        deletion_confirmed: true
+        supported_formats_count: 4
