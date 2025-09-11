@@ -95,8 +95,10 @@ steps:
 
     assert:
       status_code: 200
-      headers.authorization:
-        contains: "Bearer"
+      body:
+        headers:
+          Authorization:
+            contains: "Bearer"
 
     capture:
       jwt_valid: true
@@ -236,8 +238,10 @@ steps:
 
     assert:
       status_code: 200
-      headers.authorization:
-        contains: "Bearer"
+      body:
+        headers:
+          Authorization:
+            contains: "Bearer"
 
     capture:
       oauth2_resource_access: "true"

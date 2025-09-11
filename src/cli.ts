@@ -129,13 +129,8 @@ async function main() {
         break;
 
       default:
-        if (!arg.startsWith("-")) {
-          // Assume que é um arquivo de configuração
-          configFile = arg;
-        } else {
-          console.error(`❌ Unknown argument: ${arg}`);
-          showHelp = true;
-        }
+        console.error(`❌ Unknown argument: ${arg}`);
+        showHelp = true;
         break;
     }
   }
