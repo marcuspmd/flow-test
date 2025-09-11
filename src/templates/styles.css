@@ -1,0 +1,49 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+  .metric-card {
+    @apply bg-white rounded-lg shadow-md p-6 border-l-4 transition-transform hover:scale-105;
+  }
+  
+  .metric-card-success {
+    @apply border-success-500;
+  }
+  
+  .metric-card-error {
+    @apply border-error-500;
+  }
+  
+  .metric-card-warning {
+    @apply border-warning-500;
+  }
+  
+  .status-badge {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-sm font-medium;
+  }
+  
+  .status-badge-success {
+    @apply bg-success-100 text-success-700;
+  }
+  
+  .status-badge-error {
+    @apply bg-error-100 text-error-700;
+  }
+  
+  .status-badge-warning {
+    @apply bg-warning-100 text-warning-700;
+  }
+  
+  .code-block {
+    @apply bg-gray-900 text-gray-100 p-4 rounded-md font-mono text-sm overflow-x-auto whitespace-pre-wrap border;
+  }
+  
+  .collapsible-trigger {
+    @apply cursor-pointer flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 transition-colors rounded-md;
+  }
+  
+  .copy-button {
+    @apply inline-flex items-center px-3 py-1 bg-gray-800 hover:bg-gray-700 text-white text-xs rounded transition-colors cursor-pointer;
+  }
+}

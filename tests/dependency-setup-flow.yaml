@@ -1,7 +1,7 @@
 node_id: "dependency-setup"
 suite_name: "Dependency Setup Flow"
 description: "Sets up authentication and basic configuration for dependency testing"
-base_url: "http://localhost:3000"
+base_url: "{{httpbin_url}}"
 
 metadata:
   priority: "high"

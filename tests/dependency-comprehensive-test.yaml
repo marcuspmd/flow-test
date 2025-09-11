@@ -1,7 +1,7 @@
 node_id: "dependency-comprehensive-test"
 suite_name: "Dependency System Comprehensive Test"
 description: "Tests complex dependency management, caching, conditional execution, and retry logic"
-base_url: "http://localhost:3000"
+base_url: "{{httpbin_url}}"
 
 depends:
   - node_id: "dependency-setup"

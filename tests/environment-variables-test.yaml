@@ -1,0 +1,92 @@
+node_id: "environment-variables"
+suite_name: "Environment Variables Integration Test"
+description: "Tests environment variable loading and hierarchical scoping resolution"
+base_url: "{{httpbin_url}}"
+
+metadata:
+  priority: "medium"
+  tags: ["environment", "variables", "scoping", "system"]
+  estimated_duration_ms: 3000
+
+variables:
+  local_var: "local_value"
+  override_test: "suite_level"
+
+steps:
+  - name: "Test environment variable access"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-User: "{{$env.USER}}"
+        X-Home: "{{$env.HOME}}"
+      body:
+        user: "{{$env.USER}}"
+        home_exists: "{{$env.HOME}}"
+        path_exists: "{{$env.PATH}}"
+        custom_env: "{{$env.FLOW_TEST_CUSTOM}}"
+    assert:
+      status_code: 200
+      body:
+        headers:
+          X-User:
+            exists: true
+    capture:
+      env_user: "body.json.user"
+      env_home: "body.json.home_exists"
+
+  - name: "Test variable hierarchy resolution"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        local_value: "{{local_var}}"
+        env_value: "{{$env.FLOW_TEST_OVERRIDE}}"
+        mixed_resolution: "User: {{$env.USER}}, Local: {{local_var}}"
+        hierarchy_test: "{{override_test}}"
+    assert:
+      status_code: 200
+      body:
+        json:
+          local_value:
+            equals: "local_value"
+          hierarchy_test:
+            equals: "suite_level"
+
+  - name: "Test environment variable defaults"
+    request:
+      method: "GET"
+      url: "/get"
+      headers:
+        X-Env-Default: "{{$env.NONEXISTENT_VAR}}"
+        X-With-Default: "{{$env.NONEXISTENT_VAR:-default_value}}"
+    assert:
+      status_code: 200
+      body:
+        headers:
+          X-With-Default:
+            equals: "default_value"
+
+  - name: "Test environment in scenarios"
+    request:
+      method: "GET"
+      url: "/json"
+    scenarios:
+      - name: "Environment-based conditional"
+        condition: "$env.USER != null"
+        then:
+          capture:
+            env_conditional_result: "body.slideshow.title"
+          variables:
+            env_test_passed: true
+        else:
+          variables:
+            env_test_passed: false
+
+exports:
+  - env_user
+  - env_home
+  - env_test_passed

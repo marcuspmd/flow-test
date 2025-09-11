@@ -1,0 +1,99 @@
+node_id: "javascript-expressions"
+suite_name: "JavaScript Expressions Integration Test"
+description: "Tests JavaScript expressions for dynamic data generation and calculations"
+base_url: "{{httpbin_url}}"
+
+metadata:
+  priority: "high"
+  tags: ["javascript", "expressions", "dynamic", "calculations"]
+  estimated_duration_ms: 4000
+
+variables:
+  base_number: 10
+  multiplier: 5
+
+steps:
+  - name: "Test basic JavaScript arithmetic"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        calculated_value: "{{$js.result = base_number * multiplier; return result}}"
+        timestamp: "{{$js.return Date.now()}}"
+        random_between: "{{$js.return Math.floor(Math.random() * 100) + 1}}"
+    assert:
+      status_code: 200
+      body:
+        json:
+          calculated_value:
+            equals: 50
+          timestamp:
+            type: number
+    capture:
+      js_calculated: "body.json.calculated_value"
+      js_timestamp: "body.json.timestamp"
+
+  - name: "Test JavaScript string manipulation"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        uppercase_suite: "{{$js.return 'javascript-expressions'.toUpperCase()}}"
+        reversed_name: "{{$js.return 'FlowTest'.split('').reverse().join('')}}"
+        formatted_date: "{{$js.return new Date().toISOString().split('T')[0]}}"
+    assert:
+      status_code: 200
+      body:
+        json:
+          uppercase_suite:
+            equals: "JAVASCRIPT-EXPRESSIONS"
+          reversed_name:
+            equals: "tseTwolF"
+
+  - name: "Test JavaScript with captured variables"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        double_calculated: "{{$js.return js_calculated * 2}}"
+        time_diff: "{{$js.return Date.now() - js_timestamp}}"
+        complex_calc: "{{$js.const val = js_calculated; return val > 40 ? 'high' : 'low'}}"
+    assert:
+      status_code: 200
+      body:
+        json:
+          double_calculated:
+            equals: 100
+          complex_calc:
+            equals: "high"
+
+  - name: "Test JavaScript arrays and objects"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        array_sum: "{{$js.const arr = [1,2,3,4,5]; return arr.reduce((a,b) => a+b, 0)}}"
+        object_keys: "{{$js.const obj = {a:1, b:2, c:3}; return Object.keys(obj).length}}"
+        conditional_value: "{{$js.return base_number > 5 ? 'greater' : 'less'}}"
+    assert:
+      status_code: 200
+      body:
+        json:
+          array_sum:
+            equals: 15
+          object_keys:
+            equals: 3
+          conditional_value:
+            equals: "greater"
+
+exports:
+  - js_calculated
+  - js_timestamp

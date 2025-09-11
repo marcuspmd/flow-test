@@ -6,20 +6,25 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
-    "flow-test": "dist/cli.js"
+    "flow-test": "dist/cli.js",
+    "flow-test-html": "dist/report-generator/cli.js"
   },
   "scripts": {
     "build": "tsc",
     "dev": "ts-node src/cli.ts",
-    "test": "ts-node src/cli.ts",
-    "test:all": "ts-node src/cli.ts --simple",
-    "test:verbose": "ts-node src/cli.ts --verbose",
-    "test:silent": "ts-node src/cli.ts --silent",
-    "test:critical": "ts-node src/cli.ts --priority critical",
-    "test:high": "ts-node src/cli.ts --priority critical,high",
+    "test": "node start-test-with-server.js",
+    "test:all": "node start-test-with-server.js --simple",
+    "test:verbose": "node start-test-with-server.js --verbose",
+    "test:silent": "node start-test-with-server.js --silent",
+    "test:critical": "node start-test-with-server.js --priority critical",
+    "test:high": "node start-test-with-server.js --priority critical,high",
+    "test:direct": "ts-node src/cli.ts",
+    "server": "node mock-server.js",
     "prepare": "npm run build",
     "docs": "npm run build && npx @microsoft/api-extractor run --config api-extractor.json",
-    "docs:serve": "npm run docs && cd docs && python3 -m http.server 8080"
+    "docs:serve": "npm run docs && cd docs && python3 -m http.server 8080",
+    "report:html": "ts-node src/report-generator/cli.ts",
+    "report:generate": "ts-node src/report-generator/cli.ts results/latest.json"
   },
   "keywords": [
     "api",
@@ -48,9 +53,13 @@
     "@microsoft/api-documenter": "^7.25.4",
     "@microsoft/api-extractor": "^7.52.11",
     "@microsoft/tsdoc": "^0.15.0",
+    "@tailwindcss/typography": "^0.5.16",
     "@types/jmespath": "^0.15.2",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^20.14.2",
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.0.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.4.5"
   },

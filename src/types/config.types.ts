@@ -149,12 +149,16 @@ export interface StepExecutionResult {
     url: string;
     headers?: Record<string, string>;
     body?: any;
+    full_url?: string;
+    curl_command?: string;
+    raw_request?: string;
   };
   response_details?: {
     status_code: number;
     headers: Record<string, string>;
     body: any;
     size_bytes: number;
+    raw_response?: string;
   };
   assertions_results?: AssertionResult[];
   captured_variables?: Record<string, any>;

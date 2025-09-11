@@ -1,0 +1,113 @@
+node_id: "parallel-execution"
+suite_name: "Parallel Execution Test Suite"
+description: "Tests concurrent test execution with configurable limits and performance validation"
+base_url: "{{httpbin_url}}"
+
+metadata:
+  priority: "medium"
+  tags: ["parallel", "performance", "concurrent", "scaling"]
+  estimated_duration_ms: 8000
+  execution_mode: "parallel"
+  max_parallel: 3
+
+variables:
+  parallel_test_id: "parallel-{{$faker.uuid}}"
+  concurrent_requests: 5
+
+steps:
+  - name: "Concurrent request 1"
+    request:
+      method: "GET"
+      url: "/delay/2"
+      headers:
+        X-Request-ID: "req-1-{{parallel_test_id}}"
+        X-Parallel-Test: "concurrent-execution"
+    assert:
+      status_code: 200
+      response_time_ms:
+        less_than: 3000
+    capture:
+      req1_duration: "response_time_ms"
+    metadata:
+      can_run_parallel: true
+
+  - name: "Concurrent request 2"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Request-ID: "req-2-{{parallel_test_id}}"
+      body:
+        parallel_data: "concurrent_test_2"
+        request_number: 2
+    assert:
+      status_code: 200
+    capture:
+      req2_duration: "response_time_ms"
+    metadata:
+      can_run_parallel: true
+
+  - name: "Concurrent request 3"
+    request:
+      method: "PUT"
+      url: "/put"
+      headers:
+        Content-Type: "application/json"
+        X-Request-ID: "req-3-{{parallel_test_id}}"
+      body:
+        parallel_data: "concurrent_test_3"
+        request_number: 3
+    assert:
+      status_code: 200
+    capture:
+      req3_duration: "response_time_ms"
+    metadata:
+      can_run_parallel: true
+
+  - name: "Sequential validation step"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        validation: "sequential_after_parallel"
+        req1_time: "{{req1_duration}}"
+        req2_time: "{{req2_duration}}"
+        req3_time: "{{req3_duration}}"
+        total_parallel_time: "{{$js.return req1_duration + req2_duration + req3_duration}}"
+    assert:
+      status_code: 200
+      body:
+        json:
+          validation:
+            equals: "sequential_after_parallel"
+    metadata:
+      can_run_parallel: false
+      depends_on: ["Concurrent request 1", "Concurrent request 2", "Concurrent request 3"]
+
+  - name: "Performance validation"
+    request:
+      method: "GET"
+      url: "/get"
+      headers:
+        X-Performance-Check: "parallel-execution-summary"
+    assert:
+      status_code: 200
+    scenarios:
+      - name: "Parallel execution benefit validation"
+        condition: "req1_duration < 3000 && req2_duration < 1000 && req3_duration < 1000"
+        then:
+          variables:
+            parallel_execution_effective: true
+            performance_gain: "{{$js.return Math.round((6000 - Math.max(req1_duration, req2_duration, req3_duration)) / 6000 * 100)}}"
+        else:
+          variables:
+            parallel_execution_effective: false
+
+exports:
+  - parallel_execution_effective
+  - req1_duration
+  - req2_duration
+  - req3_duration

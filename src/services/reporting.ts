@@ -3,6 +3,7 @@ import path from "path";
 import { ConfigManager } from "../core/config";
 import { AggregatedResult, ReportFormat } from "../types/engine.types";
 import { getLogger } from "./logger.service";
+import { HTMLReportGenerator } from "../report-generator/html-generator";
 
 /**
  * Service for generating reports in multiple formats
@@ -136,7 +137,7 @@ export class ReportingService {
   }
 
   /**
-   * Generates HTML report
+   * Generates HTML report using the new HTML generator
    */
   private async generateHtmlReport(
     result: AggregatedResult,
@@ -146,17 +147,31 @@ export class ReportingService {
   ): Promise<void> {
     const fileName = `${baseName}_${timestamp}.html`;
     const filePath = path.join(outputDir, fileName);
-    const latestPath = path.join(outputDir, "latest.html");
 
-    const html = this.buildHtmlReport(result);
+    const htmlGenerator = new HTMLReportGenerator({
+      outputDir: outputDir,
+      includeCurlCommands: true,
+      includeRawData: true,
+      theme: 'light'
+    });
 
-    // Saves file with timestamp
-    fs.writeFileSync(filePath, html, "utf8");
-    this.logger.info(`HTML report: ${filePath}`);
-
-    // Saves copy as latest.html
-    fs.writeFileSync(latestPath, html, "utf8");
-    this.logger.info(`Latest HTML: ${latestPath}`);
+    try {
+      const generatedPath = await htmlGenerator.generateHTML(result, filePath);
+      this.logger.info(`Enhanced HTML report: ${generatedPath}`);
+      
+      // The generator already creates latest.html
+      const latestPath = path.join(outputDir, "latest.html");
+      this.logger.info(`Latest HTML: ${latestPath}`);
+    } catch (error) {
+      this.logger.error('Failed to generate HTML report with new generator, falling back to legacy method', { error: error as Error });
+      // Fallback to legacy HTML generation
+      const html = this.buildHtmlReport(result);
+      fs.writeFileSync(filePath, html, "utf8");
+      
+      const latestPath = path.join(outputDir, "latest.html");
+      fs.writeFileSync(latestPath, html, "utf8");
+      this.logger.info(`HTML report (fallback): ${filePath}`);
+    }
   }
 
   /**

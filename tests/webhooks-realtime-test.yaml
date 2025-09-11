@@ -1,0 +1,181 @@
+node_id: "webhooks-realtime"
+suite_name: "Webhooks and Real-time Testing Suite"
+description: "Tests webhook delivery, real-time communications, and event-driven scenarios"
+base_url: "{{httpbin_url}}"
+
+metadata:
+  priority: "high"
+  tags: ["webhooks", "real-time", "events", "callbacks", "integration"]
+  estimated_duration_ms: 12000
+
+variables:
+  webhook_id: "webhook-{{$faker.uuid}}"
+  callback_url: "{{httpbin_url}}/post"
+  event_type: "user.created"
+
+steps:
+  - name: "Register webhook endpoint"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        webhook_config:
+          id: "{{webhook_id}}"
+          url: "{{callback_url}}"
+          events: ["user.created", "user.updated", "payment.completed"]
+          secret: "{{$faker.string.alphanumeric}}"
+          active: true
+    assert:
+      status_code: 200
+      body:
+        json:
+          webhook_config:
+            active:
+              equals: true
+    capture:
+      webhook_secret: "body.json.webhook_config.secret"
+      registered_webhook_id: "body.json.webhook_config.id"
+
+  - name: "Simulate webhook trigger event"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Event-Type: "{{event_type}}"
+        X-Webhook-ID: "{{registered_webhook_id}}"
+      body:
+        event:
+          type: "{{event_type}}"
+          timestamp: "{{$faker.date.recent}}"
+          data:
+            user_id: "{{$faker.string.uuid}}"
+            email: "{{$faker.internet.email}}"
+            name: "{{$faker.person.fullName}}"
+        metadata:
+          webhook_id: "{{registered_webhook_id}}"
+          delivery_attempt: 1
+          signature: "sha256={{webhook_secret}}"
+    assert:
+      status_code: 200
+    capture:
+      event_user_id: "body.json.event.data.user_id"
+      event_timestamp: "body.json.event.timestamp"
+
+  - name: "Test webhook delivery confirmation"
+    request:
+      method: "GET"
+      url: "/get"
+      headers:
+        X-Webhook-Check: "delivery-confirmation"
+        X-Event-ID: "{{event_user_id}}"
+    assert:
+      status_code: 200
+      body:
+        headers:
+          X-Event-ID:
+            equals: "{{event_user_id}}"
+    scenarios:
+      - name: "Webhook delivery validation"
+        condition: "status_code == 200"
+        then:
+          variables:
+            webhook_delivered: true
+            delivery_status: "success"
+        else:
+          variables:
+            webhook_delivered: false
+            delivery_status: "failed"
+
+  - name: "Test retry mechanism for failed webhooks"
+    request:
+      method: "POST"
+      url: "/status/500"
+      headers:
+        Content-Type: "application/json"
+        X-Webhook-Retry: "true"
+      body:
+        retry_webhook:
+          original_event_id: "{{event_user_id}}"
+          retry_attempt: 2
+          backoff_delay: 5000
+    retry:
+      max_attempts: 3
+      delay_ms: 1000
+      on_status_codes: [500, 502, 503, 504]
+    continue_on_failure: true
+    assert:
+      status_code: 500
+    metadata:
+      description: "Tests webhook retry logic on delivery failures"
+
+  - name: "Test webhook signature validation"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Webhook-Signature: "sha256={{webhook_secret}}"
+        X-Webhook-Timestamp: "{{$js.return Math.floor(Date.now() / 1000)}}"
+      body:
+        signature_test:
+          payload: "test_signature_validation"
+          webhook_id: "{{registered_webhook_id}}"
+          timestamp: "{{$js.return Date.now()}}"
+    assert:
+      status_code: 200
+      body:
+        json:
+          signature_test:
+            payload:
+              equals: "test_signature_validation"
+
+  - name: "Test real-time event streaming simulation"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Stream-Type: "real-time-events"
+      body:
+        stream_events:
+          - event_id: "{{$faker.string.uuid}}"
+            type: "user.activity"
+            timestamp: "{{$faker.date.recent}}"
+          - event_id: "{{$faker.string.uuid}}"
+            type: "system.health"
+            timestamp: "{{$faker.date.recent}}"
+          - event_id: "{{$faker.string.uuid}}"
+            type: "payment.processed"
+            timestamp: "{{$faker.date.recent}}"
+    assert:
+      status_code: 200
+    capture:
+      stream_event_count: "body.json.stream_events.length"
+
+  - name: "Validate webhook system health"
+    request:
+      method: "GET"
+      url: "/get"
+      headers:
+        X-Health-Check: "webhook-system"
+    assert:
+      status_code: 200
+    scenarios:
+      - name: "Overall webhook system validation"
+        condition: "webhook_delivered == true && stream_event_count >= 3"
+        then:
+          variables:
+            webhook_system_healthy: true
+            test_summary: "All webhook and real-time features validated successfully"
+        else:
+          variables:
+            webhook_system_healthy: false
+
+exports:
+  - webhook_delivered
+  - webhook_system_healthy
+  - event_user_id
+  - stream_event_count

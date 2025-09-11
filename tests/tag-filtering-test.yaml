@@ -1,7 +1,7 @@
 node_id: "tag-filtering-comprehensive"
 suite_name: "Tag-based Filtering Comprehensive Test"
 description: "Comprehensive test suite demonstrating various tag combinations for CLI filtering"
-base_url: "http://localhost:3000"
+base_url: "{{httpbin_url}}"
 
 metadata:
   priority: "high"

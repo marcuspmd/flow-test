@@ -16,7 +16,11 @@ const server = http.createServer((req, res) => {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Config-ID');
   
   if (method === 'OPTIONS') {
-    res.writeHead(200);
+    res.writeHead(200, {
+      'Allow': 'GET, POST, PUT, DELETE, HEAD, OPTIONS',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS, HEAD',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Config-ID'
+    });
     res.end();
     return;
   }
@@ -52,7 +56,11 @@ const server = http.createServer((req, res) => {
     switch (path) {
       case '/get':
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify(response));
+        if (method !== 'HEAD') {
+          res.end(JSON.stringify(response));
+        } else {
+          res.end();
+        }
         break;
         
       case '/post':
@@ -91,17 +99,64 @@ const server = http.createServer((req, res) => {
         
       case '/json':
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({
-          slideshow: {
-            title: "Sample Slideshow"
-          }
-        }));
+        if (method !== 'HEAD') {
+          res.end(JSON.stringify({
+            slideshow: {
+              title: "Sample Slideshow"
+            }
+          }));
+        } else {
+          res.end();
+        }
         break;
         
       case '/user-agent':
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({
           'user-agent': req.headers['user-agent'] || 'Unknown'
+        }));
+        break;
+        
+      case '/bearer':
+        // Handle bearer token authentication test
+        const bearerAuth = req.headers.authorization;
+        if (bearerAuth && bearerAuth.startsWith('Bearer ')) {
+          const token = bearerAuth.substring(7);
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({
+            authenticated: true,
+            token: token,
+            ...response
+          }));
+        } else {
+          res.writeHead(401, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({
+            error: 'Unauthorized',
+            message: 'Bearer token required'
+          }));
+        }
+        break;
+        
+      case '/cache':
+        // Echo back certain headers from the request
+        const responseHeaders = {
+          'Content-Type': 'application/json',
+          'ETag': `"${Date.now()}"`,
+          'Cache-Control': 'max-age=60'
+        };
+        
+        // Echo back X-* headers from the request
+        for (const [key, value] of Object.entries(req.headers)) {
+          if (key.toLowerCase().startsWith('x-')) {
+            responseHeaders[key] = value;
+          }
+        }
+        
+        res.writeHead(200, responseHeaders);
+        res.end(JSON.stringify({
+          cached: true,
+          timestamp: Date.now(),
+          ...response
         }));
         break;
         
@@ -126,10 +181,14 @@ const server = http.createServer((req, res) => {
         } else if (path.startsWith('/status/')) {
           const statusCode = parseInt(path.split('/')[2]) || 200;
           res.writeHead(statusCode, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({
-            status: statusCode,
-            message: `Status ${statusCode}`
-          }));
+          if (method !== 'HEAD') {
+            res.end(JSON.stringify({
+              status: statusCode,
+              message: `Status ${statusCode}`
+            }));
+          } else {
+            res.end();
+          }
         } else if (path.startsWith('/delay/')) {
           const delay = parseInt(path.split('/')[2]) || 1;
           setTimeout(() => {

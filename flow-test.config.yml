@@ -5,8 +5,8 @@ test_directory: "./"
 # Global variables and settings
 globals:
   variables:
-    api_base_url: "http://localhost:8080"
-    httpbin_url: "http://localhost:8080"
+    api_base_url: "http://localhost:3000"
+    httpbin_url: "http://localhost:3000"
     default_timeout: 30000
   timeouts:
     default: 60000

@@ -112,12 +112,18 @@ export class HttpService {
         step_name: stepName,
         status: "success",
         duration_ms: duration,
-        request_details: request,
+        request_details: {
+          ...request,
+          full_url: fullUrl,
+          curl_command: this.generateCurlCommand(fullUrl, request),
+          raw_request: this.generateRawRequest(fullUrl, request),
+        },
         response_details: {
           status_code: response.status,
           headers: this.normalizeHeaders(response.headers),
           body: response.data,
           size_bytes: responseSize,
+          raw_response: this.generateRawResponse(response),
         },
         captured_variables: {},
         assertions_results: [],
@@ -132,11 +138,18 @@ export class HttpService {
         error: error as Error,
       });
 
+      const fullUrl = this.buildFullUrl(request.url);
+      
       return {
         step_name: stepName,
         status: "failure",
         duration_ms: duration,
-        request_details: request,
+        request_details: {
+          ...request,
+          full_url: fullUrl,
+          curl_command: this.generateCurlCommand(fullUrl, request),
+          raw_request: this.generateRawRequest(fullUrl, request),
+        },
         error_message: errorMessage,
         captured_variables: {},
         assertions_results: [],
@@ -167,8 +180,8 @@ export class HttpService {
       return url;
     }
 
-    // If there's no base_url, return the URL as is
-    if (!this.baseUrl) {
+    // If there's no base_url or it's not a string, return the URL as is
+    if (!this.baseUrl || typeof this.baseUrl !== 'string') {
       return url;
     }
 
@@ -238,8 +251,8 @@ export class HttpService {
   /**
    * Sets a new base URL.
    */
-  setBaseUrl(baseUrl: string): void {
-    this.baseUrl = baseUrl;
+  setBaseUrl(baseUrl: string | undefined): void {
+    this.baseUrl = baseUrl && typeof baseUrl === 'string' ? baseUrl : undefined;
   }
 
   /**
@@ -281,5 +294,98 @@ export class HttpService {
     }
 
     return normalized;
+  }
+
+  /**
+   * Generates a complete cURL command for the request
+   */
+  private generateCurlCommand(url: string, request: RequestDetails): string {
+    const parts = [`curl -X ${request.method}`];
+    
+    // Add headers
+    const headers = request.headers || {};
+    for (const [key, value] of Object.entries(headers)) {
+      if (value !== undefined && value !== null) {
+        parts.push(`-H "${key}: ${String(value)}"`);
+      }
+    }
+    
+    // Add body for methods that support it
+    if (request.body && ['POST', 'PUT', 'PATCH'].includes(request.method)) {
+      const bodyStr = typeof request.body === 'string' 
+        ? request.body 
+        : JSON.stringify(request.body);
+      parts.push(`-d '${bodyStr.replace(/'/g, "\\'")}'`);
+    }
+    
+    // Add URL (always last)
+    parts.push(`"${url}"`);
+    
+    return parts.join(' ');
+  }
+
+  /**
+   * Generates raw HTTP request text
+   */
+  private generateRawRequest(url: string, request: RequestDetails): string {
+    const urlObj = new URL(url);
+    const path = urlObj.pathname + urlObj.search;
+    
+    let rawRequest = `${request.method} ${path} HTTP/1.1\r\n`;
+    rawRequest += `Host: ${urlObj.host}\r\n`;
+    
+    // Add headers
+    const headers = request.headers || {};
+    for (const [key, value] of Object.entries(headers)) {
+      if (value !== undefined && value !== null) {
+        rawRequest += `${key}: ${String(value)}\r\n`;
+      }
+    }
+    
+    // Add content-length for body requests
+    if (request.body && ['POST', 'PUT', 'PATCH'].includes(request.method)) {
+      const bodyStr = typeof request.body === 'string' 
+        ? request.body 
+        : JSON.stringify(request.body);
+      rawRequest += `Content-Length: ${Buffer.byteLength(bodyStr, 'utf8')}\r\n`;
+    }
+    
+    rawRequest += '\r\n';
+    
+    // Add body
+    if (request.body && ['POST', 'PUT', 'PATCH'].includes(request.method)) {
+      const bodyStr = typeof request.body === 'string' 
+        ? request.body 
+        : JSON.stringify(request.body);
+      rawRequest += bodyStr;
+    }
+    
+    return rawRequest;
+  }
+
+  /**
+   * Generates raw HTTP response text
+   */
+  private generateRawResponse(response: AxiosResponse): string {
+    let rawResponse = `HTTP/1.1 ${response.status} ${response.statusText}\r\n`;
+    
+    // Add response headers
+    for (const [key, value] of Object.entries(response.headers)) {
+      if (value !== undefined && value !== null) {
+        rawResponse += `${key}: ${String(value)}\r\n`;
+      }
+    }
+    
+    rawResponse += '\r\n';
+    
+    // Add response body
+    if (response.data) {
+      const bodyStr = typeof response.data === 'string' 
+        ? response.data 
+        : JSON.stringify(response.data, null, 2);
+      rawResponse += bodyStr;
+    }
+    
+    return rawResponse;
   }
 }

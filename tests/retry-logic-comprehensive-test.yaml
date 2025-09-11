@@ -1,0 +1,136 @@
+node_id: "retry-logic-comprehensive"
+suite_name: "Comprehensive Retry Logic Test Suite"
+description: "Tests advanced retry mechanisms with different strategies, delays, and conditions"
+base_url: "{{httpbin_url}}"
+
+metadata:
+  priority: "high"
+  tags: ["retry", "resilience", "error-handling", "reliability"]
+  estimated_duration_ms: 15000
+
+variables:
+  retry_test_id: "retry-{{$faker.uuid}}"
+  max_retries: 3
+  base_delay: 1000
+
+steps:
+  - name: "Test basic retry on failure"
+    request:
+      method: "GET"
+      url: "/status/500"
+      headers:
+        X-Retry-Test: "basic-retry"
+        X-Test-ID: "{{retry_test_id}}"
+    assert:
+      status_code: 500
+    retry:
+      max_attempts: 2
+      delay_ms: 500
+      on_status_codes: [500, 502, 503]
+    continue_on_failure: true
+    metadata:
+      description: "Tests basic retry mechanism on server errors"
+
+  - name: "Test exponential backoff retry"
+    request:
+      method: "GET"
+      url: "/status/503"
+      headers:
+        X-Retry-Strategy: "exponential-backoff"
+    retry:
+      max_attempts: 3
+      delay_ms: "{{base_delay}}"
+      strategy: "exponential"
+      backoff_multiplier: 2
+      max_delay_ms: 5000
+    continue_on_failure: true
+    metadata:
+      description: "Tests exponential backoff retry strategy"
+
+  - name: "Test conditional retry"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        retry_test: true
+        attempt_number: "{{$js.return (this.attempt_count || 0) + 1}}"
+    assert:
+      status_code: 200
+    retry:
+      max_attempts: "{{max_retries}}"
+      delay_ms: 800
+      condition: "response.status >= 500 || response.body.json.retry_needed === true"
+    capture:
+      retry_attempts: "body.json.attempt_number"
+    metadata:
+      description: "Tests conditional retry based on response content"
+
+  - name: "Test timeout with retry"
+    request:
+      method: "GET"
+      url: "/delay/3"
+      timeout: 2000
+    retry:
+      max_attempts: 2
+      delay_ms: 500
+      on_timeout: true
+    continue_on_failure: true
+    assert:
+      status_code: 200
+    metadata:
+      description: "Tests retry mechanism on timeout scenarios"
+
+  - name: "Test successful retry validation"
+    request:
+      method: "GET"
+      url: "/get"
+      headers:
+        X-Final-Validation: "retry-success-check"
+    assert:
+      status_code: 200
+    scenarios:
+      - name: "Validate retry mechanisms worked"
+        condition: "retry_attempts >= 1"
+        then:
+          variables:
+            retry_system_functional: true
+            retry_test_summary: "All retry mechanisms validated successfully"
+        else:
+          variables:
+            retry_system_functional: false
+
+  - name: "Test circuit breaker pattern"
+    request:
+      method: "GET" 
+      url: "/status/502"
+    retry:
+      max_attempts: 5
+      delay_ms: 200
+      circuit_breaker:
+        failure_threshold: 3
+        reset_timeout_ms: 5000
+        half_open_max_calls: 2
+    continue_on_failure: true
+    metadata:
+      description: "Tests circuit breaker pattern integration with retry logic"
+
+  - name: "Test jittered retry delays"
+    request:
+      method: "GET"
+      url: "/delay/1"
+    retry:
+      max_attempts: 3
+      delay_ms: 1000
+      jitter: true
+      jitter_max_ms: 500
+    assert:
+      status_code: 200
+    capture:
+      jittered_response_time: "response_time_ms"
+
+exports:
+  - retry_attempts
+  - retry_system_functional
+  - jittered_response_time

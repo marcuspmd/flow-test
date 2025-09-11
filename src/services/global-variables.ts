@@ -185,7 +185,7 @@ export class GlobalVariablesService {
    */
   interpolateString(template: string): string {
     if (!template || typeof template !== "string") {
-      return template;
+      return template ? String(template) : "";
     }
 
     // Checks cache first

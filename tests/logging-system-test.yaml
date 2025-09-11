@@ -1,7 +1,7 @@
 node_id: "logging-system-test"
 suite_name: "Automatic Logging System Test"
 description: "Tests automatic log generation, --no-log flag, and log file format verification"
-base_url: "http://localhost:3000"
+base_url: "{{httpbin_url}}"
 
 metadata:
   priority: "medium"
