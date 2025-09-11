@@ -1,10 +1,12 @@
 import * as jmespath from "jmespath";
 import {
   Assertions,
-  AssertionResult,
   AssertionChecks,
-  ExecutionResult,
-} from "../types/common.types";
+} from "../types/engine.types";
+import {
+  AssertionResult,
+  StepExecutionResult,
+} from "../types/config.types";
 import { getLogger } from "./logger.service";
 
 /**
@@ -51,7 +53,7 @@ export class AssertionService {
    */
   validateAssertions(
     assertions: Assertions,
-    result: ExecutionResult
+    result: StepExecutionResult
   ): AssertionResult[] {
     const assertionResults: AssertionResult[] = [];
 
@@ -72,9 +74,16 @@ export class AssertionService {
 
     // Valida status code
     if (processedAssertions.status_code !== undefined) {
-      assertionResults.push(
-        this.validateStatusCode(processedAssertions.status_code, result)
-      );
+      if (typeof processedAssertions.status_code === 'number') {
+        assertionResults.push(
+          this.validateStatusCode(processedAssertions.status_code, result)
+        );
+      } else {
+        // Handle AssertionChecks for status_code
+        assertionResults.push(
+          ...this.validateFieldChecks('status_code', processedAssertions.status_code, result.response_details!.status_code)
+        );
+      }
     }
 
     // Valida headers
@@ -168,7 +177,7 @@ export class AssertionService {
    */
   private validateStatusCode(
     expected: number,
-    result: ExecutionResult
+    result: StepExecutionResult
   ): AssertionResult {
     const actual = result.response_details!.status_code;
     const passed = actual === expected;
@@ -187,7 +196,7 @@ export class AssertionService {
    */
   private validateHeaders(
     expectedHeaders: Record<string, AssertionChecks>,
-    result: ExecutionResult
+    result: StepExecutionResult
   ): AssertionResult[] {
     const results: AssertionResult[] = [];
     const actualHeaders = result.response_details!.headers;
@@ -212,7 +221,7 @@ export class AssertionService {
    */
   private validateBody(
     expectedBody: Record<string, AssertionChecks>,
-    result: ExecutionResult
+    result: StepExecutionResult
   ): AssertionResult[] {
     const results: AssertionResult[] = [];
     const actualBody = result.response_details!.body;
@@ -248,7 +257,7 @@ export class AssertionService {
    */
   private validateResponseTime(
     timeChecks: { less_than?: number; greater_than?: number },
-    result: ExecutionResult
+    result: StepExecutionResult
   ): AssertionResult[] {
     const results: AssertionResult[] = [];
     const actualTime = result.duration_ms;

@@ -1,5 +1,5 @@
 import * as jmespath from "jmespath";
-import { ExecutionResult } from "../types/common.types";
+import { StepExecutionResult } from "../types/config.types";
 import { getLogger } from "./logger.service";
 
 /**
@@ -46,7 +46,7 @@ export class CaptureService {
    */
   captureVariables(
     captureConfig: Record<string, string>,
-    result: ExecutionResult,
+    result: StepExecutionResult,
     variableContext?: Record<string, any>
   ): Record<string, any> {
     const capturedVariables: Record<string, any> = {};
@@ -92,7 +92,7 @@ export class CaptureService {
    */
   private extractValue(
     expression: string,
-    result: ExecutionResult,
+    result: StepExecutionResult,
     variableContext?: Record<string, any>
   ): any {
     // Handle different types of expressions
@@ -190,7 +190,7 @@ export class CaptureService {
    * }
    * ```
    */
-  private buildContext(result: ExecutionResult): any {
+  private buildContext(result: StepExecutionResult): any {
     const response = result.response_details!;
 
     return {
@@ -276,7 +276,7 @@ export class CaptureService {
   /**
    * Suggests possible JMESPath based on response content.
    */
-  suggestCapturePaths(result: ExecutionResult): string[] {
+  suggestCapturePaths(result: StepExecutionResult): string[] {
     if (!result.response_details) {
       return [];
     }

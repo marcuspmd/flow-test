@@ -1,4 +1,4 @@
-import { VariableContext } from "../types/common.types";
+import { GlobalVariableContext } from "../types/config.types";
 import { GlobalRegistryService } from "./global-registry.service";
 import { fakerService } from "./faker.service";
 import {
@@ -32,7 +32,7 @@ import { getLogger } from "./logger.service";
  */
 export class VariableService {
   /** Hierarchical context of variables with different scopes */
-  private context: VariableContext;
+  private context: GlobalVariableContext;
 
   /** Global registry service for exported variables */
   private globalRegistry?: GlobalRegistryService;
@@ -50,7 +50,7 @@ export class VariableService {
    * @param globalRegistry - Optional global registry for exported variables
    */
   constructor(
-    context: VariableContext,
+    context: GlobalVariableContext,
     globalRegistry?: GlobalRegistryService
   ) {
     this.context = context;

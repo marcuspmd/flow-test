@@ -1,5 +1,6 @@
 import axios, { AxiosResponse, AxiosError } from "axios";
-import { RequestDetails, ExecutionResult } from "../types/common.types";
+import { RequestDetails } from "../types/engine.types";
+import { StepExecutionResult } from "../types/config.types";
 import { getLogger } from "./logger.service";
 
 /**
@@ -79,7 +80,7 @@ export class HttpService {
   async executeRequest(
     stepName: string,
     request: RequestDetails
-  ): Promise<ExecutionResult> {
+  ): Promise<StepExecutionResult> {
     const startTime = Date.now();
 
     try {

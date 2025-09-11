@@ -8,15 +8,13 @@ This is a TypeScript-based API testing engine that allows creating complex test 
 
 ## Key Commands
 
-- `npm start` - Run tests with default file (auto-generates log)
-- `npm start <file>` - Run tests with a specific YAML file
-- `npm start -- <file> --verbose` - Run with detailed request/response logging
-- `npm start -- <file> --detailed` - Run with detailed output but compact responses
-- `npm start -- <file> --silent` - Run silently (errors only)
-- `npm start -- <file> --no-log` - Run without generating automatic log file
-- `npm start -- <file> --output custom.json` - Save results to specific file
-- `npm start -- <file> --continue` - Continue execution even on step failures
+- `npm test` - Run tests with default configuration using FlowTestEngine v2.0
+- `npm run test:all` - Run all test files in the tests directory
+- `npm run test:verbose` - Run all tests with verbose output
+- `npm run test:silent` - Run all tests silently (errors only)
 - `npm run build` - Compile TypeScript to JavaScript
+- `flow-test` - CLI command for running tests with various options
+- `flow-test --help` - Show all available CLI options
 
 ## Automatic Logging
 
@@ -25,32 +23,40 @@ By default, the system automatically generates detailed JSON logs for every test
 - **Format**: Complete execution details with timing, requests, responses, and variables
 - **Disable**: Use `--no-log` flag to skip automatic log generation
 
-## Architecture
+## Architecture v2.0
 
-The codebase follows a simple modular structure:
+The codebase follows a modern, modular architecture with enhanced capabilities:
 
 ### Core Components
 
-- **`src/main.ts`** - Entry point with CLI argument parsing and execution options
-- **`src/core/runner.core.ts`** - Main execution engine that orchestrates test flows
-- **`src/services/`** - Service layer containing specialized functionality:
-  - `variable.service.ts` - Variable interpolation and scoping management
-  - `http.service.ts` - HTTP request execution with axios
-  - `assertion.service.ts` - Response validation and assertion checking
-  - `capture.service.ts` - Response data extraction using JMESPath
-  - `flow.service.ts` - Reusable flow import and management
-  - `scenario.service.ts` - Conditional scenario processing (happy/sad paths)
-- **`src/types/common.types.ts`** - TypeScript interfaces for all system components
+- **`src/cli.ts`** - Modern CLI entry point with comprehensive argument parsing
+- **`src/core/engine.ts`** - Main FlowTestEngine v2.0 that orchestrates all test execution
+- **`src/core/config.ts`** - Configuration management system
+- **`src/core/discovery.ts`** - Test discovery and filtering system
+- **`src/services/`** - Enhanced service layer:
+  - `global-variables.ts` - Global variable management with hierarchical scoping
+  - `variable.service.ts` - Variable interpolation with Faker.js and JavaScript support
+  - `http.service.ts` - HTTP request execution with enhanced error handling
+  - `assertion.service.ts` - Advanced assertion validation with custom checks
+  - `capture.service.ts` - JMESPath data extraction and variable capture
+  - `flow.service.ts` - Reusable flow imports with dependency management
+  - `scenario.service.ts` - Conditional scenario processing for complex flows
+  - `execution.ts` - Step execution orchestration
+  - `reporting.ts` - Comprehensive reporting and metrics
+- **`src/types/`** - Modern TypeScript interfaces:
+  - `engine.types.ts` - Core v2.0 engine types and interfaces
+  - `config.types.ts` - Configuration and execution result types
 
-### Key Types
+### Key Types v2.0
 
-- `TestSuite` - Root configuration with metadata, imports, variables, and steps
-- `TestStep` - Individual test step with request, assertions, capture, and scenarios
-- `RequestDetails` - HTTP request specification (method, URL, headers, body)
-- `Assertions` - Response validation (status_code, body, headers, response_time)
-- `ConditionalScenario` - Happy/sad path logic with JMESPath conditions
-- `FlowImport` - Reusable flow import configuration with variable overrides
-- `ExecutionResult` - Detailed step execution results with timing and captures
+- `TestSuite` - Enhanced test suite with priority, tags, dependencies, and metadata
+- `TestStep` - Advanced test step with retry logic, timeouts, and extended metadata
+- `RequestDetails` - HTTP request with timeout support and additional methods (HEAD, OPTIONS)
+- `Assertions` - Enhanced assertions with custom validation and type checking
+- `ConditionalScenario` - Advanced conditional logic with named scenarios
+- `FlowImport` - Reusable flows with priority and enabled/disabled flags
+- `StepExecutionResult` - Comprehensive execution results with performance metrics
+- `GlobalVariableContext` - Hierarchical variable context with environment support
 
 ### Test Configuration Structure
 
@@ -64,25 +70,31 @@ YAML files define test suites with:
   - Variables captured in one step are available in subsequent steps
   - Scenarios enable happy/sad path testing with JMESPath conditions
 
-### Advanced Features
+### Enhanced Features v2.0
 
-#### Reusable Flows
-- **Flow Import**: Import reusable flows from separate YAML files
-- **Variable Scoping**: Hierarchical variable resolution (runtime > suite > imported > global)
-- **Variable Override**: Override flow variables during import
-- **Flow Exports**: Define which variables flows export to parent suites
+#### Advanced Test Discovery and Execution
+- **Priority-based Execution**: Execute tests by priority levels (critical, high, medium, low)
+- **Tag-based Filtering**: Filter tests by tags for targeted execution
+- **Dependency Management**: Automatic dependency resolution and execution ordering
+- **Parallel Execution**: Support for concurrent test execution with configurable limits
 
-#### Conditional Scenarios
-- **Happy/Sad Path Testing**: Use JMESPath conditions to branch test logic
-- **Dynamic Assertions**: Different validations based on response conditions
-- **Conditional Capture**: Capture different variables based on response state
-- **Multiple Scenarios**: Multiple condition blocks per test step
+#### Enhanced Variable System
+- **Environment Variables**: Automatic environment variable loading
+- **Faker.js Integration**: Generate realistic test data using Faker.js
+- **JavaScript Expressions**: Execute JavaScript code for dynamic data generation
+- **Hierarchical Scoping**: Advanced variable resolution (environment > global > suite > imported > runtime)
 
-#### Comprehensive Reporting
-- **Multiple Verbosity Levels**: silent, simple, detailed, verbose
-- **File Output**: JSON and text format results with timing and metrics
-- **Detailed Metrics**: Response times, success rates, assertion results
-- **Variable Tracking**: Complete variable state throughout execution
+#### Advanced Flow Management
+- **Flow Dependencies**: Define and manage complex flow dependencies
+- **Flow Caching**: Cache flow results with configurable TTL
+- **Conditional Flows**: Execute flows based on JMESPath conditions
+- **Flow Retry Logic**: Automatic retry with configurable delays
+
+#### Comprehensive Engine Hooks
+- **Lifecycle Events**: Hook into test discovery, execution start/end, step events
+- **Custom Monitoring**: Integrate with external monitoring and alerting systems
+- **Real-time Statistics**: Live execution metrics and progress tracking
+- **Error Handling**: Advanced error reporting and recovery mechanisms
 
 ## Default Test File Location
 

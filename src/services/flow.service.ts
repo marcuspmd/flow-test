@@ -5,8 +5,8 @@ import {
   FlowImport,
   ReusableFlow,
   TestStep,
-  VariableContext,
-} from "../types/common.types";
+} from "../types/engine.types";
+import { GlobalVariableContext } from "../types/config.types";
 import { VariableService } from "./variable.service";
 import { getLogger } from "./logger.service";
 
@@ -142,7 +142,8 @@ export class FlowManager {
     flowImport: FlowImport
   ): TestStep[] {
     // Creates a temporary context for this flow
-    const flowContext: VariableContext = {
+    const flowContext: GlobalVariableContext = {
+      environment: {},
       global: {},
       imported: {},
       suite: { ...(flow.variables || {}), ...(flowImport.variables || {}) },

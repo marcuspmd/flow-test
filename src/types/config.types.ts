@@ -80,6 +80,7 @@ export interface GlobalVariableContext {
   global: Record<string, any>;
   suite: Record<string, any>;
   runtime: Record<string, any>;
+  imported: Record<string, Record<string, any>>; // nodeId -> variables
 }
 
 /**

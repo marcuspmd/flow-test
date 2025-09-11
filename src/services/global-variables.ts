@@ -66,6 +66,7 @@ export class GlobalVariablesService {
       global: this.configManager.getGlobalVariables(),
       suite: {},
       runtime: {},
+      imported: {},
     };
   }
 

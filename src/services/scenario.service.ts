@@ -1,10 +1,12 @@
 import * as jmespath from "jmespath";
 import {
   ConditionalScenario,
-  ExecutionResult,
   Assertions,
+} from "../types/engine.types";
+import {
+  StepExecutionResult,
   AssertionResult,
-} from "../types/common.types";
+} from "../types/config.types";
 import { AssertionService } from "./assertion.service";
 import { CaptureService } from "./capture.service";
 import { getLogger } from "./logger.service";
@@ -24,7 +26,7 @@ export class ScenarioService {
    */
   processScenarios(
     scenarios: ConditionalScenario[],
-    result: ExecutionResult,
+    result: StepExecutionResult,
     verbosity: string,
     variableContext?: Record<string, any>
   ): void {
@@ -65,7 +67,7 @@ export class ScenarioService {
    */
   private evaluateCondition(
     condition: string,
-    result: ExecutionResult
+    result: StepExecutionResult
   ): boolean {
     if (!result.response_details) {
       throw new Error("Response not available for condition evaluation");
@@ -92,7 +94,7 @@ export class ScenarioService {
   /**
    * Builds the context for condition evaluation.
    */
-  private buildEvaluationContext(result: ExecutionResult): any {
+  private buildEvaluationContext(result: StepExecutionResult): any {
     const response = result.response_details!;
 
     return {
@@ -110,7 +112,7 @@ export class ScenarioService {
    */
   private executeScenarioBlock(
     block: { assert?: Assertions; capture?: Record<string, string> },
-    result: ExecutionResult,
+    result: StepExecutionResult,
     verbosity: string,
     variableContext?: Record<string, any>
   ): void {
@@ -199,7 +201,7 @@ export class ScenarioService {
   /**
    * Generates suggestions for common conditions based on the response.
    */
-  suggestConditions(result: ExecutionResult): string[] {
+  suggestConditions(result: StepExecutionResult): string[] {
     const suggestions: string[] = [];
 
     if (!result.response_details) {
