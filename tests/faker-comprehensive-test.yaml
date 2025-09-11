@@ -60,7 +60,6 @@ steps:
             title: "{{faker.person.jobTitle}}"
             department: "{{faker.person.jobArea}}"
             company: "{{faker.company.name}}"
-            company_suffix: "{{faker.company.companySuffix}}"
 
           # Dados temporais
           birth_date: "{{faker.date.birthdate}}"
@@ -162,19 +161,18 @@ steps:
             name: "{{faker.company.name}}"
             catch_phrase: "{{faker.company.catchPhrase}}"
             buzz_phrase: "{{faker.company.buzzPhrase}}"
-            suffix: "{{faker.company.companySuffix}}"
 
           # Dados de internet/sistema
           system:
             domain: "{{faker.internet.domainName}}"
-            ip_address: "{{faker.internet.ip}}"
+            ip_address: "{{faker.internet.ipv4}}"
             mac_address: "{{faker.internet.mac}}"
             user_agent: "{{faker.internet.userAgent}}"
 
-          # Dados científicos
-          science:
-            chemical_element: "{{faker.science.chemicalElement.name}}"
-            unit: "{{faker.science.unit.name}}"
+          # Dados científicos (removidos métodos não disponíveis)
+          # science:
+          #   chemical_element: "{{faker.science.chemicalElement.name}}" # Não disponível em v8+
+          #   unit: "{{faker.science.unit.name}}" # Não disponível em v8+
 
           # Dados de texto
           content:

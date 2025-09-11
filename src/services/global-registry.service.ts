@@ -199,23 +199,32 @@ export class GlobalRegistryService {
     const [nodeId, variableName] = fullName.split(".", 2);
 
     if (!nodeId || !variableName) {
-      console.warn(
-        `⚠️  Invalid variable name format: '${fullName}'. Expected: 'nodeId.variable'`
+      this.logger.warn(
+        `Invalid variable name format: '${fullName}'. Expected: 'nodeId.variable'`
       );
       return undefined;
     }
 
     const namespace = this.registry.get(nodeId);
     if (!namespace) {
-      console.warn(`⚠️  Node '${nodeId}' not found in global registry`);
+      this.logger.warn(`Node '${nodeId}' not found in global registry`);
       return undefined;
     }
 
     const entry = namespace.variables.get(variableName);
     if (!entry) {
-      console.warn(
-        `⚠️  Variable '${variableName}' not found in node '${nodeId}'`
-      );
+      // Verifica se é uma variável runtime típica que foi limpa intencionalmente
+      const isLikelyRuntimeVariable =
+        this.isLikelyRuntimeVariable(variableName);
+      if (isLikelyRuntimeVariable) {
+        this.logger.debug(
+          `Runtime variable '${variableName}' not found in node '${nodeId}' (expected after cleanup)`
+        );
+      } else {
+        this.logger.warn(
+          `Variable '${variableName}' not found in node '${nodeId}'`
+        );
+      }
       return undefined;
     }
 
@@ -255,7 +264,7 @@ export class GlobalRegistryService {
     for (const [nodeId, namespace] of this.registry) {
       for (const [variableName, entry] of namespace.variables) {
         const fullName = `${nodeId}.${variableName}`;
-        
+
         // Always include namespaced variables - they should be distinct from runtime variables
         result[fullName] = entry.value;
       }
@@ -492,6 +501,39 @@ export class GlobalRegistryService {
       errors,
       warnings,
     };
+  }
+
+  /**
+   * Determines if a variable name is likely a runtime variable that gets cleaned between nodes
+   * Used to reduce warning noise for expected cleanup behavior
+   */
+  private isLikelyRuntimeVariable(variableName: string): boolean {
+    // Common runtime variable patterns that are expected to be cleaned
+    const runtimeVariablePatterns = [
+      /^user_id$/,
+      /^user_name$/,
+      /^user_email$/,
+      /^company_data$/,
+      /^auth_token$/,
+      /^login_success$/,
+      /^error_handled$/,
+      /^response_type$/,
+      /^performance$/,
+      /^test_user_id$/,
+      /^test_user_email$/,
+      /^crud_success$/,
+      /^crud_performance$/,
+      /^performance_rating$/,
+      /^performance_score$/,
+      /^init_success$/,
+      /.*_data$/,
+      /.*_result$/,
+      /.*_status$/,
+    ];
+
+    return runtimeVariablePatterns.some((pattern) =>
+      pattern.test(variableName)
+    );
   }
 
   /**

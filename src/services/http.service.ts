@@ -92,7 +92,7 @@ export class HttpService {
       const axiosConfig = {
         method: request.method.toLowerCase() as any,
         url: fullUrl,
-        headers: request.headers || {},
+        headers: this.sanitizeHeaders(request.headers || {}),
         data: request.body,
         timeout: this.timeout,
         validateStatus: () => true, // Does not reject by HTTP status
@@ -239,6 +239,30 @@ export class HttpService {
    */
   setBaseUrl(baseUrl: string): void {
     this.baseUrl = baseUrl;
+  }
+
+  /**
+   * Sanitizes headers to remove invalid characters
+   * @private
+   */
+  private sanitizeHeaders(
+    headers: Record<string, any>
+  ): Record<string, string> {
+    const sanitized: Record<string, string> = {};
+
+    for (const [key, value] of Object.entries(headers)) {
+      if (value !== undefined && value !== null) {
+        // Remove invalid characters from header values (non-ASCII characters)
+        const sanitizedValue = String(value).replace(/[^\x20-\x7E]/g, "");
+        const sanitizedKey = key.replace(/[^\x20-\x7E]/g, "");
+
+        if (sanitizedKey && sanitizedValue) {
+          sanitized[sanitizedKey] = sanitizedValue;
+        }
+      }
+    }
+
+    return sanitized;
   }
 
   /**

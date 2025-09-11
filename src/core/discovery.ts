@@ -139,22 +139,24 @@ export class TestDiscovery {
   }
 
   /**
-   * Extrai dependências de uma suíte de testes
+   * Extrai dependências de uma suíte de testes (FORMATO LEGADO - REMOVIDO)
+   * Agora usa apenas o campo 'depends' com node_id
    */
   private extractDependencies(suite: TestSuite): string[] {
     const dependencies: string[] = [];
 
-    // Dependências explícitas nos metadados
-    if (suite.metadata?.requires) {
-      dependencies.push(...suite.metadata.requires);
-    }
-
-    // Dependências implícitas através de imports
-    if (suite.imports) {
-      suite.imports.forEach((imp) => {
-        dependencies.push(imp.name);
+    // REMOVIDO: Suporte legado para 'requires'
+    // Agora extraímos dependências apenas do campo 'depends'
+    if (suite.depends) {
+      suite.depends.forEach((dep) => {
+        if (dep.node_id) {
+          dependencies.push(dep.node_id);
+        }
       });
     }
+
+    // REMOVIDO: Suporte legado para 'imports'
+    // Imports agora são tratados via 'depends'
 
     return [...new Set(dependencies)]; // Remove duplicatas
   }

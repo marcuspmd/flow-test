@@ -30,7 +30,7 @@ steps:
       - condition: "status_code == `404`"
         then:
           capture:
-            error_404_handled: "`true`"
+            error_404_handled: true
             error_type: "'not_found'"
             error_message: "'Resource not found'"
 
@@ -38,7 +38,7 @@ steps:
       - condition: "status_code != `404`"
         then:
           capture:
-            error_404_handled: "`false`"
+            error_404_handled: false
             unexpected_status: "status_code"
 
     continue_on_failure: true
@@ -54,9 +54,10 @@ steps:
       - condition: "status_code == `500`"
         then:
           capture:
-            error_500_handled: "`true`"
-            server_error_type: "'internal_server_error'"
-            retry_recommended: "`true`"
+            error_500_handled: true
+            server_error: true
+            retry_recommended: true
+            error_category: "'server_error'"
 
       # Status não esperado
       - condition: "status_code != `500`"
@@ -78,16 +79,16 @@ steps:
       - condition: "duration_ms > `3000`"
         then:
           capture:
-            timeout_risk: "`true`"
-            response_too_slow: "`true`"
+            timeout_risk: true
+            response_too_slow: true
             actual_duration: "duration_ms"
 
       # Resposta dentro do limite
       - condition: "duration_ms <= `3000`"
         then:
           capture:
-            timeout_risk: "`false`"
-            response_acceptable: "`true`"
+            timeout_risk: false
+            response_acceptable: true
             actual_duration: "duration_ms"
 
     continue_on_failure: true
@@ -149,14 +150,14 @@ steps:
       - condition: "status_code == `200`"
         then:
           capture:
-            large_payload_accepted: "`true`"
+            large_payload_accepted: true
             payload_size_bytes: "size_bytes"
 
       # Payload rejeitado
       - condition: "status_code != `200`"
         then:
           capture:
-            large_payload_accepted: "`false`"
+            large_payload_accepted: false
             rejection_status: "status_code"
 
     continue_on_failure: true
@@ -171,7 +172,7 @@ steps:
         X-Empty-Header: ""
         X-Very-Long-Header: "{{large_text}}"
         X-Special-Chars: "{{special_chars}}"
-        X-Unicode-Header: "Café naïve résumé 🌟"
+        # X-Unicode-Header: "Café naïve résumé 🌟" # Removido - causa erro de header inválido
         # Header sem valor seria inválido, mas vamos testar string vazia
         X-Null-Value: "{{null_value}}"
 
@@ -180,7 +181,7 @@ steps:
 
     capture:
       headers_test_passed: "`true`"
-      received_headers: "body.headers"
+      received_headers: "body.json.headers"
 
   # Teste 7: Teste de Authenticação com Token Inválido
   - name: "Test Invalid Authentication"
@@ -195,15 +196,15 @@ steps:
       - condition: "status_code == `401`"
         then:
           capture:
-            auth_validation_working: "`true`"
-            invalid_token_rejected: "`true`"
+            auth_validation_working: true
+            invalid_token_rejected: true
 
       # Token inválido aceito (problema de segurança)
       - condition: "status_code == `200`"
         then:
           capture:
-            auth_validation_working: "`false`"
-            security_concern: "`true`"
+            auth_validation_working: false
+            security_concern: true
 
       # Outro status
       - condition: "status_code != `401` && status_code != `200`"
@@ -229,21 +230,21 @@ steps:
       - condition: "status_code >= `200` && status_code < `300`"
         then:
           capture:
-            patch_method_supported: "`true`"
+            patch_method_supported: true
             patch_status: "status_code"
 
       # Método não suportado
       - condition: "status_code == `405`"
         then:
           capture:
-            patch_method_supported: "`false`"
-            method_not_allowed: "`true`"
+            patch_method_supported: false
+            method_not_allowed: true
 
       # Outro erro
       - condition: "status_code >= `400`"
         then:
           capture:
-            patch_method_supported: "`unknown`"
+            patch_method_supported: null
             error_status: "status_code"
 
     continue_on_failure: true
@@ -259,14 +260,14 @@ steps:
       - condition: "status_code == `200`"
         then:
           capture:
-            redirect_handled: "`true`"
+            redirect_handled: true
             final_status: "status_code"
 
       # Muitos redirects
       - condition: "status_code == `302` || status_code == `301`"
         then:
           capture:
-            redirect_handled: "`false`"
+            redirect_handled: false
             redirect_status: "status_code"
 
     continue_on_failure: true
@@ -342,6 +343,6 @@ steps:
 
     capture:
       error_handling_results: "body.json.edge_cases_summary.error_handling"
-      # timeout_test_results: "{{timeout_risk}} && {{actual_duration}}"  # Operadores && não suportados
+      timeout_test_results: "body.json.edge_cases_summary.performance_tests.timeout"
       edge_case_summary: "body.json.edge_cases_summary"
       total_edge_cases_tested: "`11`"

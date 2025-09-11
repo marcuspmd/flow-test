@@ -2,13 +2,9 @@ suite_name: "dependency-edge-cases"
 node_id: "dependency_edge_cases"
 description: "Test edge cases for dependency system"
 
-# Test case 1: Self-referencing (should be caught)
-# depends:
-#   - path: "./dependency-edge-cases.yaml"
-
-# Test case 2: Missing dependency (should warn but continue)
+# Test case: Missing dependency (should warn but continue with required: false)
 depends:
-  - path: "./non-existent-flow.yaml"
+  - node_id: "non_existent_node"
     required: false
 
 # Test case 3: Export without dependency
@@ -32,6 +28,7 @@ steps:
 
     capture:
       computed_result: "response.json.url"
+      test_value: "'edge-case-value'"  # Captura o valor estático
 
   - name: "Verify exported variables are set"
     request:

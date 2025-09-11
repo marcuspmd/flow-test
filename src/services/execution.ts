@@ -408,6 +408,14 @@ export class ExecutionService {
       // Fires suite start hook
       await this.hooks.onSuiteStart?.(suite);
 
+      // LIMPEZA DE VARIÁVEIS: Limpa variáveis não-globais antes de iniciar novo node
+      // Isso garante que variáveis de runtime do node anterior não vazem para este node
+      this.globalVariables.clearRuntimeVariables();
+
+      this.logger.info(
+        `Starting fresh variable context for node '${discoveredTest.node_id}'`
+      );
+
       // Configures suite variables
       if (suite.variables) {
         this.globalVariables.setSuiteVariables(suite.variables);
@@ -552,7 +560,7 @@ export class ExecutionService {
   }
 
   /**
-   * Filters out environment variables and duplicate exported variables from available variables
+   * Filters out environment variables and shows only relevant variables
    */
   private filterAvailableVariables(
     variables: Record<string, any>
@@ -562,7 +570,22 @@ export class ExecutionService {
     // Get environment variables to exclude
     const envVarsToExclude = this.getEnvironmentVariablesToExclude();
 
-    // Get all exported variables (with namespaces) to identify duplicates
+    // Patterns for relevant variables (captured, config, and test-related)
+    const relevantPatterns = [
+      /^captured_/, // Captured variables from current flow
+      /^config_/, // Configuration variables
+      /^test_/, // Test-specific variables
+      /^auth_/, // Authentication variables
+      /^api_/, // API-related variables
+      /^flow_/, // Flow-specific variables
+      /^suite_/, // Suite-level variables
+      /^base_/, // Base configuration (like base_url)
+      /^current_/, // Current context variables
+      /^result_/, // Result variables
+      /^scenario_/, // Scenario variables
+    ];
+
+    // Get all exported variables (these are always relevant)
     const exportedVariables = this.globalRegistry.getAllExportedVariables();
     const exportedVariableNames = new Set(Object.keys(exportedVariables));
 
@@ -572,18 +595,28 @@ export class ExecutionService {
         continue;
       }
 
-      // Check if this variable has a namespaced exported version
-      // If it does, skip the non-namespaced version
-      let hasNamespacedVersion = false;
-      for (const exportedVarName of exportedVariableNames) {
-        if (exportedVarName.endsWith(`.${key}`)) {
-          hasNamespacedVersion = true;
-          break;
-        }
+      // Always include exported variables (they have namespaces like "nodeId.variable")
+      if (exportedVariableNames.has(key)) {
+        filtered[key] = value;
+        continue;
       }
 
-      if (!hasNamespacedVersion) {
-        filtered[key] = value;
+      // Include if it matches relevant patterns
+      const isRelevant = relevantPatterns.some((pattern) => pattern.test(key));
+      if (isRelevant) {
+        // Check if this variable has a namespaced exported version
+        // If it does, skip the non-namespaced version to avoid duplicates
+        let hasNamespacedVersion = false;
+        for (const exportedVarName of exportedVariableNames) {
+          if (exportedVarName.endsWith(`.${key}`)) {
+            hasNamespacedVersion = true;
+            break;
+          }
+        }
+
+        if (!hasNamespacedVersion) {
+          filtered[key] = value;
+        }
       }
     }
 
@@ -671,8 +704,13 @@ export class ExecutionService {
       // 3. Executes assertions
       let assertionResults: any[] = [];
       if (step.assert && httpResult.response_details) {
+        // Interpolate assertion values before validation
+        const interpolatedAssertions = this.globalVariables.interpolate(
+          step.assert
+        );
+
         assertionResults = this.assertionService.validateAssertions(
-          step.assert,
+          interpolatedAssertions,
           httpResult
         );
         httpResult.assertions_results = assertionResults;

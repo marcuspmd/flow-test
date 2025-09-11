@@ -1,7 +1,11 @@
 import { VariableContext } from "../types/common.types";
 import { GlobalRegistryService } from "./global-registry.service";
 import { fakerService } from "./faker.service";
-import { javascriptService, JavaScriptExecutionContext } from "./javascript.service";
+import {
+  javascriptService,
+  JavaScriptExecutionContext,
+} from "./javascript.service";
+import { getLogger } from "./logger.service";
 
 /**
  * Service responsible for variable interpolation and resolution
@@ -29,12 +33,15 @@ import { javascriptService, JavaScriptExecutionContext } from "./javascript.serv
 export class VariableService {
   /** Hierarchical context of variables with different scopes */
   private context: VariableContext;
-  
+
   /** Global registry service for exported variables */
   private globalRegistry?: GlobalRegistryService;
-  
+
   /** Current execution context for JavaScript expressions */
   private currentExecutionContext: JavaScriptExecutionContext = {};
+
+  /** Logger service */
+  private logger = getLogger();
 
   /**
    * VariableService constructor
@@ -42,7 +49,10 @@ export class VariableService {
    * @param context - Hierarchical context of variables organized by scope
    * @param globalRegistry - Optional global registry for exported variables
    */
-  constructor(context: VariableContext, globalRegistry?: GlobalRegistryService) {
+  constructor(
+    context: VariableContext,
+    globalRegistry?: GlobalRegistryService
+  ) {
     this.context = context;
     this.globalRegistry = globalRegistry;
   }
@@ -55,6 +65,7 @@ export class VariableService {
    * Supports interpolation in strings, arrays and objects recursively.
    *
    * @param template - String, array or object containing variable placeholders
+   * @param suppressWarnings - If true, suppresses warnings for missing variables (useful for cleanup testing)
    * @returns Value with all variables interpolated
    *
    * @example
@@ -73,22 +84,41 @@ export class VariableService {
    * interpolate(['{{env}}', '{{version}}']) // → ['production', '1.0.0']
    * ```
    */
-  interpolate(template: string | any): any {
+  interpolate(template: string | any, suppressWarnings: boolean = false): any {
     if (typeof template === "string") {
       return template.replace(/\{\{([^}]+)\}\}/g, (match, variablePath) => {
         const value = this.resolveVariable(variablePath.trim());
-        return value !== undefined ? String(value) : match;
+        if (value === undefined) {
+          if (!suppressWarnings) {
+            // Verifica se é uma variável que foi intencionalmente limpa (comum após limpeza de runtime)
+            const isRuntimeVariable = this.isLikelyRuntimeVariable(
+              variablePath.trim()
+            );
+            if (isRuntimeVariable) {
+              // Log em nível debug em vez de warning para variáveis de runtime limpas
+              this.logger.debug(
+                `Runtime variable '${variablePath.trim()}' not found (expected after cleanup)`
+              );
+            } else {
+              this.logger.warn(
+                `Variable '${variablePath.trim()}' not found during interpolation`
+              );
+            }
+          }
+          return match; // Keep the original placeholder
+        }
+        return String(value);
       });
     }
 
     if (Array.isArray(template)) {
-      return template.map((item) => this.interpolate(item));
+      return template.map((item) => this.interpolate(item, suppressWarnings));
     }
 
     if (template && typeof template === "object") {
       const result: any = {};
       for (const [key, value] of Object.entries(template)) {
-        result[key] = this.interpolate(value);
+        result[key] = this.interpolate(value, suppressWarnings);
       }
       return result;
     }
@@ -116,30 +146,35 @@ export class VariableService {
    */
   private resolveVariable(variablePath: string): any {
     // Check if it's a JavaScript expression (starts with 'js:')
-    if (variablePath.startsWith('js:')) {
+    if (variablePath.startsWith("js:")) {
       try {
-        const jsExpression = javascriptService.parseJavaScriptExpression(variablePath);
+        const jsExpression =
+          javascriptService.parseJavaScriptExpression(variablePath);
         if (jsExpression) {
           // Update execution context with current variables
           const context: JavaScriptExecutionContext = {
             ...this.currentExecutionContext,
-            variables: this.getAllAvailableVariables()
+            variables: this.getAllAvailableVariables(),
           };
           return javascriptService.executeExpression(jsExpression, context);
         }
         return undefined;
       } catch (error) {
-        console.warn(`Error resolving JavaScript expression '${variablePath}': ${error}`);
+        this.logger.warn(
+          `Error resolving JavaScript expression '${variablePath}': ${error}`
+        );
         return undefined;
       }
     }
 
     // Check if it's a Faker expression (starts with 'faker.')
-    if (variablePath.startsWith('faker.')) {
+    if (variablePath.startsWith("faker.")) {
       try {
         return fakerService.parseFakerExpression(variablePath);
       } catch (error) {
-        console.warn(`Error resolving Faker expression '${variablePath}': ${error}`);
+        this.logger.warn(
+          `Error resolving Faker expression '${variablePath}': ${error}`
+        );
         return undefined;
       }
     }
@@ -257,21 +292,33 @@ export class VariableService {
     capturedVariables: Record<string, any>
   ): void {
     if (!this.globalRegistry) {
-      console.warn(`Cannot export variables: Global registry not available for node '${nodeId}'`);
+      this.logger.warn(
+        `Cannot export variables: Global registry not available for node '${nodeId}'`
+      );
       return;
     }
 
     // Register node with its exports
-    this.globalRegistry.registerNode(nodeId, suiteName, exports, '');
+    this.globalRegistry.registerNode(nodeId, suiteName, exports, "");
 
     // Export only the variables that are in the exports list
     for (const variableName of exports) {
       if (variableName in capturedVariables) {
-        this.globalRegistry.setExportedVariable(nodeId, variableName, capturedVariables[variableName]);
+        this.globalRegistry.setExportedVariable(
+          nodeId,
+          variableName,
+          capturedVariables[variableName]
+        );
       } else if (variableName in this.context.runtime) {
-        this.globalRegistry.setExportedVariable(nodeId, variableName, this.context.runtime[variableName]);
+        this.globalRegistry.setExportedVariable(
+          nodeId,
+          variableName,
+          this.context.runtime[variableName]
+        );
       } else {
-        console.warn(`Export variable '${variableName}' not found in captured variables or runtime context for node '${nodeId}'`);
+        this.logger.warn(
+          `Export '${variableName}' not found in captured variables for suite '${suiteName}'`
+        );
       }
     }
   }
@@ -299,7 +346,7 @@ export class VariableService {
   getAllAvailableVariables(): Record<string, any> {
     const localVariables = this.getAllVariables();
     const globalVariables = this.getGlobalExportedVariables();
-    
+
     return {
       ...localVariables,
       ...globalVariables,
@@ -310,11 +357,11 @@ export class VariableService {
    * Updates the current execution context for JavaScript expressions
    */
   setExecutionContext(context: Partial<JavaScriptExecutionContext>): void {
-    this.currentExecutionContext = { 
-      ...this.currentExecutionContext, 
+    this.currentExecutionContext = {
+      ...this.currentExecutionContext,
       ...context,
       // Always provide current variables
-      variables: this.getAllVariables()
+      variables: this.getAllVariables(),
     };
   }
 
@@ -323,5 +370,87 @@ export class VariableService {
    */
   setGlobalRegistry(globalRegistry: GlobalRegistryService): void {
     this.globalRegistry = globalRegistry;
+  }
+
+  /**
+   * Clears all runtime variables (used when switching between nodes)
+   * Preserves global, suite, and imported variables
+   */
+  clearRuntimeVariables(): void {
+    this.context.runtime = {};
+    this.logger.info("Runtime variables cleared for node transition");
+  }
+
+  /**
+   * Clears suite-specific variables (used when switching between test suites)
+   * Preserves global and imported variables, clears runtime variables
+   */
+  clearSuiteVariables(): void {
+    this.context.suite = {};
+    this.context.runtime = {};
+    this.logger.info(
+      "Suite and runtime variables cleared for suite transition"
+    );
+  }
+
+  /**
+   * Clears all non-global variables (used for complete cleanup)
+   * Only preserves global variables
+   */
+  clearAllNonGlobalVariables(): void {
+    this.context.suite = {};
+    this.context.runtime = {};
+    this.context.imported = {};
+    this.logger.info("All non-global variables cleared");
+  }
+
+  /**
+   * Determines if a variable name is likely a runtime variable that gets cleaned between nodes
+   * Used to reduce warning noise for expected cleanup behavior
+   */
+  private isLikelyRuntimeVariable(variableName: string): boolean {
+    // Common runtime variable patterns that are expected to be cleaned
+    const runtimeVariablePatterns = [
+      /^user_id$/,
+      /^user_name$/,
+      /^user_email$/,
+      /^company_data$/,
+      /^auth_token$/,
+      /^login_success$/,
+      /^error_handled$/,
+      /^response_type$/,
+      /^performance$/,
+      /^test_user_id$/,
+      /^test_user_email$/,
+      /^crud_success$/,
+      /^crud_performance$/,
+      /^performance_rating$/,
+      /^performance_score$/,
+      /^init_success$/,
+      /.*_data$/,
+      /.*_result$/,
+      /.*_status$/,
+    ];
+
+    return runtimeVariablePatterns.some((pattern) =>
+      pattern.test(variableName)
+    );
+  }
+
+  /**
+   * Gets count of variables in each scope for debugging
+   */
+  getVariableCounts(): {
+    global: number;
+    suite: number;
+    imported: number;
+    runtime: number;
+  } {
+    return {
+      global: Object.keys(this.context.global).length,
+      suite: Object.keys(this.context.suite).length,
+      imported: Object.keys(this.context.imported).length,
+      runtime: Object.keys(this.context.runtime).length,
+    };
   }
 }

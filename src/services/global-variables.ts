@@ -2,7 +2,10 @@ import { ConfigManager } from "../core/config";
 import { GlobalVariableContext } from "../types/engine.types";
 import { GlobalRegistryService } from "./global-registry.service";
 import { fakerService } from "./faker.service";
-import { javascriptService, JavaScriptExecutionContext } from "./javascript.service";
+import {
+  javascriptService,
+  JavaScriptExecutionContext,
+} from "./javascript.service";
 
 /**
  * Service for managing global variables with hierarchy and cache
@@ -45,11 +48,11 @@ export class GlobalVariablesService {
    * Updates the current execution context for JavaScript expressions
    */
   setExecutionContext(context: Partial<JavaScriptExecutionContext>): void {
-    this.currentExecutionContext = { 
-      ...this.currentExecutionContext, 
+    this.currentExecutionContext = {
+      ...this.currentExecutionContext,
       ...context,
       // Always provide current variables
-      variables: this.getAllVariables()
+      variables: this.getAllVariables(),
     };
     this.clearCache(); // Clear cache when context changes
   }
@@ -93,6 +96,25 @@ export class GlobalVariablesService {
    */
   setSuiteVariables(variables: Record<string, any>): void {
     this.context.suite = { ...this.context.suite, ...variables };
+    this.clearCache();
+  }
+
+  /**
+   * Clears runtime variables (used when switching between nodes)
+   * Preserves environment, global, and suite variables
+   */
+  clearRuntimeVariables(): void {
+    this.context.runtime = {};
+    this.clearCache();
+  }
+
+  /**
+   * Clears suite-specific variables (used when switching between test suites)
+   * Preserves environment and global variables, clears runtime variables
+   */
+  clearSuiteVariables(): void {
+    this.context.suite = {};
+    this.context.runtime = {};
     this.clearCache();
   }
 
@@ -183,9 +205,14 @@ export class GlobalVariablesService {
       if (value !== undefined) {
         result = result.replace(fullMatch, this.convertValueToString(value));
       } else {
-        console.warn(
-          `⚠️  Warning: Variable '${variableName}' not found during interpolation`
-        );
+        // Verifica se é uma variável runtime que foi intencionalmente limpa
+        const isLikelyRuntimeVariable =
+          this.isLikelyRuntimeVariable(variableName);
+        if (!isLikelyRuntimeVariable) {
+          console.warn(
+            `⚠️  Warning: Variable '${variableName}' not found during interpolation`
+          );
+        }
         // Keeps original expression if variable not found
       }
     }
@@ -230,30 +257,35 @@ export class GlobalVariablesService {
    */
   private resolveVariableExpression(expression: string): any {
     // Check if it's a JavaScript expression (starts with 'js:')
-    if (expression.startsWith('js:')) {
+    if (expression.startsWith("js:")) {
       try {
-        const jsExpression = javascriptService.parseJavaScriptExpression(expression);
+        const jsExpression =
+          javascriptService.parseJavaScriptExpression(expression);
         if (jsExpression) {
           // Update execution context with current variables
           const context: JavaScriptExecutionContext = {
             ...this.currentExecutionContext,
-            variables: this.getAllVariables()
+            variables: this.getAllVariables(),
           };
           return javascriptService.executeExpression(jsExpression, context);
         }
         return undefined;
       } catch (error) {
-        console.warn(`Error resolving JavaScript expression '${expression}': ${error}`);
+        console.warn(
+          `Error resolving JavaScript expression '${expression}': ${error}`
+        );
         return undefined;
       }
     }
 
     // Check if it's a Faker expression (starts with 'faker.')
-    if (expression.startsWith('faker.')) {
+    if (expression.startsWith("faker.")) {
       try {
         return fakerService.parseFakerExpression(expression);
       } catch (error) {
-        console.warn(`Error resolving Faker expression '${expression}': ${error}`);
+        console.warn(
+          `Error resolving Faker expression '${expression}': ${error}`
+        );
         return undefined;
       }
     }
@@ -467,5 +499,38 @@ export class GlobalVariablesService {
     }
 
     this.clearCache();
+  }
+
+  /**
+   * Determines if a variable name is likely a runtime variable that gets cleaned between nodes
+   * Used to reduce warning noise for expected cleanup behavior
+   */
+  private isLikelyRuntimeVariable(variableName: string): boolean {
+    // Common runtime variable patterns that are expected to be cleaned
+    const runtimeVariablePatterns = [
+      /^user_id$/,
+      /^user_name$/,
+      /^user_email$/,
+      /^company_data$/,
+      /^auth_token$/,
+      /^login_success$/,
+      /^error_handled$/,
+      /^response_type$/,
+      /^performance$/,
+      /^test_user_id$/,
+      /^test_user_email$/,
+      /^crud_success$/,
+      /^crud_performance$/,
+      /^performance_rating$/,
+      /^performance_score$/,
+      /^init_success$/,
+      /.*_data$/,
+      /.*_result$/,
+      /.*_status$/,
+    ];
+
+    return runtimeVariablePatterns.some((pattern) =>
+      pattern.test(variableName)
+    );
   }
 }

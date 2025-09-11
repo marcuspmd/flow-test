@@ -31,12 +31,12 @@ export class FakerService {
     // Location (replaces deprecated address)
     "location.city",
     "location.country",
-    "location.state", 
+    "location.state",
     "location.streetAddress",
     "location.zipCode",
     "location.latitude",
     "location.longitude",
-    
+
     // Person
     "person.firstName",
     "person.lastName",
@@ -44,29 +44,30 @@ export class FakerService {
     "person.jobTitle",
     "person.gender",
     "person.jobArea",
-    
+
     // Internet
     "internet.email",
     "internet.url",
     "internet.domainName",
     "internet.userName",
     "internet.ip",
+    "internet.ipv4",
     "internet.mac",
     "internet.userAgent",
-    
+
     // Phone
     "phone.number",
-    
+
     // Date
     "date.past",
     "date.future",
     "date.recent",
     "date.soon",
     "date.birthdate",
-    
+
     // Time
     "datatype.datetime",
-    
+
     // Lorem
     "lorem.word",
     "lorem.words",
@@ -75,41 +76,40 @@ export class FakerService {
     "lorem.paragraph",
     "lorem.text",
     "lorem.lines",
-    
+
     // Number
     "number.int",
     "number.float",
     "number.bigInt",
-    
+
     // String
     "string.alpha",
     "string.alphanumeric",
     "string.numeric",
     "string.uuid",
-    
+
     // Boolean
     "datatype.boolean",
-    
+
     // Array helpers
     "helpers.arrayElement",
     "helpers.arrayElements",
     "helpers.shuffle",
-    
+
     // Finance
     "finance.amount",
     "finance.currencyCode",
     "finance.currencyName",
     "finance.accountNumber",
-    "finance.routingNumber", 
+    "finance.routingNumber",
     "finance.creditCardNumber",
     "finance.creditCardCVV",
-    
+
     // Company
     "company.name",
     "company.catchPhrase",
     "company.buzzPhrase",
-    "company.companySuffix",
-    
+
     // Commerce
     "commerce.product",
     "commerce.productName",
@@ -117,29 +117,29 @@ export class FakerService {
     "commerce.price",
     "commerce.department",
     "commerce.productMaterial",
-    
+
     // Vehicle
     "vehicle.manufacturer",
     "vehicle.model",
     "vehicle.type",
     "vehicle.fuel",
     "vehicle.vin",
-    
+
     // Image
     "image.avatar",
-    
-    // Science
-    "science.chemicalElement.name",
-    "science.unit.name",
-    
+
+    // Science - Remove deprecated methods
+    // "science.chemicalElement.name", // Not available in v8+
+    // "science.unit.name", // Not available in v8+
+
     // Database
     "database.engine",
     "database.type",
-    
+
     // Git
     "git.branch",
     "git.commitHash",
-    
+
     // System
     "system.fileName",
     "system.fileExt",
@@ -166,7 +166,7 @@ export class FakerService {
   private initializeFaker(): void {
     // Note: faker.setLocale is not available in v8+, locale should be set during import
     // For now, we'll just set the seed if provided
-    
+
     if (this.config.seed !== undefined) {
       faker.seed(this.config.seed);
     }
@@ -181,18 +181,22 @@ export class FakerService {
   public executeMethod(methodPath: string, args: any[] = []): any {
     // Security check: only allow allowlisted methods
     if (!this.allowlistedMethods.has(methodPath)) {
-      throw new Error(`Faker method '${methodPath}' is not allowlisted for security reasons`);
+      throw new Error(
+        `Faker method '${methodPath}' is not allowlisted for security reasons`
+      );
     }
 
     try {
       const pathParts = methodPath.split(".");
-      
+
       if (pathParts.length !== 2) {
-        throw new Error(`Invalid Faker method path: ${methodPath}. Expected format: 'category.method'`);
+        throw new Error(
+          `Invalid Faker method path: ${methodPath}. Expected format: 'category.method'`
+        );
       }
 
       const [category, method] = pathParts;
-      
+
       // Navigate to the method
       const categoryObject = (faker as any)[category];
       if (!categoryObject) {
@@ -201,7 +205,9 @@ export class FakerService {
 
       const methodFunction = categoryObject[method];
       if (typeof methodFunction !== "function") {
-        throw new Error(`Faker method '${method}' not found in category '${category}'`);
+        throw new Error(
+          `Faker method '${method}' not found in category '${category}'`
+        );
       }
 
       // Execute the method with arguments
@@ -220,16 +226,16 @@ export class FakerService {
    */
   public parseFakerExpression(expression: string): any {
     // Remove faker. prefix if present
-    const cleanExpression = expression.startsWith("faker.") 
-      ? expression.substring(6) 
+    const cleanExpression = expression.startsWith("faker.")
+      ? expression.substring(6)
       : expression;
 
     // Check for method with arguments
     const methodWithArgsMatch = cleanExpression.match(/^([^(]+)\((.+)\)$/);
-    
+
     if (methodWithArgsMatch) {
       const [, methodPath, argsString] = methodWithArgsMatch;
-      
+
       try {
         // Parse arguments as JSON array or single value
         const args = this.parseArguments(argsString);

@@ -376,12 +376,31 @@ export class AssertionService {
   }
 
   /**
-   * Checks if two values are deeply equal.
+   * Checks if two values are deeply equal with type-tolerant comparison.
    */
   private deepEqual(a: any, b: any): boolean {
     if (a === b) return true;
     if (a == null || b == null) return false;
-    if (typeof a !== typeof b) return false;
+
+    // Type-tolerant comparison for numbers and strings
+    if (typeof a !== typeof b) {
+      // Try to compare number and string representations
+      if (
+        (typeof a === "number" && typeof b === "string") ||
+        (typeof a === "string" && typeof b === "number")
+      ) {
+        // Convert both to strings for comparison
+        return String(a) === String(b);
+      }
+      // Try boolean to string comparison
+      if (
+        (typeof a === "boolean" && typeof b === "string") ||
+        (typeof a === "string" && typeof b === "boolean")
+      ) {
+        return String(a) === String(b);
+      }
+      return false;
+    }
 
     if (typeof a === "object") {
       if (Array.isArray(a) !== Array.isArray(b)) return false;

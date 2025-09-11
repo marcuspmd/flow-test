@@ -9,6 +9,15 @@ variables:
   username: "scenario_test_user"
   test_mode: true
   timeout_threshold: 2000
+  # Valores padrão para variáveis de cenário
+  auth_status: "unknown"
+  performance_rating: "unknown"
+  error_count: 0
+  payload_type: "unknown"
+  access_level: "unknown"
+  error_handled: false
+  caching_enabled: false
+  final_scenario_result: "not_executed"
 
 exports:
   - auth_status

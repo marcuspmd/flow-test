@@ -418,7 +418,7 @@ export interface ReusableFlow {
  *   exports: ["created_user_id", "auth_token"],
  *   depends: [
  *     {
- *       path: "./setup/database-setup.yaml",
+ *       node_id: "database_setup",
  *       required: true
  *     }
  *   ],
@@ -426,7 +426,6 @@ export interface ReusableFlow {
  *     priority: "high",
  *     tags: ["e2e", "user-management", "regression"],
  *     timeout: 30000,
- *     requires: ["database", "auth-service"],
  *     estimated_duration_ms: 15000
  *   }
  * };
@@ -456,7 +455,6 @@ export interface TestSuite {
     priority?: string;
     tags?: string[];
     timeout?: number;
-    requires?: string[];
     estimated_duration_ms?: number;
   };
 }

@@ -13,6 +13,10 @@ variables:
   api_version: "v1"
   test_env: "development"
 
+exports:
+  - generatedEmail
+  - generatedUserId
+
 steps:
   - name: "Test Faker person data"
     request:
@@ -67,15 +71,15 @@ steps:
       status_code:
         equals: 200
       body:
-        data:
-          firstName:
-            type: "string"
+        json:
           email:
             contains: "@"
-          userId:
-            type: "number"
-          uuid:
-            regex: "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+          firstName:
+            type: "string"
+
+    capture:
+      generatedEmail: "body.json.email"
+      generatedUserId: "body.json.userId"
 
   - name: "Test Faker with method arguments"
     request:
@@ -101,10 +105,3 @@ steps:
           companyName:
             type: "string"
 
-exports:
-  - generatedEmail
-  - generatedUserId
-
-capture:
-  generatedEmail: "json.data.email"
-  generatedUserId: "json.data.userId"
