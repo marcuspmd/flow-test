@@ -155,8 +155,7 @@ export class TestDiscovery {
       });
     }
 
-    // REMOVIDO: Suporte legado para 'imports'
-    // Imports agora são tratados via 'depends'
+    // Flow dependencies are now handled via 'depends' field
 
     return [...new Set(dependencies)]; // Remove duplicatas
   }
@@ -188,10 +187,7 @@ export class TestDiscovery {
   private estimateDuration(suite: TestSuite): number {
     let totalSteps = suite.steps.length;
 
-    // Adiciona steps de flows importados (estimativa)
-    if (suite.imports) {
-      totalSteps += suite.imports.length * 3; // Assume 3 steps por import em média
-    }
+    // Estimativa considerando apenas steps diretos da suite
 
     // Estimativa: 500ms por step como baseline
     return totalSteps * 500;

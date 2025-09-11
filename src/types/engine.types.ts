@@ -231,35 +231,6 @@ export interface TestStep {
   metadata?: TestStepMetadata;
 }
 
-/**
- * Reusable flow import configuration
- *
- * @example
- * ```typescript
- * const flowImport: FlowImport = {
- *   name: "login_flow",
- *   path: "./auth/login-flow.yaml",
- *   variables: {
- *     username: "test_user",
- *     password: "test_pass"
- *   },
- *   priority: "high",
- *   enabled: true
- * };
- * ```
- */
-export interface FlowImport {
-  /** Name identifier for the imported flow */
-  name: string;
-  /** File path to the flow YAML */
-  path: string;
-  /** Variables to override in the imported flow */
-  variables?: Record<string, any>;
-  /** Execution priority */
-  priority?: string;
-  /** Whether this import is enabled */
-  enabled?: boolean;
-}
 
 /**
  * Flow dependency configuration
@@ -394,13 +365,7 @@ export interface ReusableFlow {
  *   suite_name: "E2E User Management Tests",
  *   description: "Complete end-to-end testing of user management features",
  *   base_url: "https://api.example.com",
- *   imports: [
- *     {
- *       name: "auth_setup",
- *       path: "./common/auth-setup.yaml",
- *       enabled: true
- *     }
- *   ],
+ *   // Flow dependencies replaced by 'depends' field
  *   variables: {
  *     test_user_email: "test@example.com",
  *     api_version: "v1"
@@ -440,8 +405,6 @@ export interface TestSuite {
   description?: string;
   /** Base URL for all requests in this suite */
   base_url?: string;
-  /** Flow imports to include */
-  imports?: FlowImport[];
   /** Variables available to all steps */
   variables?: Record<string, any>;
   /** Test steps to execute */

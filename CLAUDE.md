@@ -39,7 +39,6 @@ The codebase follows a modern, modular architecture with enhanced capabilities:
   - `http.service.ts` - HTTP request execution with enhanced error handling
   - `assertion.service.ts` - Advanced assertion validation with custom checks
   - `capture.service.ts` - JMESPath data extraction and variable capture
-  - `flow.service.ts` - Reusable flow imports with dependency management
   - `scenario.service.ts` - Conditional scenario processing for complex flows
   - `execution.ts` - Step execution orchestration
   - `reporting.ts` - Comprehensive reporting and metrics
@@ -54,7 +53,6 @@ The codebase follows a modern, modular architecture with enhanced capabilities:
 - `RequestDetails` - HTTP request with timeout support and additional methods (HEAD, OPTIONS)
 - `Assertions` - Enhanced assertions with custom validation and type checking
 - `ConditionalScenario` - Advanced conditional logic with named scenarios
-- `FlowImport` - Reusable flows with priority and enabled/disabled flags
 - `StepExecutionResult` - Comprehensive execution results with performance metrics
 - `GlobalVariableContext` - Hierarchical variable context with environment support
 
@@ -63,7 +61,6 @@ The codebase follows a modern, modular architecture with enhanced capabilities:
 YAML files define test suites with:
 - `suite_name` - Descriptive name for the test suite
 - `base_url` - Optional base URL prepended to relative URLs
-- `imports` - Array of reusable flow imports with variable overrides
 - `variables` - Global variables for template interpolation using `{{variable_name}}` syntax
 - `steps` - Array of test steps executed sequentially
   - Each step supports assertions, variable capture, and conditional scenarios
@@ -84,11 +81,11 @@ YAML files define test suites with:
 - **JavaScript Expressions**: Execute JavaScript code for dynamic data generation
 - **Hierarchical Scoping**: Advanced variable resolution (environment > global > suite > imported > runtime)
 
-#### Advanced Flow Management
-- **Flow Dependencies**: Define and manage complex flow dependencies
-- **Flow Caching**: Cache flow results with configurable TTL
-- **Conditional Flows**: Execute flows based on JMESPath conditions
-- **Flow Retry Logic**: Automatic retry with configurable delays
+#### Advanced Dependency Management
+- **Flow Dependencies**: Define and manage complex flow dependencies using `depends` field
+- **Dependency Caching**: Cache dependency results with configurable TTL
+- **Conditional Dependencies**: Execute dependencies based on JMESPath conditions
+- **Dependency Retry Logic**: Automatic retry with configurable delays
 
 #### Comprehensive Engine Hooks
 - **Lifecycle Events**: Hook into test discovery, execution start/end, step events
