@@ -506,7 +506,7 @@ export class ExecutionService {
 
       const endTime = new Date();
       const duration = endTime.getTime() - startTime.getTime();
-      const totalSteps = stepResults.length;
+      const totalSteps = suite.steps.length; // Use the intended number of steps, not just executed ones
       const successRate =
         totalSteps > 0 ? (successfulSteps / totalSteps) * 100 : 0;
 

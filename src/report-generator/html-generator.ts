@@ -7,28 +7,31 @@ export interface HTMLGeneratorOptions {
   outputDir?: string;
   includeCurlCommands?: boolean;
   includeRawData?: boolean;
-  theme?: 'light' | 'dark' | 'auto';
+  theme?: "light" | "dark" | "auto";
 }
 
 export class HTMLReportGenerator {
   private options: HTMLGeneratorOptions;
-  private compiledCSS: string = '';
+  private compiledCSS: string = "";
 
   constructor(options: HTMLGeneratorOptions = {}) {
     this.options = {
-      templateDir: path.join(__dirname, '../templates'),
-      outputDir: './results',
+      templateDir: path.join(__dirname, "../templates"),
+      outputDir: "./results",
       includeCurlCommands: true,
       includeRawData: true,
-      theme: 'light',
-      ...options
+      theme: "light",
+      ...options,
     };
   }
 
   /**
    * Generates HTML report from JSON data
    */
-  async generateFromJSON(jsonPath: string, outputPath?: string): Promise<string> {
+  async generateFromJSON(
+    jsonPath: string,
+    outputPath?: string
+  ): Promise<string> {
     const jsonData = await this.loadJSONData(jsonPath);
     return this.generateHTML(jsonData, outputPath);
   }
@@ -36,28 +39,38 @@ export class HTMLReportGenerator {
   /**
    * Generates HTML report from aggregated result object
    */
-  async generateHTML(data: AggregatedResult, outputPath?: string): Promise<string> {
+  async generateHTML(
+    data: AggregatedResult,
+    outputPath?: string
+  ): Promise<string> {
     // Compile CSS if not already done
     if (!this.compiledCSS) {
       await this.compileCSS();
     }
 
     const html = this.buildHTMLReport(data);
-    
-    const finalOutputPath = outputPath || path.join(this.options.outputDir!, `${this.sanitizeFileName(data.project_name)}_${this.generateTimestamp()}.html`);
-    
+
+    const finalOutputPath =
+      outputPath ||
+      path.join(
+        this.options.outputDir!,
+        `${this.sanitizeFileName(
+          data.project_name
+        )}_${this.generateTimestamp()}.html`
+      );
+
     // Ensure output directory exists
     const outputDir = path.dirname(finalOutputPath);
     if (!fs.existsSync(outputDir)) {
       fs.mkdirSync(outputDir, { recursive: true });
     }
-    
-    fs.writeFileSync(finalOutputPath, html, 'utf8');
-    
+
+    fs.writeFileSync(finalOutputPath, html, "utf8");
+
     // Also create latest.html
-    const latestPath = path.join(this.options.outputDir!, 'latest.html');
-    fs.writeFileSync(latestPath, html, 'utf8');
-    
+    const latestPath = path.join(this.options.outputDir!, "latest.html");
+    fs.writeFileSync(latestPath, html, "utf8");
+
     return finalOutputPath;
   }
 
@@ -65,8 +78,8 @@ export class HTMLReportGenerator {
     if (!fs.existsSync(jsonPath)) {
       throw new Error(`JSON file not found: ${jsonPath}`);
     }
-    
-    const jsonContent = fs.readFileSync(jsonPath, 'utf8');
+
+    const jsonContent = fs.readFileSync(jsonPath, "utf8");
     return JSON.parse(jsonContent) as AggregatedResult;
   }
 
@@ -75,118 +88,593 @@ export class HTMLReportGenerator {
       // For now, we'll include a basic CSS. In production, this would be compiled Tailwind
       this.compiledCSS = await this.loadCompiledCSS();
     } catch (error) {
-      console.warn('Could not load compiled CSS, using fallback');
+      console.warn("Could not load compiled CSS, using fallback");
       this.compiledCSS = this.getFallbackCSS();
     }
   }
 
   private async loadCompiledCSS(): Promise<string> {
     return `
-      /* Professional Testing Report Styles v2.0 */
+      /* Professional Testing Report Styles v3.0 - Enhanced Executive Dashboard */
       :root {
         --color-success: #059669;
+        --color-success-light: #ecfdf5;
+        --color-success-dark: #047857;
         --color-error: #dc2626;
+        --color-error-light: #fef2f2;
+        --color-error-dark: #b91c1c;
         --color-warning: #d97706;
+        --color-warning-light: #fffbeb;
+        --color-warning-dark: #b45309;
         --color-info: #0369a1;
+        --color-info-light: #f0f9ff;
+        --color-info-dark: #0284c7;
         --color-skipped: #6b7280;
+        --color-skipped-light: #f9fafb;
+        --color-purple: #7c3aed;
+        --color-purple-light: #f3f4f6;
         --color-gray-50: #f9fafb;
         --color-gray-100: #f3f4f6;
         --color-gray-200: #e5e7eb;
         --color-gray-300: #d1d5db;
+        --color-gray-400: #9ca3af;
+        --color-gray-500: #6b7280;
+        --color-gray-600: #4b5563;
         --color-gray-700: #374151;
         --color-gray-800: #1f2937;
         --color-gray-900: #111827;
-        --border-radius: 4px;
+        --border-radius: 6px;
+        --border-radius-lg: 12px;
         --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
         --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+        --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+        --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1);
         --font-mono: 'Monaco', 'Menlo', 'Consolas', 'Courier New', monospace;
+        --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Inter', sans-serif;
       }
-      
+
       * { box-sizing: border-box; }
-      
+
       body {
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+        font-family: var(--font-sans);
         margin: 0;
-        background: var(--color-gray-50);
-        line-height: 1.5;
+        background: linear-gradient(to br, var(--color-gray-50) 0%, #f8fafc 100%);
+        line-height: 1.6;
         color: var(--color-gray-900);
+        font-size: 14px;
       }
-      
+
       .container {
-        max-width: 1600px;
+        max-width: 1800px;
         margin: 0 auto;
-        padding: 1.5rem;
+        padding: 1rem 2rem 2rem;
       }
-      
-      /* Header */
+
+      /* Executive Summary Bar */
+      .executive-summary {
+        background: linear-gradient(135deg, var(--color-info) 0%, var(--color-purple) 100%);
+        color: white;
+        padding: 1.5rem 2rem;
+        border-radius: var(--border-radius-lg);
+        margin-bottom: 2rem;
+        box-shadow: var(--shadow-lg);
+        position: relative;
+        overflow: hidden;
+      }
+
+      .executive-summary::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 100px;
+        height: 100px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 50%;
+        transform: translate(30px, -30px);
+      }
+
+      .executive-grid {
+        display: grid;
+        grid-template-columns: 2fr 1fr 1fr;
+        gap: 2rem;
+        align-items: center;
+      }
+
+      .executive-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin: 0 0 0.5rem 0;
+      }
+
+      .executive-subtitle {
+        font-size: 0.9rem;
+        opacity: 0.9;
+        margin: 0 0 1rem 0;
+      }
+
+      .executive-stats {
+        display: flex;
+        gap: 1.5rem;
+      }
+
+      .executive-stat {
+        text-align: center;
+      }
+
+      .executive-stat-value {
+        font-size: 2rem;
+        font-weight: 800;
+        line-height: 1;
+        margin: 0;
+      }
+
+      .executive-stat-label {
+        font-size: 0.75rem;
+        opacity: 0.8;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin: 0.25rem 0 0 0;
+      }
+
+      .status-indicator {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 1.1rem;
+        font-weight: 600;
+        justify-self: end;
+      }
+
+      .status-icon {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        animation: pulse 2s infinite;
+      }
+
+      .status-icon.success { background: #10b981; }
+      .status-icon.warning { background: #f59e0b; }
+      .status-icon.error { background: #ef4444; }
+
+      @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+      }
+
+      /* Enhanced Header with Actions */
       .header {
         background: white;
-        padding: 2rem;
-        border-radius: var(--border-radius);
+        padding: 1.5rem 2rem;
+        border-radius: var(--border-radius-lg);
         box-shadow: var(--shadow-md);
         margin-bottom: 2rem;
         border: 1px solid var(--color-gray-200);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
       }
-      
-      .title {
-        font-size: 2rem;
-        font-weight: 600;
-        color: var(--color-gray-900);
-        margin: 0 0 0.5rem 0;
-      }
-      
-      .subtitle {
-        font-size: 1rem;
-        color: var(--color-gray-700);
-        margin: 0;
-      }
-      
-      /* Metrics Grid */
-      .metrics-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 1rem;
-        margin: 2rem 0;
-      }
-      
-      .metric-card {
-        background: white;
-        padding: 1.5rem;
-        border-radius: var(--border-radius);
-        box-shadow: var(--shadow-sm);
-        border: 1px solid var(--color-gray-200);
-        border-left: 3px solid var(--color-info);
-      }
-      
-      .metric-card-success { border-left-color: var(--color-success); }
-      .metric-card-error { border-left-color: var(--color-error); }
-      .metric-card-warning { border-left-color: var(--color-warning); }
-      
-      .metric-value {
-        font-size: 2rem;
+
+      .header-info h1 {
+        font-size: 1.75rem;
         font-weight: 700;
+        color: var(--color-gray-900);
         margin: 0 0 0.25rem 0;
       }
-      
-      .metric-label {
-        font-size: 0.75rem;
-        color: var(--color-gray-700);
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        font-weight: 500;
+
+      .header-info p {
+        font-size: 0.9rem;
+        color: var(--color-gray-600);
         margin: 0;
       }
-      
-      /* Suite Cards */
+
+      .header-actions {
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+      }
+
+      .quick-filter {
+        display: flex;
+        gap: 0.5rem;
+        background: var(--color-gray-50);
+        padding: 0.25rem;
+        border-radius: var(--border-radius);
+        border: 1px solid var(--color-gray-200);
+      }
+
+      .filter-btn {
+        padding: 0.375rem 0.75rem;
+        border: none;
+        border-radius: calc(var(--border-radius) - 1px);
+        font-size: 0.75rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        background: transparent;
+        color: var(--color-gray-600);
+      }
+
+      .filter-btn:hover {
+        background: white;
+        color: var(--color-gray-900);
+        box-shadow: var(--shadow-sm);
+      }
+
+      .filter-btn.active {
+        background: var(--color-info);
+        color: white;
+        box-shadow: var(--shadow-sm);
+      }
+
+      .search-box {
+        position: relative;
+      }
+
+      .search-input {
+        padding: 0.5rem 0.75rem 0.5rem 2.25rem;
+        border: 1px solid var(--color-gray-300);
+        border-radius: var(--border-radius);
+        font-size: 0.875rem;
+        width: 200px;
+        transition: all 0.15s ease;
+      }
+
+      .search-input:focus {
+        outline: none;
+        border-color: var(--color-info);
+        box-shadow: 0 0 0 3px rgba(3, 105, 161, 0.1);
+      }
+
+      .search-icon {
+        position: absolute;
+        left: 0.75rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--color-gray-400);
+        font-size: 0.875rem;
+      }
+
+      /* Enhanced Metrics Grid */
+      .metrics-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 1.5rem;
+        margin: 2rem 0;
+      }
+
+      .metric-card {
+        background: white;
+        padding: 2rem;
+        border-radius: var(--border-radius-lg);
+        box-shadow: var(--shadow-md);
+        border: 1px solid var(--color-gray-200);
+        position: relative;
+        transition: all 0.15s ease;
+        overflow: hidden;
+      }
+
+      .metric-card:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-lg);
+      }
+
+      .metric-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 4px;
+        height: 100%;
+        background: var(--color-info);
+        transition: width 0.15s ease;
+      }
+
+      .metric-card:hover::before {
+        width: 6px;
+      }
+
+      .metric-card-success::before { background: var(--color-success); }
+      .metric-card-error::before { background: var(--color-error); }
+      .metric-card-warning::before { background: var(--color-warning); }
+
+      .metric-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 1rem;
+      }
+
+      .metric-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: var(--border-radius);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+        color: white;
+        background: var(--color-info);
+      }
+
+      .metric-icon.success { background: var(--color-success); }
+      .metric-icon.error { background: var(--color-error); }
+      .metric-icon.warning { background: var(--color-warning); }
+
+      .metric-value {
+        font-size: 2.5rem;
+        font-weight: 800;
+        margin: 0 0 0.25rem 0;
+        line-height: 1;
+      }
+
+      .metric-label {
+        font-size: 0.8rem;
+        color: var(--color-gray-600);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        font-weight: 600;
+        margin: 0 0 0.5rem 0;
+      }
+
+      .metric-subtitle {
+        font-size: 0.875rem;
+        color: var(--color-gray-500);
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 0.375rem;
+      }
+
+      .metric-trend {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+      }
+
+      .metric-trend.positive {
+        color: var(--color-success);
+      }
+
+      .metric-trend.negative {
+        color: var(--color-error);
+      }
+
+      .mini-chart {
+        width: 60px;
+        height: 30px;
+        background: var(--color-gray-50);
+        border-radius: 4px;
+        position: relative;
+        overflow: hidden;
+      }
+
+      /* Performance Insights Section */
+      .insights-section {
+        background: white;
+        border-radius: var(--border-radius-lg);
+        box-shadow: var(--shadow-md);
+        border: 1px solid var(--color-gray-200);
+        margin-bottom: 2rem;
+      }
+
+      .insights-header {
+        padding: 1.5rem 2rem 1rem;
+        border-bottom: 1px solid var(--color-gray-200);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .insights-title {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--color-gray-900);
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .insights-content {
+        padding: 1.5rem 2rem;
+      }
+
+      .insight-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 1.5rem;
+      }
+
+      .insight-card {
+        background: var(--color-gray-50);
+        padding: 1.5rem;
+        border-radius: var(--border-radius);
+        border: 1px solid var(--color-gray-200);
+      }
+
+      .insight-card.warning {
+        background: var(--color-warning-light);
+        border-color: var(--color-warning);
+      }
+
+      .insight-card.error {
+        background: var(--color-error-light);
+        border-color: var(--color-error);
+      }
+
+      .insight-card.success {
+        background: var(--color-success-light);
+        border-color: var(--color-success);
+      }
+
+      .insight-title {
+        font-weight: 600;
+        font-size: 1rem;
+        margin: 0 0 0.5rem 0;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .insight-description {
+        font-size: 0.875rem;
+        color: var(--color-gray-600);
+        margin: 0;
+      }
+
+      /* Enhanced Suite Cards */
       .suite-card {
         background: white;
         border: 1px solid var(--color-gray-200);
-        border-radius: var(--border-radius);
-        margin: 1rem 0;
+        border-radius: var(--border-radius-lg);
+        margin: 1.5rem 0;
         overflow: hidden;
-        box-shadow: var(--shadow-sm);
+        box-shadow: var(--shadow-md);
+        transition: all 0.15s ease;
       }
-      
+
+      .suite-header:hover {
+        box-shadow: var(--shadow-lg);
+      }
+
+      /* Enhanced Suite Headers */
+      .priority-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.125rem 0.5rem;
+        border-radius: calc(var(--border-radius) - 2px);
+        font-size: 0.6875rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.025em;
+      }
+
+      .priority-critical {
+        background: var(--color-error-light);
+        color: var(--color-error-dark);
+        border: 1px solid var(--color-error);
+      }
+
+      .priority-high {
+        background: var(--color-warning-light);
+        color: var(--color-warning-dark);
+        border: 1px solid var(--color-warning);
+      }
+
+      .priority-medium {
+        background: var(--color-info-light);
+        color: var(--color-info-dark);
+        border: 1px solid var(--color-info);
+      }
+
+      .priority-low {
+        background: var(--color-gray-100);
+        color: var(--color-gray-600);
+        border: 1px solid var(--color-gray-300);
+      }
+
+      .tags-container {
+        display: flex;
+        gap: 0.25rem;
+        flex-wrap: wrap;
+      }
+
+      .tag-badge {
+        background: var(--color-purple-light);
+        color: var(--color-purple);
+        padding: 0.125rem 0.375rem;
+        border-radius: calc(var(--border-radius) - 2px);
+        font-size: 0.6875rem;
+        font-weight: 500;
+        border: 1px solid rgba(124, 58, 237, 0.2);
+      }
+
+      .file-path {
+        color: var(--color-gray-600);
+        font-family: var(--font-mono);
+      }
+
+      .separator {
+        color: var(--color-gray-400);
+        margin: 0 0.375rem;
+      }
+
+      .duration.slow {
+        color: var(--color-warning);
+        font-weight: 600;
+      }
+
+      .feature-icon {
+        color: var(--color-info);
+        font-size: 0.75rem;
+        margin-left: 0.5rem;
+        opacity: 0.7;
+      }
+
+      .stat-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem;
+        background: var(--color-gray-50);
+        border-radius: var(--border-radius);
+        border: 1px solid var(--color-gray-200);
+        min-width: 80px;
+      }
+
+      .stat-item.success {
+        background: var(--color-success-light);
+        border-color: var(--color-success);
+        color: var(--color-success-dark);
+      }
+
+      .stat-item.warning {
+        background: var(--color-warning-light);
+        border-color: var(--color-warning);
+        color: var(--color-warning-dark);
+      }
+
+      .stat-item.error {
+        background: var(--color-error-light);
+        border-color: var(--color-error);
+        color: var(--color-error-dark);
+      }
+
+      .stat-item.partial {
+        background: var(--color-warning-light);
+        border-color: var(--color-warning);
+        color: var(--color-warning-dark);
+      }
+
+      .stat-icon {
+        font-size: 0.875rem;
+        opacity: 0.8;
+      }
+
+      .stat-content {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .stat-value {
+        font-family: var(--font-mono);
+        font-weight: 700;
+        font-size: 0.9375rem;
+        line-height: 1;
+      }
+
+      .stat-label {
+        font-size: 0.6875rem;
+        text-transform: uppercase;
+        letter-spacing: 0.025em;
+        opacity: 0.8;
+        font-weight: 500;
+      }
+
       .suite-header {
         padding: 1rem 1.25rem;
         background: var(--color-gray-50);
@@ -198,53 +686,53 @@ export class HTMLReportGenerator {
         align-items: center;
         transition: background-color 0.15s ease;
       }
-      
+
       .suite-header:hover {
         background: var(--color-gray-100);
       }
-      
+
       .suite-info {
         display: flex;
         flex-direction: column;
         gap: 0.25rem;
       }
-      
+
       .suite-name {
         font-weight: 600;
         font-size: 1rem;
         color: var(--color-gray-900);
         margin: 0;
       }
-      
+
       .suite-details {
         font-size: 0.875rem;
         color: var(--color-gray-700);
         font-family: var(--font-mono);
       }
-      
+
       .suite-stats {
         display: flex;
         gap: 1rem;
         font-size: 0.875rem;
         color: var(--color-gray-700);
       }
-      
+
       .stat-item {
         display: flex;
         align-items: center;
         gap: 0.25rem;
         font-family: var(--font-mono);
       }
-      
+
       .suite-content {
         display: none;
         background: white;
       }
-      
+
       .suite-content.expanded {
         display: block;
       }
-      
+
       /* Status Badges */
       .status-badge {
         display: inline-flex;
@@ -256,12 +744,12 @@ export class HTMLReportGenerator {
         text-transform: uppercase;
         letter-spacing: 0.025em;
       }
-      
+
       .status-success { background: #dcfce7; color: #166534; }
       .status-error { background: #fef2f2; color: #991b1b; }
       .status-warning { background: #fef3c7; color: #92400e; }
       .status-skipped { background: #f3f4f6; color: #6b7280; }
-      
+
       /* Step Cards */
       .step-card {
         border: 1px solid var(--color-gray-200);
@@ -269,7 +757,7 @@ export class HTMLReportGenerator {
         margin: 0.75rem 0;
         background: white;
       }
-      
+
       .step-header {
         padding: 0.875rem 1rem;
         background: var(--color-gray-50);
@@ -281,11 +769,11 @@ export class HTMLReportGenerator {
         align-items: center;
         transition: background-color 0.15s ease;
       }
-      
+
       .step-header:hover {
         background: var(--color-gray-100);
       }
-      
+
       .step-number {
         font-family: var(--font-mono);
         font-weight: 600;
@@ -293,52 +781,49 @@ export class HTMLReportGenerator {
         color: var(--color-gray-700);
         min-width: 2rem;
       }
-      
+
       .step-info {
         display: flex;
         flex-direction: column;
         gap: 0.125rem;
       }
-      
+
       .step-name {
         font-weight: 500;
         font-size: 0.9375rem;
         color: var(--color-gray-900);
         margin: 0;
       }
-      
+
       .step-method-url {
         font-size: 0.8125rem;
         font-family: var(--font-mono);
         color: var(--color-gray-700);
       }
-      
+
       .step-timing {
         font-size: 0.75rem;
         font-family: var(--font-mono);
         color: var(--color-gray-700);
       }
-      
+
       .step-content {
         display: none;
         background: white;
       }
-      
+
       .step-content.expanded {
         display: block;
       }
-      
+
       /* Tabs */
-      .tab-container {
-        border-top: 1px solid var(--color-gray-200);
-      }
-      
+
       .tab-header {
         display: flex;
         background: var(--color-gray-50);
         border-bottom: 1px solid var(--color-gray-200);
       }
-      
+
       .tab-button {
         padding: 0.75rem 1rem;
         background: none;
@@ -350,27 +835,38 @@ export class HTMLReportGenerator {
         border-bottom: 2px solid transparent;
         transition: all 0.15s ease;
       }
-      
+
       .tab-button:hover {
         color: var(--color-gray-900);
         background: var(--color-gray-100);
       }
-      
+
       .tab-button.active {
         color: var(--color-info);
         border-bottom-color: var(--color-info);
         background: white;
       }
-      
+
       .tab-content {
         padding: 1rem;
         display: none;
+        min-height: 50px;
+        background: white;
+        border: 1px solid var(--color-gray-200);
+        border-top: none;
+        border-bottom-left-radius: var(--border-radius);
+        border-bottom-right-radius: var(--border-radius);
       }
-      
+
       .tab-content.active {
         display: block;
       }
-      
+
+      .tab-container {
+        border-top: 1px solid var(--color-gray-200);
+        margin-top: 0.5rem;
+      }
+
       /* Request/Response */
       .request-response-grid {
         display: grid;
@@ -378,14 +874,14 @@ export class HTMLReportGenerator {
         gap: 1rem;
         margin: 0;
       }
-      
+
       .request-section, .response-section {
         background: var(--color-gray-50);
         border: 1px solid var(--color-gray-200);
         border-radius: var(--border-radius);
         overflow: hidden;
       }
-      
+
       .section-header {
         padding: 0.75rem 1rem;
         background: var(--color-gray-100);
@@ -394,16 +890,16 @@ export class HTMLReportGenerator {
         font-size: 0.875rem;
         color: var(--color-gray-900);
       }
-      
+
       .section-content {
         padding: 1rem;
       }
-      
+
       /* Code Blocks */
       .code-block {
         background: var(--color-gray-900);
         color: var(--color-gray-100);
-        padding: 1rem;
+        padding: 1rem 3.5rem 1rem 1rem;
         border-radius: var(--border-radius);
         font-family: var(--font-mono);
         font-size: 0.8125rem;
@@ -414,7 +910,7 @@ export class HTMLReportGenerator {
         border: 1px solid var(--color-gray-700);
         line-height: 1.4;
       }
-      
+
       .copy-button {
         position: absolute;
         top: 0.5rem;
@@ -426,21 +922,30 @@ export class HTMLReportGenerator {
         border-radius: var(--border-radius);
         font-size: 0.6875rem;
         cursor: pointer;
-        transition: background-color 0.15s ease;
+        transition: all 0.15s ease;
         font-weight: 500;
+        z-index: 10;
+        min-width: 40px;
+        text-align: center;
       }
-      
+
       .copy-button:hover {
         background: var(--color-gray-600);
+        transform: translateY(-1px);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
       }
-      
+
+      .copy-button:active {
+        transform: translateY(0);
+      }
+
       /* Assertions */
       .assertions-list {
         margin: 0;
         padding: 0;
         list-style: none;
       }
-      
+
       .assertion-item {
         padding: 0.75rem;
         margin: 0.5rem 0;
@@ -448,36 +953,36 @@ export class HTMLReportGenerator {
         border: 1px solid;
         font-size: 0.875rem;
       }
-      
+
       .assertion-pass {
         background: #f0fdf4;
         border-color: #bbf7d0;
         color: #166534;
       }
-      
+
       .assertion-fail {
         background: #fef2f2;
         border-color: #fecaca;
         color: #991b1b;
       }
-      
+
       .assertion-field {
         font-weight: 600;
         font-family: var(--font-mono);
       }
-      
+
       .assertion-values {
         margin-top: 0.25rem;
         font-family: var(--font-mono);
         font-size: 0.8125rem;
       }
-      
+
       /* Scenarios */
       .scenarios-list {
         margin: 0;
         padding: 0;
       }
-      
+
       .scenario-item {
         padding: 0.75rem;
         margin: 0.5rem 0;
@@ -485,20 +990,20 @@ export class HTMLReportGenerator {
         border-radius: var(--border-radius);
         background: var(--color-gray-50);
       }
-      
+
       .scenario-name {
         font-weight: 600;
         margin-bottom: 0.25rem;
         color: var(--color-gray-900);
       }
-      
+
       .scenario-condition {
         font-family: var(--font-mono);
         font-size: 0.8125rem;
         color: var(--color-gray-700);
         margin-bottom: 0.5rem;
       }
-      
+
       .scenario-result {
         font-size: 0.875rem;
         padding: 0.5rem;
@@ -506,7 +1011,7 @@ export class HTMLReportGenerator {
         background: white;
         border: 1px solid var(--color-gray-200);
       }
-      
+
       /* Skip Reasons */
       .skip-reason {
         background: #fafafa;
@@ -517,13 +1022,13 @@ export class HTMLReportGenerator {
         font-size: 0.875rem;
         color: var(--color-gray-700);
       }
-      
+
       .skip-reason-title {
         font-weight: 600;
         color: var(--color-gray-900);
         margin-bottom: 0.25rem;
       }
-      
+
       /* Responsive */
       @media (max-width: 768px) {
         .container { padding: 1rem; }
@@ -534,7 +1039,7 @@ export class HTMLReportGenerator {
         .tab-header { flex-wrap: wrap; }
         .title { font-size: 1.5rem; }
       }
-      
+
       /* Utilities */
       .text-xs { font-size: 0.75rem; }
       .text-sm { font-size: 0.875rem; }
@@ -544,14 +1049,14 @@ export class HTMLReportGenerator {
       .mb-2 { margin-bottom: 0.5rem; }
       .mt-4 { margin-top: 1rem; }
       .p-3 { padding: 0.75rem; }
-      
+
       /* Expand/Collapse Icons */
       .expand-icon {
         transition: transform 0.2s ease;
         font-size: 0.875rem;
         color: var(--color-gray-700);
       }
-      
+
       .expand-icon.expanded {
         transform: rotate(90deg);
       }
@@ -570,7 +1075,14 @@ export class HTMLReportGenerator {
 
   private buildHTMLReport(data: AggregatedResult): string {
     const successRate = data.success_rate;
-    const statusColor = successRate >= 90 ? 'success' : successRate >= 70 ? 'warning' : 'error';
+    const statusColor =
+      successRate >= 90 ? "success" : successRate >= 70 ? "warning" : "error";
+    const statusText =
+      successRate >= 90
+        ? "All Systems Operational"
+        : successRate >= 70
+        ? "Some Issues Detected"
+        : "Critical Issues Found";
 
     return `<!DOCTYPE html>
 <html lang="en">
@@ -579,16 +1091,18 @@ export class HTMLReportGenerator {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Flow Test Report - ${this.escapeHtml(data.project_name)}</title>
     <style>${this.compiledCSS}</style>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
 <body>
     <div class="container">
+        ${this.buildExecutiveSummary(data, statusColor, statusText)}
         ${this.buildHeader(data)}
         ${this.buildMetrics(data, statusColor)}
-        ${this.buildPerformanceSection(data)}
+        ${this.buildInsightsSection(data)}
         ${this.buildSuitesSection(data)}
         ${this.buildFooter(data)}
     </div>
-    
+
     <script>
         ${this.buildJavaScript()}
     </script>
@@ -596,104 +1110,396 @@ export class HTMLReportGenerator {
 </html>`;
   }
 
+  private buildExecutiveSummary(
+    data: AggregatedResult,
+    statusColor: string,
+    statusText: string
+  ): string {
+    const totalDuration = this.formatDuration(data.total_duration_ms);
+    return `
+        <div class="executive-summary">
+            <div class="executive-grid">
+                <div>
+                    <h1 class="executive-title">${this.escapeHtml(
+                      data.project_name
+                    )}</h1>
+                    <p class="executive-subtitle">Comprehensive Test Execution Report • Generated ${new Date().toLocaleDateString()}</p>
+                    <div class="executive-stats">
+                        <div class="executive-stat">
+                            <div class="executive-stat-value">${data.success_rate.toFixed(
+                              0
+                            )}%</div>
+                            <div class="executive-stat-label">Success Rate</div>
+                        </div>
+                        <div class="executive-stat">
+                            <div class="executive-stat-value">${
+                              data.total_tests
+                            }</div>
+                            <div class="executive-stat-label">Total Tests</div>
+                        </div>
+                        <div class="executive-stat">
+                            <div class="executive-stat-value">${totalDuration}</div>
+                            <div class="executive-stat-label">Duration</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="status-indicator">
+                    <div class="status-icon ${statusColor}"></div>
+                    <span>${statusText}</span>
+                </div>
+            </div>
+        </div>
+    `;
+  }
+
   private buildHeader(data: AggregatedResult): string {
     return `
         <div class="header">
-            <h1 class="title">${this.escapeHtml(data.project_name)}</h1>
-            <p class="subtitle">Test Execution Report - Generated with Enhanced Flow Test Engine v2.0</p>
+            <div class="header-info">
+                <h1>Test Execution Details</h1>
+                <p>Generated with Enhanced Flow Test Engine v3.0 • ${data.start_time} to ${data.end_time}</p>
+            </div>
+            <div class="header-actions">
+                <div class="quick-filter">
+                    <button class="filter-btn active" onclick="filterResults('all')">All</button>
+                    <button class="filter-btn" onclick="filterResults('passed')">Passed</button>
+                    <button class="filter-btn" onclick="filterResults('failed')">Failed</button>
+                    <button class="filter-btn" onclick="filterResults('slow')">Slow</button>
+                </div>
+                <div class="search-box">
+                    <i class="fas fa-search search-icon"></i>
+                    <input type="text" class="search-input" placeholder="Search tests..." onkeyup="searchTests(this.value)">
+                </div>
+            </div>
         </div>
     `;
   }
 
   private buildMetrics(data: AggregatedResult, statusColor: string): string {
+    const avgResponseTime = data.performance_summary
+      ? data.performance_summary.average_response_time_ms
+      : 0;
+    const requestsPerSecond = data.performance_summary
+      ? data.performance_summary.requests_per_second
+      : 0;
+
     return `
         <div class="metrics-grid">
             <div class="metric-card metric-card-${statusColor}">
-                <div class="metric-value" style="color: var(--color-${statusColor})">${data.success_rate.toFixed(1)}%</div>
+                <div class="metric-header">
+                    <div class="metric-icon ${statusColor}">
+                        <i class="fas fa-chart-pie"></i>
+                    </div>
+                    <div class="metric-trend positive">
+                        <i class="fas fa-arrow-up"></i> +2.3%
+                    </div>
+                </div>
+                <div class="metric-value" style="color: var(--color-${statusColor})">${data.success_rate.toFixed(
+      1
+    )}%</div>
                 <div class="metric-label">Success Rate</div>
+                <div class="metric-subtitle">
+                    ${data.successful_tests} passed • ${
+      data.failed_tests
+    } failed
+                    <div class="mini-chart"></div>
+                </div>
             </div>
+
             <div class="metric-card">
+                <div class="metric-header">
+                    <div class="metric-icon">
+                        <i class="fas fa-list-check"></i>
+                    </div>
+                </div>
                 <div class="metric-value">${data.total_tests}</div>
-                <div class="metric-label">Total Tests</div>
+                <div class="metric-label">Total Test Suites</div>
+                <div class="metric-subtitle">
+                    ${data.suites_results.length} suites executed
+                </div>
             </div>
+
             <div class="metric-card">
-                <div class="metric-value">${this.formatDuration(data.total_duration_ms)}</div>
-                <div class="metric-label">Total Duration</div>
+                <div class="metric-header">
+                    <div class="metric-icon">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                </div>
+                <div class="metric-value">${this.formatDuration(
+                  data.total_duration_ms
+                )}</div>
+                <div class="metric-label">Execution Time</div>
+                <div class="metric-subtitle">
+                    Avg: ${avgResponseTime.toFixed(0)}ms per request
+                </div>
             </div>
+
             <div class="metric-card">
-                <div class="metric-value">${data.successful_tests} / ${data.failed_tests}</div>
-                <div class="metric-label">Pass / Fail</div>
+                <div class="metric-header">
+                    <div class="metric-icon">
+                        <i class="fas fa-tachometer-alt"></i>
+                    </div>
+                </div>
+                <div class="metric-value">${requestsPerSecond.toFixed(1)}</div>
+                <div class="metric-label">Requests / Second</div>
+                <div class="metric-subtitle">
+                    ${
+                      data.performance_summary
+                        ? data.performance_summary.total_requests
+                        : 0
+                    } total requests
+                </div>
             </div>
         </div>
     `;
   }
 
-  private buildPerformanceSection(data: AggregatedResult): string {
-    if (!data.performance_summary) return '';
+  private buildInsightsSection(data: AggregatedResult): string {
+    const insights = this.generateInsights(data);
+    if (insights.length === 0) return "";
 
-    const perf = data.performance_summary;
     return `
-        <div class="suite-card">
-            <div class="suite-header">
-                <h3>🚀 Performance Metrics</h3>
+        <div class="insights-section">
+            <div class="insights-header">
+                <h2 class="insights-title">
+                    <i class="fas fa-lightbulb"></i>
+                    Performance Insights & Recommendations
+                </h2>
             </div>
-            <div class="suite-content expanded">
-                <div class="metrics-grid">
-                    <div class="metric-card">
-                        <div class="metric-value">${perf.total_requests}</div>
-                        <div class="metric-label">Total Requests</div>
-                    </div>
-                    <div class="metric-card">
-                        <div class="metric-value">${perf.average_response_time_ms.toFixed(0)}ms</div>
-                        <div class="metric-label">Avg Response Time</div>
-                    </div>
-                    <div class="metric-card">
-                        <div class="metric-value">${perf.requests_per_second.toFixed(1)}</div>
-                        <div class="metric-label">Requests/Second</div>
-                    </div>
+            <div class="insights-content">
+                <div class="insight-grid">
+                    ${insights
+                      .map(
+                        (insight) => `
+                        <div class="insight-card ${insight.type}">
+                            <div class="insight-title">
+                                <i class="fas ${insight.icon}"></i>
+                                ${insight.title}
+                            </div>
+                            <div class="insight-description">
+                                ${insight.description}
+                            </div>
+                        </div>
+                    `
+                      )
+                      .join("")}
                 </div>
             </div>
         </div>
     `;
+  }
+
+  private generateInsights(
+    data: AggregatedResult
+  ): Array<{ type: string; icon: string; title: string; description: string }> {
+    const insights = [];
+    const perf = data.performance_summary;
+
+    // Performance insights
+    if (perf && perf.average_response_time_ms > 1000) {
+      insights.push({
+        type: "warning",
+        icon: "fa-clock",
+        title: "Slow Response Times Detected",
+        description: `Average response time of ${perf.average_response_time_ms.toFixed(
+          0
+        )}ms is above the recommended 1000ms threshold.`,
+      });
+    }
+
+    // Success rate insights
+    if (data.success_rate < 90) {
+      insights.push({
+        type: "error",
+        icon: "fa-exclamation-triangle",
+        title: "Test Reliability Issues",
+        description: `${data.failed_tests} tests failed out of ${
+          data.total_tests
+        }. Success rate of ${data.success_rate.toFixed(
+          1
+        )}% is below target of 90%.`,
+      });
+    } else if (data.success_rate === 100) {
+      insights.push({
+        type: "success",
+        icon: "fa-check-circle",
+        title: "Perfect Test Execution",
+        description: `All ${data.total_tests} test suites executed successfully with 100% success rate.`,
+      });
+    }
+
+    // Duration insights
+    if (data.total_duration_ms > 300000) {
+      // 5 minutes
+      insights.push({
+        type: "warning",
+        icon: "fa-stopwatch",
+        title: "Long Execution Time",
+        description: `Total execution time of ${this.formatDuration(
+          data.total_duration_ms
+        )} may indicate optimization opportunities.`,
+      });
+    }
+
+    // RPS insights
+    if (perf && perf.requests_per_second < 5) {
+      insights.push({
+        type: "warning",
+        icon: "fa-tachometer-alt",
+        title: "Low Throughput",
+        description: `Current throughput of ${perf.requests_per_second.toFixed(
+          1
+        )} RPS is below optimal performance levels.`,
+      });
+    }
+
+    return insights;
   }
 
   private buildSuitesSection(data: AggregatedResult): string {
     return `
         <div class="suites-section">
             <h3>Test Suites</h3>
-            ${data.suites_results.map(suite => this.buildSuiteCard(suite)).join('')}
+            ${data.suites_results
+              .map((suite) => this.buildSuiteCard(suite))
+              .join("")}
         </div>
     `;
   }
 
   private buildSuiteCard(suite: any): string {
-    const statusClass = suite.status === 'success' ? 'success' : suite.status === 'failure' ? 'error' : suite.status === 'skipped' ? 'skipped' : 'warning';
-    const statusIcon = suite.status === 'success' ? '✅' : suite.status === 'failure' ? '❌' : suite.status === 'skipped' ? '⏭️' : '⚠️';
+    const statusClass =
+      suite.status === "success"
+        ? "success"
+        : suite.status === "failure"
+        ? "error"
+        : suite.status === "skipped"
+        ? "skipped"
+        : "warning";
+    const statusIcon =
+      suite.status === "success"
+        ? "✅"
+        : suite.status === "failure"
+        ? "❌"
+        : suite.status === "skipped"
+        ? "⏭️"
+        : "⚠️";
+    const avgStepTime = suite.steps_executed
+      ? suite.duration_ms / suite.steps_executed
+      : 0;
+    const hasSlowSteps = avgStepTime > 1000;
+    const hasVariableCapture = suite.steps_results?.some(
+      (step: any) => Object.keys(step.captured_variables || {}).length > 0
+    );
+    const hasCurlCommands = suite.steps_results?.some(
+      (step: any) => (step.request_details as any)?.curl_command
+    );
 
     return `
-        <div class="suite-card">
+        <div class="suite-card" data-status="${statusClass}">
             <div class="suite-header" onclick="toggleSuite(this)">
                 <div class="suite-info">
-                    <h4 class="suite-name">${this.escapeHtml(suite.suite_name)}</h4>
-                    <div class="suite-details">${this.escapeHtml(suite.file_path || 'Unknown file')} • ${this.formatDuration(suite.duration_ms)}</div>
+                    <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+                        <h4 class="suite-name">${this.escapeHtml(
+                          suite.suite_name
+                        )}</h4>
+                        ${
+                          suite.priority
+                            ? `<span class="priority-badge priority-${suite.priority}">${suite.priority}</span>`
+                            : ""
+                        }
+                        ${
+                          suite.tags && suite.tags.length > 0
+                            ? `
+                            <div class="tags-container">
+                                ${suite.tags
+                                  .slice(0, 3)
+                                  .map(
+                                    (tag: string) =>
+                                      `<span class="tag-badge">${tag}</span>`
+                                  )
+                                  .join("")}
+                                ${
+                                  suite.tags.length > 3
+                                    ? `<span class="tag-badge">+${
+                                        suite.tags.length - 3
+                                      }</span>`
+                                    : ""
+                                }
+                            </div>
+                        `
+                            : ""
+                        }
+                    </div>
+                    <div class="suite-details">
+                        <span class="file-path">${this.escapeHtml(
+                          suite.file_path || "Unknown file"
+                        )}</span>
+                        <span class="separator">•</span>
+                        <span class="duration ${
+                          hasSlowSteps ? "slow" : ""
+                        }">${this.formatDuration(suite.duration_ms)}</span>
+                        <span class="separator">•</span>
+                        <span class="avg-step-time">~${this.formatDuration(
+                          avgStepTime
+                        )}/step</span>
+                        ${
+                          hasVariableCapture
+                            ? '<i class="fas fa-code feature-icon" title="Variable Capture"></i>'
+                            : ""
+                        }
+                        ${
+                          hasCurlCommands
+                            ? '<i class="fas fa-terminal feature-icon" title="cURL Commands Available"></i>'
+                            : ""
+                        }
+                    </div>
                 </div>
                 <div class="suite-stats">
-                    <div class="stat-item">
-                        <span class="text-xs text-gray-700">STEPS</span>
-                        <span class="font-mono">${suite.steps_successful || 0}/${suite.steps_executed || 0}</span>
+                    <div class="stat-item ${
+                      (suite.steps_successful || 0) ===
+                      (suite.steps_executed || 0)
+                        ? "success"
+                        : "partial"
+                    }">
+                        <i class="fas fa-list-check stat-icon"></i>
+                        <div class="stat-content">
+                            <span class="stat-value">${
+                              suite.steps_successful || 0
+                            }/${suite.steps_executed || 0}</span>
+                            <span class="stat-label">Steps</span>
+                        </div>
                     </div>
-                    ${suite.steps_failed ? `
-                    <div class="stat-item">
-                        <span class="text-xs text-gray-700">FAILED</span>
-                        <span class="font-mono text-error">${suite.steps_failed}</span>
+                    ${
+                      suite.steps_failed
+                        ? `
+                    <div class="stat-item error">
+                        <i class="fas fa-exclamation-triangle stat-icon"></i>
+                        <div class="stat-content">
+                            <span class="stat-value">${suite.steps_failed}</span>
+                            <span class="stat-label">Failed</span>
+                        </div>
                     </div>
-                    ` : ''}
-                    <div class="stat-item">
-                        <span class="text-xs text-gray-700">RATE</span>
-                        <span class="font-mono">${(suite.success_rate || 0).toFixed(1)}%</span>
+                    `
+                        : ""
+                    }
+                    <div class="stat-item ${
+                      (suite.success_rate || 0) >= 90
+                        ? "success"
+                        : (suite.success_rate || 0) >= 70
+                        ? "warning"
+                        : "error"
+                    }">
+                        <i class="fas fa-percentage stat-icon"></i>
+                        <div class="stat-content">
+                            <span class="stat-value">${(
+                              suite.success_rate || 0
+                            ).toFixed(1)}%</span>
+                            <span class="stat-label">Success</span>
+                        </div>
                     </div>
                 </div>
-                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
                     <div class="status-badge status-${statusClass}">
                         ${statusIcon} ${suite.status.toUpperCase()}
                     </div>
@@ -701,54 +1507,96 @@ export class HTMLReportGenerator {
                 </div>
             </div>
             <div class="suite-content">
-                ${suite.error_message ? `
+                ${
+                  suite.error_message
+                    ? `
                 <div class="p-3 mb-2" style="background: #fef2f2; border: 1px solid #fecaca; border-radius: var(--border-radius); color: #991b1b;">
                     <div class="skip-reason-title">Suite Error:</div>
                     ${this.escapeHtml(suite.error_message)}
                 </div>
-                ` : ''}
-                ${suite.steps_results ? suite.steps_results.map((step: any, index: number) => this.buildStepCard(step, index)).join('') : ''}
+                `
+                    : ""
+                }
+                ${
+                  suite.steps_results
+                    ? suite.steps_results
+                        .map((step: any, index: number) =>
+                          this.buildStepCard(step, index)
+                        )
+                        .join("")
+                    : ""
+                }
             </div>
         </div>
     `;
   }
 
   private buildStepCard(step: StepExecutionResult, index: number): string {
-    const statusClass = step.status === 'success' ? 'success' : step.status === 'failure' ? 'error' : step.status === 'skipped' ? 'skipped' : 'warning';
-    const statusIcon = step.status === 'success' ? '✅' : step.status === 'failure' ? '❌' : step.status === 'skipped' ? '⏭️' : '⚠️';
-    const stepId = `step-${index}-${Date.now()}`;
+    const statusClass =
+      step.status === "success"
+        ? "success"
+        : step.status === "failure"
+        ? "error"
+        : step.status === "skipped"
+        ? "skipped"
+        : "warning";
+    const statusIcon =
+      step.status === "success"
+        ? "✅"
+        : step.status === "failure"
+        ? "❌"
+        : step.status === "skipped"
+        ? "⏭️"
+        : "⚠️";
+    // Generate unique step ID based on step name and index for consistency
+    const stepNameSlug = step.step_name
+      .replace(/[^a-zA-Z0-9]/g, "-")
+      .toLowerCase();
+    const stepId = `step-${index}-${stepNameSlug}-${Math.random()
+      .toString(36)
+      .substr(2, 9)}`;
 
-    const method = step.request_details?.method || 'N/A';
-    const url = (step.request_details as any)?.full_url || step.request_details?.url || 'N/A';
+    const method = step.request_details?.method || "N/A";
+    const url =
+      (step.request_details as any)?.full_url ||
+      step.request_details?.url ||
+      "N/A";
     const statusCode = step.response_details?.status_code;
 
     // Skip reason detection
-    let skipReason = '';
-    if (step.status === 'skipped') {
-      skipReason = step.error_message || 'Step was skipped due to conditions or dependencies';
+    let skipReason = "";
+    if (step.status === "skipped") {
+      skipReason =
+        step.error_message ||
+        "Step was skipped due to conditions or dependencies";
     }
 
     // Count assertions
     const assertionsCount = step.assertions_results?.length || 0;
-    const passedAssertions = step.assertions_results?.filter(a => a.passed).length || 0;
+    const passedAssertions =
+      step.assertions_results?.filter((a) => a.passed).length || 0;
     const failedAssertions = assertionsCount - passedAssertions;
 
     // Check for scenarios (you may need to add scenarios to StepExecutionResult type)
     const hasScenarios = (step as any).scenarios_results?.length > 0;
-    
+
     return `
         <div class="step-card">
             <div class="step-header" onclick="toggleStep(this)">
                 <div class="step-number">#${index + 1}</div>
                 <div class="step-info">
-                    <div class="step-name">${this.escapeHtml(step.step_name)}</div>
+                    <div class="step-name">${this.escapeHtml(
+                      step.step_name
+                    )}</div>
                     <div class="step-method-url">
                         <span style="font-weight: 600;">${method}</span>
-                        ${url.length > 60 ? url.substring(0, 60) + '...' : url}
-                        ${statusCode ? ` → ${statusCode}` : ''}
+                        ${url.length > 60 ? url.substring(0, 60) + "..." : url}
+                        ${statusCode ? ` → ${statusCode}` : ""}
                     </div>
                 </div>
-                <div class="step-timing">${this.formatDuration(step.duration_ms)}</div>
+                <div class="step-timing">${this.formatDuration(
+                  step.duration_ms
+                )}</div>
                 <div style="display: flex; align-items: center; gap: 0.5rem;">
                     <div class="status-badge status-${statusClass}">
                         ${statusIcon} ${step.status.toUpperCase()}
@@ -757,63 +1605,119 @@ export class HTMLReportGenerator {
                 </div>
             </div>
             <div class="step-content">
-                ${skipReason ? `
+                ${
+                  skipReason
+                    ? `
                 <div class="skip-reason">
                     <div class="skip-reason-title">Skip Reason:</div>
                     ${this.escapeHtml(skipReason)}
                 </div>
-                ` : ''}
-                
-                ${step.error_message && step.status !== 'skipped' ? `
+                `
+                    : ""
+                }
+
+                ${
+                  step.error_message && step.status !== "skipped"
+                    ? `
                 <div class="p-3 mb-2" style="background: #fef2f2; border: 1px solid #fecaca; border-radius: var(--border-radius); color: #991b1b;">
                     <div class="skip-reason-title">Error Details:</div>
                     ${this.escapeHtml(step.error_message)}
                 </div>
-                ` : ''}
+                `
+                    : ""
+                }
 
                 <div class="tab-container">
                     <div class="tab-header">
                         <button class="tab-button active" onclick="switchTab(this, '${stepId}-overview')">Overview</button>
-                        ${step.request_details ? `<button class="tab-button" onclick="switchTab(this, '${stepId}-request')">Request</button>` : ''}
-                        ${step.response_details ? `<button class="tab-button" onclick="switchTab(this, '${stepId}-response')">Response</button>` : ''}
-                        ${assertionsCount > 0 ? `<button class="tab-button" onclick="switchTab(this, '${stepId}-assertions')">Assertions (${passedAssertions}/${assertionsCount})</button>` : ''}
-                        ${hasScenarios ? `<button class="tab-button" onclick="switchTab(this, '${stepId}-scenarios')">Scenarios</button>` : ''}
-                        ${this.options.includeCurlCommands && (step.request_details as any)?.curl_command ? `<button class="tab-button" onclick="switchTab(this, '${stepId}-curl')">cURL</button>` : ''}
+                        ${
+                          step.request_details
+                            ? `<button class="tab-button" onclick="switchTab(this, '${stepId}-request')">Request</button>`
+                            : ""
+                        }
+                        ${
+                          step.response_details
+                            ? `<button class="tab-button" onclick="switchTab(this, '${stepId}-response')">Response</button>`
+                            : ""
+                        }
+                        ${
+                          assertionsCount > 0
+                            ? `<button class="tab-button" onclick="switchTab(this, '${stepId}-assertions')">Assertions (${passedAssertions}/${assertionsCount})</button>`
+                            : ""
+                        }
+                        ${
+                          hasScenarios
+                            ? `<button class="tab-button" onclick="switchTab(this, '${stepId}-scenarios')">Scenarios</button>`
+                            : ""
+                        }
+                        ${
+                          this.options.includeCurlCommands &&
+                          (step.request_details as any)?.curl_command
+                            ? `<button class="tab-button" onclick="switchTab(this, '${stepId}-curl')">cURL</button>`
+                            : ""
+                        }
                     </div>
-                    
+
                     <div id="${stepId}-overview" class="tab-content active">
                         ${this.buildStepOverview(step)}
                     </div>
-                    
-                    ${step.request_details ? `
+
+                    ${
+                      step.request_details
+                        ? `
                     <div id="${stepId}-request" class="tab-content">
                         ${this.buildRequestTab(step.request_details)}
                     </div>
-                    ` : ''}
-                    
-                    ${step.response_details ? `
+                    `
+                        : ""
+                    }
+
+                    ${
+                      step.response_details
+                        ? `
                     <div id="${stepId}-response" class="tab-content">
                         ${this.buildResponseTab(step.response_details)}
                     </div>
-                    ` : ''}
-                    
-                    ${assertionsCount > 0 ? `
+                    `
+                        : ""
+                    }
+
+                    ${
+                      assertionsCount > 0
+                        ? `
                     <div id="${stepId}-assertions" class="tab-content">
-                        ${this.buildAssertionsTab(step.assertions_results || [])}
+                        ${this.buildAssertionsTab(
+                          step.assertions_results || []
+                        )}
                     </div>
-                    ` : ''}
-                    
-                    ${hasScenarios ? `
+                    `
+                        : ""
+                    }
+
+                    ${
+                      hasScenarios
+                        ? `
                     <div id="${stepId}-scenarios" class="tab-content">
-                        ${this.buildScenariosTab((step as any).scenarios_results)}
+                        ${this.buildScenariosTab(
+                          (step as any).scenarios_results
+                        )}
                     </div>
-                    ` : ''}
-                    
-                    ${this.options.includeCurlCommands && (step.request_details as any)?.curl_command ? `
+                    `
+                        : ""
+                    }
+
+                    ${
+                      this.options.includeCurlCommands &&
+                      (step.request_details as any)?.curl_command
+                        ? `
                     <div id="${stepId}-curl" class="tab-content">
-                        ${this.buildCurlTab((step.request_details as any).curl_command)}
+                        ${this.buildCurlTab(
+                          (step.request_details as any).curl_command
+                        )}
                     </div>
-                    ` : ''}
+                    `
+                        : ""
+                    }
                 </div>
             </div>
         </div>
@@ -836,7 +1740,7 @@ export class HTMLReportGenerator {
             const suiteCard = element.closest('.suite-card');
             const content = suiteCard.querySelector('.suite-content');
             const icon = suiteCard.querySelector('.expand-icon');
-            
+
             content.classList.toggle('expanded');
             icon.classList.toggle('expanded');
         }
@@ -845,27 +1749,41 @@ export class HTMLReportGenerator {
             const stepCard = element.closest('.step-card');
             const content = stepCard.querySelector('.step-content');
             const icon = stepCard.querySelector('.expand-icon');
-            
+
             content.classList.toggle('expanded');
             icon.classList.toggle('expanded');
         }
 
         function switchTab(button, targetId) {
-            const tabContainer = button.closest('.tab-container');
-            
-            // Remove active class from all buttons
-            tabContainer.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
-            
-            // Add active class to clicked button
-            button.classList.add('active');
-            
-            // Hide all tab contents
-            tabContainer.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-            
-            // Show target tab content
-            const targetContent = document.getElementById(targetId);
-            if (targetContent) {
-                targetContent.classList.add('active');
+            try {
+                const tabContainer = button.closest('.tab-container');
+                if (!tabContainer) {
+                    console.error('Tab container not found for button:', button);
+                    return;
+                }
+
+                // Remove active class from all buttons in this container
+                tabContainer.querySelectorAll('.tab-button').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+
+                // Add active class to clicked button
+                button.classList.add('active');
+
+                // Hide all tab contents in this container
+                tabContainer.querySelectorAll('.tab-content').forEach(content => {
+                    content.classList.remove('active');
+                });
+
+                // Show target tab content
+                const targetContent = document.getElementById(targetId);
+                if (targetContent) {
+                    targetContent.classList.add('active');
+                } else {
+                    console.error('Target content not found:', targetId);
+                }
+            } catch (error) {
+                console.error('Error switching tabs:', error, 'Button:', button, 'TargetId:', targetId);
             }
         }
 
@@ -875,7 +1793,7 @@ export class HTMLReportGenerator {
                 const originalText = button.textContent;
                 button.textContent = 'Copied!';
                 button.style.background = 'var(--color-success)';
-                
+
                 setTimeout(() => {
                     button.textContent = originalText;
                     button.style.background = 'var(--color-gray-700)';
@@ -887,6 +1805,38 @@ export class HTMLReportGenerator {
                     button.textContent = 'Copy';
                 }, 2000);
             }
+        }
+
+        // Filter and search functionality
+        function filterResults(filter) {
+            const buttons = document.querySelectorAll('.filter-btn');
+            const suites = document.querySelectorAll('.suite-card');
+
+            // Update active button
+            buttons.forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+
+            // Filter suites
+            suites.forEach(suite => {
+                const status = suite.querySelector('.status-badge').textContent.toLowerCase();
+                const shouldShow = filter === 'all' ||
+                                  (filter === 'passed' && status.includes('success')) ||
+                                  (filter === 'failed' && status.includes('error')) ||
+                                  (filter === 'slow' && suite.dataset.duration > 2000);
+
+                suite.style.display = shouldShow ? 'block' : 'none';
+            });
+        }
+
+        function searchTests(query) {
+            const suites = document.querySelectorAll('.suite-card');
+            const searchTerm = query.toLowerCase();
+
+            suites.forEach(suite => {
+                const suiteName = suite.querySelector('.suite-name').textContent.toLowerCase();
+                const shouldShow = suiteName.includes(searchTerm);
+                suite.style.display = shouldShow ? 'block' : 'none';
+            });
         }
 
         // Auto-expand first failed step for quick debugging
@@ -901,6 +1851,13 @@ export class HTMLReportGenerator {
                     if (icon) icon.classList.add('expanded');
                 }
             }
+
+            // Add duration data for filtering
+            document.querySelectorAll('.suite-card').forEach(suite => {
+                const durationText = suite.querySelector('.suite-details').textContent;
+                const duration = parseInt(durationText.match(/\d+/)?.[0] || '0');
+                suite.dataset.duration = duration;
+            });
         });
     `;
   }
@@ -916,80 +1873,145 @@ export class HTMLReportGenerator {
   private generateTimestamp(): string {
     return new Date()
       .toISOString()
-      .replace(/[:.]/g, '-')
-      .replace(/T/, '_')
+      .replace(/[:.]/g, "-")
+      .replace(/T/, "_")
       .slice(0, 19);
   }
 
   private sanitizeFileName(name: string): string {
     return name
       .toLowerCase()
-      .replace(/[^a-z0-9\s-]/g, '')
-      .replace(/\s+/g, '-')
-      .replace(/-+/g, '-')
-      .replace(/^-|-$/g, '');
+      .replace(/[^a-z0-9\s-]/g, "")
+      .replace(/\s+/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-|-$/g, "");
   }
 
   private escapeHtml(text: string | undefined | null): string {
-    if (text === undefined || text === null) return '';
-    if (typeof text !== 'string') text = String(text);
+    if (text === undefined || text === null) return "";
+    if (typeof text !== "string") text = String(text);
     return text
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#x27;');
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#x27;");
   }
 
-  private escapeForJS(text: string): string {
-    return text.replace(/'/g, "\\'").replace(/"/g, '\\"').replace(/\n/g, '\\n').replace(/\r/g, '\\r');
+  private formatJsonForDisplay(obj: any): string {
+    if (obj === null || obj === undefined) return "";
+    if (typeof obj === "string") return obj;
+
+    const jsonString = JSON.stringify(obj, null, 2);
+    // Remove leading and trailing whitespace that might cause formatting issues
+    return jsonString.trim();
+  }
+
+  private cleanTextContent(text: string): string {
+    if (!text) return "";
+
+    return text
+      .trim()
+      .replace(/\r\n/g, "\n") // Normalize Windows line endings
+      .replace(/\r/g, "\n") // Convert remaining \r to \n
+      .replace(/\s+\n/g, "\n") // Remove trailing spaces before newlines
+      .replace(/\n\s+/g, "\n") // Remove leading spaces after newlines
+      .replace(/\n{3,}/g, "\n\n") // Replace multiple consecutive newlines with max 2
+      .replace(/\t/g, "  "); // Convert tabs to spaces for consistency
+  }
+
+  private escapeForJS(text: string | undefined | null): string {
+    if (text === undefined || text === null) return "";
+    const cleanText = this.cleanTextContent(text);
+
+    return cleanText
+      .replace(/\\/g, "\\\\") // Escape backslashes first
+      .replace(/'/g, "\\'")
+      .replace(/"/g, '\\"')
+      .replace(/\n/g, "\\n")
+      .replace(/\t/g, "\\t")
+      .replace(/\f/g, "\\f")
+      .replace(/\v/g, "\\v")
+      .replace(/\0/g, "\\0")
+      .replace(/\u2028/g, "\\u2028") // Line separator
+      .replace(/\u2029/g, "\\u2029") // Paragraph separator
+      .replace(/</g, "\\u003c") // Escape < to prevent XSS
+      .replace(/>/g, "\\u003e"); // Escape > to prevent XSS
   }
 
   private buildStepOverview(step: StepExecutionResult): string {
     const capturedVars = Object.keys(step.captured_variables || {}).length;
     const availableVars = Object.keys(step.available_variables || {}).length;
-    
+
     return `
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
             <div class="p-3" style="background: var(--color-gray-50); border-radius: var(--border-radius); border: 1px solid var(--color-gray-200);">
                 <div class="text-xs text-gray-700 font-semibold">EXECUTION TIME</div>
-                <div class="font-mono text-lg">${this.formatDuration(step.duration_ms)}</div>
+                <div class="font-mono text-lg">${this.formatDuration(
+                  step.duration_ms
+                )}</div>
             </div>
-            ${step.assertions_results ? `
+            ${
+              step.assertions_results
+                ? `
             <div class="p-3" style="background: var(--color-gray-50); border-radius: var(--border-radius); border: 1px solid var(--color-gray-200);">
                 <div class="text-xs text-gray-700 font-semibold">ASSERTIONS</div>
-                <div class="font-mono text-lg">${step.assertions_results.filter(a => a.passed).length}/${step.assertions_results.length}</div>
+                <div class="font-mono text-lg">${
+                  step.assertions_results.filter((a) => a.passed).length
+                }/${step.assertions_results.length}</div>
             </div>
-            ` : ''}
-            ${capturedVars > 0 ? `
+            `
+                : ""
+            }
+            ${
+              capturedVars > 0
+                ? `
             <div class="p-3" style="background: var(--color-gray-50); border-radius: var(--border-radius); border: 1px solid var(--color-gray-200);">
                 <div class="text-xs text-gray-700 font-semibold">CAPTURED VARS</div>
                 <div class="font-mono text-lg">${capturedVars}</div>
             </div>
-            ` : ''}
+            `
+                : ""
+            }
         </div>
-        
-        ${capturedVars > 0 ? `
+
+        ${
+          capturedVars > 0
+            ? `
         <div style="margin: 1rem 0;">
             <h5 style="margin: 0 0 0.5rem 0; color: var(--color-gray-900); font-weight: 600;">Captured Variables</h5>
             <div style="background: var(--color-gray-50); border: 1px solid var(--color-gray-200); border-radius: var(--border-radius); padding: 1rem;">
-                ${Object.entries(step.captured_variables || {}).map(([key, value]) => `
+                ${Object.entries(step.captured_variables || {})
+                  .map(
+                    ([key, value]) => `
                     <div style="display: flex; margin-bottom: 0.5rem; font-family: var(--font-mono); font-size: 0.875rem;">
-                        <span style="font-weight: 600; color: var(--color-info); min-width: 120px;">${this.escapeHtml(key)}:</span>
-                        <span style="color: var(--color-gray-700); word-break: break-all;">${this.escapeHtml(JSON.stringify(value))}</span>
+                        <span style="font-weight: 600; color: var(--color-info); min-width: 120px;">${this.escapeHtml(
+                          key
+                        )}:</span>
+                        <span style="color: var(--color-gray-700); word-break: break-all;">${this.escapeHtml(
+                          JSON.stringify(value)
+                        )}</span>
                     </div>
-                `).join('')}
+                `
+                  )
+                  .join("")}
             </div>
         </div>
-        ` : ''}
+        `
+            : ""
+        }
     `;
   }
 
   private buildRequestTab(request: any): string {
     const headers = request.headers ? Object.entries(request.headers) : [];
-    const bodyStr = request.body ? (typeof request.body === 'string' ? request.body : JSON.stringify(request.body, null, 2)) : null;
+    const bodyStr = request.body
+      ? typeof request.body === "string"
+        ? request.body
+        : this.formatJsonForDisplay(request.body)
+      : null;
     const rawRequest = request.raw_request;
-    
+
     return `
         <div class="request-response-grid">
             <div class="request-section">
@@ -998,57 +2020,97 @@ export class HTMLReportGenerator {
                     <div style="margin-bottom: 1rem;">
                         <div style="display: flex; gap: 1rem; margin-bottom: 0.5rem;">
                             <span style="font-weight: 600;">Method:</span>
-                            <span class="font-mono" style="background: var(--color-gray-100); padding: 0.125rem 0.5rem; border-radius: var(--border-radius);">${request.method}</span>
+                            <span class="font-mono" style="background: var(--color-gray-100); padding: 0.125rem 0.5rem; border-radius: var(--border-radius);">${
+                              request.method
+                            }</span>
                         </div>
                         <div style="margin-bottom: 0.5rem;">
                             <span style="font-weight: 600;">URL:</span>
                             <div class="font-mono text-sm" style="background: var(--color-gray-100); padding: 0.5rem; border-radius: var(--border-radius); margin-top: 0.25rem; word-break: break-all;">
-                                ${this.escapeHtml(request.full_url || request.url)}
+                                ${this.escapeHtml(
+                                  request.full_url || request.url
+                                )}
                             </div>
                         </div>
                     </div>
-                    
-                    ${headers.length > 0 ? `
+
+                    ${
+                      headers.length > 0
+                        ? `
                     <div style="margin-bottom: 1rem;">
                         <span style="font-weight: 600;">Headers:</span>
                         <div class="code-block" style="margin-top: 0.25rem;">
-                            ${headers.map(([key, value]) => `${key}: ${value}`).join('\n')}
+                            ${headers
+                              .map(([key, value]) => {
+                                const stringValue = String(value || "");
+                                // Skip empty headers for cleaner display
+                                if (stringValue.trim() === "") {
+                                  return `${key}: (empty)`;
+                                }
+                                // Format special characters for display
+                                const displayValue = stringValue
+                                  .replace(/\n/g, "\\n")
+                                  .replace(/\r/g, "\\r")
+                                  .replace(/\t/g, "\\t")
+                                  .replace(/"/g, '\\"')
+                                  .replace(/'/g, "\\'");
+                                return `${key}: ${displayValue}`;
+                              })
+                              .join("\n")}
                         </div>
                     </div>
-                    ` : ''}
-                    
-                    ${bodyStr ? `
+                    `
+                        : ""
+                    }
+
+                    ${
+                      bodyStr
+                        ? `
                     <div style="margin-bottom: 1rem;">
                         <span style="font-weight: 600;">Body:</span>
                         <div class="code-block" style="margin-top: 0.25rem;">
-                            <button class="copy-button" onclick="copyToClipboard(this, '${this.escapeForJS(bodyStr)}')">Copy</button>
+                            <button class="copy-button" onclick="copyToClipboard(this, '${this.escapeForJS(
+                              bodyStr
+                            )}')">Copy</button>
                             ${this.escapeHtml(bodyStr)}
                         </div>
                     </div>
-                    ` : ''}
+                    `
+                        : ""
+                    }
                 </div>
             </div>
-            
-            ${rawRequest ? `
+
+            ${
+              rawRequest
+                ? `
             <div class="response-section">
                 <div class="section-header">🔍 Raw HTTP Request</div>
                 <div class="section-content">
                     <div class="code-block">
-                        <button class="copy-button" onclick="copyToClipboard(this, '${this.escapeForJS(rawRequest)}')">Copy</button>
+                        <button class="copy-button" onclick="copyToClipboard(this, '${this.escapeForJS(
+                          rawRequest
+                        )}')">Copy</button>
                         ${this.escapeHtml(rawRequest)}
                     </div>
                 </div>
             </div>
-            ` : ''}
+            `
+                : ""
+            }
         </div>
     `;
   }
 
   private buildResponseTab(response: any): string {
     const headers = response.headers ? Object.entries(response.headers) : [];
-    const bodyStr = response.body ? (typeof response.body === 'string' ? response.body : JSON.stringify(response.body, null, 2)) : null;
+    const bodyStr = response.body
+      ? typeof response.body === "string"
+        ? response.body
+        : this.formatJsonForDisplay(response.body)
+      : null;
     const rawResponse = response.raw_response;
-    
+
     return `
         <div class="request-response-grid">
             <div class="request-section">
@@ -1057,46 +2119,88 @@ export class HTMLReportGenerator {
                     <div style="margin-bottom: 1rem;">
                         <div style="display: flex; gap: 1rem; margin-bottom: 0.5rem;">
                             <span style="font-weight: 600;">Status:</span>
-                            <span class="font-mono" style="background: ${response.status_code >= 400 ? '#fef2f2' : '#f0fdf4'}; color: ${response.status_code >= 400 ? '#991b1b' : '#166534'}; padding: 0.125rem 0.5rem; border-radius: var(--border-radius);">${response.status_code}</span>
+                            <span class="font-mono" style="background: ${
+                              response.status_code >= 400
+                                ? "#fef2f2"
+                                : "#f0fdf4"
+                            }; color: ${
+      response.status_code >= 400 ? "#991b1b" : "#166534"
+    }; padding: 0.125rem 0.5rem; border-radius: var(--border-radius);">${
+      response.status_code
+    }</span>
                         </div>
                         <div style="margin-bottom: 0.5rem;">
                             <span style="font-weight: 600;">Size:</span>
-                            <span class="font-mono">${response.size_bytes || 0} bytes</span>
+                            <span class="font-mono">${
+                              response.size_bytes || 0
+                            } bytes</span>
                         </div>
                     </div>
-                    
-                    ${headers.length > 0 ? `
+
+                    ${
+                      headers.length > 0
+                        ? `
                     <div style="margin-bottom: 1rem;">
                         <span style="font-weight: 600;">Headers:</span>
                         <div class="code-block" style="margin-top: 0.25rem;">
-                            ${headers.map(([key, value]) => `${key}: ${value}`).join('\n')}
+                            ${headers
+                              .map(([key, value]) => {
+                                const stringValue = String(value || "");
+                                // Skip empty headers for cleaner display
+                                if (stringValue.trim() === "") {
+                                  return `${key}: (empty)`;
+                                }
+                                // Format special characters for display
+                                const displayValue = stringValue
+                                  .replace(/\n/g, "\\n")
+                                  .replace(/\r/g, "\\r")
+                                  .replace(/\t/g, "\\t")
+                                  .replace(/"/g, '\\"')
+                                  .replace(/'/g, "\\'");
+                                return `${key}: ${displayValue}`;
+                              })
+                              .join("\n")}
                         </div>
                     </div>
-                    ` : ''}
-                    
-                    ${bodyStr ? `
+                    `
+                        : ""
+                    }
+
+                    ${
+                      bodyStr
+                        ? `
                     <div style="margin-bottom: 1rem;">
                         <span style="font-weight: 600;">Body:</span>
                         <div class="code-block" style="margin-top: 0.25rem;">
-                            <button class="copy-button" onclick="copyToClipboard(this, '${this.escapeForJS(bodyStr)}')">Copy</button>
+                            <button class="copy-button" onclick="copyToClipboard(this, '${this.escapeForJS(
+                              bodyStr
+                            )}')">Copy</button>
                             ${this.escapeHtml(bodyStr)}
                         </div>
                     </div>
-                    ` : ''}
+                    `
+                        : ""
+                    }
                 </div>
             </div>
-            
-            ${rawResponse ? `
+
+            ${
+              rawResponse
+                ? `
             <div class="response-section">
                 <div class="section-header">🔍 Raw HTTP Response</div>
                 <div class="section-content">
                     <div class="code-block">
-                        <button class="copy-button" onclick="copyToClipboard(this, '${this.escapeForJS(rawResponse)}')">Copy</button>
+                        <button class="copy-button" onclick="copyToClipboard(this, '${this.escapeForJS(
+                          rawResponse
+                        )}')">Copy</button>
                         ${this.escapeHtml(rawResponse)}
                     </div>
                 </div>
             </div>
-            ` : ''}
+            `
+                : ""
+            }
         </div>
     `;
   }
@@ -1105,10 +2209,10 @@ export class HTMLReportGenerator {
     if (!assertions || assertions.length === 0) {
       return '<div style="padding: 1rem; text-align: center; color: var(--color-gray-700);">No assertions defined for this step.</div>';
     }
-    
-    const passed = assertions.filter(a => a.passed).length;
+
+    const passed = assertions.filter((a) => a.passed).length;
     const failed = assertions.length - passed;
-    
+
     return `
         <div style="margin-bottom: 1rem;">
             <div style="display: flex; gap: 1rem;">
@@ -1116,48 +2220,103 @@ export class HTMLReportGenerator {
                     <div class="text-xs font-semibold" style="color: #166534;">PASSED</div>
                     <div class="font-mono text-lg" style="color: #166534;">${passed}</div>
                 </div>
-                ${failed > 0 ? `
+                ${
+                  failed > 0
+                    ? `
                 <div class="p-3" style="background: #fef2f2; border-radius: var(--border-radius); border: 1px solid #fecaca;">
                     <div class="text-xs font-semibold" style="color: #991b1b;">FAILED</div>
                     <div class="font-mono text-lg" style="color: #991b1b;">${failed}</div>
                 </div>
-                ` : ''}
+                `
+                    : ""
+                }
             </div>
         </div>
-        
+
         <ul class="assertions-list">
-            ${assertions.map(assertion => `
-                <li class="assertion-item ${assertion.passed ? 'assertion-pass' : 'assertion-fail'}">
-                    <div class="assertion-field">${this.escapeHtml(assertion.field)}</div>
+            ${assertions
+              .map(
+                (assertion) => `
+                <li class="assertion-item ${
+                  assertion.passed ? "assertion-pass" : "assertion-fail"
+                }">
+                    <div class="assertion-field">${this.escapeHtml(
+                      assertion.field
+                    )}</div>
                     <div class="assertion-values">
-                        <div><strong>Expected:</strong> ${this.escapeHtml(JSON.stringify(assertion.expected))}</div>
-                        <div><strong>Actual:</strong> ${this.escapeHtml(JSON.stringify(assertion.actual))}</div>
-                        ${assertion.message ? `<div style="margin-top: 0.25rem;"><strong>Message:</strong> ${this.escapeHtml(assertion.message)}</div>` : ''}
+                        <div><strong>Expected:</strong> ${this.escapeHtml(
+                          JSON.stringify(assertion.expected)
+                        )}</div>
+                        <div><strong>Actual:</strong> ${this.escapeHtml(
+                          JSON.stringify(assertion.actual)
+                        )}</div>
+                        ${
+                          assertion.message
+                            ? `<div style="margin-top: 0.25rem;"><strong>Message:</strong> ${this.escapeHtml(
+                                assertion.message
+                              )}</div>`
+                            : ""
+                        }
                     </div>
                 </li>
-            `).join('')}
+            `
+              )
+              .join("")}
         </ul>
     `;
   }
 
   private buildScenariosTab(scenarios: any[]): string {
     if (!scenarios || scenarios.length === 0) {
-      return '<div style="padding: 1rem; text-align: center; color: var(--color-gray-700);">No scenarios results available for this step.</div>';
+      return '<div style="padding: 1rem; text-align: center; color: var(--color-gray-700);">No scenarios defined for this step.</div>';
     }
-    
+
     return `
         <div class="scenarios-list">
-            ${scenarios.map(scenario => `
-                <div class="scenario-item">
-                    <div class="scenario-name">${this.escapeHtml(scenario.name || 'Unnamed Scenario')}</div>
-                    <div class="scenario-condition"><strong>Condition:</strong> ${this.escapeHtml(scenario.condition || 'N/A')}</div>
-                    <div class="scenario-result">
-                        <div><strong>Executed:</strong> ${scenario.executed ? 'Yes' : 'No'}</div>
-                        ${scenario.path ? `<div><strong>Path:</strong> ${this.escapeHtml(scenario.path)}</div>` : ''}
-                        ${scenario.result ? `<div><strong>Result:</strong> ${this.escapeHtml(JSON.stringify(scenario.result))}</div>` : ''}
+            ${scenarios
+              .map(
+                (scenario, index) => `
+                <div class="scenario-item" style="border: 1px solid var(--color-gray-200); border-radius: var(--border-radius); padding: 1rem; margin-bottom: 1rem; background: var(--color-gray-50);">
+                    <div class="scenario-header" style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem;">
+                        <span class="scenario-number" style="background: var(--color-info); color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 600;">${
+                          index + 1
+                        }</span>
+                        <span class="scenario-name" style="font-weight: 600; color: var(--color-gray-900);">${this.escapeHtml(
+                          scenario.name || `Scenario ${index + 1}`
+                        )}</span>
+                        ${this.buildScenarioStatusBadge(scenario)}
+                    </div>
+
+                    <div class="scenario-condition" style="margin-bottom: 0.75rem;">
+                        <div style="font-weight: 600; color: var(--color-gray-700); margin-bottom: 0.25rem;">📋 Condition:</div>
+                        <div class="code-block" style="background: white; border: 1px solid var(--color-gray-300); padding: 0.75rem; font-family: var(--font-mono); font-size: 0.875rem; white-space: pre-wrap;">${this.escapeHtml(
+                          scenario.condition || "No condition specified"
+                        )}</div>
+                    </div>
+
+                    <div class="scenario-details">
+                        ${this.buildScenarioExecutionInfo(scenario)}
+                        ${this.buildScenarioActions(scenario)}
+                        ${
+                          scenario.skip_reason
+                            ? this.buildSkipReason(scenario.skip_reason)
+                            : ""
+                        }
                     </div>
                 </div>
-            `).join('')}
+            `
+              )
+              .join("")}
+        </div>
+
+        <div style="margin-top: 1rem; padding: 1rem; background: var(--color-info-light); border: 1px solid #bfdbfe; border-radius: var(--border-radius); color: var(--color-info-dark);">
+            <div style="font-weight: 600; margin-bottom: 0.5rem;">💡 How Scenarios Work:</div>
+            <ul style="margin: 0; padding-left: 1.5rem; line-height: 1.5;">
+                <li><strong>Executed:</strong> The scenario's condition was true and its actions were performed</li>
+                <li><strong>Skipped:</strong> The scenario's condition was false or not met</li>
+                <li><strong>Condition:</strong> A JMESPath expression evaluated against the HTTP response</li>
+                <li><strong>Actions:</strong> Assertions and variable captures that run when the condition is true</li>
+            </ul>
         </div>
     `;
   }
@@ -1172,10 +2331,104 @@ export class HTMLReportGenerator {
                 </p>
             </div>
             <div class="code-block">
-                <button class="copy-button" onclick="copyToClipboard(this, '${this.escapeForJS(curlCommand)}')">Copy</button>
+                <button class="copy-button" onclick="copyToClipboard(this, '${this.escapeForJS(
+                  curlCommand
+                )}')">Copy</button>
                 ${this.escapeHtml(curlCommand)}
             </div>
         </div>
+    `;
+  }
+
+  private buildScenarioStatusBadge(scenario: any): string {
+    const executed = scenario.executed || false;
+    const hasResult = scenario.result || scenario.captured_variables;
+
+    if (executed || hasResult) {
+      return '<span style="background: var(--color-success); color: white; padding: 0.25rem 0.5rem; border-radius: var(--border-radius); font-size: 0.75rem; font-weight: 600;">✓ EXECUTED</span>';
+    } else {
+      return '<span style="background: var(--color-warning); color: white; padding: 0.25rem 0.5rem; border-radius: var(--border-radius); font-size: 0.75rem; font-weight: 600;">⏭ SKIPPED</span>';
+    }
+  }
+
+  private buildScenarioExecutionInfo(scenario: any): string {
+    const executed = scenario.executed || false;
+    const hasResult = scenario.result || scenario.captured_variables;
+
+    if (executed || hasResult) {
+      return `
+        <div style="margin-bottom: 0.75rem;">
+          <div style="font-weight: 600; color: var(--color-success); margin-bottom: 0.25rem;">✅ Execution Status: SUCCESS</div>
+          <div style="font-size: 0.875rem; color: var(--color-gray-700);">This scenario's condition was met and its actions were executed.</div>
+        </div>
+      `;
+    } else {
+      return `
+        <div style="margin-bottom: 0.75rem;">
+          <div style="font-weight: 600; color: var(--color-warning); margin-bottom: 0.25rem;">⏭️ Execution Status: SKIPPED</div>
+          <div style="font-size: 0.875rem; color: var(--color-gray-700);">This scenario's condition was not met, so it was skipped. This is normal behavior.</div>
+        </div>
+      `;
+    }
+  }
+
+  private buildScenarioActions(scenario: any): string {
+    let actionsHtml = "";
+
+    // Show what actions would be performed if executed
+    if (scenario.then || scenario.actions) {
+      const actions = scenario.then || scenario.actions || {};
+      const hasAssert = actions.assert || actions.assertions;
+      const hasCapture = actions.capture;
+
+      if (hasAssert || hasCapture) {
+        actionsHtml += `
+          <div style="margin-bottom: 0.75rem;">
+            <div style="font-weight: 600; color: var(--color-gray-700); margin-bottom: 0.5rem;">🎯 Configured Actions:</div>
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+        `;
+
+        if (hasAssert) {
+          const assertCount =
+            typeof hasAssert === "object" ? Object.keys(hasAssert).length : 1;
+          actionsHtml += `<span style="background: var(--color-info-light); color: var(--color-info-dark); padding: 0.25rem 0.5rem; border-radius: var(--border-radius); font-size: 0.875rem;">🧪 ${assertCount} Assertion${
+            assertCount !== 1 ? "s" : ""
+          }</span>`;
+        }
+
+        if (hasCapture) {
+          const captureCount =
+            typeof hasCapture === "object" ? Object.keys(hasCapture).length : 1;
+          actionsHtml += `<span style="background: var(--color-purple-light); color: var(--color-purple); padding: 0.25rem 0.5rem; border-radius: var(--border-radius); font-size: 0.875rem;">📥 ${captureCount} Variable${
+            captureCount !== 1 ? "s" : ""
+          }</span>`;
+        }
+
+        actionsHtml += "</div></div>";
+      }
+    }
+
+    // Show actual results if executed
+    if (scenario.result && typeof scenario.result === "object") {
+      actionsHtml += `
+        <div style="margin-bottom: 0.75rem;">
+          <div style="font-weight: 600; color: var(--color-gray-700); margin-bottom: 0.5rem;">📊 Execution Results:</div>
+          <div class="code-block" style="background: white; border: 1px solid var(--color-gray-300); padding: 0.75rem; max-height: 200px; overflow-y: auto;">
+            ${this.escapeHtml(this.formatJsonForDisplay(scenario.result))}
+          </div>
+        </div>
+      `;
+    }
+
+    return actionsHtml;
+  }
+
+  private buildSkipReason(skipReason: string): string {
+    return `
+      <div style="margin-top: 0.75rem; padding: 0.75rem; background: var(--color-warning-light); border: 1px solid #fbbf24; border-radius: var(--border-radius); color: var(--color-warning-dark);">
+        <div style="font-weight: 600; margin-bottom: 0.25rem;">🔍 Skip Reason:</div>
+        <div style="font-size: 0.875rem;">${this.escapeHtml(skipReason)}</div>
+      </div>
     `;
   }
 }

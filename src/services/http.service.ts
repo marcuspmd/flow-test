@@ -139,7 +139,7 @@ export class HttpService {
       });
 
       const fullUrl = this.buildFullUrl(request.url);
-      
+
       return {
         step_name: stepName,
         status: "failure",
@@ -181,7 +181,7 @@ export class HttpService {
     }
 
     // If there's no base_url or it's not a string, return the URL as is
-    if (!this.baseUrl || typeof this.baseUrl !== 'string') {
+    if (!this.baseUrl || typeof this.baseUrl !== "string") {
       return url;
     }
 
@@ -252,7 +252,7 @@ export class HttpService {
    * Sets a new base URL.
    */
   setBaseUrl(baseUrl: string | undefined): void {
-    this.baseUrl = baseUrl && typeof baseUrl === 'string' ? baseUrl : undefined;
+    this.baseUrl = baseUrl && typeof baseUrl === "string" ? baseUrl : undefined;
   }
 
   /**
@@ -301,27 +301,37 @@ export class HttpService {
    */
   private generateCurlCommand(url: string, request: RequestDetails): string {
     const parts = [`curl -X ${request.method}`];
-    
+
     // Add headers
     const headers = request.headers || {};
     for (const [key, value] of Object.entries(headers)) {
       if (value !== undefined && value !== null) {
-        parts.push(`-H "${key}: ${String(value)}"`);
+        const stringValue = String(value);
+        // Skip empty headers or headers with only whitespace
+        if (stringValue.trim() === "") {
+          continue;
+        }
+        // Escape single quotes and wrap in single quotes for cURL
+        const escapedValue = stringValue.replace(/'/g, "\\'");
+        parts.push(`-H '${key}: ${escapedValue}'`);
       }
     }
-    
+
     // Add body for methods that support it
-    if (request.body && ['POST', 'PUT', 'PATCH'].includes(request.method)) {
-      const bodyStr = typeof request.body === 'string' 
-        ? request.body 
-        : JSON.stringify(request.body);
-      parts.push(`-d '${bodyStr.replace(/'/g, "\\'")}'`);
+    if (request.body && ["POST", "PUT", "PATCH"].includes(request.method)) {
+      const bodyStr =
+        typeof request.body === "string"
+          ? request.body
+          : JSON.stringify(request.body);
+      // Escape single quotes for shell
+      const escapedBody = bodyStr.replace(/'/g, "\\'");
+      parts.push(`-d '${escapedBody}'`);
     }
-    
+
     // Add URL (always last)
     parts.push(`"${url}"`);
-    
-    return parts.join(' ');
+
+    return parts.join(" ");
   }
 
   /**
@@ -330,10 +340,10 @@ export class HttpService {
   private generateRawRequest(url: string, request: RequestDetails): string {
     const urlObj = new URL(url);
     const path = urlObj.pathname + urlObj.search;
-    
+
     let rawRequest = `${request.method} ${path} HTTP/1.1\r\n`;
     rawRequest += `Host: ${urlObj.host}\r\n`;
-    
+
     // Add headers
     const headers = request.headers || {};
     for (const [key, value] of Object.entries(headers)) {
@@ -341,25 +351,27 @@ export class HttpService {
         rawRequest += `${key}: ${String(value)}\r\n`;
       }
     }
-    
+
     // Add content-length for body requests
-    if (request.body && ['POST', 'PUT', 'PATCH'].includes(request.method)) {
-      const bodyStr = typeof request.body === 'string' 
-        ? request.body 
-        : JSON.stringify(request.body);
-      rawRequest += `Content-Length: ${Buffer.byteLength(bodyStr, 'utf8')}\r\n`;
+    if (request.body && ["POST", "PUT", "PATCH"].includes(request.method)) {
+      const bodyStr =
+        typeof request.body === "string"
+          ? request.body
+          : JSON.stringify(request.body);
+      rawRequest += `Content-Length: ${Buffer.byteLength(bodyStr, "utf8")}\r\n`;
     }
-    
-    rawRequest += '\r\n';
-    
+
+    rawRequest += "\r\n";
+
     // Add body
-    if (request.body && ['POST', 'PUT', 'PATCH'].includes(request.method)) {
-      const bodyStr = typeof request.body === 'string' 
-        ? request.body 
-        : JSON.stringify(request.body);
+    if (request.body && ["POST", "PUT", "PATCH"].includes(request.method)) {
+      const bodyStr =
+        typeof request.body === "string"
+          ? request.body
+          : JSON.stringify(request.body);
       rawRequest += bodyStr;
     }
-    
+
     return rawRequest;
   }
 
@@ -368,24 +380,25 @@ export class HttpService {
    */
   private generateRawResponse(response: AxiosResponse): string {
     let rawResponse = `HTTP/1.1 ${response.status} ${response.statusText}\r\n`;
-    
+
     // Add response headers
     for (const [key, value] of Object.entries(response.headers)) {
       if (value !== undefined && value !== null) {
         rawResponse += `${key}: ${String(value)}\r\n`;
       }
     }
-    
-    rawResponse += '\r\n';
-    
+
+    rawResponse += "\r\n";
+
     // Add response body
     if (response.data) {
-      const bodyStr = typeof response.data === 'string' 
-        ? response.data 
-        : JSON.stringify(response.data, null, 2);
+      const bodyStr =
+        typeof response.data === "string"
+          ? response.data
+          : JSON.stringify(response.data, null, 2);
       rawResponse += bodyStr;
     }
-    
+
     return rawResponse;
   }
 }
