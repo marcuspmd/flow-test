@@ -139,7 +139,7 @@ steps:
 
     scenarios:
       # Happy Path: Usuário premium com feature habilitada
-      - condition: "status_code == `200` && body.json.user_type == 'premium' && body.json.feature_enabled == `true`"
+      - condition: "status_code == `200` && body.json.user_type == `premium` && body.json.feature_enabled == `true`"
         then:
           assert:
             status_code: 200
@@ -245,7 +245,7 @@ steps:
 
     scenarios:
       # Teste completamente bem-sucedido
-      - condition: "body.json.test_summary.auth_status == 'authenticated' && body.json.test_summary.error_handled == `true`"
+      - condition: "body.json.test_summary.auth_status == `authenticated` && body.json.test_summary.error_handled == `true`"
         then:
           capture:
             final_scenario_result: "'all_scenarios_passed'"
@@ -253,7 +253,7 @@ steps:
             recommendation: "'deploy_to_production'"
 
       # Teste com alguns problemas
-      - condition: "body.json.test_summary.auth_status == 'authenticated' && body.json.test_summary.error_handled == `false`"
+      - condition: "body.json.test_summary.auth_status == `authenticated` && body.json.test_summary.error_handled == `false`"
         then:
           capture:
             final_scenario_result: "'partial_success'"

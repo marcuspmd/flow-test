@@ -72,9 +72,10 @@ export class JavaScriptService {
    * 
    * @param expression - JavaScript code to execute
    * @param context - Execution context with available variables and data
+   * @param asCodeBlock - If true, executes as code block instead of expression
    * @returns Result of the JavaScript expression
    */
-  public executeExpression(expression: string, context: JavaScriptExecutionContext = {}): any {
+  public executeExpression(expression: string, context: JavaScriptExecutionContext = {}, asCodeBlock: boolean = false): any {
     // First validate the expression
     const validation = this.validateExpression(expression);
     if (!validation.isValid) {
@@ -101,7 +102,7 @@ export class JavaScriptService {
         
         // Simple timeout check (not perfect but better than nothing)
         try {
-          return (${expression});
+          ${asCodeBlock ? expression : `return (${expression});`}
         } catch (error) {
           throw error;
         }
@@ -151,6 +152,16 @@ export class JavaScriptService {
         error: console.error,
       } : undefined,
     };
+
+    // Add variables from context directly to sandbox scope (only valid identifiers)
+    if (context.variables) {
+      const validIdentifierRegex = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/;
+      Object.entries(context.variables).forEach(([name, value]) => {
+        if (validIdentifierRegex.test(name)) {
+          sandbox[name] = value;
+        }
+      });
+    }
 
     // Remove dangerous globals
     delete sandbox.process;

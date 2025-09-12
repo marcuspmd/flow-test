@@ -77,7 +77,10 @@ export class ScenarioService {
     const context = this.buildEvaluationContext(result);
 
     try {
-      const conditionResult = jmespath.search(context, condition);
+      // Pre-process condition to fix common JMESPath issues
+      const processedCondition = this.preprocessJMESPathCondition(condition);
+      
+      const conditionResult = jmespath.search(context, processedCondition);
 
       // Converts the result to boolean
       if (typeof conditionResult === "boolean") {
@@ -89,6 +92,22 @@ export class ScenarioService {
     } catch (error) {
       throw new Error(`Invalid JMESPath condition '${condition}': ${error}`);
     }
+  }
+
+  /**
+   * Preprocesses JMESPath condition to fix common syntax issues
+   */
+  private preprocessJMESPathCondition(condition: string): string {
+    // Fix numbers without backticks: "status_code == 200" -> "status_code == `200`"
+    let processed = condition.replace(/(==|!=|>=|<=|>|<)\s*(\d+)(?![`])/g, '$1 `$2`');
+    
+    // Fix boolean values without backticks: "enabled == true" -> "enabled == `true`"
+    processed = processed.replace(/(==|!=)\s*(true|false)(?![`])/g, '$1 `$2`');
+    
+    // Fix header array syntax: "headers['key']" -> "headers.\"key\""
+    processed = processed.replace(/headers\['([^']+)'\]/g, 'headers."$1"');
+    
+    return processed;
   }
 
   /**

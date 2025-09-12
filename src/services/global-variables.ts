@@ -257,18 +257,33 @@ export class GlobalVariablesService {
    * Resolves variable expressions with support for paths and exported variables
    */
   private resolveVariableExpression(expression: string): any {
-    // Check if it's a JavaScript expression (starts with 'js:')
-    if (expression.startsWith("js:")) {
+    // Check if it's a JavaScript expression (starts with 'js:', '$js.', or contains logical operators)
+    const hasLogicalOperators = /\|\||&&|[><=!]==?|\?|:/.test(expression);
+    if (expression.startsWith("js:") || expression.startsWith("$js.") || hasLogicalOperators) {
       try {
-        const jsExpression =
-          javascriptService.parseJavaScriptExpression(expression);
+        let jsExpression: string | null = null;
+        
+        if (expression.startsWith("js:")) {
+          jsExpression = javascriptService.parseJavaScriptExpression(expression);
+        } else if (expression.startsWith("$js.")) {
+          // Handle $js.return and $js.expression formats
+          jsExpression = expression.substring(4); // Remove "$js."
+        } else if (hasLogicalOperators) {
+          // Handle logical expressions like "jwt_login_success || false"
+          jsExpression = expression;
+        }
+        
         if (jsExpression) {
           // Update execution context with current variables
+          const allVars = this.getAllVariables();
           const context: JavaScriptExecutionContext = {
             ...this.currentExecutionContext,
-            variables: this.getAllVariables(),
+            variables: allVars,
           };
-          return javascriptService.executeExpression(jsExpression, context);
+          // Use code block mode only for $js expressions, not for logical operators
+          const useCodeBlock = expression.startsWith("$js.");
+          const result = javascriptService.executeExpression(jsExpression, context, useCodeBlock);
+          return result;
         }
         return undefined;
       } catch (error) {
@@ -279,10 +294,16 @@ export class GlobalVariablesService {
       }
     }
 
-    // Check if it's a Faker expression (starts with 'faker.')
-    if (expression.startsWith("faker.")) {
+    // Check if it's a Faker expression (starts with 'faker.' or '$faker.')
+    if (expression.startsWith("faker.") || expression.startsWith("$faker.")) {
       try {
-        return fakerService.parseFakerExpression(expression);
+        let fakerExpression = expression;
+        if (expression.startsWith("$faker.")) {
+          // Handle $faker.person.name format
+          fakerExpression = expression.substring(1); // Remove "$" to get "faker.person.name"
+        }
+        const result = fakerService.parseFakerExpression(fakerExpression);
+        return result;
       } catch (error) {
         console.warn(
           `Error resolving Faker expression '${expression}': ${error}`

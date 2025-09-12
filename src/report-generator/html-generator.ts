@@ -899,16 +899,97 @@ export class HTMLReportGenerator {
       .code-block {
         background: var(--color-gray-900);
         color: var(--color-gray-100);
-        padding: 1rem 3.5rem 1rem 1rem;
+        padding: 1.5rem 4rem 1.5rem 1.5rem;
         border-radius: var(--border-radius);
         font-family: var(--font-mono);
         font-size: 0.8125rem;
-        overflow-x: auto;
-        white-space: pre-wrap;
-        word-break: break-all;
+        white-space: normal;
+        word-break: break-word;
         position: relative;
         border: 1px solid var(--color-gray-700);
-        line-height: 1.4;
+        line-height: 1.6;
+      }
+
+      .code-block .code-line {
+        display: block;
+        margin: 0;
+        padding: 0;
+        white-space: pre-wrap;
+        word-break: break-word;
+        min-height: 1.6em;
+      }
+
+      .code-block .code-line.wrap {
+        white-space: normal;
+        word-break: break-all;
+        word-wrap: break-word;
+      }
+
+      .code-block .code-line:empty::after {
+        content: "\\00a0";
+      }
+
+      .code-block.bash {
+        background: #1e1e1e;
+        color: #d4d4d4;
+        border: 1px solid #404040;
+      }
+
+      .code-block.json {
+        background: #1e1e1e;
+        color: #d4d4d4;
+        border: 1px solid #404040;
+      }
+
+      .code-block.http {
+        background: #1e1e1e;
+        color: #d4d4d4;
+        border: 1px solid #404040;
+      }
+
+      .code-block.bash::before {
+        content: 'bash';
+        position: absolute;
+        top: 0.25rem;
+        left: 1rem;
+        background: rgba(255, 255, 255, 0.1);
+        color: rgba(255, 255, 255, 0.7);
+        padding: 0.125rem 0.5rem;
+        border-radius: 3px;
+        font-size: 0.6875rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+
+      .code-block.json::before {
+        content: 'json';
+        position: absolute;
+        top: 0.25rem;
+        left: 1rem;
+        background: rgba(255, 255, 255, 0.1);
+        color: rgba(255, 255, 255, 0.7);
+        padding: 0.125rem 0.5rem;
+        border-radius: 3px;
+        font-size: 0.6875rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+
+      .code-block.http::before {
+        content: 'http';
+        position: absolute;
+        top: 0.25rem;
+        left: 1rem;
+        background: rgba(255, 255, 255, 0.1);
+        color: rgba(255, 255, 255, 0.7);
+        padding: 0.125rem 0.5rem;
+        border-radius: 3px;
+        font-size: 0.6875rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
       }
 
       .copy-button {
@@ -1900,24 +1981,99 @@ export class HTMLReportGenerator {
 
   private formatJsonForDisplay(obj: any): string {
     if (obj === null || obj === undefined) return "";
-    if (typeof obj === "string") return obj;
+    if (typeof obj === "string") {
+      // Try to parse and re-format if it's a JSON string
+      try {
+        const parsed = JSON.parse(obj);
+        return JSON.stringify(parsed, null, 2);
+      } catch {
+        return obj;
+      }
+    }
 
-    const jsonString = JSON.stringify(obj, null, 2);
-    // Remove leading and trailing whitespace that might cause formatting issues
-    return jsonString.trim();
+    return JSON.stringify(obj, null, 2);
   }
 
   private cleanTextContent(text: string): string {
     if (!text) return "";
 
     return text
-      .trim()
       .replace(/\r\n/g, "\n") // Normalize Windows line endings
       .replace(/\r/g, "\n") // Convert remaining \r to \n
-      .replace(/\s+\n/g, "\n") // Remove trailing spaces before newlines
-      .replace(/\n\s+/g, "\n") // Remove leading spaces after newlines
+      .replace(/\\\s*\n\s*\\\s*$/g, "") // Remove trailing backslash patterns
+      .replace(/\\\s*$/g, "") // Remove trailing backslashes
       .replace(/\n{3,}/g, "\n\n") // Replace multiple consecutive newlines with max 2
-      .replace(/\t/g, "  "); // Convert tabs to spaces for consistency
+      .replace(/\s+$/gm, "") // Remove trailing spaces from each line
+      .replace(/\t/g, "    ") // Convert tabs to 4 spaces for better visibility
+      .trim();
+  }
+
+  private formatJsonContent(content: string): string {
+    if (!content) return "";
+    
+    try {
+      // Try to parse and pretty-format JSON
+      const parsed = JSON.parse(content);
+      return JSON.stringify(parsed, null, 2);
+    } catch {
+      // If not valid JSON, just clean it
+      return this.cleanTextContent(content);
+    }
+  }
+
+  private formatHttpContent(content: string): string {
+    if (!content) return "";
+    
+    return content
+      .replace(/\r\n/g, "\n")
+      .replace(/\r/g, "\n")
+      .split("\n")
+      .map(line => line.trimRight()) // Remove trailing spaces but keep leading spaces for indentation
+      .join("\n")
+      .trim();
+  }
+
+  private cleanCurlCommand(curlCommand: string): string {
+    if (!curlCommand) return "";
+    
+    // More aggressive cleaning first
+    let cleaned = curlCommand
+      .trim()
+      // Remove all trailing backslashes and weird patterns
+      .replace(/\\+\s*\n\s*\\*\s*\n?\s*$/g, "")
+      .replace(/\\+\s*$/g, "")
+      .replace(/\s+\\+\s*$/g, "")
+      // Clean up any remaining line-ending junk
+      .replace(/\s+$/gm, "");
+    
+    // Check if it's a multi-line cURL that should stay multi-line
+    const hasValidLineBreaks = cleaned.includes(" \\\n") && cleaned.split("\n").length > 1;
+    
+    if (hasValidLineBreaks) {
+      // Keep as multi-line but clean up indentation
+      cleaned = cleaned
+        .split('\n')
+        .map((line, index) => {
+          line = line.trim();
+          if (index === 0) {
+            return line.replace(/^\s*curl\s+/g, "curl ");
+          } else {
+            return "    " + line.replace(/^\\\s*/, "");
+          }
+        })
+        .filter(line => line.trim() !== "") // Remove empty lines
+        .join('\n');
+    } else {
+      // Convert to single line - be more aggressive
+      cleaned = cleaned
+        .replace(/\\\s*\n\s*/g, " ") // Convert line breaks to spaces
+        .replace(/\s{2,}/g, " ") // Clean multiple spaces
+        .replace(/^\s*curl\s+/g, "curl ") // Fix command start
+        .replace(/'\s+-/g, "' -")
+        .replace(/"\s+-/g, '" -');
+    }
+    
+    return cleaned.trim();
   }
 
   private escapeForJS(text: string | undefined | null): string {
@@ -1937,6 +2093,139 @@ export class HTMLReportGenerator {
       .replace(/\u2029/g, "\\u2029") // Paragraph separator
       .replace(/</g, "\\u003c") // Escape < to prevent XSS
       .replace(/>/g, "\\u003e"); // Escape > to prevent XSS
+  }
+
+  private detectContentType(content: string): string {
+    if (!content || typeof content !== 'string') return 'text';
+    
+    const trimmed = content.trim();
+    
+    // Check for cURL commands
+    if (trimmed.startsWith('curl ') || trimmed.includes('curl ')) {
+      return 'bash';
+    }
+    
+    // Check for bash/shell commands
+    if (this.isBashContent(trimmed)) {
+      return 'bash';
+    }
+    
+    // Check for JSON
+    if (this.isJsonContent(trimmed)) {
+      return 'json';
+    }
+    
+    // Check for HTTP requests
+    if (this.isHttpContent(trimmed)) {
+      return 'http';
+    }
+    
+    return 'text';
+  }
+
+  private isBashContent(content: string): boolean {
+    const bashPatterns = [
+      /^(npm|yarn|pnpm|bun)\s+/,
+      /^(node|ts-node|deno)\s+/,
+      /^(git|docker|kubectl)\s+/,
+      /^(ls|cd|mkdir|rm|cp|mv|cat|grep|find|sort|uniq)\s+/,
+      /^(export|echo|which|chmod|chown)\s+/,
+      /^(sudo|su)\s+/,
+      /^\w+\s+=\s+/,
+      /&&|\|\|/,
+      /;\s*$/,
+      /\$\w+/,
+      /^#\s+/
+    ];
+    
+    return bashPatterns.some(pattern => pattern.test(content));
+  }
+
+  private isJsonContent(content: string): boolean {
+    if (!content.trim()) return false;
+    try {
+      JSON.parse(content);
+      return true;
+    } catch {
+      return (content.startsWith('{') && content.endsWith('}')) ||
+             (content.startsWith('[') && content.endsWith(']'));
+    }
+  }
+
+  private isHttpContent(content: string): boolean {
+    const httpPatterns = [
+      /^(GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS)\s+/,
+      /^HTTP\/[\d.]+\s+\d{3}/,
+      /^(Host|User-Agent|Accept|Content-Type|Authorization|Cookie):\s+/
+    ];
+    
+    return httpPatterns.some(pattern => pattern.test(content));
+  }
+
+  private formatCodeBlock(content: string, language?: string): string {
+    if (!content) return '';
+    
+    const detectedType = language || this.detectContentType(content);
+    let cleanContent: string;
+    
+    // Use specific formatting based on content type
+    switch (detectedType) {
+      case 'bash':
+        if (content.includes('curl ') || content.startsWith('curl ')) {
+          cleanContent = this.cleanCurlCommand(content);
+        } else {
+          cleanContent = this.cleanTextContent(content);
+        }
+        break;
+      case 'json':
+        cleanContent = this.formatJsonContent(content);
+        break;
+      case 'http':
+        cleanContent = this.formatHttpContent(content);
+        break;
+      default:
+        cleanContent = this.cleanTextContent(content);
+        break;
+    }
+    
+    // Convert to structured HTML lines
+    const formattedContent = this.convertToCodeLines(cleanContent, detectedType);
+    
+    return `
+      <div class="code-block ${detectedType}">
+        <button class="copy-button" onclick="copyToClipboard(this, '${this.escapeForJS(cleanContent)}')">Copy</button>
+        ${formattedContent}
+      </div>
+    `;
+  }
+
+  private convertToCodeLines(content: string, type: string): string {
+    if (!content) return '<div class="code-line">&nbsp;</div>';
+    
+    const lines = content.split('\n');
+    
+    return lines
+      .map((line, index) => {
+        // Handle empty lines
+        if (!line || line.trim() === '') {
+          return '<div class="code-line">&nbsp;</div>';
+        }
+        
+        // Escape HTML but preserve spaces
+        const escapedLine = this.escapeHtml(line);
+        
+        // Replace leading spaces with non-breaking spaces to preserve indentation
+        const preservedSpaces = escapedLine.replace(/^( +)/, (match, spaces) => 
+          '&nbsp;'.repeat(spaces.length)
+        );
+        
+        // For very long lines (like single-line URLs), allow wrapping
+        const shouldWrap = type === 'bash' && line.length > 100 && !line.includes(' \\');
+        const wrapClass = shouldWrap ? ' wrap' : '';
+        
+        return `<div class="code-line${wrapClass}">${preservedSpaces}</div>`;
+      })
+      .join('');
   }
 
   private buildStepOverview(step: StepExecutionResult): string {
@@ -2039,25 +2328,22 @@ export class HTMLReportGenerator {
                         ? `
                     <div style="margin-bottom: 1rem;">
                         <span style="font-weight: 600;">Headers:</span>
-                        <div class="code-block" style="margin-top: 0.25rem;">
-                            ${headers
-                              .map(([key, value]) => {
-                                const stringValue = String(value || "");
-                                // Skip empty headers for cleaner display
-                                if (stringValue.trim() === "") {
-                                  return `${key}: (empty)`;
-                                }
-                                // Format special characters for display
-                                const displayValue = stringValue
-                                  .replace(/\n/g, "\\n")
-                                  .replace(/\r/g, "\\r")
-                                  .replace(/\t/g, "\\t")
-                                  .replace(/"/g, '\\"')
-                                  .replace(/'/g, "\\'");
-                                return `${key}: ${displayValue}`;
-                              })
-                              .join("\n")}
-                        </div>
+                        ${this.formatCodeBlock(
+                          headers
+                            .map(([key, value]) => {
+                              const stringValue = String(value || "");
+                              if (stringValue.trim() === "") {
+                                return `${key}: (empty)`;
+                              }
+                              const displayValue = stringValue
+                                .replace(/\n/g, "\\n")
+                                .replace(/\r/g, "\\r")
+                                .replace(/\t/g, "\\t");
+                              return `${key}: ${displayValue}`;
+                            })
+                            .join("\n"),
+                          'http'
+                        )}
                     </div>
                     `
                         : ""
@@ -2068,12 +2354,7 @@ export class HTMLReportGenerator {
                         ? `
                     <div style="margin-bottom: 1rem;">
                         <span style="font-weight: 600;">Body:</span>
-                        <div class="code-block" style="margin-top: 0.25rem;">
-                            <button class="copy-button" onclick="copyToClipboard(this, '${this.escapeForJS(
-                              bodyStr
-                            )}')">Copy</button>
-                            ${this.escapeHtml(bodyStr)}
-                        </div>
+                        ${this.formatCodeBlock(bodyStr)}
                     </div>
                     `
                         : ""
@@ -2087,12 +2368,7 @@ export class HTMLReportGenerator {
             <div class="response-section">
                 <div class="section-header">🔍 Raw HTTP Request</div>
                 <div class="section-content">
-                    <div class="code-block">
-                        <button class="copy-button" onclick="copyToClipboard(this, '${this.escapeForJS(
-                          rawRequest
-                        )}')">Copy</button>
-                        ${this.escapeHtml(rawRequest)}
-                    </div>
+                    ${this.formatCodeBlock(rawRequest, 'http')}
                 </div>
             </div>
             `
@@ -2142,25 +2418,22 @@ export class HTMLReportGenerator {
                         ? `
                     <div style="margin-bottom: 1rem;">
                         <span style="font-weight: 600;">Headers:</span>
-                        <div class="code-block" style="margin-top: 0.25rem;">
-                            ${headers
-                              .map(([key, value]) => {
-                                const stringValue = String(value || "");
-                                // Skip empty headers for cleaner display
-                                if (stringValue.trim() === "") {
-                                  return `${key}: (empty)`;
-                                }
-                                // Format special characters for display
-                                const displayValue = stringValue
-                                  .replace(/\n/g, "\\n")
-                                  .replace(/\r/g, "\\r")
-                                  .replace(/\t/g, "\\t")
-                                  .replace(/"/g, '\\"')
-                                  .replace(/'/g, "\\'");
-                                return `${key}: ${displayValue}`;
-                              })
-                              .join("\n")}
-                        </div>
+                        ${this.formatCodeBlock(
+                          headers
+                            .map(([key, value]) => {
+                              const stringValue = String(value || "");
+                              if (stringValue.trim() === "") {
+                                return `${key}: (empty)`;
+                              }
+                              const displayValue = stringValue
+                                .replace(/\n/g, "\\n")
+                                .replace(/\r/g, "\\r")
+                                .replace(/\t/g, "\\t");
+                              return `${key}: ${displayValue}`;
+                            })
+                            .join("\n"),
+                          'http'
+                        )}
                     </div>
                     `
                         : ""
@@ -2171,12 +2444,7 @@ export class HTMLReportGenerator {
                         ? `
                     <div style="margin-bottom: 1rem;">
                         <span style="font-weight: 600;">Body:</span>
-                        <div class="code-block" style="margin-top: 0.25rem;">
-                            <button class="copy-button" onclick="copyToClipboard(this, '${this.escapeForJS(
-                              bodyStr
-                            )}')">Copy</button>
-                            ${this.escapeHtml(bodyStr)}
-                        </div>
+                        ${this.formatCodeBlock(bodyStr)}
                     </div>
                     `
                         : ""
@@ -2190,12 +2458,7 @@ export class HTMLReportGenerator {
             <div class="response-section">
                 <div class="section-header">🔍 Raw HTTP Response</div>
                 <div class="section-content">
-                    <div class="code-block">
-                        <button class="copy-button" onclick="copyToClipboard(this, '${this.escapeForJS(
-                          rawResponse
-                        )}')">Copy</button>
-                        ${this.escapeHtml(rawResponse)}
-                    </div>
+                    ${this.formatCodeBlock(rawResponse, 'http')}
                 </div>
             </div>
             `
@@ -2289,7 +2552,7 @@ export class HTMLReportGenerator {
 
                     <div class="scenario-condition" style="margin-bottom: 0.75rem;">
                         <div style="font-weight: 600; color: var(--color-gray-700); margin-bottom: 0.25rem;">📋 Condition:</div>
-                        <div class="code-block" style="background: white; border: 1px solid var(--color-gray-300); padding: 0.75rem; font-family: var(--font-mono); font-size: 0.875rem; white-space: pre-wrap;">${this.escapeHtml(
+                        <div style="background: white; border: 1px solid var(--color-gray-300); border-radius: var(--border-radius); padding: 0.75rem; font-family: var(--font-mono); font-size: 0.875rem; white-space: pre-wrap; color: var(--color-gray-800);">${this.escapeHtml(
                           scenario.condition || "No condition specified"
                         )}</div>
                     </div>
@@ -2330,12 +2593,7 @@ export class HTMLReportGenerator {
                     Copy and paste this command into your terminal or import into Postman.
                 </p>
             </div>
-            <div class="code-block">
-                <button class="copy-button" onclick="copyToClipboard(this, '${this.escapeForJS(
-                  curlCommand
-                )}')">Copy</button>
-                ${this.escapeHtml(curlCommand)}
-            </div>
+            ${this.formatCodeBlock(curlCommand, 'bash')}
         </div>
     `;
   }
@@ -2413,9 +2671,7 @@ export class HTMLReportGenerator {
       actionsHtml += `
         <div style="margin-bottom: 0.75rem;">
           <div style="font-weight: 600; color: var(--color-gray-700); margin-bottom: 0.5rem;">📊 Execution Results:</div>
-          <div class="code-block" style="background: white; border: 1px solid var(--color-gray-300); padding: 0.75rem; max-height: 200px; overflow-y: auto;">
-            ${this.escapeHtml(this.formatJsonForDisplay(scenario.result))}
-          </div>
+          ${this.formatCodeBlock(this.formatJsonForDisplay(scenario.result), 'json').replace('style="margin-top: 0.25rem;"', 'style="margin-top: 0.25rem; max-height: 200px; overflow-y: auto;"')}
         </div>
       `;
     }

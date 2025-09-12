@@ -879,8 +879,8 @@ export class ExecutionService {
     await this.hooks.onStepStart?.(step, context);
 
     try {
-      // Check if step has scenarios - if so, use scenario-based execution
-      if (step.scenarios && Array.isArray(step.scenarios)) {
+      // Check if step has scenarios WITHOUT request - if so, use scenario-based execution
+      if (step.scenarios && Array.isArray(step.scenarios) && !step.request) {
         return await this.executeScenarioStep(
           step,
           suite,
@@ -904,7 +904,19 @@ export class ExecutionService {
       // Records performance data
       this.recordPerformanceData(interpolatedRequest, httpResult);
 
-      // 3. Executes assertions
+      // 3. Process scenarios if they exist
+      if (step.scenarios && Array.isArray(step.scenarios) && httpResult.response_details) {
+        // Interpolate variables in scenarios before processing
+        const interpolatedScenarios = this.globalVariables.interpolate(step.scenarios);
+        
+        this.scenarioService.processScenarios(
+          interpolatedScenarios,
+          httpResult,
+          "verbose"
+        );
+      }
+
+      // 4. Executes assertions
       let assertionResults: any[] = [];
       if (step.assert && httpResult.response_details) {
         // Interpolate assertion values before validation
