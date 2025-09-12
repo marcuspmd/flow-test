@@ -199,6 +199,13 @@ export class VariableService {
       }
     }
 
+    // Check if it's an environment variable (starts with '$env.')
+    if (variablePath.startsWith("$env.")) {
+      const envVarName = variablePath.substring(5); // Remove "$env." to get variable name
+      const envValue = process.env[envVarName];
+      return envValue || null;
+    }
+
     // First, checks in runtime if the exact variable exists (including dots)
     if (this.context.runtime[variablePath] !== undefined) {
       return this.context.runtime[variablePath];

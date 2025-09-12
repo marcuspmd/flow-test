@@ -2084,7 +2084,9 @@ export class HTMLReportGenerator {
       .replace(/\\/g, "\\\\") // Escape backslashes first
       .replace(/'/g, "\\'")
       .replace(/"/g, '\\"')
-      .replace(/\n/g, "\\n")
+      .replace(/\r\n/g, "\\n") // Handle Windows line endings
+      .replace(/\r/g, "\\n") // Handle Mac line endings
+      .replace(/\n/g, "\\n") // Handle Unix line endings
       .replace(/\t/g, "\\t")
       .replace(/\f/g, "\\f")
       .replace(/\v/g, "\\v")
@@ -2272,16 +2274,23 @@ export class HTMLReportGenerator {
             <div style="background: var(--color-gray-50); border: 1px solid var(--color-gray-200); border-radius: var(--border-radius); padding: 1rem;">
                 ${Object.entries(step.captured_variables || {})
                   .map(
-                    ([key, value]) => `
-                    <div style="display: flex; margin-bottom: 0.5rem; font-family: var(--font-mono); font-size: 0.875rem;">
-                        <span style="font-weight: 600; color: var(--color-info); min-width: 120px;">${this.escapeHtml(
-                          key
-                        )}:</span>
-                        <span style="color: var(--color-gray-700); word-break: break-all;">${this.escapeHtml(
-                          JSON.stringify(value)
-                        )}</span>
+                    ([key, value]) => {
+                      const jsonValue = JSON.stringify(value, null, 2);
+                      const isLongValue = jsonValue.length > 80;
+                      return `
+                    <div style="margin-bottom: 0.75rem; font-family: var(--font-mono); font-size: 0.875rem;">
+                        <div style="font-weight: 600; color: var(--color-info); margin-bottom: 0.25rem;">
+                            ${this.escapeHtml(key)}:
+                        </div>
+                        <div style="color: var(--color-gray-700); ${isLongValue ? 'background: var(--color-gray-100); padding: 0.5rem; border-radius: 4px; overflow-x: auto;' : ''} word-break: break-all;">
+                            ${isLongValue ? 
+                              `<pre style="margin: 0; white-space: pre-wrap;">${this.escapeHtml(jsonValue)}</pre>` : 
+                              this.escapeHtml(jsonValue)
+                            }
+                        </div>
                     </div>
                 `
+                    }
                   )
                   .join("")}
             </div>

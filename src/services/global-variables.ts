@@ -312,6 +312,13 @@ export class GlobalVariablesService {
       }
     }
 
+    // Check if it's an environment variable (starts with '$env.')
+    if (expression.startsWith("$env.")) {
+      const envVarName = expression.substring(5); // Remove "$env." to get variable name
+      const envValue = process.env[envVarName];
+      return envValue || null;
+    }
+
     // First, tries to resolve as exported variable (suite.variable)
     if (expression.includes(".") && this.globalRegistry) {
       const exportedValue = this.globalRegistry.getExportedVariable(expression);

@@ -98,6 +98,12 @@ export class ScenarioService {
    * Preprocesses JMESPath condition to fix common syntax issues
    */
   private preprocessJMESPathCondition(condition: string): string {
+    // Handle $env variables - these should be interpolated before JMESPath
+    if (condition.includes('$env.')) {
+      // For now, replace $env variables with null if they contain invalid JMESPath chars
+      condition = condition.replace(/\$env\.[A-Z_][A-Z0-9_]*/g, '`null`');
+    }
+    
     // Fix numbers without backticks: "status_code == 200" -> "status_code == `200`"
     let processed = condition.replace(/(==|!=|>=|<=|>|<)\s*(\d+)(?![`])/g, '$1 `$2`');
     
@@ -106,6 +112,9 @@ export class ScenarioService {
     
     // Fix header array syntax: "headers['key']" -> "headers.\"key\""
     processed = processed.replace(/headers\['([^']+)'\]/g, 'headers."$1"');
+    
+    // Fix null comparisons: "!= null" -> "!= `null`"
+    processed = processed.replace(/(==|!=)\s*null(?![`])/g, '$1 `null`');
     
     return processed;
   }
