@@ -1,8 +1,8 @@
-# Flow Test Engine v2.0 - API Documentation
+# Flow Test Engine v1.0 - API Documentation
 
 ## Overview
 
-The Flow Test Engine v2.0 is a comprehensive API testing engine with support for directory-based execution, global variables, and priority-driven test management.
+The Flow Test Engine v1.0 is a comprehensive API testing engine with support for directory-based execution, global variables, and priority-driven test management.
 
 ## Architecture
 
@@ -1137,4 +1137,4 @@ exports:
   - user_id
 ```
 
-This documentation provides a complete view of the Flow Test Engine v2.0 API and architecture.
+This documentation provides a complete view of the Flow Test Engine v1.0 API and architecture.

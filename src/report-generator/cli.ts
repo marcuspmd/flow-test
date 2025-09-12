@@ -80,7 +80,7 @@ function parseArgs(): CLIOptions {
 
 function showHelp() {
   console.log(`
-Flow Test HTML Report Generator v2.0
+Flow Test HTML Report Generator v1.0
 
 Usage: flow-test-html [options] <input.json>
 

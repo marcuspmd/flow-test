@@ -1810,7 +1810,7 @@ export class HTMLReportGenerator {
         <div class="footer" style="text-align: center; margin-top: 2rem; padding-top: 2rem; border-top: 1px solid #e5e7eb; color: #6b7280;">
             Generated on ${new Date().toLocaleString()}<br>
             Execution: ${data.start_time} to ${data.end_time}<br>
-            <small>Powered by Flow Test Engine v2.0 with Enhanced HTML Reports</small>
+            <small>Powered by Flow Test Engine v1.0 with Enhanced HTML Reports</small>
         </div>
     `;
   }

@@ -1,5 +1,5 @@
 /**
- * Flow Test Engine v2.0
+ * Flow Test Engine v1.0
  *
  * API principal do package para uso programático.
  *
@@ -120,7 +120,7 @@ export async function planTests(configPath?: string) {
  *
  * Versão atual do Flow Test Engine, seguindo semantic versioning.
  */
-export const VERSION = "2.0.0";
+export const VERSION = "1.0.0";
 
 /**
  * Informações do package

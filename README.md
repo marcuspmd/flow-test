@@ -24,15 +24,45 @@ npm install
 ### Basic Usage
 
 ```bash
-# Run default test
+# Run default test suite (uses httpbin.org for demo)
 npm test
 
 # Run specific test file  
 npm run dev tests/start-flow.yaml
 
 # Run with different verbosity levels
-npm run test:verbose    # Detailed output
+npm run test:verbose    # Detailed output with request/response data
 npm run test:silent     # Errors only
+
+# Run tests with priority filtering
+npm run test:critical   # Only critical priority tests
+npm run test:high       # Critical and high priority tests
+```
+
+## 📋 Example Test Files
+
+The repository includes comprehensive test examples that you can run immediately:
+
+```bash
+# Basic getting started example
+tests/start-flow.yaml                    # Simple HTTP flow demo
+
+# Authentication patterns  
+tests/auth-flows-test.yaml              # JWT, OAuth2, refresh tokens
+tests/javascript-expressions-test.yaml  # Advanced JS expressions
+
+# Data generation and variables
+tests/faker-demo.yaml                   # Faker.js integration examples
+tests/environment-variables-test.yaml   # Environment variable usage
+tests/variable-interpolation-test.yaml  # Variable scoping and interpolation
+
+# Advanced features
+tests/complex-conditional-scenarios.yaml # Conditional test logic
+tests/microservices-integration-test.yaml # Multi-service testing
+tests/performance-test.yaml             # Performance validation
+
+# Run any test file:
+npm run dev tests/faker-demo.yaml
 ```
 
 ## 📝 YAML Configuration
@@ -40,59 +70,64 @@ npm run test:silent     # Errors only
 ### Basic Structure
 
 ```yaml
-suite_name: "API Test Suite"
-base_url: "https://api.example.com"
+# Example from tests/start-flow.yaml
+suite_name: "Basic HTTP Test Flow"
+base_url: "{{httpbin_url}}"  # Uses httpbin.org for demo
 
 variables:
-  user_email: "test@example.com"
-  api_key: "your-api-key"
+  user_id: 123
+  user_name: "alpha_user"
 
 steps:
-  - name: "Create User"
+  - name: "Send POST data and capture response"
     request:
       method: POST
-      url: "/users"
+      url: "/post"
       headers:
-        Authorization: "Bearer {{api_key}}"
         Content-Type: "application/json"
+        X-Custom-Header: "Flow-Test-Demo"
       body:
-        email: "{{user_email}}"
-        name: "Test User"
+        user_id: "{{user_id}}"
+        username: "{{user_name}}"
+        timestamp: "{{$now}}"
 
     assert:
-      status_code: 201
+      status_code: 200
       body:
-        email:
-          equals: "{{user_email}}"
-        id:
-          greater_than: 0
+        json.user_id:
+          equals: "{{user_id}}"
+        json.username:
+          equals: "{{user_name}}"
 
     capture:
-      user_id: "body.id"
-      created_at: "body.created_at"
+      captured_username: "json.username"
+      server_data: "json"
 ```
 
 ### Advanced Features
 
 #### Request Chaining
 ```yaml
+# Example from tests/auth-flows-test.yaml
 steps:
-  - name: "Login"
+  - name: "Simulate Login"
     request:
       method: POST
-      url: "/auth/login"
+      url: "/post"  # httpbin.org endpoint
       body:
-        email: "user@test.com"
-        password: "password123"
+        username: "{{test_credentials.username}}"
+        password: "{{test_credentials.password}}"
     capture:
-      auth_token: "body.token"
+      jwt_token: "json.token"  # Simulate capturing JWT from response
+      user_id: "json.user_id"
 
-  - name: "Get Profile" 
+  - name: "Get User Data with Token"
     request:
       method: GET
-      url: "/profile"
+      url: "/get?user_id={{user_id}}"
       headers:
-        Authorization: "Bearer {{auth_token}}"
+        Authorization: "Bearer {{jwt_token}}"
+        X-User-ID: "{{user_id}}"
 ```
 
 #### Conditional Scenarios
@@ -132,19 +167,104 @@ assert:
     less_than: 1000
 ```
 
+#### JavaScript Expressions
+```yaml
+# Example from tests/javascript-expressions-test.yaml
+steps:
+  - name: "Dynamic calculations with JavaScript"
+    request:
+      method: POST
+      url: "/post"
+      body:
+        # Mathematical calculations
+        calculated_value: "{{$js.result = base_number * multiplier; return result}}"
+        # Current timestamp
+        timestamp: "{{$js.return Date.now()}}"
+        # Random number generation
+        random_id: "{{$js.return Math.floor(Math.random() * 1000) + 1}}"
+        # String manipulation
+        uppercase_name: "{{$js.return 'flow-test'.toUpperCase()}}"
+        # Date formatting
+        formatted_date: "{{$js.return new Date().toISOString().split('T')[0]}}"
+```
+
+#### Faker.js Integration
+```yaml
+# Example from tests/faker-demo.yaml
+variables:
+  # Generate realistic test data
+  fake_user:
+    name: "{{$faker.person.fullName}}"
+    email: "{{$faker.internet.email}}"
+    phone: "{{$faker.phone.number}}"
+    address: "{{$faker.location.streetAddress}}"
+    company: "{{$faker.company.name}}"
+    
+  # Dynamic arrays with multiple fake data
+  users: "{{$faker.helpers.multiple(person.fullName, {count: 5})}}"
+```
+
+#### Environment Variables
+```yaml
+# Example from tests/environment-variables-test.yaml
+steps:
+  - name: "Use system environment variables"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        X-User: "{{$env.USER}}"
+        X-Home: "{{$env.HOME}}"
+      body:
+        current_user: "{{$env.USER}}"
+        custom_setting: "{{$env.FLOW_TEST_CUSTOM}}"
+```
+
+#### Global Variable Registry
+```yaml
+# Export variables to be used across different test suites
+# In tests/auth-flows-test.yaml:
+exports:
+  - jwt_token
+  - user_id
+  - auth_status
+
+# In another test suite, access the exported variables:
+headers:
+  Authorization: "Bearer {{auth_flows_test.jwt_token}}"
+  X-User-ID: "{{auth_flows_test.user_id}}"
+```
+
 ## 🛠️ CLI Options
 
 ```bash
-flow-test [file] [options]
+flow-test [options]
 
-Options:
-  --verbose     Show detailed request/response information
-  --simple      Basic progress output (default)
-  --silent      Only show errors
-  --no-log      Skip automatic log file generation
-  --output      Specify custom output file
-  --continue    Continue execution on test failures
-  --timeout     Set request timeout in seconds
+Configuration:
+  -c, --config <file>       Configuration file path
+  -d, --directory <dir>     Test directory override
+  -e, --environment <env>   Environment name for variable resolution
+
+Verbosity:
+  --verbose                 Show detailed output including request/response data
+  --detailed                Show detailed progress without full request/response  
+  --simple                  Show basic progress (default)
+  --silent                  Silent execution, errors only
+
+Filtering:
+  --priority <levels>       Run only tests with specified priorities
+                           Example: --priority critical,high
+  --suite <names>          Run only specified test suites
+  --tag <tags>             Run only tests with specified tags
+  --node <ids>             Run only specified test nodes
+
+Execution:
+  --dry-run                Show execution plan without running tests
+  --no-log                 Disable automatic log file generation
+
+Other:
+  -h, --help               Show help message
+  -v, --version            Show version information
 ```
 
 ## 📊 Reports

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * CLI do Flow Test Engine v2.0
+ * CLI do Flow Test Engine v1.0
  *
  * Interface de linha de comando para o Flow Test Engine.
  * Permite executar testes com diversas opções de configuração,
@@ -136,7 +136,7 @@ async function main() {
 
       case "-v":
       case "--version":
-        console.log("Flow Test Engine v2.0.0");
+        console.log("Flow Test Engine v1.0.0");
         process.exit(0);
         break;
 
@@ -256,7 +256,7 @@ async function main() {
  */
 function printHelp() {
   console.log(`
-🚀 Flow Test Engine v2.0.0
+🚀 Flow Test Engine v1.0.0
 
 USAGE:
   flow-test [CONFIG_FILE] [OPTIONS]

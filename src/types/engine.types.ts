@@ -1,11 +1,11 @@
 /**
  * Definições de tipos específicas para o motor de testes
  *
- * Este módulo contém as definições de tipos da arquitetura v2.0 do Flow Test Engine.
+ * Este módulo contém as definições de tipos da arquitetura v1.0 do Flow Test Engine.
  * Estende e substitui common.types.ts com nova arquitetura aprimorada,
  * incluindo suporte a metadados, hooks, filtros avançados e estatísticas detalhadas.
  *
- * @since 2.0.0
+ * @since 1.0.0
  */
 
 /**
@@ -567,7 +567,7 @@ export interface ExecutionStats {
  * const engine = new FlowTestEngine('./config.yml', hooks);
  * ```
  *
- * @since 2.0.0
+ * @since 1.0.0
  */
 export interface EngineHooks {
   /**

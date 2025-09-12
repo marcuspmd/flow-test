@@ -177,7 +177,7 @@ cleanup() {
 
 # Main execution
 main() {
-    log_info "Flow Test Runner v2.0"
+    log_info "Flow Test Runner v1.0"
     log_info "===================="
 
     setup_directories

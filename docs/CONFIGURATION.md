@@ -195,7 +195,7 @@ globals:
     Content-Type: "application/json"
     Authorization: "Bearer ${API_TOKEN}"
     X-API-Key: "${API_KEY}"
-    X-Client-Version: "2.0.0"
+    X-Client-Version: "1.0.0"
 
 logging:
   level: detailed

@@ -97,7 +97,7 @@ export class ReportingService {
       report_metadata: {
         generated_at: new Date().toISOString(),
         format: "json",
-        version: "2.0.0",
+        version: "1.0.0",
       },
     };
 

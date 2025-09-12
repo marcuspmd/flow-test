@@ -45,7 +45,7 @@ import {
  * console.log(`Success rate: ${result.success_rate}%`);
  * ```
  *
- * @since 2.0.0
+ * @since 1.0.0
  */
 export class FlowTestEngine {
   /** Configuration manager responsible for loading and validating configurations */
@@ -191,7 +191,7 @@ export class FlowTestEngine {
       // Trigger execution start hook
       await this.hooks.onExecutionStart?.(this.stats);
 
-      console.log(`\n🚀 Flow Test Engine v2.0`);
+      console.log(`\n🚀 Flow Test Engine v1.0`);
       console.log(`📊 Project: ${config.project_name}`);
       console.log(`📁 Test Directory: ${config.test_directory}`);
       console.log(`⚙️  Execution Mode: ${config.execution!.mode}`);
@@ -491,7 +491,7 @@ export class FlowTestEngine {
    * Execução em modo dry-run (apenas descoberta e ordenação)
    */
   async dryRun(): Promise<DiscoveredTest[]> {
-    console.log(`\n🧪 Dry Run Mode - Flow Test Engine v2.0`);
+    console.log(`\n🧪 Dry Run Mode - Flow Test Engine v1.0`);
     console.log(`📊 Project: ${this.configManager.getConfig().project_name}`);
 
     const discoveredTests = await this.discoverTests();

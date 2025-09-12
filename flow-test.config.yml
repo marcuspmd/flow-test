@@ -1,4 +1,4 @@
-# Flow Test Engine v2.0 Configuration
+# Flow Test Engine v1.0 Configuration
 project_name: "Flow Test Demo Project"
 test_directory: "./"
 
