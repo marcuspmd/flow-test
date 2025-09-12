@@ -8,92 +8,81 @@ This is a TypeScript-based API testing engine that allows creating complex test 
 
 ## Key Commands
 
-- `npm test` - Run tests with default configuration using FlowTestEngine v2.0
-- `npm run test:all` - Run all test files in the tests directory
-- `npm run test:verbose` - Run all tests with verbose output
-- `npm run test:silent` - Run all tests silently (errors only)
+- `npm test` - Run tests with default configuration
+- `npm run test:verbose` - Run tests with detailed output
+- `npm run test:silent` - Run tests silently (errors only)
 - `npm run build` - Compile TypeScript to JavaScript
-- `flow-test` - CLI command for running tests with various options
-- `flow-test --help` - Show all available CLI options
+- `npm run dev` - Run CLI in development mode
+- `flow-test` - CLI command for running tests (after build)
 
-## Automatic Logging
+## Architecture
 
-By default, the system automatically generates detailed JSON logs for every test execution:
-- **Location**: `results/suite-name_YYYY-MM-DD_HH-MM-SS.json`
-- **Format**: Complete execution details with timing, requests, responses, and variables
-- **Disable**: Use `--no-log` flag to skip automatic log generation
-
-## Architecture v2.0
-
-The codebase follows a modern, modular architecture with enhanced capabilities:
+The codebase follows a modular architecture:
 
 ### Core Components
 
-- **`src/cli.ts`** - Modern CLI entry point with comprehensive argument parsing
-- **`src/core/engine.ts`** - Main FlowTestEngine v2.0 that orchestrates all test execution
+- **`src/cli.ts`** - CLI entry point with argument parsing
+- **`src/core/engine.ts`** - Main FlowTestEngine that orchestrates test execution
 - **`src/core/config.ts`** - Configuration management system
 - **`src/core/discovery.ts`** - Test discovery and filtering system
-- **`src/services/`** - Enhanced service layer:
-  - `global-variables.ts` - Global variable management with hierarchical scoping
-  - `variable.service.ts` - Variable interpolation with Faker.js and JavaScript support
-  - `http.service.ts` - HTTP request execution with enhanced error handling
-  - `assertion.service.ts` - Advanced assertion validation with custom checks
-  - `capture.service.ts` - JMESPath data extraction and variable capture
-  - `scenario.service.ts` - Conditional scenario processing for complex flows
-  - `execution.ts` - Step execution orchestration
-  - `reporting.ts` - Comprehensive reporting and metrics
-- **`src/types/`** - Modern TypeScript interfaces:
-  - `engine.types.ts` - Core v2.0 engine types and interfaces
-  - `config.types.ts` - Configuration and execution result types
 
-### Key Types v2.0
+### Services Layer
 
-- `TestSuite` - Enhanced test suite with priority, tags, dependencies, and metadata
-- `TestStep` - Advanced test step with retry logic, timeouts, and extended metadata
-- `RequestDetails` - HTTP request with timeout support and additional methods (HEAD, OPTIONS)
-- `Assertions` - Enhanced assertions with custom validation and type checking
-- `ConditionalScenario` - Advanced conditional logic with named scenarios
-- `StepExecutionResult` - Comprehensive execution results with performance metrics
-- `GlobalVariableContext` - Hierarchical variable context with environment support
+- `src/services/http.service.ts` - HTTP request execution with enhanced error handling
+- `src/services/assertion.service.ts` - Assertion validation with multiple operators
+- `src/services/capture.service.ts` - JMESPath data extraction and variable capture
+- `src/services/variable.service.ts` - Variable interpolation with Faker.js support
+- `src/services/global-variables.ts` - Global variable management with hierarchical scoping
+- `src/services/execution.ts` - Step execution orchestration
+- `src/services/reporting.ts` - Report generation and metrics
+- `src/services/scenario.service.ts` - Conditional scenario processing
+- `src/services/logger.service.ts` - Centralized logging
+- `src/services/faker.service.ts` - Faker.js integration for test data
+- `src/services/javascript.service.ts` - JavaScript expression evaluation
+- `src/services/dependency.service.ts` - Flow dependency management
+- `src/services/priority.ts` - Priority-based execution
+- `src/services/global-registry.service.ts` - Global state management
 
-### Test Configuration Structure
+### Types
+
+- `src/types/engine.types.ts` - Core engine types and interfaces
+- `src/types/config.types.ts` - Configuration and result types
+
+### Report Generator
+
+- `src/report-generator/` - HTML report generation with PostmanExporter and HistoryAnalyzer
+
+## Test Configuration Structure
 
 YAML files define test suites with:
 - `suite_name` - Descriptive name for the test suite
 - `base_url` - Optional base URL prepended to relative URLs
 - `variables` - Global variables for template interpolation using `{{variable_name}}` syntax
 - `steps` - Array of test steps executed sequentially
-  - Each step supports assertions, variable capture, and conditional scenarios
-  - Variables captured in one step are available in subsequent steps
-  - Scenarios enable happy/sad path testing with JMESPath conditions
 
-### Enhanced Features v2.0
+Each step supports:
+- HTTP requests with full method support (GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS)
+- Assertions with multiple operators (equals, contains, not_equals, greater_than, less_than, regex)
+- Variable capture using JMESPath expressions
+- Conditional scenarios for happy/sad path testing
 
-#### Advanced Test Discovery and Execution
-- **Priority-based Execution**: Execute tests by priority levels (critical, high, medium, low)
-- **Tag-based Filtering**: Filter tests by tags for targeted execution
-- **Dependency Management**: Automatic dependency resolution and execution ordering
-- **Parallel Execution**: Support for concurrent test execution with configurable limits
+## Enhanced Features
 
-#### Enhanced Variable System
-- **Environment Variables**: Automatic environment variable loading
-- **Faker.js Integration**: Generate realistic test data using Faker.js
-- **JavaScript Expressions**: Execute JavaScript code for dynamic data generation
-- **Hierarchical Scoping**: Advanced variable resolution (environment > global > suite > imported > runtime)
-
-#### Advanced Dependency Management
-- **Flow Dependencies**: Define and manage complex flow dependencies using `depends` field
-- **Dependency Caching**: Cache dependency results with configurable TTL
-- **Conditional Dependencies**: Execute dependencies based on JMESPath conditions
-- **Dependency Retry Logic**: Automatic retry with configurable delays
-
-#### Comprehensive Engine Hooks
-- **Lifecycle Events**: Hook into test discovery, execution start/end, step events
-- **Custom Monitoring**: Integrate with external monitoring and alerting systems
-- **Real-time Statistics**: Live execution metrics and progress tracking
-- **Error Handling**: Advanced error reporting and recovery mechanisms
+- **Variable System**: Environment variables, Faker.js integration, JavaScript expressions, hierarchical scoping
+- **Advanced Dependencies**: Flow dependencies with caching and retry logic
+- **Comprehensive Logging**: Automatic JSON logs with detailed execution information
+- **HTML Reports**: Visual report generation with Tailwind CSS styling
+- **Priority Execution**: Tests can be filtered and executed by priority levels
 
 ## Default Test File Location
 
 - Default test file: `./tests/start-flow.yaml`
 - Test files use httpbin.org for demonstration purposes
+
+## Important Instructions
+
+- Always use z.uuid() instead of z.string().uuid() (deprecated)
+- When starting servers, use background execution with `&` at the end of commands
+- Follow TypeScript strict mode conventions
+- All services use centralized logging through logger.service.ts
+- Variable interpolation supports nested object access and array indexing
