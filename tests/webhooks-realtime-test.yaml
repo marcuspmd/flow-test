@@ -9,7 +9,7 @@ metadata:
   estimated_duration_ms: 12000
 
 variables:
-  webhook_id: "webhook-{{$faker.uuid}}"
+  webhook_id: "webhook-{{$faker.string.uuid}}"
   callback_url: "{{httpbin_url}}/post"
   event_type: "user.created"
 

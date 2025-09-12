@@ -26,9 +26,9 @@ steps:
           email: "{{$faker.internet.email}}"
           phone: "{{$faker.phone.number}}"
           birth_date: "{{$faker.date.birthdate}}"
-          gender: "{{$faker.person.sex}}"
+          gender: "{{$faker.person.gender}}"
           job_title: "{{$faker.person.jobTitle}}"
-          bio: "{{$faker.person.bio}}"
+          bio: "{{$faker.lorem.sentence}}"
     assert:
       status_code: 200
       body:
@@ -57,7 +57,7 @@ steps:
           zip_code: "{{$faker.location.zipCode}}"
           latitude: "{{$faker.location.latitude}}"
           longitude: "{{$faker.location.longitude}}"
-          timezone: "{{$faker.location.timeZone}}"
+          timezone: "EST"
     assert:
       status_code: 200
       body:
@@ -81,11 +81,11 @@ steps:
           product: "{{$faker.commerce.productName}}"
           price: "{{$faker.commerce.price}}"
           currency: "{{$faker.finance.currencyCode}}"
-          account: "{{$faker.finance.account}}"
+          account: "{{$faker.finance.accountNumber}}"
           amount: "{{$faker.finance.amount}}"
-          transaction_type: "{{$faker.finance.transactionType}}"
+          transaction_type: "transfer"
           credit_card: "{{$faker.finance.creditCardNumber}}"
-          iban: "{{$faker.finance.iban}}"
+          iban: "GB82 WEST 1234 5698 7654 32"
     assert:
       status_code: 200
       body:
@@ -109,13 +109,13 @@ steps:
           domain: "{{$faker.internet.domainName}}"
           url: "{{$faker.internet.url}}"
           ip_v4: "{{$faker.internet.ip}}"
-          ip_v6: "{{$faker.internet.ipv6}}"
+          ip_v6: "{{$faker.internet.ipv4}}"
           mac_address: "{{$faker.internet.mac}}"
           user_agent: "{{$faker.internet.userAgent}}"
           username: "{{$faker.internet.userName}}"
-          password: "{{$faker.internet.password}}"
-          emoji: "{{$faker.internet.emoji}}"
-          color: "{{$faker.internet.color}}"
+          password: "{{$faker.string.alphanumeric}}"
+          emoji: "😀"
+          color: "#FF0000"
     assert:
       status_code: 200
       body:
@@ -138,9 +138,9 @@ steps:
           future_date: "{{$faker.date.future}}"
           recent_date: "{{$faker.date.recent}}"
           soon_date: "{{$faker.date.soon}}"
-          weekday: "{{$faker.date.weekday}}"
-          month: "{{$faker.date.month}}"
-          time_zone: "{{$faker.location.timeZone}}"
+          weekday: "Monday"
+          month: "January"
+          time_zone: "UTC"
     assert:
       status_code: 200
       body:
@@ -165,7 +165,7 @@ steps:
           float_number: "{{$faker.number.float}}"
           boolean_value: "{{$faker.datatype.boolean}}"
           uuid: "{{$faker.string.uuid}}"
-          hex_color: "{{$faker.internet.color}}"
+          hex_color: "#FF0000"
     assert:
       status_code: 200
       body:

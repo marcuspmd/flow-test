@@ -260,20 +260,20 @@ steps:
         validation_type: "cross_user_access"
         test_results:
           guest:
-            access: "{{guest_access_granted || false}}"
+            access: "{{js: Boolean(variables.guest_access_granted)}}"
             features: "{{guest_features}}"
             limits: "{{guest_limits}}"
           registered:
-            access: "{{registered_access || false}}"
+            access: "{{js: Boolean(variables.registered_access)}}"
             features: "{{registered_features}}"
-            feature_count: "{{feature_count || 0}}"
+            feature_count: "{{js: variables.feature_count || 0}}"
           premium:
-            access: "{{premium_access || false}}"
-            export_enabled: "{{export_enabled || false}}"
-            advanced_filters: "{{advanced_filters || false}}"
+            access: "{{js: Boolean(variables.premium_access)}}"
+            export_enabled: "{{js: Boolean(variables.export_enabled)}}"
+            advanced_filters: "{{js: Boolean(variables.advanced_filters)}}"
           admin:
-            access: "{{admin_access || false}}"
-            unlimited: "{{unlimited_access || false}}"
+            access: "{{js: Boolean(variables.admin_access)}}"
+            unlimited: "{{js: Boolean(variables.unlimited_access)}}"
             capabilities: "{{admin_capabilities}}"
 
     scenarios:
@@ -293,10 +293,10 @@ steps:
         then:
           capture:
             user_access_matrix:
-              guest_valid: "{{guest_access_granted || false}}"
-              registered_valid: "{{registered_access || false}}"
-              premium_valid: "{{premium_access || false}}"
-              admin_valid: "{{admin_access || false}}"
+              guest_valid: "{{js: Boolean(variables.guest_access_granted)}}"
+              registered_valid: "{{js: Boolean(variables.registered_access)}}"
+              premium_valid: "{{js: Boolean(variables.premium_access)}}"
+              admin_valid: "{{js: Boolean(variables.admin_access)}}"
             hierarchy_respected: "true"
 
   # Cenário 6: Teste de Fluxo Completo com Múltiplas Condições
@@ -310,17 +310,17 @@ steps:
         flow_test: "multi_scenario"
         scenarios_tested:
           - type: "guest"
-            success: "{{guest_access_granted || false}}"
-            features_count: "{{guest_features | length || 0}}"
+            success: "{{js: Boolean(variables.guest_access_granted)}}"
+            features_count: "{{js: (variables.guest_features && variables.guest_features.length) || 0}}"
           - type: "registered"
-            success: "{{registered_access || false}}"
-            upgrade_available: "{{upgrade_available || false}}"
+            success: "{{js: Boolean(variables.registered_access)}}"
+            upgrade_available: "{{js: Boolean(variables.upgrade_available)}}"
           - type: "premium"
-            success: "{{premium_access || false}}"
-            export_enabled: "{{export_enabled || false}}"
+            success: "{{js: Boolean(variables.premium_access)}}"
+            export_enabled: "{{js: Boolean(variables.export_enabled)}}"
           - type: "admin"
-            success: "{{admin_access || false}}"
-            unlimited: "{{unlimited_access || false}}"
+            success: "{{js: Boolean(variables.admin_access)}}"
+            unlimited: "{{js: Boolean(variables.unlimited_access)}}"
 
     scenarios:
       # Cenário Final A: Todos os testes passaram
@@ -329,17 +329,17 @@ steps:
           capture:
             all_scenarios_tested: "true"
             scenario_results:
-              guest_scenario: "{{guest_access_granted || 'not_tested'}}"
-              registered_scenario: "{{registered_access || 'not_tested'}}"
-              premium_scenario: "{{premium_access || 'not_tested'}}"
-              admin_scenario: "{{admin_access || 'not_tested'}}"
-              cross_validation: "{{validation_passed || 'not_tested'}}"
+              guest_scenario: "{{js: variables.guest_access_granted || 'not_tested'}}"
+              registered_scenario: "{{js: variables.registered_access || 'not_tested'}}"
+              premium_scenario: "{{js: variables.premium_access || 'not_tested'}}"
+              admin_scenario: "{{js: variables.admin_access || 'not_tested'}}"
+              cross_validation: "{{js: variables.validation_passed || 'not_tested'}}"
 
             conditional_flow_summary:
               total_scenarios: 6
               conditions_tested: 12
               user_types_validated: 4
-              matrix_validation: "{{access_matrix_valid || false}}"
+              matrix_validation: "{{js: Boolean(variables.access_matrix_valid)}}"
               test_complete: true
 
       # Cenário Final B: Alguns testes falharam

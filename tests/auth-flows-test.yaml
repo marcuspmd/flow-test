@@ -366,39 +366,39 @@ steps:
         flow_summary: "complete_auth_testing"
         results:
           jwt_flow:
-            login: "{{jwt_login_success || false}}"
-            validation: "{{jwt_valid || false}}"
-            refresh: "{{jwt_refresh_success || false}}"
-            profile_access: "{{profile_fetch_success || false}}"
+            login: "{{js: Boolean(variables.jwt_login_success)}}"
+            validation: "{{js: Boolean(variables.jwt_valid)}}"
+            refresh: "{{js: Boolean(variables.jwt_refresh_success)}}"
+            profile_access: "{{js: Boolean(variables.profile_fetch_success)}}"
           oauth2_flow:
-            authorization: "{{oauth2_auth_started || false}}"
-            token_exchange: "{{oauth2_token_exchange_success || false}}"
-            resource_access: "{{oauth2_resource_access || false}}"
-            revocation: "{{oauth2_token_revoked || false}}"
+            authorization: "{{js: Boolean(variables.oauth2_auth_started)}}"
+            token_exchange: "{{js: Boolean(variables.oauth2_token_exchange_success)}}"
+            resource_access: "{{js: Boolean(variables.oauth2_resource_access)}}"
+            revocation: "{{js: Boolean(variables.oauth2_token_revoked)}}"
           security_tests:
-            expired_token_handled: "{{jwt_expired_handled || false}}"
-            revoked_token_rejected: "{{revoked_token_rejected || false}}"
-            permission_validation: "{{admin_permission_granted || admin_permission_denied || false}}"
+            expired_token_handled: "{{js: Boolean(variables.jwt_expired_handled)}}"
+            revoked_token_rejected: "{{js: Boolean(variables.revoked_token_rejected)}}"
+            permission_validation: "{{js: Boolean(variables.admin_permission_granted || variables.admin_permission_denied)}}"
           final_cleanup:
-            logout_complete: "{{complete_logout || false}}"
+            logout_complete: "{{js: Boolean(variables.complete_logout)}}"
 
     capture:
       auth_flow_results:
         jwt_authentication:
           status: "{{jwt_login_success && jwt_valid && jwt_refresh_success ? 'success' : 'partial'}}"
           tokens_issued: 2
-          profile_access: "{{profile_fetch_success || false}}"
+          profile_access: "{{js: Boolean(variables.profile_fetch_success)}}"
         oauth2_authentication:
           status: "{{oauth2_token_exchange_success && oauth2_resource_access ? 'success' : 'partial'}}"
-          authorization_code_flow: "{{oauth2_auth_started || false}}"
-          token_management: "{{oauth2_token_revoked || false}}"
+          authorization_code_flow: "{{js: Boolean(variables.oauth2_auth_started)}}"
+          token_management: "{{js: Boolean(variables.oauth2_token_revoked)}}"
         security_validation:
-          expired_tokens: "{{jwt_expired_handled || false}}"
-          revoked_tokens: "{{revoked_token_rejected || false}}"
-          permissions: "{{admin_permission_granted || admin_permission_denied || false}}"
+          expired_tokens: "{{js: Boolean(variables.jwt_expired_handled)}}"
+          revoked_tokens: "{{js: Boolean(variables.revoked_token_rejected)}}"
+          permissions: "{{js: Boolean(variables.admin_permission_granted || variables.admin_permission_denied)}}"
         session_management:
-          logout_success: "{{complete_logout || false}}"
-          cleanup_complete: "{{all_tokens_revoked || false}}"
+          logout_success: "{{js: Boolean(variables.complete_logout)}}"
+          cleanup_complete: "{{js: Boolean(variables.all_tokens_revoked)}}"
 
       test_completion_summary:
         total_auth_flows: 2

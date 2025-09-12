@@ -266,7 +266,7 @@ steps:
         service: "order-service"
         action: "update_order_status"
         order_id: "{{test_transaction.order_id}}"
-        new_status: "{{payment_approved ? 'confirmed' : 'payment_failed'}}"
+        new_status: "{{js: variables.payment_approved ? 'confirmed' : 'payment_failed'}}"
         payment_id: "{{test_transaction.payment_id}}"
         payment_status: "{{payment_status}}"
 
@@ -277,7 +277,7 @@ steps:
 
     capture:
       order_updated: "true"
-      final_order_status: "{{payment_approved ? 'confirmed' : 'payment_failed'}}"
+      final_order_status: "{{js: variables.payment_approved ? 'confirmed' : 'payment_failed'}}"
       order_update_time: "{{js: new Date().toISOString()}}"
 
   # Passo 7: Atualizar Inventário (se pagamento aprovado)
@@ -360,7 +360,7 @@ steps:
         notification_data:
           order_id: "{{test_transaction.order_id}}"
           status: "{{final_order_status}}"
-          message: "{{payment_approved ? 'Your order has been confirmed!' : 'Payment failed for your order.'}}"
+          message: "{{js: variables.payment_approved ? 'Your order has been confirmed!' : 'Payment failed for your order.'}}"
           payment_id: "{{test_transaction.payment_id}}"
 
     assert:
@@ -370,7 +370,7 @@ steps:
 
     capture:
       notification_sent: "true"
-      notification_type: "{{payment_approved ? 'order_confirmed' : 'payment_failed'}}"
+      notification_type: "{{js: variables.payment_approved ? 'order_confirmed' : 'payment_failed'}}"
       notification_time: "{{js: new Date().toISOString()}}"
 
   # Passo 9: Verificar Consistência dos Dados Entre Serviços
@@ -400,8 +400,8 @@ steps:
       consistency_check:
         user_service_status: "{{user_created ? 'user_exists' : 'user_missing'}}"
         order_service_status: "{{order_created && order_updated ? 'order_consistent' : 'order_inconsistent'}}"
-        payment_service_status: "{{payment_approved || payment_declined ? 'payment_processed' : 'payment_pending'}}"
-        inventory_service_status: "{{stock_reduced || reservation_released ? 'inventory_updated' : 'inventory_unchanged'}}"
+        payment_service_status: "{{js: (variables.payment_approved || variables.payment_declined) ? 'payment_processed' : 'payment_pending'}}"
+        inventory_service_status: "{{js: (variables.stock_reduced || variables.reservation_released) ? 'inventory_updated' : 'inventory_unchanged'}}"
         notification_service_status: "{{notification_sent ? 'notification_delivered' : 'notification_failed'}}"
 
       data_consistency_score: "{{js: 0}}"
@@ -510,20 +510,20 @@ steps:
           successful_interactions: "{{data_consistency_score}}"
 
         transaction_flow:
-          user_creation: "{{user_created || false}}"
-          inventory_check: "{{inventory_available || false}}"
-          order_creation: "{{order_created || false}}"
-          payment_processing: "{{payment_approved || payment_declined || false}}"
-          inventory_update: "{{stock_reduced || reservation_released || false}}"
-          notification_delivery: "{{notification_sent || false}}"
+          user_creation: "{{js: Boolean(variables.user_created)}}"
+          inventory_check: "{{js: Boolean(variables.inventory_available)}}"
+          order_creation: "{{js: Boolean(variables.order_created)}}"
+          payment_processing: "{{js: Boolean(variables.payment_approved || variables.payment_declined)}}"
+          inventory_update: "{{js: Boolean(variables.stock_reduced || variables.reservation_released)}}"
+          notification_delivery: "{{js: Boolean(variables.notification_sent)}}"
 
         consistency_validation:
           data_consistency_score: "{{data_consistency_score}}"
           all_services_consistent: "{{all_services_consistent}}"
 
         failure_handling:
-          rollback_tested: "{{rollback_initiated || rollback_failed || false}}"
-          failure_recovery: "{{rollback_initiated ? 'successful' : rollback_failed ? 'failed' : 'not_tested'}}"
+          rollback_tested: "{{js: Boolean(variables.rollback_initiated || variables.rollback_failed)}}"
+          failure_recovery: "{{js: variables.rollback_initiated ? 'successful' : variables.rollback_failed ? 'failed' : 'not_tested'}}"
 
     capture:
       service_health_status:
@@ -535,7 +535,7 @@ steps:
         transaction_success: "{{payment_approved && order_updated && notification_sent}}"
         services_coordination: "successful"
         data_propagation: "{{all_services_consistent ? 'complete' : 'partial'}}"
-        error_handling: "{{rollback_initiated || rollback_failed ? 'tested' : 'not_applicable'}}"
+        error_handling: "{{js: (variables.rollback_initiated || variables.rollback_failed) ? 'tested' : 'not_applicable'}}"
 
       transaction_trace:
         trace_id: "{{tracing_headers.trace_id}}"

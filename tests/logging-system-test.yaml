@@ -11,7 +11,7 @@ metadata:
 
 variables:
   log_test_suite: "logging-system-verification"
-  test_execution_id: "log-test-{{$faker.uuid}}"
+  test_execution_id: "log-test-{{$faker.string.uuid}}"
   log_data_marker: "AUTO_LOG_TEST_MARKER"
 
 steps:
@@ -65,7 +65,7 @@ steps:
       url: "/bearer"
       headers:
         Authorization: "Bearer test-token-for-logging-{{$faker.string.alphanumeric}}"
-        X-Session-ID: "session-{{$faker.uuid}}"
+        X-Session-ID: "session-{{$faker.string.uuid}}"
         X-Log-Test: "{{log_data_marker}}"
     assert:
       status_code: 200

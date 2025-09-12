@@ -316,7 +316,7 @@ steps:
         load_test_metrics:
           light_load: "{{light_load_response_time}}"
           medium_load: "{{medium_load_response_time}}"
-          heavy_load: "{{heavy_load_response_time || 'system_overloaded'}}"
+          heavy_load: "{{js: variables.heavy_load_response_time || 'system_overloaded'}}"
 
     capture:
       degradation_analysis:
@@ -350,12 +350,12 @@ steps:
           load_testing:
             light_load: "{{light_load_response_time}}ms"
             medium_load: "{{medium_load_response_time}}ms"
-            heavy_load: "{{heavy_load_response_time || 'overloaded'}}ms"
+            heavy_load: "{{js: variables.heavy_load_response_time ? variables.heavy_load_response_time + 'ms' : 'overloaded'}}"
           throughput:
             baseline_rps: "{{requests_per_second}}"
-            system_stability: "{{system_stable_under_load || false}}"
+            system_stability: "{{js: Boolean(variables.system_stable_under_load)}}"
           timeouts:
-            timeout_handling: "{{timeout_handled_correctly || timeout_occurred || false}}"
+            timeout_handling: "{{js: Boolean(variables.timeout_handled_correctly || variables.timeout_occurred)}}"
 
     capture:
       performance_metrics:
@@ -367,8 +367,8 @@ steps:
         load_test_results:
           light_load_success: "{{light_load_success}}"
           medium_load_degradation: "{{medium_load_degradation}}"
-          heavy_load_stability: "{{system_stable_under_load || false}}"
-          load_shedding: "{{load_shedding_active || false}}"
+          heavy_load_stability: "{{js: Boolean(variables.system_stable_under_load)}}"
+          load_shedding: "{{js: Boolean(variables.load_shedding_active)}}"
 
         performance_thresholds:
           baseline_met: "{{baseline_success}}"
@@ -378,7 +378,7 @@ steps:
         system_characteristics:
           payload_sensitivity: "{{js: variables.large_payload_time > variables.baseline_response_time * 3 ? 'high' : variables.large_payload_time > variables.baseline_response_time * 2 ? 'medium' : 'low'}}"
           load_tolerance: "{{system_overloaded ? 'low' : medium_load_degradation ? 'medium' : 'high'}}"
-          timeout_behavior: "{{timeout_handled_correctly || timeout_occurred ? 'correct' : 'untested'}}"
+          timeout_behavior: "{{js: (variables.timeout_handled_correctly || variables.timeout_occurred) ? 'correct' : 'untested'}}"
 
       response_times:
         - endpoint: "baseline_get"
