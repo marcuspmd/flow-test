@@ -2,6 +2,11 @@
 
 This document provides comprehensive examples of YAML test suite configurations for the Flow Test Engine, covering various testing scenarios and patterns.
 
+Conventions used in examples:
+- JMESPath expressions reference the response body with the `body.` prefix (e.g., `body.user.id`).
+- Exported auth token variable is named `auth_token` and referenced via the suite alias when needed (e.g., `{{auth_flows_test.auth_token}}`).
+ - JavaScript in templates/captures: use `{{js: ...}}` para expressões curtas ou `{{$js.return ...}}` para blocos com `return`.
+
 ## Table of Contents
 - [Basic Test Suite](#basic-test-suite)
 - [Authentication Flows](#authentication-flows)
@@ -12,6 +17,7 @@ This document provides comprehensive examples of YAML test suite configurations 
 - [Performance Testing](#performance-testing)
 - [Integration Testing](#integration-testing)
 - [Advanced Scenarios](#advanced-scenarios)
+- [Swagger/OpenAPI Import](#swaggeropenapi-import)
 
 ## Basic Test Suite
 
@@ -205,7 +211,7 @@ steps:
       method: POST
       url: "/users"
       headers:
-        Authorization: "Bearer {{auth_flows_test.jwt_token}}"
+        Authorization: "Bearer {{auth_flows_test.auth_token}}"
         Content-Type: "application/json"
       body: "{{test_user}}"
 
@@ -224,7 +230,7 @@ steps:
       method: GET
       url: "/users/{{created_user_id}}"
       headers:
-        Authorization: "Bearer {{auth_flows_test.jwt_token}}"
+        Authorization: "Bearer {{auth_flows_test.auth_token}}"
 
     assert:
       status_code: 200
@@ -238,7 +244,7 @@ steps:
       method: PUT
       url: "/users/{{created_user_id}}"
       headers:
-        Authorization: "Bearer {{auth_flows_test.jwt_token}}"
+        Authorization: "Bearer {{auth_flows_test.auth_token}}"
         Content-Type: "application/json"
       body:
         name: "John Smith"
@@ -256,7 +262,7 @@ steps:
       method: DELETE
       url: "/users/{{created_user_id}}"
       headers:
-        Authorization: "Bearer {{auth_flows_test.jwt_token}}"
+        Authorization: "Bearer {{auth_flows_test.auth_token}}"
 
     assert:
       status_code: 204
@@ -266,7 +272,7 @@ steps:
       method: GET
       url: "/users/{{created_user_id}}"
       headers:
-        Authorization: "Bearer {{auth_flows_test.jwt_token}}"
+        Authorization: "Bearer {{auth_flows_test.auth_token}}"
 
     assert:
       status_code: 404
@@ -292,7 +298,7 @@ steps:
       method: POST
       url: "/files/upload"
       headers:
-        Authorization: "Bearer {{auth_flows_test.jwt_token}}"
+        Authorization: "Bearer {{auth_flows_test.auth_token}}"
         Content-Type: "multipart/form-data"
       body:
         file: "@test-document.pdf"
@@ -315,7 +321,7 @@ steps:
       method: GET
       url: "/files/{{file_id}}"
       headers:
-        Authorization: "Bearer {{auth_flows_test.jwt_token}}"
+        Authorization: "Bearer {{auth_flows_test.auth_token}}"
 
     assert:
       status_code: 200
@@ -329,7 +335,7 @@ steps:
       method: GET
       url: "{{download_url}}"
       headers:
-        Authorization: "Bearer {{auth_flows_test.jwt_token}}"
+        Authorization: "Bearer {{auth_flows_test.auth_token}}"
 
     assert:
       status_code: 200
@@ -343,7 +349,7 @@ steps:
       method: DELETE
       url: "/files/{{file_id}}"
       headers:
-        Authorization: "Bearer {{auth_flows_test.jwt_token}}"
+        Authorization: "Bearer {{auth_flows_test.auth_token}}"
 
     assert:
       status_code: 204
@@ -407,8 +413,8 @@ steps:
           equals: "{{item.email}}"
 
     capture:
-      created_user_id: "json.user_id"
-      user_creation_timestamp: "json.created_at"
+      created_user_id: "body.json.user_id"
+      user_creation_timestamp: "body.json.created_at"
 
   # Summary step after iteration
   - name: "Generate user creation summary"
@@ -427,8 +433,8 @@ steps:
       status_code: 200
 
     capture:
-      users_tested: "json.test_summary.users_created"
-      creation_summary: "json.test_summary"
+      users_tested: "body.json.test_summary.users_created"
+      creation_summary: "body.json.test_summary"
 ```
 
 ### Range Iteration
@@ -474,7 +480,7 @@ steps:
 
     capture:
       iteration_response_time: "response_time_ms"
-      iteration_timestamp: "json.args.timestamp"
+      iteration_timestamp: "body.args.timestamp"
 
   # Performance analysis after iterations
   - name: "Analyze load test performance"
@@ -496,8 +502,8 @@ steps:
       status_code: 200
 
     capture:
-      load_test_results: "json.analysis"
-      performance_metrics: "json.analysis.performance_data"
+      load_test_results: "body.json.analysis"
+      performance_metrics: "body.json.analysis.performance_data"
 ```
 
 ### Nested Array Iteration
@@ -550,13 +556,13 @@ steps:
       - condition: "status_code == `201`"
         then:
           capture:
-            successful_registration: "body.json"
+            successful_registration: "body"
             user_created: "true"
 
       - condition: "status_code >= `400`"
         then:
           capture:
-            registration_error: "body.json"
+            registration_error: "body"
             error_handled: "true"
 
   # Iterate through error test cases
@@ -579,7 +585,7 @@ steps:
       status_code: "{{item.expected_status}}"
 
     capture:
-      validation_result: "body.json"
+      validation_result: "body"
 ```
 
 ### Combined Array and Range Iteration
@@ -622,7 +628,7 @@ steps:
       status_code: 200
 
     capture:
-      endpoint_response: "body.json"
+      endpoint_response: "body"
       endpoint_tested: "{{item.path}}"
 
   # Then: Range iteration for stress testing
@@ -650,7 +656,7 @@ steps:
 
     capture:
       stress_iteration_time: "response_time_ms"
-      stress_data: "body.json"
+      stress_data: "body"
 ```
 
 ### Iteration with Variable Capture and Reuse
@@ -1727,6 +1733,176 @@ steps:
 
     capture:
       validation_report: "body.report"
+```
+
+## Swagger/OpenAPI Import
+
+### Importing from OpenAPI Specification
+
+The Flow Test Engine can automatically generate test suites from OpenAPI/Swagger specifications:
+
+```bash
+# Import OpenAPI spec and generate tests
+flow-test --import-swagger api.json
+
+# Import with custom output directory
+flow-test --import-swagger api.yaml --swagger-output ./tests/api
+
+# Import Swagger 2.0 specification
+flow-test --import-swagger swagger.json --swagger-output ./tests/legacy-api
+```
+
+### Generated Test Structure
+
+When importing from an OpenAPI specification, the engine generates comprehensive test suites:
+
+```yaml
+# Generated automatically from OpenAPI spec
+suite_name: "petstore-api"
+description: "Testes importados de Swagger Petstore v1.0.0"
+base_url: "https://petstore.swagger.io/v2"
+
+variables:
+  # Auto-generated variables from API parameters
+  petId: "{{faker.uuid}}"
+  status: "available"
+  userId: "{{faker.uuid}}"
+  api_key: "{{API_KEY}}"
+
+steps:
+  - name: "get_pet_by_id"
+    description: "Find pet by ID"
+    http:
+      method: GET
+      url: "/pet/{{petId}}"
+      headers:
+        api_key: "{{api_key}}"
+
+    assertions:
+      - field: "status"
+        operator: "equals"
+        expected: 200
+
+    capture:
+      pet_name: "body.name"
+      pet_status: "body.status"
+
+  - name: "post_pet"
+    description: "Add a new pet to the store"
+    http:
+      method: POST
+      url: "/pet"
+      headers:
+        Content-Type: "application/json"
+        api_key: "{{api_key}}"
+      body:
+        name: "{{faker.pet_name}}"
+        category:
+          id: "{{faker.number}}"
+          name: "{{faker.word}}"
+        photoUrls:
+          - "{{faker.image_url}}"
+        tags:
+          - id: "{{faker.number}}"
+            name: "{{faker.word}}"
+        status: "{{status}}"
+
+    assertions:
+      - field: "status"
+        operator: "equals"
+        expected: 200
+
+    capture:
+      resource_id: "body.id"
+
+  - name: "put_pet"
+    description: "Update an existing pet"
+    http:
+      method: PUT
+      url: "/pet"
+      headers:
+        Content-Type: "application/json"
+        api_key: "{{api_key}}"
+      body:
+        id: "{{resource_id}}"
+        name: "{{faker.pet_name}}"
+        status: "sold"
+
+    assertions:
+      - field: "status"
+        operator: "equals"
+        expected: 200
+
+  - name: "delete_pet"
+    description: "Deletes a pet"
+    http:
+      method: DELETE
+      url: "/pet/{{resource_id}}"
+      headers:
+        api_key: "{{api_key}}"
+
+    assertions:
+      - field: "status"
+        operator: "equals"
+        expected: 200
+```
+
+### Import Features
+
+The Swagger import functionality provides:
+
+- **Automatic Test Generation**: Creates complete test suites from API specifications
+- **Tag-Based Organization**: Groups endpoints by OpenAPI tags into separate test files
+- **Parameter Mapping**: Extracts path, query, and header parameters as variables
+- **Faker Integration**: Generates realistic test data using Faker.js
+- **Schema-Based Assertions**: Creates basic assertions from response schemas
+- **Authentication Support**: Handles API keys, Bearer tokens, and OAuth2 flows
+- **Documentation Generation**: Creates README files with usage instructions
+
+### Customizing Generated Tests
+
+After import, you can customize the generated tests:
+
+```yaml
+# Customize variables
+variables:
+  # Override default Faker values
+  petId: "12345"  # Use specific ID instead of random
+
+  # Add environment-specific values
+  api_key: "{{$ENV.PETSTORE_API_KEY}}"
+
+  # Add complex objects
+  test_pet:
+    name: "Fluffy"
+    category:
+      id: 1
+      name: "Dogs"
+
+steps:
+  - name: "get_pet_by_id"
+    # Add custom headers
+    http:
+      headers:
+        api_key: "{{api_key}}"
+        X-Test-Run: "{{faker.uuid}}"
+
+    # Enhanced assertions
+    assertions:
+      - field: "status"
+        operator: "equals"
+        expected: 200
+      - field: "body.name"
+        operator: "not_equals"
+        expected: ""
+      - field: "body.category.name"
+        operator: "contains"
+        expected: "{{test_pet.category.name}}"
+
+    # Custom captures
+    capture:
+      pet_data: "body"
+      creation_time: "body.created_at"
 ```
 
 ## Iteration Patterns

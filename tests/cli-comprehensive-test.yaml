@@ -143,7 +143,7 @@ steps:
   - name: "Test dry-run compatibility"
     request:
       method: "GET"
-      url: "/delay/1"
+      url: "/get"  # Removido delay de 1s
     assert:
       status_code: 200
     metadata:

@@ -415,8 +415,8 @@ export class ExecutionService {
       await this.hooks.onSuiteStart?.(suite);
 
       // LIMPEZA DE VARIÁVEIS: Limpa variáveis não-globais antes de iniciar novo node
-      // Isso garante que variáveis de runtime do node anterior não vazem para este node
-      this.globalVariables.clearRuntimeVariables();
+      // Isso garante que variáveis de runtime, suite e imported do node anterior não vazem para este node
+      this.globalVariables.clearAllNonGlobalVariables();
 
       this.logger.info(
         `Starting fresh variable context for node '${discoveredTest.node_id}'`
@@ -919,10 +919,16 @@ export class ExecutionService {
       this.recordPerformanceData(interpolatedRequest, httpResult);
 
       // 3. Process scenarios if they exist
-      if (step.scenarios && Array.isArray(step.scenarios) && httpResult.response_details) {
+      if (
+        step.scenarios &&
+        Array.isArray(step.scenarios) &&
+        httpResult.response_details
+      ) {
         // Interpolate variables in scenarios before processing
-        const interpolatedScenarios = this.globalVariables.interpolate(step.scenarios);
-        
+        const interpolatedScenarios = this.globalVariables.interpolate(
+          step.scenarios
+        );
+
         this.scenarioService.processScenarios(
           interpolatedScenarios,
           httpResult,
@@ -1247,14 +1253,21 @@ export class ExecutionService {
   ): Promise<StepExecutionResult> {
     try {
       // Validate iteration configuration
-      const validationErrors = this.iterationService.validateIteration(step.iterate);
+      const validationErrors = this.iterationService.validateIteration(
+        step.iterate
+      );
       if (validationErrors.length > 0) {
-        throw new Error(`Invalid iteration configuration: ${validationErrors.join(', ')}`);
+        throw new Error(
+          `Invalid iteration configuration: ${validationErrors.join(", ")}`
+        );
       }
 
       // Expand iteration into contexts
       const variableContext = this.globalVariables.getAllVariables();
-      const iterationContexts = this.iterationService.expandIteration(step.iterate, variableContext);
+      const iterationContexts = this.iterationService.expandIteration(
+        step.iterate,
+        variableContext
+      );
 
       if (iterationContexts.length === 0) {
         this.logger.warn(`No iterations to execute for step "${step.name}"`);
@@ -1288,17 +1301,27 @@ export class ExecutionService {
           );
 
           // Create iteration-specific step name
-          const iterationStepName = `${step.name} [${i + 1}/${iterationContexts.length}]`;
+          const iterationStepName = `${step.name} [${i + 1}/${
+            iterationContexts.length
+          }]`;
           const iterationStep = {
             ...step,
             name: iterationStepName,
-            iterate: undefined // Remove iterate to prevent infinite recursion
+            iterate: undefined, // Remove iterate to prevent infinite recursion
           };
 
-          this.logger.info(`[${iterationStepName}] Starting iteration ${i + 1} of ${iterationContexts.length}`);
+          this.logger.info(
+            `[${iterationStepName}] Starting iteration ${i + 1} of ${
+              iterationContexts.length
+            }`
+          );
 
           // Execute the step for this iteration
-          const iterationResult = await this.executeStep(iterationStep, suite, stepIndex);
+          const iterationResult = await this.executeStep(
+            iterationStep,
+            suite,
+            stepIndex
+          );
           iterationResults.push(iterationResult);
 
           if (iterationResult.status !== "success") {
@@ -1306,11 +1329,12 @@ export class ExecutionService {
 
             // Check if should stop on first failure
             if (!step.continue_on_failure) {
-              this.logger.warn(`[${iterationStepName}] Stopping iterations due to failure`);
+              this.logger.warn(
+                `[${iterationStepName}] Stopping iterations due to failure`
+              );
               break;
             }
           }
-
         } finally {
           // Restore variable state (removing iteration variable)
           variableSnapshot();
@@ -1340,15 +1364,18 @@ export class ExecutionService {
         status: allIterationsSuccessful ? "success" : "failure",
         duration_ms: totalDuration,
         request_details: iterationResults[0]?.request_details || undefined,
-        response_details: iterationResults[iterationResults.length - 1]?.response_details || undefined,
+        response_details:
+          iterationResults[iterationResults.length - 1]?.response_details ||
+          undefined,
         assertions_results: combinedAssertions,
         captured_variables: combinedCapturedVariables,
         available_variables: this.globalVariables.getAllVariables(),
         iteration_results: iterationResults, // Include individual iteration results
       };
-
     } catch (error: any) {
-      this.logger.error(`Error executing iterated step "${step.name}": ${error.message}`);
+      this.logger.error(
+        `Error executing iterated step "${step.name}": ${error.message}`
+      );
 
       return {
         step_name: step.name,

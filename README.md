@@ -12,7 +12,64 @@ A powerful TypeScript-based API testing engine that allows creating complex test
 - **Comprehensive Reporting**: JSON, Console, and HTML report formats
 - **Modular Architecture**: Well-structured TypeScript codebase
 
-## 🚀 Quick Start
+## � Directory Structure & Organization
+
+The Flow Test Engine supports **hierarchical test organization** with automatic discovery in subdirectories. This allows you to organize tests by domain, functionality, or any logical grouping.
+
+### Supported Directory Structures
+
+```
+tests/
+├── start-flow.yaml                    # Root level tests
+├── auth-flows-test.yaml
+├── api-demo/                         # Subdirectory with 4 tests
+│   ├── basic-get.yaml
+│   ├── basic-post.yaml
+│   ├── headers-test.yaml
+│   └── status-codes.yaml
+├── ecommerce-api/                    # Complex flows (7 tests)
+│   ├── user-onboarding.yaml
+│   ├── shopping-journey.yaml
+│   ├── checkout-process.yaml
+│   ├── post-purchase.yaml
+│   ├── payment-flow.yaml
+│   ├── inventory-check.yaml
+│   └── order-tracking.yaml
+└── realistic-flows/                  # User journey tests (4 tests)
+    ├── complete-user-journey.yaml
+    ├── error-handling.yaml
+    ├── data-validation.yaml
+    └── performance-check.yaml
+```
+
+### Directory-Based Execution
+
+```bash
+# Discover all tests (62 total across all directories)
+./dist/cli.js --dry-run
+
+# Run specific subdirectory
+./dist/cli.js --directory tests/api-demo --verbose        # 4 tests, 100% success
+./dist/cli.js --directory tests/realistic-flows --verbose # 4 tests, 100% success
+./dist/cli.js --directory tests/ecommerce-api --verbose   # 7 tests available
+
+# Run with tag filtering
+./dist/cli.js --tag checkout-process --verbose           # 1 specific test
+./dist/cli.js --tag user-onboarding,shopping-journey --verbose
+
+# Run complete user journey (multiple tags)
+./dist/cli.js --tag user-onboarding,shopping-journey,checkout-process,post-purchase --verbose
+```
+
+### Benefits of Directory Organization
+
+- **🔍 Automatic Discovery**: Finds all `**/*.yaml` files recursively
+- **📊 Organized Execution**: Run tests by domain or functionality
+- **🎯 Selective Testing**: Execute specific directories or tag combinations
+- **📈 Scalability**: Supports unlimited subdirectory depth
+- **🔄 Flexibility**: Mix root-level and subdirectory tests seamlessly
+
+## �🚀 Quick Start
 
 ### Installation
 
@@ -25,10 +82,10 @@ npm install
 ### Basic Usage
 
 ```bash
-# Run default test suite (uses httpbin.org for demo)
+# 🚀 COMPLETE WORKFLOW: Import Swagger → Run Tests → Cleanup (Pipeline Ready)
 npm test
 
-# Run specific test file  
+# Run specific test file
 npm run dev tests/start-flow.yaml
 
 # Run with different verbosity levels
@@ -40,6 +97,204 @@ npm run test:critical   # Only critical priority tests
 npm run test:high       # Critical and high priority tests
 ```
 
+### Advanced Directory-Based Execution
+
+### Benefits of Directory Organization
+
+- **🔍 Automatic Discovery**: Finds all `**/*.yaml` files recursively
+- **📊 Organized Execution**: Run tests by domain or functionality
+- **🎯 Selective Testing**: Execute specific directories or tag combinations
+- **📈 Scalability**: Supports unlimited subdirectory depth
+- **🔄 Flexibility**: Mix root-level and subdirectory tests seamlessly
+
+## 🔄 Swagger/OpenAPI Import
+
+Automatically generate comprehensive test suites from OpenAPI/Swagger specifications. The engine converts API documentation into executable YAML test files with proper request/response validation.
+
+### Import Commands
+
+```bash
+# Import OpenAPI 3.0 specification
+flow-test --import-swagger api.json
+
+# Import with custom output directory
+flow-test --import-swagger api.yaml --swagger-output ./tests/imported-api
+
+# Import Swagger 2.0 specification
+flow-test --import-swagger swagger.json --swagger-output ./tests/legacy-api
+
+# Import and run immediately
+# Import and run immediately
+flow-test --import-swagger api.json && flow-test --directory ./tests/imported-api --verbose
+```
+
+### Automated Swagger Testing
+
+For a complete import → test → cleanup workflow, use the automated script:
+
+```bash
+# 🚀 One-command solution: Import, test, and cleanup
+npm test
+
+# This script does:
+# 1. Imports tests/__swagger_example.json
+# 2. Runs ALL tests (existing + imported) with automatic discovery
+# 3. Always cleans up imported test directory (even if tests fail)
+# 4. Generates comprehensive reports
+```
+
+### CI/CD Pipeline Integration
+
+Perfect for automated testing pipelines:
+
+```yaml
+# .github/workflows/test.yml
+name: API Tests
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      - run: npm install
+      - run: npm test  # Complete workflow: import → run ALL tests → cleanup
+      - name: Upload test results
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-results
+          path: results/
+```
+
+### Docker Integration
+
+```dockerfile
+# Dockerfile (included in repository)
+FROM node:18-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+RUN npm run build
+CMD ["npm", "test"]
+```
+
+### Jenkins Pipeline
+
+```groovy
+// Jenkinsfile
+pipeline {
+    agent any
+    stages {
+        stage('Test') {
+            steps {
+                sh 'npm install'
+                sh 'npm test'  // Complete validation: import + ALL tests + cleanup
+            }
+        }
+    }
+    post {
+        always {
+            archiveArtifacts artifacts: 'results/*.json', fingerprint: true
+        }
+    }
+}
+```
+
+### Docker Integration
+
+```dockerfile
+# Dockerfile (included in repository)
+FROM node:18-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+RUN npm run build
+CMD ["npm", "test"]
+```
+
+```bash
+# Build and run
+docker build -t flow-test .
+docker run flow-test
+
+# Or use docker-compose (includes mock server)
+docker-compose up
+```
+
+### GitLab CI/CD
+
+```yaml
+# .gitlab-ci.yml
+stages:
+  - test
+
+test:
+  image: node:18
+  stage: test
+  script:
+    - npm install
+    - npm test  # Complete validation workflow
+  artifacts:
+    paths:
+      - results/
+    expire_in: 1 week
+```
+
+## 📋 Example Test Files
+```
+
+### Generated Test Structure
+
+When you import a Swagger spec, the engine creates:
+
+```
+tests/imported-api/
+├── user-operations.yaml     # All user-related endpoints
+├── product-catalog.yaml     # Product management endpoints
+├── order-processing.yaml    # Order and checkout flows
+├── admin-functions.yaml     # Administrative operations
+└── integration-flows.yaml   # Cross-API integration tests
+```
+
+### Import Features
+
+- **📋 Complete Coverage**: Generates tests for all endpoints and methods
+- **🏷️ Smart Tagging**: Automatic tagging by operation type and resource
+- **🔗 Request Chaining**: Intelligent linking of related operations
+- **✅ Response Validation**: Comprehensive assertions for all response schemas
+- **📊 Example Data**: Uses specification examples or generates realistic test data
+
+### Example: Import & Test Workflow
+
+```bash
+# 1. Import your API specification
+flow-test --import-swagger https://petstore.swagger.io/v2/swagger.json --swagger-output ./tests/petstore
+
+# 2. Review generated tests
+ls -la tests/petstore/
+
+# 3. Run the imported tests
+flow-test --directory tests/petstore --verbose
+
+# 4. Clean up after testing (optional)
+rm -rf tests/petstore
+```
+
+### Ready-to-Use CI/CD Files
+
+The repository includes ready-to-use CI/CD configuration files:
+
+- **`.github/workflows/test.yml`** - GitHub Actions workflow
+- **`Dockerfile`** - Container build configuration
+- **`docker-compose.yml`** - Development environment with mock server
+
+Simply copy these files to your project and customize as needed!
+
 ## 📋 Example Test Files
 
 The repository includes comprehensive test examples that you can run immediately:
@@ -48,7 +303,7 @@ The repository includes comprehensive test examples that you can run immediately
 # Basic getting started example
 tests/start-flow.yaml                    # Simple HTTP flow demo
 
-# Authentication patterns  
+# Authentication patterns
 tests/auth-flows-test.yaml              # JWT, OAuth2, refresh tokens
 tests/javascript-expressions-test.yaml  # Advanced JS expressions
 
@@ -101,8 +356,8 @@ steps:
           equals: "{{user_name}}"
 
     capture:
-      captured_username: "json.username"
-      server_data: "json"
+      captured_username: "body.json.username"
+      server_data: "body.json"
 ```
 
 ### Advanced Features
@@ -119,15 +374,15 @@ steps:
         username: "{{test_credentials.username}}"
         password: "{{test_credentials.password}}"
     capture:
-      jwt_token: "json.token"  # Simulate capturing JWT from response
-      user_id: "json.user_id"
+      auth_token: "body.json.token"  # Simulate capturing JWT from response
+      user_id: "body.json.user_id"
 
   - name: "Get User Data with Token"
     request:
       method: GET
       url: "/get?user_id={{user_id}}"
       headers:
-        Authorization: "Bearer {{jwt_token}}"
+        Authorization: "Bearer {{auth_token}}"
         X-User-ID: "{{user_id}}"
 ```
 
@@ -138,13 +393,13 @@ steps:
     request:
       method: GET
       url: "/data"
-    
+
     scenarios:
       - condition: "status_code == `200`"
         then:
           capture:
             data: "body.results"
-      
+
       - condition: "status_code == `404`"
         then:
           capture:
@@ -249,11 +504,11 @@ steps:
         fullName: "{{faker.person.fullName}}"
         email: "{{faker.internet.email}}"
         phone: "{{faker.phone.number}}"
-        
+
         # Faker location data
         city: "{{faker.location.city}}"
         streetAddress: "{{faker.location.streetAddress}}"
-        
+
         # Faker text data
         description: "{{faker.lorem.sentence}}"
 ```
@@ -279,13 +534,13 @@ steps:
 # Export variables to be used across different test suites
 # In tests/auth-flows-test.yaml:
 exports:
-  - jwt_token
+  - auth_token
   - user_id
   - auth_status
 
 # In another test suite, access the exported variables:
 headers:
-  Authorization: "Bearer {{auth_flows_test.jwt_token}}"
+  Authorization: "Bearer {{auth_flows_test.auth_token}}"
   X-User-ID: "{{auth_flows_test.user_id}}"
 ```
 
@@ -296,12 +551,39 @@ flow-test [options]
 
 Configuration:
   -c, --config <file>       Configuration file path
-  -d, --directory <dir>     Test directory override
+  -d, --directory <dir>     Test directory override (supports subdirectories)
   -e, --environment <env>   Environment name for variable resolution
+
+Import/Export:
+  --import-swagger <file>   Import OpenAPI/Swagger spec and generate test files
+  --swagger-output <dir>    Output directory for imported Swagger tests (default: ./tests/imported)
 
 Verbosity:
   --verbose                 Show detailed output including request/response data
-  --detailed                Show detailed progress without full request/response  
+  --detailed                Show detailed progress without full request/response
+  --simple                  Show basic progress (default)
+  --silent                  Silent execution, errors only
+
+Filtering:
+  --priority <levels>       Run only tests with specified priorities
+                           Example: --priority critical,high
+  --suite <names>          Run only specified test suites
+  --tag <tags>             Run only tests with specified tags
+                           Example: --tag user-onboarding,checkout-process
+  --node <ids>             Run only specified test nodes
+
+Execution:
+  --dry-run                Show execution plan without running tests
+  --no-log                 Disable automatic log file generation
+
+Other:
+  -h, --help               Show help message
+  -v, --version            Show version information
+```
+
+Verbosity:
+  --verbose                 Show detailed output including request/response data
+  --detailed                Show detailed progress without full request/response
   --simple                  Show basic progress (default)
   --silent                  Silent execution, errors only
 
@@ -347,21 +629,39 @@ flow-test-html results/my-test.json --output report.html
 ## 🏗️ Project Structure
 
 ```
-src/
-├── cli.ts                 # CLI entry point
-├── core/
-│   ├── engine.ts         # Main test execution engine
-│   ├── config.ts         # Configuration management
-│   └── discovery.ts      # Test file discovery
-├── services/
-│   ├── http.service.ts   # HTTP request handling
-│   ├── assertion.service.ts # Test assertions
-│   ├── capture.service.ts   # Data extraction
-│   ├── variable.service.ts  # Variable interpolation
-│   └── reporting.ts      # Report generation
-└── types/
-    ├── engine.types.ts   # Core type definitions
-    └── config.types.ts   # Configuration types
+flow-test/
+├── src/                          # TypeScript source code
+│   ├── cli.ts                   # CLI entry point with directory support
+│   ├── core/
+│   │   ├── engine.ts           # Main test execution engine
+│   │   ├── config.ts           # Configuration management
+│   │   ├── discovery.ts        # Recursive test file discovery (**/*.yaml)
+│   │   └── swagger/
+│   │       └── parser/         # OpenAPI/Swagger parsing
+│   ├── services/
+│   │   ├── http.service.ts     # HTTP request handling
+│   │   ├── assertion.service.ts # Test assertions
+│   │   ├── capture.service.ts   # Data extraction
+│   │   ├── variable.service.ts  # Variable interpolation
+│   │   ├── swagger-import.service.ts # Swagger/OpenAPI import
+│   │   └── reporting.ts        # Report generation
+│   └── types/
+│       ├── engine.types.ts     # Core type definitions
+│       ├── config.types.ts     # Configuration types
+│       └── swagger.types.ts    # Swagger/OpenAPI types
+├── tests/                       # Test files (62 total)
+│   ├── start-flow.yaml         # Basic demo
+│   ├── auth-flows-test.yaml    # Authentication patterns
+│   ├── api-demo/               # 4 basic API tests
+│   ├── ecommerce-api/          # 7 complex e-commerce flows
+│   └── realistic-flows/        # 4 user journey tests
+├── results/                     # Execution results and logs
+│   ├── latest.json            # Most recent execution
+│   └── *.json                 # Historical results
+└── docs/                       # Documentation
+    ├── API_DOCUMENTATION.md
+    ├── YAML_EXAMPLES.md
+    └── ...
 ```
 
 ## 🔧 Development
@@ -370,7 +670,16 @@ src/
 
 ```bash
 npm run build     # Compile TypeScript
-npm test          # Run tests
+npm test          # 🚀 Complete validation: Import Swagger → Run ALL tests → Cleanup
+```
+
+### Development Workflow
+
+```bash
+# Development cycle
+npm run build     # Build the project
+npm run dev       # Run development server with hot reload
+npm test          # Validate everything works perfectly (all tests)
 ```
 
 ### Contributing

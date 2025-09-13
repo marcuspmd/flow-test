@@ -9,27 +9,10 @@ The Flow Test Engine v1.0 is a comprehensive API testing engine with support for
 ### Main Classes
 
 #### `FlowTestEngine`
-Main engine responsible for orchestrating the #### `GlobalVariablesService`
-Variable interpolation and resolution service with hierarchical scope support.
+Main engine responsible for test discovery, planning, and execution.
 
 ```typescript
-// Basic usage
-const variables = new GlobalVariablesService();
-variables.setGlobalVariables({ api_url: 'https://api.example.com' });
-variables.setSuiteVariables({ user_id: 123 });
-variables.setRuntimeVariables({ token: 'abc123' });
-
-const interpolated = variables.interpolateString('{{api_url}}/users/{{user_id}}?token={{token}}');
-// Result: "https://api.example.com/users/123?token=abc123"
-
-// With imported variables from other suites
-variables.setImportedVariables('auth-suite', {
-  auth_token: 'jwt-token',
-  user_id: 456
-});
-
-const withImported = variables.interpolateString('{{auth-suite.auth_token}} for user {{auth-suite.user_id}}');
-// Result: "jwt-token for user 456"
+// See GlobalVariablesService section below for variable management and interpolation
 ```
 
 **Main responsibilities:**
@@ -41,17 +24,14 @@ const withImported = variables.interpolateString('{{auth-suite.auth_token}} for 
 
 **Example usage:**
 ```typescript
-import { GlobalVariablesService } from './src/services/global-variables.service';
+import { GlobalVariablesService } from './src/services/global-variables';
 
 async function demonstrateVariables() {
-  const variables = new GlobalVariablesService();
+  const config = new ConfigManager({ config_file: './flow-test.config.yml' });
+  const registry = new GlobalRegistryService();
+  const variables = new GlobalVariablesService(config, registry);
 
-  // Set different scopes
-  variables.setGlobalVariables({
-    base_url: 'https://api.example.com',
-    api_version: 'v1'
-  });
-
+  // Set different scopes (globals come from configuration)
   variables.setSuiteVariables({
     endpoint: 'users',
     default_limit: 10
@@ -60,12 +40,6 @@ async function demonstrateVariables() {
   variables.setRuntimeVariables({
     user_id: 123,
     auth_token: 'dynamic-token-123'
-  });
-
-  // Import variables from other suites
-  variables.setImportedVariables('auth', {
-    session_token: 'session-456',
-    user_role: 'admin'
   });
 
   // Complex interpolation examples
@@ -87,7 +61,7 @@ async function demonstrateVariables() {
   // User {{user_id}} has role {{auth.session_token}} → User 123 has role session-456
   // {{endpoint}}?limit={{default_limit}}&token={{auth_token}} → users?limit=10&token=dynamic-token-123
 }
-```execution process.
+```
 
 ```typescript
 // Basic usage
@@ -166,13 +140,8 @@ const result = await httpService.executeRequest('Login', {
   body: { username: 'user', password: 'pass' }
 });
 
-// With custom configuration
-const httpService = new HttpService('https://api.example.com', 30000, {
-  retries: 3,
-  retryDelay: 1000,
-  followRedirects: true,
-  validateSSL: false
-});
+// With custom timeout
+const httpService = new HttpService('https://api.example.com', 60000);
 ```
 
 **Main responsibilities:**
@@ -231,12 +200,7 @@ const results = assertionService.validateAssertions({
   response_time_ms: { less_than: 1000 }
 }, executionResult);
 
-// With custom validators
-const assertionService = new AssertionService({
-  customValidators: {
-    isValidEmail: (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
-  }
-});
+// Note: custom validators via constructor are not supported in this version
 ```
 
 **Main responsibilities:**
@@ -308,18 +272,10 @@ Service for capturing variables from HTTP responses using JMESPath.
 // Basic usage
 const captureService = new CaptureService();
 const captured = captureService.captureVariables({
-  user_id: 'body.data.user.id',
+  user_id: 'body.user.id',
   token: 'body.access_token',
-  user_email: 'body.data.user.email'
+  user_email: 'body.user.email'
 }, executionResult);
-
-// With custom transformers
-const captureService = new CaptureService({
-  transformers: {
-    toUpperCase: (value) => typeof value === 'string' ? value.toUpperCase() : value,
-    parseJson: (value) => typeof value === 'string' ? JSON.parse(value) : value
-  }
-});
 ```
 
 **Main responsibilities:**
@@ -370,19 +326,13 @@ async function runCompleteTestFlow() {
 }
 ```
 
-### 2. Custom HTTP Service with Advanced Configuration
+### 2. HTTP Service Usage
 ```typescript
 import { HttpService } from './src/services/http.service';
 
 async function testWithCustomHttpService() {
   // Create HTTP service with custom configuration
-  const httpService = new HttpService('https://api.example.com', 30000, {
-    retries: 3,
-    retryDelay: 1000,
-    followRedirects: true,
-    validateSSL: true,
-    timeout: 10000
-  });
+  const httpService = new HttpService('https://api.example.com', 30000);
 
   try {
     // Test authentication
@@ -400,7 +350,7 @@ async function testWithCustomHttpService() {
     });
 
     console.log('Auth successful:', authResult.status === 'success');
-    console.log('Response time:', authResult.response_time_ms, 'ms');
+    console.log('Response time:', authResult.duration_ms, 'ms');
 
     // Use token in subsequent requests
     const token = authResult.response_details?.body?.token;
@@ -424,7 +374,7 @@ async function testWithCustomHttpService() {
 }
 ```
 
-### 3. Advanced Assertions with Custom Validators
+### 3. Advanced Assertions Examples
 ```typescript
 import { AssertionService } from './src/services/assertion.service';
 
@@ -511,19 +461,16 @@ async function advancedAssertionsExample() {
 
 ### 4. Variable Management Across Multiple Suites
 ```typescript
-import { GlobalVariablesService } from './src/services/global-variables.service';
+import { GlobalVariablesService } from './src/services/global-variables';
 import { GlobalRegistryService } from './src/services/global-registry.service';
+import { ConfigManager } from './src/core/config';
 
 async function crossSuiteVariableManagement() {
-  const variables = new GlobalVariablesService();
+  const config = new ConfigManager({ config_file: './flow-test.config.yml' });
   const registry = new GlobalRegistryService();
+  const variables = new GlobalVariablesService(config, registry);
 
-  // Set up global and suite variables
-  variables.setGlobalVariables({
-    base_url: 'https://api.example.com',
-    api_version: 'v2'
-  });
-
+  // Suite/runtime variables (globals come from configuration)
   variables.setSuiteVariables({
     endpoint: 'users',
     default_limit: 20
@@ -575,14 +522,7 @@ async function crossSuiteVariableManagement() {
 import { CaptureService } from './src/services/capture.service';
 
 async function complexCaptureExample() {
-  const captureService = new CaptureService({
-    transformers: {
-      toUpperCase: (value) => typeof value === 'string' ? value.toUpperCase() : value,
-      extractDomain: (email) => typeof email === 'string' ? email.split('@')[1] : null,
-      calculateTotal: (items) => Array.isArray(items) ?
-        items.reduce((sum, item) => sum + (item.price * item.quantity), 0) : 0
-    }
-  });
+  const captureService = new CaptureService();
 
   const mockResponse = {
     status_code: 200,
@@ -638,12 +578,11 @@ async function complexCaptureExample() {
     all_item_names: 'body.order.items[].name',
     expensive_items: 'body.order.items[?price > `100`]',
 
-    // Conditional extraction with fallbacks
-    payment_status: 'body.order.payment.status || `unknown`',
-    shipping_cost: 'body.order.shipping.cost || `0`',
+    // Conditional extraction
+    payment_status: 'body.order.payment.status',
+    shipping_cost: 'body.order.shipping.cost',
 
-    // Complex calculations
-    order_total: 'body.order.items | calculateTotal(@)',
+    // Derived values can be computed later with {{js:}} during interpolation if needed
     item_count: 'length(body.order.items)',
 
     // String transformations

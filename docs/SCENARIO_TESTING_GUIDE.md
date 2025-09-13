@@ -84,19 +84,19 @@ scenarios:
 ```yaml
 scenarios:
   # Verificar campo específico
-  - condition: "json.status == 'success'"
+  - condition: "body.status == 'success'"
     then: { }
 
   # Verificar existência de campo
-  - condition: "json.data != null"
+  - condition: "body.data != null"
     then: { }
 
   # Verificar estrutura aninhada
-  - condition: "json.user.role == 'admin'"
+  - condition: "body.user.role == 'admin'"
     then: { }
 
   # Verificar arrays
-  - condition: "length(json.items) > 0"
+  - condition: "length(body.items) > 0"
     then: { }
 ```
 
@@ -105,11 +105,11 @@ scenarios:
 ```yaml
 scenarios:
   # Verificar parâmetros enviados
-  - condition: "args.action == 'create'"
+  - condition: "body.args.action == 'create'"
     then: { }
 
   # Verificar múltiplos parâmetros
-  - condition: "args.type == 'user' && args.action == 'create'"
+  - condition: "body.args.type == 'user' && body.args.action == 'create'"
     then: { }
 ```
 
@@ -167,30 +167,30 @@ steps:
 
     scenarios:
       # Cenário A: Login bem-sucedido
-      - condition: "status_code == `200` && json.token != null"
+      - condition: "status_code == `200` && body.token != null"
         then:
           assert:
             status_code: 200
-            json.token:
+            body.token:
               not_empty: true
           capture:
-            auth_token: "json.token"
+            auth_token: "body.token"
             login_success: "true"
-            user_role: "json.user.role"
+            user_role: "body.user.role"
 
       # Cenário B: Credenciais inválidas
       - condition: "status_code == `401`"
         then:
           assert:
             status_code: 401
-            json.error:
+            body.error:
               contains: "invalid"
           capture:
             login_failed: "true"
-            error_message: "json.error"
+            error_message: "body.error"
 
       # Cenário C: Conta bloqueada
-      - condition: "status_code == `403` && json.error == 'account_locked'"
+      - condition: "status_code == `403` && body.error == 'account_locked'"
         then:
           capture:
             account_locked: "true"
@@ -221,11 +221,11 @@ steps:
         then:
           assert:
             status_code: 200
-            json.users:
+            body.users:
               type: "array"
           capture:
             admin_access: "true"
-            users_count: "length(json.users)"
+            users_count: "length(body.users)"
 
       # Cenário B: Usuário comum tem acesso negado
       - condition: "status_code == `403` && user_role == 'user'"
@@ -259,34 +259,34 @@ steps:
 
     scenarios:
       # Cenário A: Processamento bem-sucedido
-      - condition: "status_code == `200` && json.status == 'processed'"
+      - condition: "status_code == `200` && body.status == 'processed'"
         then:
           capture:
             processing_success: "true"
-            new_status: "json.status"
-            processed_at: "json.processed_at"
+            new_status: "body.status"
+            processed_at: "body.processed_at"
 
       # Cenário B: Pedido já processado
-      - condition: "status_code == `409` && json.error == 'already_processed'"
+      - condition: "status_code == `409` && body.error == 'already_processed'"
         then:
           capture:
             already_processed: "true"
-            current_status: "json.current_status"
+            current_status: "body.current_status"
 
       # Cenário C: Estoque insuficiente
-      - condition: "status_code == `400` && json.error == 'insufficient_stock'"
+      - condition: "status_code == `400` && body.error == 'insufficient_stock'"
         then:
           capture:
             stock_issue: "true"
-            available_quantity: "json.available_quantity"
-            requested_quantity: "json.requested_quantity"
+            available_quantity: "body.available_quantity"
+            requested_quantity: "body.requested_quantity"
 
       # Cenário D: Pagamento pendente
-      - condition: "status_code == `402` && json.error == 'payment_required'"
+      - condition: "status_code == `402` && body.error == 'payment_required'"
         then:
           capture:
             payment_pending: "true"
-            payment_url: "json.payment_url"
+            payment_url: "body.payment_url"
 ```
 
 ## Cenários Avançados
@@ -298,13 +298,13 @@ scenarios:
   # Condição complexa com múltiplas verificações
   - condition: |
       status_code == `200` &&
-      json.data != null &&
-      length(json.data.items) > 0 &&
-      json.data.user.role == 'premium'
+      body.data != null &&
+      length(body.data.items) > 0 &&
+      body.data.user.role == 'premium'
     then:
       capture:
-        premium_user_data: "json.data"
-        item_count: "length(json.data.items)"
+        premium_user_data: "body.data"
+        item_count: "length(body.data.items)"
 
   # Condição usando variáveis do contexto
   - condition: |
@@ -325,14 +325,14 @@ scenarios:
     then:
       capture:
         # Processamento complexo usando JavaScript
-        email_domain: "{{js: json.user.email ? json.user.email.split('@')[1] : 'unknown'}}"
+        email_domain: "{{js: body.user?.email ? body.user.email.split('@')[1] : 'unknown'}}"
         is_business_email: "{{js: ['company.com', 'business.org'].includes(variables.email_domain)}}"
 
         # Cálculos baseados em dados da resposta
-        discounted_price: "{{js: json.price ? json.price * 0.9 : 0}}"
+        discounted_price: "{{js: body.price ? body.price * 0.9 : 0}}"
 
         # Formatação de dados
-        formatted_date: "{{js: new Date(json.created_at).toLocaleDateString()}}"
+        formatted_date: "{{js: new Date(body.created_at).toLocaleDateString()}}"
 ```
 
 ### 3. Cenários Encadeados com Dependências
@@ -345,18 +345,18 @@ steps:
       url: "/account/{{user_id}}"
 
     scenarios:
-      - condition: "json.status == 'active'"
+      - condition: "body.status == 'active'"
         then:
           capture:
             account_active: "true"
             can_process: "true"
 
-      - condition: "json.status == 'suspended'"
+      - condition: "body.status == 'suspended'"
         then:
           capture:
             account_suspended: "true"
             can_process: "false"
-            suspension_reason: "json.suspension_reason"
+            suspension_reason: "body.suspension_reason"
 
   # Step seguinte usa dados capturados
   - name: "Processar Transação"
@@ -385,7 +385,7 @@ steps:
 ```yaml
 scenarios:
   # ✅ Bom: Específico primeiro
-  - condition: "status_code == `401` && json.error == 'token_expired'"
+  - condition: "status_code == `401` && body.error == 'token_expired'"
     then: { }
 
   # ✅ Bom: Geral depois
@@ -404,14 +404,14 @@ scenarios:
       capture:
         # ✅ Capture dados essenciais
         operation_success: "true"
-        result_data: "json.data"
+        result_data: "body.data"
 
         # ✅ Capture informações para debug
         response_time: "{{js: Date.now()}}"
         request_id: "headers['x-request-id']"
 
         # ✅ Capture dados para próximos steps
-        next_step_token: "json.continuation_token"
+        next_step_token: "body.continuation_token"
 ```
 
 ### 3. Tratamento de Erros
@@ -419,11 +419,11 @@ scenarios:
 ```yaml
 scenarios:
   # Trate erros específicos primeiro
-  - condition: "status_code == `422` && json.validation_errors != null"
+  - condition: "status_code == `422` && body.validation_errors != null"
     then:
       capture:
         validation_failed: "true"
-        field_errors: "json.validation_errors"
+        field_errors: "body.validation_errors"
 
   # Depois trate erros gerais
   - condition: "status_code >= `400`"
@@ -445,20 +445,20 @@ scenarios:
 ```yaml
 scenarios:
   # ✅ Bom: Condição clara e concisa
-  - condition: "json.status == 'success' && json.data != null"
+  - condition: "body.status == 'success' && body.data != null"
     then: { }
 
   # ❌ Evite: Condições muito complexas na mesma linha
-  - condition: "status_code == `200` && json.user.profile.settings.notifications.email == true && json.user.subscription.plan == 'premium' && json.user.account.status == 'active'"
+  - condition: "status_code == `200` && body.user.profile.settings.notifications.email == true && body.user.subscription.plan == 'premium' && body.user.account.status == 'active'"
     then: { }
 
   # ✅ Melhor: Use variáveis intermediárias
   - condition: "status_code == `200`"
     then:
       capture:
-        user_premium: "{{js: json.user?.subscription?.plan === 'premium'}}"
-        notifications_enabled: "{{js: json.user?.profile?.settings?.notifications?.email}}"
-        account_active: "{{js: json.user?.account?.status === 'active'}}"
+        user_premium: "{{js: body.user?.subscription?.plan === 'premium'}}"
+        notifications_enabled: "{{js: body.user?.profile?.settings?.notifications?.email}}"
+        account_active: "{{js: body.user?.account?.status === 'active'}}"
 
   # Então use em step seguinte
   - condition: "user_premium == 'true' && notifications_enabled == 'true' && account_active == 'true'"
@@ -473,32 +473,32 @@ scenarios:
 steps:
   - name: "Verificar Carrinho"
     scenarios:
-      - condition: "length(json.items) == 0"
+      - condition: "length(body.items) == 0"
         then:
           capture:
             empty_cart: "true"
             can_checkout: "false"
 
-      - condition: "length(json.items) > 0 && json.total > 0"
+      - condition: "length(body.items) > 0 && body.total > 0"
         then:
           capture:
             cart_valid: "true"
             can_checkout: "true"
-            item_count: "length(json.items)"
+            item_count: "length(body.items)"
 
   - name: "Processar Pagamento"
     scenarios:
-      - condition: "can_checkout == 'true' && json.payment_status == 'approved'"
+      - condition: "can_checkout == 'true' && body.payment_status == 'approved'"
         then:
           capture:
             payment_success: "true"
-            order_id: "json.order_id"
+            order_id: "body.order_id"
 
-      - condition: "can_checkout == 'true' && json.payment_status == 'declined'"
+      - condition: "can_checkout == 'true' && body.payment_status == 'declined'"
         then:
           capture:
             payment_failed: "true"
-            decline_reason: "json.decline_reason"
+            decline_reason: "body.decline_reason"
 
       - condition: "can_checkout == 'false'"
         then:
@@ -512,23 +512,23 @@ steps:
 steps:
   - name: "Health Check de Serviços"
     scenarios:
-      - condition: "json.services[?status=='healthy'] | length(@) == length(json.services)"
+      - condition: "body.services[?status=='healthy'] | length(@) == length(body.services)"
         then:
           capture:
             all_services_healthy: "true"
             system_status: "operational"
 
-      - condition: "json.services[?status=='unhealthy'] | length(@) > 0"
+      - condition: "body.services[?status=='unhealthy'] | length(@) > 0"
         then:
           capture:
-            unhealthy_services: "json.services[?status=='unhealthy'].name"
+            unhealthy_services: "body.services[?status=='unhealthy'].name"
             system_status: "degraded"
             alert_required: "true"
 
-      - condition: "json.services[?status=='critical'] | length(@) > 0"
+      - condition: "body.services[?status=='critical'] | length(@) > 0"
         then:
           capture:
-            critical_services: "json.services[?status=='critical'].name"
+            critical_services: "body.services[?status=='critical'].name"
             system_status: "critical"
             emergency_alert: "true"
 ```
@@ -539,24 +539,24 @@ steps:
 steps:
   - name: "Verificar Permissões de Recurso"
     scenarios:
-      - condition: "json.permissions[?action=='read' && resource=='{{target_resource}}'] | length(@) > 0"
+      - condition: "body.permissions[?action=='read' && resource=='{{target_resource}}'] | length(@) > 0"
         then:
           capture:
             can_read: "true"
 
-      - condition: "json.permissions[?action=='write' && resource=='{{target_resource}}'] | length(@) > 0"
+      - condition: "body.permissions[?action=='write' && resource=='{{target_resource}}'] | length(@) > 0"
         then:
           capture:
             can_write: "true"
 
-      - condition: "json.permissions[?action=='admin' && resource=='{{target_resource}}'] | length(@) > 0"
+      - condition: "body.permissions[?action=='admin' && resource=='{{target_resource}}'] | length(@) > 0"
         then:
           capture:
             can_admin: "true"
             full_access: "true"
 
       # Cenário de acesso negado
-      - condition: "length(json.permissions) == 0"
+      - condition: "length(body.permissions) == 0"
         then:
           capture:
             access_denied: "true"

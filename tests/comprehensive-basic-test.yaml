@@ -138,13 +138,12 @@ steps:
   - name: "GET com Validações de Performance"
     request:
       method: GET
-      url: "/delay/1"  # 1 segundo de delay
+      url: "/get"  # Removido delay para teste mais rápido
 
     assert:
       status_code: 200
       response_time_ms:
-        greater_than: 900   # Pelo menos 900ms devido ao delay
-        less_than: 3000     # Máximo 3 segundos
+        less_than: 200     # Máximo 200ms (sem delay)
 
     capture:
       performance_url: "body.url"

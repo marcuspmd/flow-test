@@ -123,8 +123,8 @@ export class HTMLReportGenerator {
         --color-gray-700: #374151;
         --color-gray-800: #1f2937;
         --color-gray-900: #111827;
-        --border-radius: 6px;
-        --border-radius-lg: 12px;
+        --border-radius: 0px;
+        --border-radius-lg: 0px;
         --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
         --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
         --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
@@ -279,7 +279,7 @@ export class HTMLReportGenerator {
         gap: 0.5rem;
         background: var(--color-gray-50);
         padding: 0.25rem;
-        border-radius: var(--border-radius);
+
         border: 1px solid var(--color-gray-200);
       }
 
@@ -314,7 +314,7 @@ export class HTMLReportGenerator {
       .search-input {
         padding: 0.5rem 0.75rem 0.5rem 2.25rem;
         border: 1px solid var(--color-gray-300);
-        border-radius: var(--border-radius);
+
         font-size: 0.875rem;
         width: 200px;
         transition: all 0.15s ease;
@@ -388,7 +388,7 @@ export class HTMLReportGenerator {
       .metric-icon {
         width: 40px;
         height: 40px;
-        border-radius: var(--border-radius);
+
         display: flex;
         align-items: center;
         justify-content: center;
@@ -491,7 +491,7 @@ export class HTMLReportGenerator {
       .insight-card {
         background: var(--color-gray-50);
         padding: 1.5rem;
-        border-radius: var(--border-radius);
+
         border: 1px solid var(--color-gray-200);
       }
 
@@ -620,7 +620,7 @@ export class HTMLReportGenerator {
         gap: 0.5rem;
         padding: 0.75rem;
         background: var(--color-gray-50);
-        border-radius: var(--border-radius);
+
         border: 1px solid var(--color-gray-200);
         min-width: 80px;
       }
@@ -738,7 +738,7 @@ export class HTMLReportGenerator {
         display: inline-flex;
         align-items: center;
         padding: 0.25rem 0.75rem;
-        border-radius: var(--border-radius);
+
         font-size: 0.75rem;
         font-weight: 600;
         text-transform: uppercase;
@@ -753,7 +753,7 @@ export class HTMLReportGenerator {
       /* Step Cards */
       .step-card {
         border: 1px solid var(--color-gray-200);
-        border-radius: var(--border-radius);
+
         margin: 0.75rem 0;
         background: white;
       }
@@ -878,7 +878,7 @@ export class HTMLReportGenerator {
       .request-section, .response-section {
         background: var(--color-gray-50);
         border: 1px solid var(--color-gray-200);
-        border-radius: var(--border-radius);
+
         overflow: hidden;
       }
 
@@ -892,7 +892,7 @@ export class HTMLReportGenerator {
       }
 
       .section-content {
-        padding: 1rem;
+        padding: 1.5rem;
       }
 
       /* Code Blocks */
@@ -900,7 +900,7 @@ export class HTMLReportGenerator {
         background: var(--color-gray-900);
         color: var(--color-gray-100);
         padding: 1.5rem 4rem 1.5rem 1.5rem;
-        border-radius: var(--border-radius);
+
         font-family: var(--font-mono);
         font-size: 0.8125rem;
         white-space: normal;
@@ -1000,7 +1000,7 @@ export class HTMLReportGenerator {
         color: white;
         border: none;
         padding: 0.25rem 0.5rem;
-        border-radius: var(--border-radius);
+
         font-size: 0.6875rem;
         cursor: pointer;
         transition: all 0.15s ease;
@@ -1030,7 +1030,7 @@ export class HTMLReportGenerator {
       .assertion-item {
         padding: 0.75rem;
         margin: 0.5rem 0;
-        border-radius: var(--border-radius);
+
         border: 1px solid;
         font-size: 0.875rem;
       }
@@ -1068,7 +1068,7 @@ export class HTMLReportGenerator {
         padding: 0.75rem;
         margin: 0.5rem 0;
         border: 1px solid var(--color-gray-200);
-        border-radius: var(--border-radius);
+
         background: var(--color-gray-50);
       }
 
@@ -1088,7 +1088,7 @@ export class HTMLReportGenerator {
       .scenario-result {
         font-size: 0.875rem;
         padding: 0.5rem;
-        border-radius: var(--border-radius);
+
         background: white;
         border: 1px solid var(--color-gray-200);
       }
@@ -1097,7 +1097,7 @@ export class HTMLReportGenerator {
       .skip-reason {
         background: #fafafa;
         border: 1px solid var(--color-gray-300);
-        border-radius: var(--border-radius);
+
         padding: 0.75rem;
         margin: 0.5rem 0;
         font-size: 0.875rem;
@@ -1112,7 +1112,7 @@ export class HTMLReportGenerator {
 
       /* Responsive */
       @media (max-width: 768px) {
-        .container { padding: 1rem; }
+        .container { padding: 1.5rem; }
         .metrics-grid { grid-template-columns: 1fr; }
         .request-response-grid { grid-template-columns: 1fr; }
         .suite-header { grid-template-columns: 1fr auto; }
@@ -1591,7 +1591,7 @@ export class HTMLReportGenerator {
                 ${
                   suite.error_message
                     ? `
-                <div class="p-3 mb-2" style="background: #fef2f2; border: 1px solid #fecaca; border-radius: var(--border-radius); color: #991b1b;">
+                <div class="p-3 mb-2" style="background: #fef2f2; border: 1px solid #fecaca;  color: #991b1b;">
                     <div class="skip-reason-title">Suite Error:</div>
                     ${this.escapeHtml(suite.error_message)}
                 </div>
@@ -1661,6 +1661,12 @@ export class HTMLReportGenerator {
     // Check for scenarios (you may need to add scenarios to StepExecutionResult type)
     const hasScenarios = (step as any).scenarios_results?.length > 0;
 
+    // Check for iterations
+    const hasIterations = (step as any).iteration_results?.length > 0;
+    const iterationCount = hasIterations
+      ? (step as any).iteration_results.length
+      : 0;
+
     return `
         <div class="step-card">
             <div class="step-header" onclick="toggleStep(this)">
@@ -1700,7 +1706,7 @@ export class HTMLReportGenerator {
                 ${
                   step.error_message && step.status !== "skipped"
                     ? `
-                <div class="p-3 mb-2" style="background: #fef2f2; border: 1px solid #fecaca; border-radius: var(--border-radius); color: #991b1b;">
+                <div class="p-3 mb-2" style="background: #fef2f2; border: 1px solid #fecaca;  color: #991b1b;">
                     <div class="skip-reason-title">Error Details:</div>
                     ${this.escapeHtml(step.error_message)}
                 </div>
@@ -1729,6 +1735,11 @@ export class HTMLReportGenerator {
                         ${
                           hasScenarios
                             ? `<button class="tab-button" onclick="switchTab(this, '${stepId}-scenarios')">Scenarios</button>`
+                            : ""
+                        }
+                        ${
+                          hasIterations
+                            ? `<button class="tab-button" onclick="switchTab(this, '${stepId}-iterations')">🔄 Iterations (${iterationCount})</button>`
                             : ""
                         }
                         ${
@@ -1781,6 +1792,18 @@ export class HTMLReportGenerator {
                     <div id="${stepId}-scenarios" class="tab-content">
                         ${this.buildScenariosTab(
                           (step as any).scenarios_results
+                        )}
+                    </div>
+                    `
+                        : ""
+                    }
+
+                    ${
+                      hasIterations
+                        ? `
+                    <div id="${stepId}-iterations" class="tab-content">
+                        ${this.buildIterationsTab(
+                          (step as any).iteration_results
                         )}
                     </div>
                     `
@@ -2010,7 +2033,7 @@ export class HTMLReportGenerator {
 
   private formatJsonContent(content: string): string {
     if (!content) return "";
-    
+
     try {
       // Try to parse and pretty-format JSON
       const parsed = JSON.parse(content);
@@ -2023,19 +2046,19 @@ export class HTMLReportGenerator {
 
   private formatHttpContent(content: string): string {
     if (!content) return "";
-    
+
     return content
       .replace(/\r\n/g, "\n")
       .replace(/\r/g, "\n")
       .split("\n")
-      .map(line => line.trimRight()) // Remove trailing spaces but keep leading spaces for indentation
+      .map((line) => line.trimRight()) // Remove trailing spaces but keep leading spaces for indentation
       .join("\n")
       .trim();
   }
 
   private cleanCurlCommand(curlCommand: string): string {
     if (!curlCommand) return "";
-    
+
     // More aggressive cleaning first
     let cleaned = curlCommand
       .trim()
@@ -2045,14 +2068,15 @@ export class HTMLReportGenerator {
       .replace(/\s+\\+\s*$/g, "")
       // Clean up any remaining line-ending junk
       .replace(/\s+$/gm, "");
-    
+
     // Check if it's a multi-line cURL that should stay multi-line
-    const hasValidLineBreaks = cleaned.includes(" \\\n") && cleaned.split("\n").length > 1;
-    
+    const hasValidLineBreaks =
+      cleaned.includes(" \\\n") && cleaned.split("\n").length > 1;
+
     if (hasValidLineBreaks) {
       // Keep as multi-line but clean up indentation
       cleaned = cleaned
-        .split('\n')
+        .split("\n")
         .map((line, index) => {
           line = line.trim();
           if (index === 0) {
@@ -2061,8 +2085,8 @@ export class HTMLReportGenerator {
             return "    " + line.replace(/^\\\s*/, "");
           }
         })
-        .filter(line => line.trim() !== "") // Remove empty lines
-        .join('\n');
+        .filter((line) => line.trim() !== "") // Remove empty lines
+        .join("\n");
     } else {
       // Convert to single line - be more aggressive
       cleaned = cleaned
@@ -2072,7 +2096,7 @@ export class HTMLReportGenerator {
         .replace(/'\s+-/g, "' -")
         .replace(/"\s+-/g, '" -');
     }
-    
+
     return cleaned.trim();
   }
 
@@ -2098,31 +2122,31 @@ export class HTMLReportGenerator {
   }
 
   private detectContentType(content: string): string {
-    if (!content || typeof content !== 'string') return 'text';
-    
+    if (!content || typeof content !== "string") return "text";
+
     const trimmed = content.trim();
-    
+
     // Check for cURL commands
-    if (trimmed.startsWith('curl ') || trimmed.includes('curl ')) {
-      return 'bash';
+    if (trimmed.startsWith("curl ") || trimmed.includes("curl ")) {
+      return "bash";
     }
-    
+
     // Check for bash/shell commands
     if (this.isBashContent(trimmed)) {
-      return 'bash';
+      return "bash";
     }
-    
+
     // Check for JSON
     if (this.isJsonContent(trimmed)) {
-      return 'json';
+      return "json";
     }
-    
+
     // Check for HTTP requests
     if (this.isHttpContent(trimmed)) {
-      return 'http';
+      return "http";
     }
-    
-    return 'text';
+
+    return "text";
   }
 
   private isBashContent(content: string): boolean {
@@ -2137,10 +2161,10 @@ export class HTMLReportGenerator {
       /&&|\|\|/,
       /;\s*$/,
       /\$\w+/,
-      /^#\s+/
+      /^#\s+/,
     ];
-    
-    return bashPatterns.some(pattern => pattern.test(content));
+
+    return bashPatterns.some((pattern) => pattern.test(content));
   }
 
   private isJsonContent(content: string): boolean {
@@ -2149,8 +2173,10 @@ export class HTMLReportGenerator {
       JSON.parse(content);
       return true;
     } catch {
-      return (content.startsWith('{') && content.endsWith('}')) ||
-             (content.startsWith('[') && content.endsWith(']'));
+      return (
+        (content.startsWith("{") && content.endsWith("}")) ||
+        (content.startsWith("[") && content.endsWith("]"))
+      );
     }
   }
 
@@ -2158,44 +2184,49 @@ export class HTMLReportGenerator {
     const httpPatterns = [
       /^(GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS)\s+/,
       /^HTTP\/[\d.]+\s+\d{3}/,
-      /^(Host|User-Agent|Accept|Content-Type|Authorization|Cookie):\s+/
+      /^(Host|User-Agent|Accept|Content-Type|Authorization|Cookie):\s+/,
     ];
-    
-    return httpPatterns.some(pattern => pattern.test(content));
+
+    return httpPatterns.some((pattern) => pattern.test(content));
   }
 
   private formatCodeBlock(content: string, language?: string): string {
-    if (!content) return '';
-    
+    if (!content) return "";
+
     const detectedType = language || this.detectContentType(content);
     let cleanContent: string;
-    
+
     // Use specific formatting based on content type
     switch (detectedType) {
-      case 'bash':
-        if (content.includes('curl ') || content.startsWith('curl ')) {
+      case "bash":
+        if (content.includes("curl ") || content.startsWith("curl ")) {
           cleanContent = this.cleanCurlCommand(content);
         } else {
           cleanContent = this.cleanTextContent(content);
         }
         break;
-      case 'json':
+      case "json":
         cleanContent = this.formatJsonContent(content);
         break;
-      case 'http':
+      case "http":
         cleanContent = this.formatHttpContent(content);
         break;
       default:
         cleanContent = this.cleanTextContent(content);
         break;
     }
-    
+
     // Convert to structured HTML lines
-    const formattedContent = this.convertToCodeLines(cleanContent, detectedType);
-    
+    const formattedContent = this.convertToCodeLines(
+      cleanContent,
+      detectedType
+    );
+
     return `
       <div class="code-block ${detectedType}">
-        <button class="copy-button" onclick="copyToClipboard(this, '${this.escapeForJS(cleanContent)}')">Copy</button>
+        <button class="copy-button" onclick="copyToClipboard(this, '${this.escapeForJS(
+          cleanContent
+        )}')">Copy</button>
         ${formattedContent}
       </div>
     `;
@@ -2203,31 +2234,32 @@ export class HTMLReportGenerator {
 
   private convertToCodeLines(content: string, type: string): string {
     if (!content) return '<div class="code-line">&nbsp;</div>';
-    
-    const lines = content.split('\n');
-    
+
+    const lines = content.split("\n");
+
     return lines
       .map((line, index) => {
         // Handle empty lines
-        if (!line || line.trim() === '') {
+        if (!line || line.trim() === "") {
           return '<div class="code-line">&nbsp;</div>';
         }
-        
+
         // Escape HTML but preserve spaces
         const escapedLine = this.escapeHtml(line);
-        
+
         // Replace leading spaces with non-breaking spaces to preserve indentation
-        const preservedSpaces = escapedLine.replace(/^( +)/, (match, spaces) => 
-          '&nbsp;'.repeat(spaces.length)
+        const preservedSpaces = escapedLine.replace(/^( +)/, (match, spaces) =>
+          "&nbsp;".repeat(spaces.length)
         );
-        
+
         // For very long lines (like single-line URLs), allow wrapping
-        const shouldWrap = type === 'bash' && line.length > 100 && !line.includes(' \\');
-        const wrapClass = shouldWrap ? ' wrap' : '';
-        
+        const shouldWrap =
+          type === "bash" && line.length > 100 && !line.includes(" \\");
+        const wrapClass = shouldWrap ? " wrap" : "";
+
         return `<div class="code-line${wrapClass}">${preservedSpaces}</div>`;
       })
-      .join('');
+      .join("");
   }
 
   private buildStepOverview(step: StepExecutionResult): string {
@@ -2236,7 +2268,7 @@ export class HTMLReportGenerator {
 
     return `
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
-            <div class="p-3" style="background: var(--color-gray-50); border-radius: var(--border-radius); border: 1px solid var(--color-gray-200);">
+            <div class="p-3" style="background: var(--color-gray-50);  border: 1px solid var(--color-gray-200);">
                 <div class="text-xs text-gray-700 font-semibold">EXECUTION TIME</div>
                 <div class="font-mono text-lg">${this.formatDuration(
                   step.duration_ms
@@ -2245,7 +2277,7 @@ export class HTMLReportGenerator {
             ${
               step.assertions_results
                 ? `
-            <div class="p-3" style="background: var(--color-gray-50); border-radius: var(--border-radius); border: 1px solid var(--color-gray-200);">
+            <div class="p-3" style="background: var(--color-gray-50);  border: 1px solid var(--color-gray-200);">
                 <div class="text-xs text-gray-700 font-semibold">ASSERTIONS</div>
                 <div class="font-mono text-lg">${
                   step.assertions_results.filter((a) => a.passed).length
@@ -2257,7 +2289,7 @@ export class HTMLReportGenerator {
             ${
               capturedVars > 0
                 ? `
-            <div class="p-3" style="background: var(--color-gray-50); border-radius: var(--border-radius); border: 1px solid var(--color-gray-200);">
+            <div class="p-3" style="background: var(--color-gray-50);  border: 1px solid var(--color-gray-200);">
                 <div class="text-xs text-gray-700 font-semibold">CAPTURED VARS</div>
                 <div class="font-mono text-lg">${capturedVars}</div>
             </div>
@@ -2271,27 +2303,32 @@ export class HTMLReportGenerator {
             ? `
         <div style="margin: 1rem 0;">
             <h5 style="margin: 0 0 0.5rem 0; color: var(--color-gray-900); font-weight: 600;">Captured Variables</h5>
-            <div style="background: var(--color-gray-50); border: 1px solid var(--color-gray-200); border-radius: var(--border-radius); padding: 1rem;">
+            <div style="background: var(--color-gray-50); border: 1px solid var(--color-gray-200);  padding: 1.5rem;">
                 ${Object.entries(step.captured_variables || {})
-                  .map(
-                    ([key, value]) => {
-                      const jsonValue = JSON.stringify(value, null, 2);
-                      const isLongValue = jsonValue.length > 80;
-                      return `
+                  .map(([key, value]) => {
+                    const jsonValue = JSON.stringify(value, null, 2);
+                    const isLongValue = jsonValue.length > 80;
+                    return `
                     <div style="margin-bottom: 0.75rem; font-family: var(--font-mono); font-size: 0.875rem;">
                         <div style="font-weight: 600; color: var(--color-info); margin-bottom: 0.25rem;">
                             ${this.escapeHtml(key)}:
                         </div>
-                        <div style="color: var(--color-gray-700); ${isLongValue ? 'background: var(--color-gray-100); padding: 0.5rem; border-radius: 4px; overflow-x: auto;' : ''} word-break: break-all;">
-                            ${isLongValue ? 
-                              `<pre style="margin: 0; white-space: pre-wrap;">${this.escapeHtml(jsonValue)}</pre>` : 
-                              this.escapeHtml(jsonValue)
+                        <div style="color: var(--color-gray-700); ${
+                          isLongValue
+                            ? "background: var(--color-gray-100); padding: 0.5rem; border-radius: 4px; overflow-x: auto;"
+                            : ""
+                        } word-break: break-all;">
+                            ${
+                              isLongValue
+                                ? `<pre style="margin: 0; white-space: pre-wrap;">${this.escapeHtml(
+                                    jsonValue
+                                  )}</pre>`
+                                : this.escapeHtml(jsonValue)
                             }
                         </div>
                     </div>
-                `
-                    }
-                  )
+                `;
+                  })
                   .join("")}
             </div>
         </div>
@@ -2318,13 +2355,13 @@ export class HTMLReportGenerator {
                     <div style="margin-bottom: 1rem;">
                         <div style="display: flex; gap: 1rem; margin-bottom: 0.5rem;">
                             <span style="font-weight: 600;">Method:</span>
-                            <span class="font-mono" style="background: var(--color-gray-100); padding: 0.125rem 0.5rem; border-radius: var(--border-radius);">${
+                            <span class="font-mono" style="background: var(--color-gray-100); padding: 0.125rem 0.5rem; ">${
                               request.method
                             }</span>
                         </div>
                         <div style="margin-bottom: 0.5rem;">
                             <span style="font-weight: 600;">URL:</span>
-                            <div class="font-mono text-sm" style="background: var(--color-gray-100); padding: 0.5rem; border-radius: var(--border-radius); margin-top: 0.25rem; word-break: break-all;">
+                            <div class="font-mono text-sm" style="background: var(--color-gray-100); padding: 0.5rem;  margin-top: 0.25rem; word-break: break-all;">
                                 ${this.escapeHtml(
                                   request.full_url || request.url
                                 )}
@@ -2351,7 +2388,7 @@ export class HTMLReportGenerator {
                               return `${key}: ${displayValue}`;
                             })
                             .join("\n"),
-                          'http'
+                          "http"
                         )}
                     </div>
                     `
@@ -2377,7 +2414,7 @@ export class HTMLReportGenerator {
             <div class="response-section">
                 <div class="section-header">🔍 Raw HTTP Request</div>
                 <div class="section-content">
-                    ${this.formatCodeBlock(rawRequest, 'http')}
+                    ${this.formatCodeBlock(rawRequest, "http")}
                 </div>
             </div>
             `
@@ -2410,9 +2447,7 @@ export class HTMLReportGenerator {
                                 : "#f0fdf4"
                             }; color: ${
       response.status_code >= 400 ? "#991b1b" : "#166534"
-    }; padding: 0.125rem 0.5rem; border-radius: var(--border-radius);">${
-      response.status_code
-    }</span>
+    }; padding: 0.125rem 0.5rem; ">${response.status_code}</span>
                         </div>
                         <div style="margin-bottom: 0.5rem;">
                             <span style="font-weight: 600;">Size:</span>
@@ -2441,7 +2476,7 @@ export class HTMLReportGenerator {
                               return `${key}: ${displayValue}`;
                             })
                             .join("\n"),
-                          'http'
+                          "http"
                         )}
                     </div>
                     `
@@ -2467,7 +2502,7 @@ export class HTMLReportGenerator {
             <div class="response-section">
                 <div class="section-header">🔍 Raw HTTP Response</div>
                 <div class="section-content">
-                    ${this.formatCodeBlock(rawResponse, 'http')}
+                    ${this.formatCodeBlock(rawResponse, "http")}
                 </div>
             </div>
             `
@@ -2479,7 +2514,7 @@ export class HTMLReportGenerator {
 
   private buildAssertionsTab(assertions: any[]): string {
     if (!assertions || assertions.length === 0) {
-      return '<div style="padding: 1rem; text-align: center; color: var(--color-gray-700);">No assertions defined for this step.</div>';
+      return '<div style="padding: 1.5rem; text-align: center; color: var(--color-gray-700);">No assertions defined for this step.</div>';
     }
 
     const passed = assertions.filter((a) => a.passed).length;
@@ -2488,14 +2523,14 @@ export class HTMLReportGenerator {
     return `
         <div style="margin-bottom: 1rem;">
             <div style="display: flex; gap: 1rem;">
-                <div class="p-3" style="background: #f0fdf4; border-radius: var(--border-radius); border: 1px solid #bbf7d0;">
+                <div class="p-3" style="background: #f0fdf4;  border: 1px solid #bbf7d0;">
                     <div class="text-xs font-semibold" style="color: #166534;">PASSED</div>
                     <div class="font-mono text-lg" style="color: #166534;">${passed}</div>
                 </div>
                 ${
                   failed > 0
                     ? `
-                <div class="p-3" style="background: #fef2f2; border-radius: var(--border-radius); border: 1px solid #fecaca;">
+                <div class="p-3" style="background: #fef2f2;  border: 1px solid #fecaca;">
                     <div class="text-xs font-semibold" style="color: #991b1b;">FAILED</div>
                     <div class="font-mono text-lg" style="color: #991b1b;">${failed}</div>
                 </div>
@@ -2540,7 +2575,7 @@ export class HTMLReportGenerator {
 
   private buildScenariosTab(scenarios: any[]): string {
     if (!scenarios || scenarios.length === 0) {
-      return '<div style="padding: 1rem; text-align: center; color: var(--color-gray-700);">No scenarios defined for this step.</div>';
+      return '<div style="padding: 1.5rem; text-align: center; color: var(--color-gray-700);">No scenarios defined for this step.</div>';
     }
 
     return `
@@ -2548,7 +2583,7 @@ export class HTMLReportGenerator {
             ${scenarios
               .map(
                 (scenario, index) => `
-                <div class="scenario-item" style="border: 1px solid var(--color-gray-200); border-radius: var(--border-radius); padding: 1rem; margin-bottom: 1rem; background: var(--color-gray-50);">
+                <div class="scenario-item" style="border: 1px solid var(--color-gray-200);  padding: 1.5rem; margin-bottom: 1rem; background: var(--color-gray-50);">
                     <div class="scenario-header" style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem;">
                         <span class="scenario-number" style="background: var(--color-info); color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 600;">${
                           index + 1
@@ -2561,7 +2596,7 @@ export class HTMLReportGenerator {
 
                     <div class="scenario-condition" style="margin-bottom: 0.75rem;">
                         <div style="font-weight: 600; color: var(--color-gray-700); margin-bottom: 0.25rem;">📋 Condition:</div>
-                        <div style="background: white; border: 1px solid var(--color-gray-300); border-radius: var(--border-radius); padding: 0.75rem; font-family: var(--font-mono); font-size: 0.875rem; white-space: pre-wrap; color: var(--color-gray-800);">${this.escapeHtml(
+                        <div style="background: white; border: 1px solid var(--color-gray-300);  padding: 0.75rem; font-family: var(--font-mono); font-size: 0.875rem; white-space: pre-wrap; color: var(--color-gray-800);">${this.escapeHtml(
                           scenario.condition || "No condition specified"
                         )}</div>
                     </div>
@@ -2581,7 +2616,7 @@ export class HTMLReportGenerator {
               .join("")}
         </div>
 
-        <div style="margin-top: 1rem; padding: 1rem; background: var(--color-info-light); border: 1px solid #bfdbfe; border-radius: var(--border-radius); color: var(--color-info-dark);">
+        <div style="margin-top: 1rem; padding: 1.5rem; background: var(--color-info-light); border: 1px solid #bfdbfe;  color: var(--color-info-dark);">
             <div style="font-weight: 600; margin-bottom: 0.5rem;">💡 How Scenarios Work:</div>
             <ul style="margin: 0; padding-left: 1.5rem; line-height: 1.5;">
                 <li><strong>Executed:</strong> The scenario's condition was true and its actions were performed</li>
@@ -2602,7 +2637,7 @@ export class HTMLReportGenerator {
                     Copy and paste this command into your terminal or import into Postman.
                 </p>
             </div>
-            ${this.formatCodeBlock(curlCommand, 'bash')}
+            ${this.formatCodeBlock(curlCommand, "bash")}
         </div>
     `;
   }
@@ -2612,9 +2647,9 @@ export class HTMLReportGenerator {
     const hasResult = scenario.result || scenario.captured_variables;
 
     if (executed || hasResult) {
-      return '<span style="background: var(--color-success); color: white; padding: 0.25rem 0.5rem; border-radius: var(--border-radius); font-size: 0.75rem; font-weight: 600;">✓ EXECUTED</span>';
+      return '<span style="background: var(--color-success); color: white; padding: 0.25rem 0.5rem;  font-size: 0.75rem; font-weight: 600;">✓ EXECUTED</span>';
     } else {
-      return '<span style="background: var(--color-warning); color: white; padding: 0.25rem 0.5rem; border-radius: var(--border-radius); font-size: 0.75rem; font-weight: 600;">⏭ SKIPPED</span>';
+      return '<span style="background: var(--color-warning); color: white; padding: 0.25rem 0.5rem;  font-size: 0.75rem; font-weight: 600;">⏭ SKIPPED</span>';
     }
   }
 
@@ -2658,7 +2693,7 @@ export class HTMLReportGenerator {
         if (hasAssert) {
           const assertCount =
             typeof hasAssert === "object" ? Object.keys(hasAssert).length : 1;
-          actionsHtml += `<span style="background: var(--color-info-light); color: var(--color-info-dark); padding: 0.25rem 0.5rem; border-radius: var(--border-radius); font-size: 0.875rem;">🧪 ${assertCount} Assertion${
+          actionsHtml += `<span style="background: var(--color-info-light); color: var(--color-info-dark); padding: 0.25rem 0.5rem;  font-size: 0.875rem;">🧪 ${assertCount} Assertion${
             assertCount !== 1 ? "s" : ""
           }</span>`;
         }
@@ -2666,7 +2701,7 @@ export class HTMLReportGenerator {
         if (hasCapture) {
           const captureCount =
             typeof hasCapture === "object" ? Object.keys(hasCapture).length : 1;
-          actionsHtml += `<span style="background: var(--color-purple-light); color: var(--color-purple); padding: 0.25rem 0.5rem; border-radius: var(--border-radius); font-size: 0.875rem;">📥 ${captureCount} Variable${
+          actionsHtml += `<span style="background: var(--color-purple-light); color: var(--color-purple); padding: 0.25rem 0.5rem;  font-size: 0.875rem;">📥 ${captureCount} Variable${
             captureCount !== 1 ? "s" : ""
           }</span>`;
         }
@@ -2680,7 +2715,13 @@ export class HTMLReportGenerator {
       actionsHtml += `
         <div style="margin-bottom: 0.75rem;">
           <div style="font-weight: 600; color: var(--color-gray-700); margin-bottom: 0.5rem;">📊 Execution Results:</div>
-          ${this.formatCodeBlock(this.formatJsonForDisplay(scenario.result), 'json').replace('style="margin-top: 0.25rem;"', 'style="margin-top: 0.25rem; max-height: 200px; overflow-y: auto;"')}
+          ${this.formatCodeBlock(
+            this.formatJsonForDisplay(scenario.result),
+            "json"
+          ).replace(
+            'style="margin-top: 0.25rem;"',
+            'style="margin-top: 0.25rem; max-height: 200px; overflow-y: auto;"'
+          )}
         </div>
       `;
     }
@@ -2690,9 +2731,789 @@ export class HTMLReportGenerator {
 
   private buildSkipReason(skipReason: string): string {
     return `
-      <div style="margin-top: 0.75rem; padding: 0.75rem; background: var(--color-warning-light); border: 1px solid #fbbf24; border-radius: var(--border-radius); color: var(--color-warning-dark);">
+      <div style="margin-top: 0.75rem; padding: 0.75rem; background: var(--color-warning-light); border: 1px solid #fbbf24;  color: var(--color-warning-dark);">
         <div style="font-weight: 600; margin-bottom: 0.25rem;">🔍 Skip Reason:</div>
         <div style="font-size: 0.875rem;">${this.escapeHtml(skipReason)}</div>
+      </div>
+    `;
+  }
+
+  private buildIterationsTab(iterationResults: StepExecutionResult[]): string {
+    if (!iterationResults || iterationResults.length === 0) {
+      return '<div style="padding: 1.5rem; text-align: center; color: var(--color-gray-700);">No iterations executed for this step.</div>';
+    }
+
+    const totalIterations = iterationResults.length;
+    const successfulIterations = iterationResults.filter(
+      (i) => i.status === "success"
+    ).length;
+    const failedIterations = iterationResults.filter(
+      (i) => i.status === "failure"
+    ).length;
+    const totalDuration = iterationResults.reduce(
+      (sum, i) => sum + (i.duration_ms || 0),
+      0
+    );
+    const avgDuration =
+      totalIterations > 0 ? Math.round(totalDuration / totalIterations) : 0;
+
+    return `
+        <div class="iterations-container" style="padding: 1.5rem;">
+            <!-- Summary Header -->
+            <div class="iterations-summary" style="background: var(--color-blue-50); border: 1px solid var(--color-blue-200); padding: 1.5rem; margin-bottom: 1.5rem;">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+                    <div style="text-align: center;">
+                        <div style="font-size: 1.5rem; font-weight: 700; color: var(--color-blue);">${totalIterations}</div>
+                        <div style="font-size: 0.75rem; color: var(--color-gray-600); text-transform: uppercase;">Total Iterations</div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="font-size: 1.5rem; font-weight: 700; color: var(--color-success);">${successfulIterations}</div>
+                        <div style="font-size: 0.75rem; color: var(--color-gray-600); text-transform: uppercase;">Successful</div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="font-size: 1.5rem; font-weight: 700; color: var(--color-error);">${failedIterations}</div>
+                        <div style="font-size: 0.75rem; color: var(--color-gray-600); text-transform: uppercase;">Failed</div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="font-size: 1.5rem; font-weight: 700; color: var(--color-gray-700);">${avgDuration}ms</div>
+                        <div style="font-size: 0.75rem; color: var(--color-gray-600); text-transform: uppercase;">Avg Duration</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Single Iterations Accordion -->
+            <div class="iterations-accordion" style="border: 1px solid var(--color-gray-200); background: white;">
+                <!-- Accordion Header -->
+                <div class="accordion-header" onclick="toggleIterationsAccordion(this)" style="background: var(--color-blue); color: white; padding: 1rem 1.5rem; cursor: pointer; display: flex; align-items: center; justify-content: space-between; font-weight: 600;">
+                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                        <span style="font-size: 1.2rem;">🔄</span>
+                        <span>Iterations (${totalIterations})</span>
+                        <span style="background: var(--color-success); color: white; padding: 0.25rem 0.5rem; font-size: 0.75rem; font-weight: 600;">
+                            ✅ ${successfulIterations} SUCCESS
+                        </span>
+                    </div>
+                    <span class="accordion-arrow" style="font-size: 1.2rem; transition: transform 0.2s ease;">▶</span>
+                </div>
+
+                <!-- Accordion Content -->
+                <div class="accordion-content" style="display: none; padding: 1.5rem;">
+                    <div class="iterations-grid" style="display: grid; gap: 1rem;">
+                        ${iterationResults
+                          .map((iteration, index) => {
+                            const statusColor =
+                              iteration.status === "success"
+                                ? "var(--color-success)"
+                                : iteration.status === "failure"
+                                ? "var(--color-error)"
+                                : iteration.status === "skipped"
+                                ? "var(--color-warning)"
+                                : "var(--color-gray)";
+                            const statusIcon =
+                              iteration.status === "success"
+                                ? "✅"
+                                : iteration.status === "failure"
+                                ? "❌"
+                                : iteration.status === "skipped"
+                                ? "⏭"
+                                : "?";
+
+                            return `
+                                <div class="iteration-card" style="background: var(--color-gray-50); border: 1px solid var(--color-gray-200); padding: 1.5rem;">
+                                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem;">
+                                        <div style="display: flex; align-items: center; gap: 0.75rem;">
+                                            <span style="background: ${statusColor}; color: white; padding: 0.25rem 0.5rem; font-size: 0.75rem; font-weight: 600;">
+                                                ${statusIcon} ${iteration.status.toUpperCase()}
+                                            </span>
+                                            <span style="font-weight: 600; color: var(--color-gray-900);">Iteration ${
+                                              index + 1
+                                            }</span>
+                                        </div>
+                                        <span style="font-size: 0.875rem; color: var(--color-gray-600);">${
+                                          iteration.duration_ms || 0
+                                        }ms</span>
+                                    </div>
+
+                                    <!-- Iteration Details -->
+                                    <div class="iteration-details" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                                        <!-- Request -->
+                                        <div style="background: white; border: 1px solid var(--color-gray-200); padding: 0.75rem;">
+                                            <div style="font-weight: 600; font-size: 0.75rem; color: var(--color-blue); margin-bottom: 0.5rem; text-transform: uppercase;">Request</div>
+                                            <div style="font-size: 0.75rem; color: var(--color-gray-700);">
+                                                ${
+                                                  iteration.request_details
+                                                    ?.method || "GET"
+                                                } ${
+                              iteration.request_details?.url || "N/A"
+                            }
+                                            </div>
+                                        </div>
+
+                                        <!-- Response -->
+                                        <div style="background: white; border: 1px solid var(--color-gray-200); padding: 0.75rem;">
+                                            <div style="font-weight: 600; font-size: 0.75rem; color: var(--color-green); margin-bottom: 0.5rem; text-transform: uppercase;">Response</div>
+                                            <div style="font-size: 0.75rem; color: var(--color-gray-700);">
+                                                ${
+                                                  iteration.response_details
+                                                    ?.status_code || "N/A"
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Assertions -->
+                                    ${
+                                      iteration.assertions_results &&
+                                      iteration.assertions_results.length > 0
+                                        ? `
+                                        <div style="margin-top: 0.75rem;">
+                                            <div style="font-weight: 600; font-size: 0.75rem; color: var(--color-purple); margin-bottom: 0.5rem; text-transform: uppercase;">
+                                                Assertions (${
+                                                  iteration.assertions_results.filter(
+                                                    (a) => a.passed
+                                                  ).length
+                                                }/${
+                                            iteration.assertions_results.length
+                                          })
+                                            </div>
+                                            <div style="display: flex; flex-wrap: wrap; gap: 0.25rem;">
+                                                ${iteration.assertions_results
+                                                  .map(
+                                                    (assertion) =>
+                                                      `<span style="background: ${
+                                                        assertion.passed
+                                                          ? "var(--color-success)"
+                                                          : "var(--color-error)"
+                                                      }; color: white; padding: 0.125rem 0.375rem; font-size: 0.625rem; font-weight: 600;">
+                                                        ${
+                                                          assertion.passed
+                                                            ? "✓"
+                                                            : "✗"
+                                                        }
+                                                    </span>`
+                                                  )
+                                                  .join("")}
+                                            </div>
+                                        </div>
+                                    `
+                                        : ""
+                                    }
+
+                                    <!-- Variables -->
+                                    ${
+                                      iteration.captured_variables &&
+                                      Object.keys(iteration.captured_variables)
+                                        .length > 0
+                                        ? `
+                                        <div style="margin-top: 0.75rem;">
+                                            <div style="font-weight: 600; font-size: 0.75rem; color: var(--color-orange); margin-bottom: 0.5rem; text-transform: uppercase;">
+                                                Captured Variables (${
+                                                  Object.keys(
+                                                    iteration.captured_variables
+                                                  ).length
+                                                })
+                                            </div>
+                                            <div style="background: white; border: 1px solid var(--color-gray-200); padding: 0.5rem; max-height: 100px; overflow-y: auto;">
+                                                <div style="font-size: 0.75rem; font-family: var(--font-mono); color: var(--color-gray-800);">
+                                                    ${Object.entries(
+                                                      iteration.captured_variables
+                                                    )
+                                                      .map(
+                                                        ([key, value]) =>
+                                                          `${key}: ${
+                                                            typeof value ===
+                                                            "object"
+                                                              ? JSON.stringify(
+                                                                  value
+                                                                )
+                                                              : String(value)
+                                                          }`
+                                                      )
+                                                      .join("<br>")}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    `
+                                        : ""
+                                    }
+                                </div>
+                            `;
+                          })
+                          .join("")}
+                    </div>
+                </div>
+            </div>
+
+            <!-- How Iterations Work Info -->
+            <div style="margin-top: 1.5rem; padding: 1.5rem; background: var(--color-blue-50); border: 1px solid var(--color-blue-200); color: var(--color-blue-800);">
+                <div style="font-weight: 600; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
+                    <span style="font-size: 1.1rem;">🔄</span>
+                    How Iterations Work
+                </div>
+                <ul style="margin: 0; padding-left: 1.5rem; line-height: 1.6;">
+                    <li><strong>Loop Execution:</strong> This step was executed ${totalIterations} times based on iteration configuration</li>
+                    <li><strong>Variable Context:</strong> Each iteration has its own variable scope and captured data</li>
+                    <li><strong>Independent Results:</strong> Each iteration's success/failure is tracked separately</li>
+                    <li><strong>Performance:</strong> Total duration includes all iterations plus any iteration setup time</li>
+                </ul>
+            </div>
+        </div>
+
+        <style>
+            .iterations-container .accordion-arrow {
+                transition: transform 0.2s ease;
+            }
+            .iterations-container .accordion-header.expanded .accordion-arrow {
+                transform: rotate(90deg);
+            }
+        </style>
+
+        <script>
+            function toggleIterationsAccordion(header) {
+                const content = header.nextElementSibling;
+                const arrow = header.querySelector('.accordion-arrow');
+                const isVisible = content.style.display !== 'none';
+
+                content.style.display = isVisible ? 'none' : 'block';
+                header.classList.toggle('expanded', !isVisible);
+            }
+        </script>
+    `;
+  }
+
+  private buildIterationStatusBadge(iteration: StepExecutionResult): string {
+    const status = iteration.status;
+    switch (status) {
+      case "success":
+        return '<span style="background: var(--color-success); color: white; padding: 0.25rem 0.5rem;  font-size: 0.75rem; font-weight: 600;">✓ SUCCESS</span>';
+      case "failure":
+        return '<span style="background: var(--color-error); color: white; padding: 0.25rem 0.5rem;  font-size: 0.75rem; font-weight: 600;">❌ FAILED</span>';
+      case "skipped":
+        return '<span style="background: var(--color-warning); color: white; padding: 0.25rem 0.5rem;  font-size: 0.75rem; font-weight: 600;">⏭ SKIPPED</span>';
+      default:
+        return '<span style="background: var(--color-gray); color: white; padding: 0.25rem 0.5rem;  font-size: 0.75rem; font-weight: 600;">? UNKNOWN</span>';
+    }
+  }
+
+  private buildIterationRequestResponse(
+    iteration: StepExecutionResult
+  ): string {
+    const requestDetails = iteration.request_details;
+    const responseDetails = iteration.response_details;
+
+    if (!requestDetails && !responseDetails) {
+      return "";
+    }
+
+    let html = '<div style="margin-bottom: 0.75rem;">';
+
+    if (requestDetails) {
+      const method = (requestDetails as any).method || "GET";
+      const url =
+        (requestDetails as any).full_url ||
+        (requestDetails as any).url ||
+        "N/A";
+      html += `
+        <div style="margin-bottom: 0.5rem;">
+          <div style="font-weight: 600; color: var(--color-gray-700); margin-bottom: 0.25rem;">📤 Request:</div>
+          <div style="background: white; border: 1px solid var(--color-gray-300);  padding: 0.5rem; font-family: var(--font-mono); font-size: 0.75rem; color: var(--color-gray-800);">
+            <strong>${method}</strong> ${this.escapeHtml(url)}
+          </div>
+        </div>
+      `;
+    }
+
+    if (responseDetails) {
+      const statusCode = responseDetails.status_code;
+      html += `
+        <div>
+          <div style="font-weight: 600; color: var(--color-gray-700); margin-bottom: 0.25rem;">📥 Response:</div>
+          <div style="background: white; border: 1px solid var(--color-gray-300);  padding: 0.5rem; font-family: var(--font-mono); font-size: 0.75rem; color: var(--color-gray-800);">
+            Status: <strong>${statusCode}</strong>
+          </div>
+        </div>
+      `;
+    }
+
+    html += "</div>";
+    return html;
+  }
+
+  private buildIterationAssertions(iteration: StepExecutionResult): string {
+    const assertions = iteration.assertions_results;
+    if (!assertions || assertions.length === 0) {
+      return "";
+    }
+
+    const passedCount = assertions.filter((a) => a.passed).length;
+    const totalCount = assertions.length;
+
+    return `
+      <div style="margin-bottom: 0.75rem;">
+        <div style="font-weight: 600; color: var(--color-gray-700); margin-bottom: 0.25rem;">🧪 Assertions (${passedCount}/${totalCount}):</div>
+        <div style="background: white; border: 1px solid var(--color-gray-300);  padding: 0.5rem;">
+          ${assertions
+            .map(
+              (assertion) => `
+            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem; font-size: 0.75rem;">
+              <span style="color: ${
+                assertion.passed ? "var(--color-success)" : "var(--color-error)"
+              }; font-weight: 600;">
+                ${assertion.passed ? "✓" : "❌"}
+              </span>
+              <span style="font-family: var(--font-mono); color: var(--color-gray-800);">${this.escapeHtml(
+                assertion.message || `${assertion.field}: ${assertion.expected}`
+              )}</span>
+            </div>
+          `
+            )
+            .join("")}
+        </div>
+      </div>
+    `;
+  }
+
+  private buildIterationCapturedVariables(
+    iteration: StepExecutionResult
+  ): string {
+    const variables = iteration.captured_variables;
+    if (!variables || Object.keys(variables).length === 0) {
+      return "";
+    }
+
+    const varCount = Object.keys(variables).length;
+
+    return `
+      <div style="margin-bottom: 0.75rem;">
+        <div style="font-weight: 600; color: var(--color-gray-700); margin-bottom: 0.25rem;">📥 Captured Variables (${varCount}):</div>
+        <div style="background: white; border: 1px solid var(--color-gray-300);  padding: 0.5rem;">
+          ${Object.entries(variables)
+            .map(
+              ([key, value]) => `
+            <div style="display: flex; align-items: flex-start; gap: 0.5rem; margin-bottom: 0.25rem; font-size: 0.75rem;">
+              <code style="background: var(--color-gray-100); padding: 0.125rem 0.25rem; border-radius: 0.25rem; font-family: var(--font-mono); color: var(--color-purple); font-weight: 600;">${this.escapeHtml(
+                key
+              )}</code>
+              <span style="color: var(--color-gray-800); font-family: var(--font-mono); word-break: break-all;">=</span>
+              <code style="background: var(--color-gray-100); padding: 0.125rem 0.25rem; border-radius: 0.25rem; font-family: var(--font-mono); color: var(--color-gray-800); word-break: break-all; flex: 1;">${this.escapeHtml(
+                JSON.stringify(value)
+              )}</code>
+            </div>
+          `
+            )
+            .join("")}
+        </div>
+      </div>
+    `;
+  }
+
+  private buildIterationFullView(
+    iteration: StepExecutionResult,
+    index: number
+  ): string {
+    const requestDetails = iteration.request_details;
+    const responseDetails = iteration.response_details;
+    const assertions = iteration.assertions_results;
+    const variables = iteration.captured_variables;
+
+    const statusColor =
+      iteration.status === "success"
+        ? "var(--color-success)"
+        : iteration.status === "failure"
+        ? "var(--color-error)"
+        : iteration.status === "skipped"
+        ? "var(--color-warning)"
+        : "var(--color-gray)";
+
+    const statusIcon =
+      iteration.status === "success"
+        ? "✅"
+        : iteration.status === "failure"
+        ? "❌"
+        : iteration.status === "skipped"
+        ? "⏭️"
+        : "❓";
+
+    return `
+        <div class="iteration-full-view" style="padding: 1.5rem; height: 100%; overflow-y: auto;">
+            <!-- Iteration Header -->
+            <div class="iteration-header" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid var(--color-gray-200);">
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <div style="background: ${statusColor}; color: white; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.25rem; font-weight: 600;">
+                        ${statusIcon}
+                    </div>
+                    <div>
+                        <h3 style="margin: 0; font-size: 1.25rem; font-weight: 700; color: var(--color-gray-900);">
+                          Iteration ${index + 1}
+                          ${
+                            iteration.status === "success"
+                              ? '<span style="color: var(--color-blue); font-size: 1.2rem; margin-left: 0.5rem;">🔄</span>'
+                              : ""
+                          }
+                        </h3>
+                        <p style="margin: 0.25rem 0 0 0; font-size: 0.875rem; color: var(--color-gray-600);">
+                            Duration: ${
+                              iteration.duration_ms || 0
+                            }ms • Status: ${iteration.status.toUpperCase()}
+                        </p>
+                    </div>
+                </div>
+                <div style="text-align: right;">
+                    <div style="font-size: 0.875rem; color: var(--color-gray-600);">Started at</div>
+                    <div style="font-size: 0.75rem; font-family: var(--font-mono); color: var(--color-gray-800);">
+                        ${new Date().toLocaleTimeString()}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Content Grid -->
+            <div class="iteration-content-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
+
+                <!-- Request Section -->
+                <div class="request-section" style="background: var(--color-gray-50); border: 1px solid var(--color-gray-200); overflow: hidden;">
+                    <div class="section-header" style="background: var(--color-blue); color: white; padding: 0.75rem 1rem; font-weight: 600; font-size: 0.875rem;">
+                        📤 Request Details
+                    </div>
+                    <div class="section-content" style="padding: 1.5rem;">
+                        ${this.buildIterationRequestDetails(requestDetails)}
+                    </div>
+                </div>
+
+                <!-- Response Section -->
+                <div class="response-section" style="background: var(--color-gray-50); border: 1px solid var(--color-gray-200); overflow: hidden;">
+                    <div class="section-header" style="background: var(--color-green); color: white; padding: 0.75rem 1rem; font-weight: 600; font-size: 0.875rem;">
+                        📥 Response Details
+                    </div>
+                    <div class="section-content" style="padding: 1.5rem;">
+                        ${this.buildIterationResponseDetails(responseDetails)}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Assertions Section -->
+            ${
+              assertions && assertions.length > 0
+                ? `
+                <div class="assertions-section" style="background: var(--color-gray-50); border: 1px solid var(--color-gray-200); margin-bottom: 1.5rem; overflow: hidden;">
+                    <div class="section-header" style="background: var(--color-purple); color: white; padding: 0.75rem 1rem; font-weight: 600; font-size: 0.875rem;">
+                        🧪 Assertions (${
+                          assertions.filter((a) => a.passed).length
+                        }/${assertions.length})
+                    </div>
+                    <div class="section-content" style="padding: 1.5rem;">
+                        ${this.buildIterationAssertionsDetails(assertions)}
+                    </div>
+                </div>
+            `
+                : ""
+            }
+
+            <!-- Variables Section -->
+            ${
+              variables && Object.keys(variables).length > 0
+                ? `
+                <div class="variables-section" style="background: var(--color-gray-50); border: 1px solid var(--color-gray-200); margin-bottom: 1.5rem; overflow: hidden;">
+                    <div class="section-header" style="background: var(--color-orange); color: white; padding: 0.75rem 1rem; font-weight: 600; font-size: 0.875rem;">
+                        📥 Captured Variables (${Object.keys(variables).length})
+                    </div>
+                    <div class="section-content" style="padding: 1.5rem;">
+                        ${this.buildIterationVariablesDetails(variables)}
+                    </div>
+                </div>
+            `
+                : ""
+            }
+
+            <!-- Error Section -->
+            ${
+              iteration.error_message
+                ? `
+                <div class="error-section" style="background: var(--color-error-light); border: 1px solid var(--color-error); padding: 1.5rem;">
+                    <div style="font-weight: 600; color: var(--color-error-dark); margin-bottom: 0.75rem; font-size: 0.875rem;">❌ Error Details</div>
+                    <div style="font-size: 0.875rem; color: var(--color-error-dark); font-family: var(--font-mono); background: white; padding: 0.75rem; border: 1px solid var(--color-error-light);">
+                        ${this.escapeHtml(iteration.error_message)}
+                    </div>
+                </div>
+            `
+                : ""
+            }
+        </div>
+    `;
+  }
+
+  private buildIterationRequestDetails(requestDetails: any): string {
+    if (!requestDetails) {
+      return '<div style="color: var(--color-gray-500); font-style: italic;">No request details available</div>';
+    }
+
+    const method = requestDetails.method || "GET";
+    const url = requestDetails.url || "";
+    const headers = requestDetails.headers || {};
+    const body = requestDetails.body;
+
+    const methodColor =
+      method === "GET"
+        ? "var(--color-blue)"
+        : method === "POST"
+        ? "var(--color-green)"
+        : method === "PUT"
+        ? "var(--color-orange)"
+        : method === "DELETE"
+        ? "var(--color-red)"
+        : "var(--color-gray)";
+
+    return `
+      <div class="request-details">
+        <div style="margin-bottom: 1rem;">
+          <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+            <span style="background: ${methodColor}; color: white; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; font-family: var(--font-mono);">
+              ${method}
+            </span>
+            <span style="font-family: var(--font-mono); font-size: 0.875rem; color: var(--color-gray-800); word-break: break-all;">
+              ${this.escapeHtml(url)}
+            </span>
+          </div>
+        </div>
+
+        ${
+          Object.keys(headers).length > 0
+            ? `
+          <div style="margin-bottom: 1rem;">
+            <div style="font-weight: 600; font-size: 0.75rem; color: var(--color-gray-700); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em;">
+              Headers (${Object.keys(headers).length})
+            </div>
+            <div style="background: white; border: 1px solid var(--color-gray-200); border-radius: 4px; max-height: 150px; overflow-y: auto;">
+              ${Object.entries(headers)
+                .map(
+                  ([key, value]) => `
+                <div style="padding: 0.5rem; border-bottom: 1px solid var(--color-gray-100); display: flex; justify-content: space-between;">
+                  <span style="font-weight: 600; font-size: 0.75rem; color: var(--color-gray-700); font-family: var(--font-mono);">
+                    ${this.escapeHtml(key)}:
+                  </span>
+                  <span style="font-size: 0.75rem; color: var(--color-gray-800); font-family: var(--font-mono); word-break: break-word; margin-left: 1rem;">
+                    ${this.escapeHtml(String(value))}
+                  </span>
+                </div>
+              `
+                )
+                .join("")}
+            </div>
+          </div>
+        `
+            : ""
+        }
+
+        ${
+          body
+            ? `
+          <div>
+            <div style="font-weight: 600; font-size: 0.75rem; color: var(--color-gray-700); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em;">
+              Request Body
+            </div>
+            <div style="background: white; border: 1px solid var(--color-gray-200); border-radius: 4px; padding: 0.75rem; max-height: 200px; overflow-y: auto;">
+              <pre style="margin: 0; font-size: 0.75rem; font-family: var(--font-mono); color: var(--color-gray-800); white-space: pre-wrap; word-break: break-word;">
+${this.escapeHtml(
+  typeof body === "string" ? body : JSON.stringify(body, null, 2)
+)}
+              </pre>
+            </div>
+          </div>
+        `
+            : ""
+        }
+      </div>
+    `;
+  }
+
+  private buildIterationResponseDetails(responseDetails: any): string {
+    if (!responseDetails) {
+      return '<div style="color: var(--color-gray-500); font-style: italic;">No response details available</div>';
+    }
+
+    const status = responseDetails.status || 0;
+    const statusText = responseDetails.statusText || "";
+    const headers = responseDetails.headers || {};
+    const data = responseDetails.data;
+
+    const statusColor =
+      status >= 200 && status < 300
+        ? "var(--color-green)"
+        : status >= 300 && status < 400
+        ? "var(--color-blue)"
+        : status >= 400 && status < 500
+        ? "var(--color-orange)"
+        : status >= 500
+        ? "var(--color-red)"
+        : "var(--color-gray)";
+
+    return `
+      <div class="response-details">
+        <div style="margin-bottom: 1rem;">
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <span style="background: ${statusColor}; color: white; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; font-family: var(--font-mono);">
+              ${status}
+            </span>
+            <span style="font-size: 0.875rem; color: var(--color-gray-800);">
+              ${this.escapeHtml(statusText)}
+            </span>
+          </div>
+        </div>
+
+        ${
+          Object.keys(headers).length > 0
+            ? `
+          <div style="margin-bottom: 1rem;">
+            <div style="font-weight: 600; font-size: 0.75rem; color: var(--color-gray-700); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em;">
+              Response Headers (${Object.keys(headers).length})
+            </div>
+            <div style="background: white; border: 1px solid var(--color-gray-200); border-radius: 4px; max-height: 150px; overflow-y: auto;">
+              ${Object.entries(headers)
+                .map(
+                  ([key, value]) => `
+                <div style="padding: 0.5rem; border-bottom: 1px solid var(--color-gray-100); display: flex; justify-content: space-between;">
+                  <span style="font-weight: 600; font-size: 0.75rem; color: var(--color-gray-700); font-family: var(--font-mono);">
+                    ${this.escapeHtml(key)}:
+                  </span>
+                  <span style="font-size: 0.75rem; color: var(--color-gray-800); font-family: var(--font-mono); word-break: break-word; margin-left: 1rem;">
+                    ${this.escapeHtml(String(value))}
+                  </span>
+                </div>
+              `
+                )
+                .join("")}
+            </div>
+          </div>
+        `
+            : ""
+        }
+
+        ${
+          data
+            ? `
+          <div>
+            <div style="font-weight: 600; font-size: 0.75rem; color: var(--color-gray-700); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em;">
+              Response Body
+            </div>
+            <div style="background: white; border: 1px solid var(--color-gray-200); border-radius: 4px; padding: 0.75rem; max-height: 200px; overflow-y: auto;">
+              <pre style="margin: 0; font-size: 0.75rem; font-family: var(--font-mono); color: var(--color-gray-800); white-space: pre-wrap; word-break: break-word;">
+${this.escapeHtml(
+  typeof data === "string" ? data : JSON.stringify(data, null, 2)
+)}
+              </pre>
+            </div>
+          </div>
+        `
+            : ""
+        }
+      </div>
+    `;
+  }
+
+  private buildIterationAssertionsDetails(assertions: any[]): string {
+    if (!assertions || assertions.length === 0) {
+      return '<div style="color: var(--color-gray-500); font-style: italic;">No assertions to display</div>';
+    }
+
+    return `
+      <div class="assertions-details">
+        ${assertions
+          .map((assertion, index) => {
+            const statusColor = assertion.passed
+              ? "var(--color-green)"
+              : "var(--color-red)";
+            const statusIcon = assertion.passed ? "✅" : "❌";
+            const statusText = assertion.passed ? "PASSED" : "FAILED";
+
+            return `
+            <div style="background: white; border: 1px solid var(--color-gray-200); border-radius: 4px; margin-bottom: 0.75rem; overflow: hidden;">
+              <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem; background: ${
+                assertion.passed
+                  ? "var(--color-green-light)"
+                  : "var(--color-red-light)"
+              }; border-bottom: 1px solid var(--color-gray-200);">
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                  <span style="color: ${statusColor}; font-size: 1rem;">${statusIcon}</span>
+                  <span style="font-weight: 600; font-size: 0.875rem; color: var(--color-gray-800);">
+                    Assertion ${index + 1}
+                  </span>
+                </div>
+                <span style="background: ${statusColor}; color: white; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600;">
+                  ${statusText}
+                </span>
+              </div>
+              <div style="padding: 0.75rem;">
+                <div style="margin-bottom: 0.5rem;">
+                  <span style="font-weight: 600; font-size: 0.75rem; color: var(--color-gray-700); text-transform: uppercase; letter-spacing: 0.05em;">
+                    Expected:
+                  </span>
+                  <span style="font-size: 0.875rem; color: var(--color-gray-800); font-family: var(--font-mono); margin-left: 0.5rem;">
+                    ${this.escapeHtml(String(assertion.expected || "N/A"))}
+                  </span>
+                </div>
+                <div style="margin-bottom: 0.5rem;">
+                  <span style="font-weight: 600; font-size: 0.75rem; color: var(--color-gray-700); text-transform: uppercase; letter-spacing: 0.05em;">
+                    Actual:
+                  </span>
+                  <span style="font-size: 0.875rem; color: var(--color-gray-800); font-family: var(--font-mono); margin-left: 0.5rem;">
+                    ${this.escapeHtml(String(assertion.actual || "N/A"))}
+                  </span>
+                </div>
+                ${
+                  assertion.message
+                    ? `
+                  <div>
+                    <span style="font-weight: 600; font-size: 0.75rem; color: var(--color-gray-700); text-transform: uppercase; letter-spacing: 0.05em;">
+                      Message:
+                    </span>
+                    <span style="font-size: 0.875rem; color: var(--color-gray-800); margin-left: 0.5rem;">
+                      ${this.escapeHtml(assertion.message)}
+                    </span>
+                  </div>
+                `
+                    : ""
+                }
+              </div>
+            </div>
+          `;
+          })
+          .join("")}
+      </div>
+    `;
+  }
+
+  private buildIterationVariablesDetails(
+    variables: Record<string, any>
+  ): string {
+    if (!variables || Object.keys(variables).length === 0) {
+      return '<div style="color: var(--color-gray-500); font-style: italic;">No variables captured</div>';
+    }
+
+    return `
+      <div class="variables-details">
+        ${Object.entries(variables)
+          .map(
+            ([key, value]) => `
+          <div style="background: white; border: 1px solid var(--color-gray-200); border-radius: 4px; margin-bottom: 0.75rem; overflow: hidden;">
+            <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem; background: var(--color-orange-light); border-bottom: 1px solid var(--color-gray-200);">
+              <span style="font-weight: 600; font-size: 0.875rem; color: var(--color-gray-800); font-family: var(--font-mono);">
+                ${this.escapeHtml(key)}
+              </span>
+              <span style="background: var(--color-orange); color: white; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600;">
+                ${typeof value}
+              </span>
+            </div>
+            <div style="padding: 0.75rem;">
+              <div style="background: var(--color-gray-50); border: 1px solid var(--color-gray-200); border-radius: 4px; padding: 0.75rem; max-height: 150px; overflow-y: auto;">
+                <pre style="margin: 0; font-size: 0.75rem; font-family: var(--font-mono); color: var(--color-gray-800); white-space: pre-wrap; word-break: break-word;">
+${this.escapeHtml(
+  typeof value === "string" ? value : JSON.stringify(value, null, 2)
+)}
+                </pre>
+              </div>
+            </div>
+          </div>
+        `
+          )
+          .join("")}
       </div>
     `;
   }

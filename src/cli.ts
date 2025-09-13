@@ -30,6 +30,7 @@ import {
   SuiteExecutionResult,
 } from "./types/config.types";
 import { ExecutionStats, TestSuite } from "./types/engine.types";
+import { SwaggerImportService, ImportOptions } from "./services/swagger-import.service";
 
 /**
  * Função principal do CLI
@@ -50,6 +51,8 @@ async function main() {
   let configFile: string | undefined;
   let showHelp = false;
   let dryRun = false;
+  let swaggerImport: string | undefined;
+  let swaggerOutput: string | undefined;
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
@@ -129,6 +132,18 @@ async function main() {
         dryRun = true;
         break;
 
+      case "--import-swagger":
+        if (i + 1 < args.length) {
+          swaggerImport = args[++i];
+        }
+        break;
+
+      case "--swagger-output":
+        if (i + 1 < args.length) {
+          swaggerOutput = args[++i];
+        }
+        break;
+
       case "-h":
       case "--help":
         showHelp = true;
@@ -149,6 +164,12 @@ async function main() {
 
   if (showHelp) {
     printHelp();
+    process.exit(0);
+  }
+
+  // Handle Swagger import if requested
+  if (swaggerImport) {
+    await handleSwaggerImport(swaggerImport, swaggerOutput);
     process.exit(0);
   }
 
@@ -289,6 +310,10 @@ EXECUTION:
   --dry-run              Show execution plan without running tests
   --no-log               Disable automatic log file generation
 
+SWAGGER IMPORT:
+  --import-swagger <file>    Import OpenAPI/Swagger spec and generate test files
+  --swagger-output <dir>     Output directory for generated tests (default: ./tests/imported)
+
 OTHER:
   -h, --help             Show this help message
   -v, --version          Show version information
@@ -300,6 +325,8 @@ EXAMPLES:
   flow-test --dry-run                         # Show what would be executed
   flow-test --directory ./api-tests --verbose # Run from specific directory with verbose output
   flow-test --environment staging --silent    # Run in staging environment silently
+  flow-test --import-swagger api.json         # Import OpenAPI spec and generate tests
+  flow-test --import-swagger api.yaml --swagger-output ./tests/api # Import with custom output
 
 CONFIGURATION:
   The engine looks for configuration files in this order:
@@ -311,6 +338,59 @@ CONFIGURATION:
 
   For configuration file format and options, see documentation.
 `);
+}
+
+/**
+ * Manipula importação de especificação Swagger/OpenAPI
+ */
+async function handleSwaggerImport(specFilePath: string, outputDir?: string): Promise<void> {
+  console.log(`🔄 Importing Swagger/OpenAPI specification from: ${specFilePath}`);
+
+  try {
+    const importService = new SwaggerImportService();
+    const options: ImportOptions = {
+      groupByTags: true,
+      generateDocs: true,
+      includeExamples: true,
+      useFakerForData: true
+    };
+
+    const result = await importService.importSpec(
+      specFilePath,
+      outputDir || './tests/imported',
+      options
+    );
+
+    if (!result.success) {
+      console.error('❌ Import failed:');
+      result.errors.forEach(error => console.error(`  • ${error}`));
+      process.exit(1);
+    }
+
+    // Show warnings if any
+    if (result.warnings.length > 0) {
+      console.log('\n⚠️  Warnings:');
+      result.warnings.forEach(warning => console.warn(`  • ${warning}`));
+    }
+
+    // Show success summary
+    console.log('\n✅ Import completed successfully!');
+    console.log(`📁 Output directory: ${result.outputPath}`);
+    console.log(`📄 Generated test suites: ${result.generatedSuites}`);
+
+    if (result.generatedDocs > 0) {
+      console.log(`📚 Generated documentation files: ${result.generatedDocs}`);
+    }
+
+    console.log('\n🚀 Next steps:');
+    console.log('  1. Review generated test files');
+    console.log('  2. Adjust variables and assertions as needed');
+    console.log(`  3. Run tests: flow-test --directory ${result.outputPath}`);
+
+  } catch (error) {
+    console.error('❌ Unexpected error during import:', error);
+    process.exit(1);
+  }
 }
 
 // Tratamento de sinais para cleanup graceful

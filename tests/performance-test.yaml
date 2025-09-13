@@ -228,7 +228,7 @@ steps:
 
     request:
       method: GET
-      url: "/delay/3"  # httpbin endpoint que simula delay
+      url: "/get"  # Removido delay para teste mais rápido
       headers:
         X-Performance-Test: "timeout"
         X-Expected-Behavior: "timeout"

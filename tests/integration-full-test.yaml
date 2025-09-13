@@ -217,13 +217,13 @@ steps:
   - name: "Performance Validation with Delay"
     request:
       method: GET
-      url: "/delay/1"  # 1 segundo de delay
+      url: "/get"  # Removido delay de 1s
       headers:
         Authorization: "Bearer {{access_token}}"
 
     scenarios:
-      # Performance excelente (não deveria acontecer com delay de 1s)
-      - condition: "duration_ms < `500`"
+      # Performance excelente
+      - condition: "duration_ms < `100`"
         then:
           capture:
             performance_rating: "'excellent'"

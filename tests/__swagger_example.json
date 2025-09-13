@@ -1,0 +1,479 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "User Journey Flow API",
+    "version": "1.0.0",
+    "description": "API demonstrando jornadas completas do usuário usando httpbin.org como mock"
+  },
+  "servers": [
+    {
+      "url": "https://httpbin.org",
+      "description": "HTTPBin mock server"
+    }
+  ],
+  "paths": {
+    "/post": {
+      "post": {
+        "summary": "User registration",
+        "operationId": "registerUser",
+        "tags": ["user-onboarding"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "example": "user@example.com"
+                  },
+                  "password": {
+                    "type": "string",
+                    "example": "SecurePass123"
+                  },
+                  "full_name": {
+                    "type": "string",
+                    "example": "João Silva"
+                  },
+                  "phone": {
+                    "type": "string",
+                    "example": "+5511999999999"
+                  }
+                },
+                "required": ["email", "password", "full_name"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "User registered successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "user_id": {
+                      "type": "string",
+                      "example": "user-12345"
+                    },
+                    "token": {
+                      "type": "string",
+                      "example": "jwt-token-here"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/bearer": {
+      "get": {
+        "summary": "Verify user authentication",
+        "operationId": "verifyAuth",
+        "tags": ["user-onboarding"],
+        "parameters": [
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": true,
+            "description": "Bearer token for authentication",
+            "schema": {
+              "type": "string",
+              "example": "Bearer jwt-token-here"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authentication verified"
+          }
+        }
+      }
+    },
+    "/put": {
+      "put": {
+        "summary": "Update user profile",
+        "operationId": "updateProfile",
+        "tags": ["user-onboarding"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "user_id": {
+                    "type": "string",
+                    "example": "user-12345"
+                  },
+                  "bio": {
+                    "type": "string",
+                    "example": "Desenvolvedor apaixonado por tecnologia"
+                  },
+                  "preferences": {
+                    "type": "object",
+                    "properties": {
+                      "newsletter": {
+                        "type": "boolean",
+                        "example": true
+                      },
+                      "notifications": {
+                        "type": "boolean",
+                        "example": false
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Profile updated successfully"
+          }
+        }
+      }
+    },
+    "/get": {
+      "get": {
+        "summary": "Browse product catalog",
+        "operationId": "browseCatalog",
+        "tags": ["shopping-journey"],
+        "parameters": [
+          {
+            "name": "category",
+            "in": "query",
+            "description": "Product category",
+            "schema": {
+              "type": "string",
+              "example": "electronics"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "description": "Search term",
+            "schema": {
+              "type": "string",
+              "example": "smartphone"
+            }
+          },
+          {
+            "name": "max_price",
+            "in": "query",
+            "description": "Maximum price filter",
+            "schema": {
+              "type": "number",
+              "example": 1000
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Catalog retrieved successfully"
+          }
+        }
+      }
+    },
+    "/patch": {
+      "patch": {
+        "summary": "Add item to cart",
+        "operationId": "addToCart",
+        "tags": ["shopping-journey"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "type": "string",
+                    "example": "add_to_cart"
+                  },
+                  "product_id": {
+                    "type": "string",
+                    "example": "product-abc123"
+                  },
+                  "quantity": {
+                    "type": "integer",
+                    "example": 2
+                  },
+                  "user_id": {
+                    "type": "string",
+                    "example": "user-12345"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Item added to cart"
+          }
+        }
+      }
+    },
+    "/delete": {
+      "delete": {
+        "summary": "Remove item from cart",
+        "operationId": "removeFromCart",
+        "tags": ["shopping-journey"],
+        "parameters": [
+          {
+            "name": "item_id",
+            "in": "query",
+            "required": true,
+            "description": "Cart item to remove",
+            "schema": {
+              "type": "string",
+              "example": "cart-item-xyz789"
+            }
+          },
+          {
+            "name": "user_id",
+            "in": "query",
+            "required": true,
+            "description": "User identifier",
+            "schema": {
+              "type": "string",
+              "example": "user-12345"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Item removed from cart"
+          }
+        }
+      }
+    },
+    "/status/{status_code}": {
+      "parameters": [
+        {
+          "name": "status_code",
+          "in": "path",
+          "required": true,
+          "description": "HTTP status code to simulate",
+          "schema": {
+            "type": "integer",
+            "example": 201
+          }
+        }
+      ],
+      "post": {
+        "summary": "Process payment",
+        "operationId": "processPayment",
+        "tags": ["checkout-process"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "user_id": {
+                    "type": "string",
+                    "example": "user-12345"
+                  },
+                  "payment_method": {
+                    "type": "string",
+                    "example": "credit_card"
+                  },
+                  "amount": {
+                    "type": "number",
+                    "example": 299.99
+                  },
+                  "currency": {
+                    "type": "string",
+                    "example": "BRL"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Payment processed successfully"
+          },
+          "402": {
+            "description": "Payment failed"
+          }
+        }
+      }
+    },
+    "/delay/{seconds}": {
+      "parameters": [
+        {
+          "name": "seconds",
+          "in": "path",
+          "required": true,
+          "description": "Seconds to wait (simulating order processing)",
+          "schema": {
+            "type": "integer",
+            "example": 3
+          }
+        }
+      ],
+      "get": {
+        "summary": "Confirm order processing",
+        "operationId": "confirmOrder",
+        "tags": ["checkout-process"],
+        "responses": {
+          "200": {
+            "description": "Order confirmed after processing"
+          }
+        }
+      }
+    },
+    "/uuid": {
+      "get": {
+        "summary": "Generate order tracking ID",
+        "operationId": "generateTrackingId",
+        "tags": ["checkout-process"],
+        "responses": {
+          "200": {
+            "description": "Tracking ID generated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "uuid": {
+                      "type": "string",
+                      "format": "uuid"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/headers": {
+      "get": {
+        "summary": "Send order confirmation email",
+        "operationId": "sendConfirmationEmail",
+        "tags": ["post-purchase"],
+        "parameters": [
+          {
+            "name": "X-User-ID",
+            "in": "header",
+            "required": true,
+            "description": "User identifier for email",
+            "schema": {
+              "type": "string",
+              "example": "user-12345"
+            }
+          },
+          {
+            "name": "X-Order-ID",
+            "in": "header",
+            "required": true,
+            "description": "Order identifier",
+            "schema": {
+              "type": "string",
+              "example": "order-abc123"
+            }
+          },
+          {
+            "name": "X-Email-Type",
+            "in": "header",
+            "required": true,
+            "description": "Type of email to send",
+            "schema": {
+              "type": "string",
+              "example": "order_confirmation"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Confirmation email sent"
+          }
+        }
+      }
+    },
+    "/cookies/set": {
+      "get": {
+        "summary": "Set user preferences cookie",
+        "operationId": "setUserPreferences",
+        "tags": ["post-purchase"],
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "query",
+            "required": true,
+            "description": "User identifier",
+            "schema": {
+              "type": "string",
+              "example": "user-12345"
+            }
+          },
+          {
+            "name": "last_purchase_category",
+            "in": "query",
+            "required": true,
+            "description": "Category of last purchase for recommendations",
+            "schema": {
+              "type": "string",
+              "example": "electronics"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Preferences saved successfully"
+          }
+        }
+      }
+    },
+    "/json": {
+      "get": {
+        "summary": "Generate product recommendations",
+        "operationId": "getRecommendations",
+        "tags": ["post-purchase"],
+        "responses": {
+          "200": {
+            "description": "Personalized recommendations generated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "recommendations": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "product_id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "score": {
+                            "type": "number"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

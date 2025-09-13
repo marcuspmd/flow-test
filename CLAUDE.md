@@ -14,6 +14,7 @@ This is a TypeScript-based API testing engine that allows creating complex test 
 - `npm run build` - Compile TypeScript to JavaScript
 - `npm run dev` - Run CLI in development mode
 - `flow-test` - CLI command for running tests (after build)
+- `flow-test --import-swagger <file>` - Import OpenAPI/Swagger spec and generate tests
 
 ## Architecture
 
@@ -42,11 +43,19 @@ The codebase follows a modular architecture:
 - `src/services/dependency.service.ts` - Flow dependency management
 - `src/services/priority.ts` - Priority-based execution
 - `src/services/global-registry.service.ts` - Global state management
+- `src/services/swagger-import.service.ts` - Swagger/OpenAPI import functionality
 
 ### Types
 
 - `src/types/engine.types.ts` - Core engine types and interfaces
 - `src/types/config.types.ts` - Configuration and result types
+- `src/types/swagger.types.ts` - Swagger/OpenAPI specification types
+
+### Swagger/OpenAPI Integration
+
+- `src/core/swagger/parser/` - OpenAPI/Swagger parsing and validation
+  - `swagger-parser.ts` - Main parser for JSON/YAML specifications
+  - `validator.ts` - Comprehensive validation for OpenAPI 3.x and Swagger 2.0
 
 ### Report Generator
 
@@ -73,6 +82,7 @@ Each step supports:
 - **Comprehensive Logging**: Automatic JSON logs with detailed execution information
 - **HTML Reports**: Visual report generation with Tailwind CSS styling
 - **Priority Execution**: Tests can be filtered and executed by priority levels
+- **Swagger/OpenAPI Import**: Automatic test generation from API specifications with support for OpenAPI 3.x and Swagger 2.0
 
 ## Default Test File Location
 

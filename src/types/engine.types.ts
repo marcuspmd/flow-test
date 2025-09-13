@@ -19,6 +19,7 @@ export interface RequestDetails {
   url: string;
   headers?: Record<string, string>;
   body?: any;
+  params?: Record<string, any>;
   timeout?: number;
 }
 
@@ -289,7 +290,6 @@ export interface TestStep {
   /** Additional metadata for step configuration */
   metadata?: TestStepMetadata;
 }
-
 
 /**
  * Flow dependency configuration

@@ -95,6 +95,7 @@ export class HttpService {
         url: fullUrl,
         headers: this.sanitizeHeaders(request.headers || {}),
         data: request.body,
+        params: request.params,
         timeout: this.timeout,
         validateStatus: () => true, // Does not reject by HTTP status
       };

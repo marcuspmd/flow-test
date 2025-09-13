@@ -18,14 +18,14 @@ steps:
   - name: "Concurrent request 1"
     request:
       method: "GET"
-      url: "/delay/2"
+      url: "/get"  # Removido delay de 2s
       headers:
         X-Request-ID: "req-1-{{parallel_test_id}}"
         X-Parallel-Test: "concurrent-execution"
     assert:
       status_code: 200
       response_time_ms:
-        less_than: 3000
+        less_than: 500  # Reduzido para 500ms
     capture:
       req1_duration: "response_time_ms"
     metadata:

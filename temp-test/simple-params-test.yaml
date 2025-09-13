@@ -1,0 +1,22 @@
+# Simple Params Test
+project_name: "Query Params Test"
+suite_name: "Simple Params Test"
+node_id: "simple_params_test"
+description: "Test query parameters functionality"
+
+base_url: "http://localhost:3000"
+
+steps:
+  - name: "Simple GET with params"
+    request:
+      method: GET
+      url: "/get"
+      params:
+        test_param: "test_value"
+        timestamp: "1234567890"
+    assert:
+      status_code: 200
+    capture:
+      test_param_value: "body.args.test_param"
+      timestamp_value: "body.args.timestamp"
+      full_args: "body.args"

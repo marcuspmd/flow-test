@@ -15,11 +15,15 @@ globals:
 # Test discovery settings
 discovery:
   patterns:
+    - "**/*.yaml"
+    - "**/tests/**/*.yaml"
     - "**/tests/*.yaml"
   exclude:
     - "**/temp/**"
     - "**/node_modules/**"
     - "**/flows/**"
+    - "**/results/**"
+    - "**/dist/**"
 
 # Priority system configuration
 priorities:

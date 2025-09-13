@@ -72,11 +72,11 @@ steps:
   - name: "Test Request Timeout"
     request:
       method: GET
-      url: "/delay/5"  # 5 segundos de delay
+      url: "/get"  # Removido delay de 5s para teste mais rápido
 
     scenarios:
-      # Resposta muito lenta
-      - condition: "duration_ms > `3000`"
+      # Resposta normal (sem delay)
+      - condition: "duration_ms < `100`"
         then:
           capture:
             timeout_risk: true

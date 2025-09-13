@@ -87,11 +87,11 @@ steps:
   - name: "Cenário baseado em tempo de resposta"
     request:
       method: GET
-      url: "/delay/2"  # Adiciona delay de 2 segundos
+      url: "/get"  # Removido delay de 2s
 
     scenarios:
       # Resposta rápida
-      - condition: "duration_ms < `1000`"
+      - condition: "duration_ms < `50`"
         then:
           capture:
             performance: "'fast'"

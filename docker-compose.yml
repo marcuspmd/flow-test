@@ -1,0 +1,32 @@
+# docker-compose.yml
+version: '3.8'
+
+services:
+  flow-test:
+    build: .
+    container_name: flow-test-engine
+    volumes:
+      - .:/app
+      - /app/node_modules
+    working_dir: /app
+    command: npm test
+    environment:
+      - NODE_ENV=test
+    networks:
+      - flow-test-network
+
+  mock-server:
+    image: node:18-alpine
+    container_name: flow-test-mock
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./mock-server.js:/app/mock-server.js
+    working_dir: /app
+    command: node mock-server.js
+    networks:
+      - flow-test-network
+
+networks:
+  flow-test-network:
+    driver: bridge

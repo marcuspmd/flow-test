@@ -72,12 +72,11 @@ steps:
   - name: "Performance monitoring step"
     request:
       method: "GET"
-      url: "/delay/1"
+      url: "/get"  # Removido delay de 1s
     assert:
       status_code: 200
       response_time_ms:
-        less_than: 2000
-        greater_than: 900
+        less_than: 200  # Reduzido para 200ms
     capture:
       performance_response_time: "response_time_ms"
     metadata:

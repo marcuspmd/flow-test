@@ -20,7 +20,7 @@ variables:
     password: "super_secret_password_123"
     api_key: "sk-test-1234567890abcdef"
     client_secret: "client_secret_xyz789"
-  
+
   # Security configuration
   security_config:
     mask_passwords: true
@@ -40,7 +40,7 @@ steps:
         login_request:
           username: "{{test_credentials.username}}"
           password: "{{test_credentials.password}}"  # Should be masked
-          timestamp: "{{$js.return Date.now()}}"
+          timestamp: "1234567890000"
           session_id: "{{faker.string.uuid}}"
         security_metadata:
           masking_enabled: "{{security_config.mask_passwords}}"

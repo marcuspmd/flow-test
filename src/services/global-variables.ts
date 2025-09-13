@@ -128,6 +128,17 @@ export class GlobalVariablesService {
   }
 
   /**
+   * Clears all non-global variables (used when starting a new test suite)
+   * Preserves only environment and global variables
+   */
+  clearAllNonGlobalVariables(): void {
+    this.context.suite = {};
+    this.context.runtime = {};
+    this.context.imported = {};
+    this.clearCache();
+  }
+
+  /**
    * Sets a specific variable in runtime
    */
   setVariable(
@@ -267,12 +278,17 @@ export class GlobalVariablesService {
   private resolveVariableExpression(expression: string): any {
     // Check if it's a JavaScript expression (starts with 'js:', '$js.', or contains logical operators)
     const hasLogicalOperators = /\|\||&&|[><=!]==?|\?|:/.test(expression);
-    if (expression.startsWith("js:") || expression.startsWith("$js.") || hasLogicalOperators) {
+    if (
+      expression.startsWith("js:") ||
+      expression.startsWith("$js.") ||
+      hasLogicalOperators
+    ) {
       try {
         let jsExpression: string | null = null;
-        
+
         if (expression.startsWith("js:")) {
-          jsExpression = javascriptService.parseJavaScriptExpression(expression);
+          jsExpression =
+            javascriptService.parseJavaScriptExpression(expression);
         } else if (expression.startsWith("$js.")) {
           // Handle $js.return and $js.expression formats
           jsExpression = expression.substring(4); // Remove "$js."
@@ -280,7 +296,7 @@ export class GlobalVariablesService {
           // Handle logical expressions like "jwt_login_success || false"
           jsExpression = expression;
         }
-        
+
         if (jsExpression) {
           // Update execution context with current variables
           const allVars = this.getAllVariables();
@@ -290,7 +306,11 @@ export class GlobalVariablesService {
           };
           // Use code block mode only for $js expressions, not for logical operators
           const useCodeBlock = expression.startsWith("$js.");
-          const result = javascriptService.executeExpression(jsExpression, context, useCodeBlock);
+          const result = javascriptService.executeExpression(
+            jsExpression,
+            context,
+            useCodeBlock
+          );
           return result;
         }
         return undefined;
@@ -334,7 +354,11 @@ export class GlobalVariablesService {
     let value = this.getVariable(baseName);
 
     // If not found in local scopes, try to resolve as exported variable (suite.variable)
-    if (value === undefined && expression.includes(".") && this.globalRegistry) {
+    if (
+      value === undefined &&
+      expression.includes(".") &&
+      this.globalRegistry
+    ) {
       const exportedValue = this.globalRegistry.getExportedVariable(expression);
       if (exportedValue !== undefined) {
         return exportedValue;

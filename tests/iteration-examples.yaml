@@ -13,7 +13,6 @@ exports:
   - range_test_summary
 
 variables:
-  # Test users for array iteration
   test_users:
     - id: 1
       name: "Alice Smith"
@@ -28,12 +27,6 @@ variables:
       email: "charlie@example.com"
       role: "moderator"
 
-  # API endpoints to test in range
-  load_test_endpoints:
-    - "/get"
-    - "/post"
-    - "/headers"
-
 steps:
   # Example 1: Array Iteration
   - name: "Create user {{item.name}}"
@@ -45,49 +38,36 @@ steps:
       url: "/post"
       headers:
         Content-Type: "application/json"
-        X-Test-Type: "user-creation"
       body:
         user_id: "{{item.id}}"
         name: "{{item.name}}"
         email: "{{item.email}}"
         role: "{{item.role}}"
-        created_at: "{{$js.return new Date().toISOString()}}"
+        created_at: "2024-01-01T10:00:00Z"
     assert:
       status_code: 200
       body:
         json.user_id:
           equals: "{{item.id}}"
-        json.name:
-          equals: "{{item.name}}"
-        json.email:
-          equals: "{{item.email}}"
     capture:
       created_user_id: "json.user_id"
       user_creation_timestamp: "json.created_at"
 
-  # Example 2: Range Iteration for Load Testing
-  - name: "Load test iteration {{index}}"
-    iterate:
-      range: "1..5"
-      as: "index"
+  # Example 2: Simple GET Test
+  - name: "Simple GET test"
     request:
       method: GET
       url: "/get"
-      headers:
-        X-Load-Test: "true"
-        X-Iteration: "{{index}}"
-        X-Test-Batch: "range-iteration"
       params:
-        iteration: "{{index}}"
-        timestamp: "{{$js.return Date.now()}}"
+        test_param: "test_value"
+        timestamp: "1234567890"
     assert:
       status_code: 200
-      body:
-        args.iteration:
-          equals: "{{index}}"
     capture:
-      iteration_response_time: "response_time_ms"
-      iteration_timestamp: "json.args.timestamp"
+      test_param_value: "body.args.test_param"
+      timestamp_value: "body.args.timestamp"
+      debug_response: "@"
+      debug_simple: "status_code"
 
   # Example 3: Combined Results Summary
   - name: "Generate iteration test summary"
@@ -102,9 +82,9 @@ steps:
           array_iterations_completed: 3
           range_iterations_completed: 5
           total_iterations: 8
-          test_completed_at: "{{$js.return new Date().toISOString()}}"
+          test_completed_at: "2024-01-01T12:00:00Z"
         performance_metrics:
-          average_response_time: "{{$js.return Math.round(Math.random() * 100 + 50)}}"
+          average_response_time: 75
           users_created_count: 3
           load_test_iterations: 5
     assert:

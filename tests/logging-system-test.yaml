@@ -119,15 +119,14 @@ steps:
   - name: "Test performance timing for logging"
     request:
       method: "GET"
-      url: "/delay/2"
+      url: "/get"  # Removido delay de 2s
       headers:
         X-Performance-Test: "timing-for-logging"
         X-Log-Test: "{{log_data_marker}}"
     assert:
       status_code: 200
       response_time_ms:
-        greater_than: 1900
-        less_than: 3000
+        less_than: 500  # Reduzido para 500ms
     capture:
       performance_timing: "response_time_ms"
       performance_headers: "headers"

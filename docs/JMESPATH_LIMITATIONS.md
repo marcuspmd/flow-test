@@ -12,6 +12,10 @@ email_domain: "body.json.user.email | split('@') | [1]"
 ```yaml
 email_domain: "body.json.user.email" # Capturar email completo e processar depois
 ```
+✅ **Alternativa com JavaScript ({{js:}}):**
+```yaml
+email_domain: "{{js: body.json?.user?.email ? body.json.user.email.split('@')[1] : null }}"
+```
 
 ### 2. Operadores matemáticos não suportados
 ❌ **Problemático:**
@@ -22,30 +26,36 @@ final_computed: "{{user_id}} + {{numbers_sum}} + {{timeout_setting}}"
 
 ✅ **Solução:** Usar JavaScript expressions ou Faker.js
 ```yaml
-salary_increase: "{{faker.datatype.number({min: {{salary}}, max: {{salary * 2}}}}}"
+salary_increase: "{{js: variables.salary * 1.1 }}"  # simples
+# ou com Faker
+salary_increase: "{{faker.number.int({ min: {{salary}}, max: {{js: variables.salary * 2}} })}}"
 ```
 
 ### 3. Operadores de comparação em capture
 ❌ **Problemático:**
 ```yaml
-is_fast_response: "body.json.conditional_data.response_time < 200"
+is_fast_response: "body.json.metrics.response_time < 200"
 ```
 
 ✅ **Solução:** Capturar valor e usar em scenarios
 ```yaml
-response_time: "body.json.conditional_data.response_time"
+response_time: "body.json.metrics.response_time"
+```
+✅ **Alternativa com JavaScript ({{js:}}):**
+```yaml
+is_fast_response: "{{js: (body.json?.metrics?.response_time ?? 0) < 200 }}"
 ```
 
 ### 4. Operadores lógicos não suportados
 ❌ **Problemático:**
 ```yaml
-performance_rating: "body.json.conditional_data.response_time < 100 && 'excellent' || 'good'"
+performance_rating: "body.json.metrics.response_time < 100 && 'excellent' || 'good'"
 ```
 
 ✅ **Solução:** Usar scenarios condicionais
 ```yaml
 # Capturar valor primeiro
-response_time: "body.json.conditional_data.response_time"
+response_time: "body.json.metrics.response_time"
 
 # Usar em scenarios
 scenarios:
@@ -68,6 +78,10 @@ processed_array: "{{active_names}}"  # dentro de capture
 ✅ **Solução:** Usar referência direta
 ```yaml
 processed_array: "body.json.some.path.to.active_names"
+```
+✅ **Alternativa com JavaScript ({{js:}}):**
+```yaml
+processed_array: "{{js: (body.json?.some?.path?.to?.active_names || []).map(n => n.trim()) }}"
 ```
 
 ## Funções JMESPath Suportadas
@@ -104,5 +118,5 @@ processed_array: "body.json.some.path.to.active_names"
 
 1. **Captura Simples**: Use JMESPath apenas para extrair valores simples
 2. **Processamento Complexo**: Use scenarios condicionais para lógica complexa
-3. **Operações Matemáticas**: Use Faker.js ou JavaScript expressions
-4. **Comparações**: Implemente via scenarios ao invés de capture
+3. **Operações Matemáticas**: Use Faker.js ou JavaScript expressions (`{{js: ...}}`)
+4. **Comparações**: Prefira scenarios; quando necessário, use `{{js: ...}}`

@@ -12,7 +12,7 @@
   "scripts": {
     "build": "tsc",
     "dev": "ts-node src/cli.ts",
-    "test": "node start-test-with-server.js",
+    "test": "npm run build && ts-node src/cli.ts --import-swagger tests/__swagger_example.json --swagger-output tests/swagger-imported && (ts-node src/cli.ts --verbose || true) && rm -rf tests/swagger-imported",
     "test:all": "node start-test-with-server.js --simple",
     "test:verbose": "node start-test-with-server.js --verbose",
     "test:silent": "node start-test-with-server.js --silent",

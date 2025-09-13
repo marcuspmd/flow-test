@@ -1,3 +1,5 @@
+import fs from "fs";
+import yaml from "js-yaml";
 import { ConfigManager } from "./config";
 import { TestDiscovery } from "./discovery";
 import { GlobalVariablesService } from "../services/global-variables";
@@ -327,10 +329,38 @@ export class FlowTestEngine {
         }
       }
 
-      // Outros filtros podem ser adicionados aqui
+      // Filtro por node_id
+      if (filters.node_ids && filters.node_ids.length > 0) {
+        if (!filters.node_ids.includes(test.node_id)) {
+          return false;
+        }
+      }
+
+      // Filtro por tags (precisa ler o arquivo YAML para obter as tags dos metadados)
+      if (filters.tags && filters.tags.length > 0) {
+        const testTags = this.getTestTags(test.file_path);
+        if (!testTags || !filters.tags.some((tag: string) => testTags.includes(tag))) {
+          return false;
+        }
+      }
 
       return true;
     });
+  }
+
+  /**
+   * Obtém as tags de um teste a partir de seu arquivo YAML
+   */
+  private getTestTags(filePath: string): string[] {
+    try {
+      const fileContent = fs.readFileSync(filePath, 'utf8');
+      const suite = yaml.load(fileContent) as any;
+
+      return suite?.metadata?.tags || [];
+    } catch (error) {
+      console.warn(`Warning: Could not read tags from ${filePath}: ${error}`);
+      return [];
+    }
   }
 
   /**

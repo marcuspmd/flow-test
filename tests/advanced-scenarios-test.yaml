@@ -73,11 +73,11 @@ steps:
   - name: "Teste de Performance com Scenarios"
     request:
       method: GET
-      url: "/delay/1"  # 1 segundo de delay
+      url: "/get"  # Removido delay de 1s
 
     scenarios:
       # Happy Path: Resposta rápida
-      - condition: "duration_ms < `2000`"
+      - condition: "duration_ms < `100`"
         then:
           capture:
             performance_rating: "'excellent'"
