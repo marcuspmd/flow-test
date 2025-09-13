@@ -143,6 +143,63 @@ export interface ConditionalScenario {
 }
 
 /**
+ * Configuration for array iteration in test steps
+ *
+ * @example
+ * ```yaml
+ * iterate:
+ *   over: "{{test_cases}}"
+ *   as: "item"
+ * ```
+ */
+export interface ArrayIterationConfig {
+  /** JMESPath expression or variable name pointing to the array to iterate over */
+  over: string;
+  /** Variable name to use for the current item in each iteration */
+  as: string;
+}
+
+/**
+ * Configuration for range iteration in test steps
+ *
+ * @example
+ * ```yaml
+ * iterate:
+ *   range: "1..5"
+ *   as: "index"
+ * ```
+ */
+export interface RangeIterationConfig {
+  /** Range specification in format "start..end" (inclusive) */
+  range: string;
+  /** Variable name to use for the current index in each iteration */
+  as: string;
+}
+
+/**
+ * Unified iteration configuration
+ *
+ * Supports both array iteration and range iteration patterns.
+ */
+export type IterationConfig = ArrayIterationConfig | RangeIterationConfig;
+
+/**
+ * Context for a single iteration execution
+ */
+export interface IterationContext {
+  /** Current iteration index (0-based) */
+  index: number;
+  /** Current item (for array iteration) or current value (for range iteration) */
+  value: any;
+  /** Variable name to bind the value to */
+  variableName: string;
+  /** Whether this is the first iteration */
+  isFirst: boolean;
+  /** Whether this is the last iteration */
+  isLast: boolean;
+}
+
+/**
  * Metadata for test step configuration and behavior
  *
  * @example
@@ -225,6 +282,8 @@ export interface TestStep {
   capture?: Record<string, string>;
   /** Conditional scenarios for complex flows */
   scenarios?: ConditionalScenario[];
+  /** Iteration configuration for repeating the step multiple times */
+  iterate?: IterationConfig;
   /** Whether to continue execution if this step fails */
   continue_on_failure?: boolean;
   /** Additional metadata for step configuration */

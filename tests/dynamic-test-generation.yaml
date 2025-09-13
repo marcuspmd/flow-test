@@ -1,0 +1,174 @@
+suite_name: "Dynamic Test Generation"
+node_id: "dynamic-test-generation"
+description: "Demonstrates dynamic test generation with arrays and loops using Faker.js and variable interpolation"
+base_url: "{{httpbin_url}}"
+
+metadata:
+  priority: "medium"
+  tags: ["dynamic", "generation", "arrays", "faker"]
+  estimated_duration_ms: 8000
+
+exports:
+  - generated_users
+  - dynamic_endpoints_tested
+  - test_summary
+
+variables:
+  # Dynamic endpoints to test
+  api_endpoints:
+    - path: "/get"
+      method: "GET"
+      description: "Get request test"
+    - path: "/post" 
+      method: "POST"
+      description: "Post request test"
+    - path: "/put"
+      method: "PUT" 
+      description: "Put request test"
+    - path: "/delete"
+      method: "DELETE"
+      description: "Delete request test"
+
+  # Test data generator with Faker.js - Direct access without arrays
+  user1:
+    id: 1
+    name: "{{faker.person.fullName}}"
+    email: "{{faker.internet.email}}"
+    city: "{{faker.location.city}}"
+  user2:
+    id: 2
+    name: "{{faker.person.fullName}}"
+    email: "{{faker.internet.email}}"
+    city: "{{faker.location.city}}"
+  user3:
+    id: 3
+    name: "{{faker.person.fullName}}"
+    email: "{{faker.internet.email}}"
+    city: "{{faker.location.city}}"
+
+steps:
+  - name: "Test GET endpoint dynamically"
+    request:
+      method: GET
+      url: "/get"
+      headers:
+        X-Dynamic-Test: "endpoint-iteration"
+        X-Test-ID: "{{faker.string.uuid}}"
+    assert:
+      status_code: 200
+      headers:
+        content-type:
+          contains: "json"
+    capture:
+      endpoint_get_result: "json"
+      response_time_get: "response_time_ms"
+
+  - name: "Test POST with dynamic user data"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Dynamic-User: "generated"
+      body:
+        # Use first user
+        user_id: "{{user1.id}}"
+        user_name: "{{user1.name}}"
+        user_email: "{{user1.email}}"
+        user_city: "{{user1.city}}"
+        timestamp: "{{$js.return Date.now()}}"
+        test_batch: "dynamic-generation"
+    assert:
+      status_code: 200
+      body:
+        json.user_id:
+          equals: 1
+        json.user_name:
+          type: string
+    capture:
+      generated_user_data: "json"
+      post_response_time: "response_time_ms"
+
+  - name: "Test PUT with dynamic modifications"
+    request:
+      method: PUT
+      url: "/put"
+      headers:
+        Content-Type: "application/json"
+        X-Modified-By: "dynamic-generator"
+      body:
+        # Use second user
+        user_id: "{{user2.id}}"
+        modified_name: "{{faker.person.fullName}}"
+        modified_email: "{{faker.internet.email}}"
+        original_city: "{{user2.city}}"
+        modification_timestamp: "{{$js.return new Date().toISOString()}}"
+        batch_id: "{{faker.string.alphanumeric(8)}}"
+    assert:
+      status_code: 200
+      body:
+        json.user_id:
+          equals: 2
+    capture:
+      modified_user_data: "json"
+      put_response_time: "response_time_ms"
+
+  - name: "Test DELETE with dynamic cleanup"
+    request:
+      method: DELETE
+      url: "/delete"
+      headers:
+        X-Delete-Reason: "dynamic-test-cleanup"
+        X-User-To-Delete: "{{user3.id}}"
+      body:
+        user_id: "{{user3.id}}"
+        user_email: "{{user3.email}}"
+        deletion_timestamp: "{{$js.return Date.now()}}"
+        cleanup_batch: "dynamic-generation-cleanup"
+    assert:
+      status_code: 200
+    capture:
+      deleted_user_data: "json"
+      delete_response_time: "response_time_ms"
+
+  - name: "Generate dynamic test summary"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Summary-Type: "dynamic-test-results"
+      body:
+        test_summary:
+          total_endpoints_tested: 4
+          get_response_time: "{{response_time_get}}"
+          post_response_time: "{{post_response_time}}"
+          put_response_time: "{{put_response_time}}"
+          delete_response_time: "{{delete_response_time}}"
+          generated_users_count: 3
+          test_completed_at: "{{$js.return new Date().toISOString()}}"
+          faker_seed: "{{$js.return Math.floor(Math.random() * 10000)}}"
+        performance_metrics:
+          average_response_time: "{{$js.return Math.round(((response_time_get || 0) + (post_response_time || 0) + (put_response_time || 0) + (delete_response_time || 0)) / 4)}}"
+          total_test_duration: "{{$js.return Date.now() - (generated_user_data?.timestamp || Date.now())}}"
+    assert:
+      status_code: 200
+      body:
+        json.test_summary.total_endpoints_tested:
+          equals: 4
+        json.test_summary.generated_users_count:
+          equals: 3
+    capture:
+      generated_users: "json.test_summary.generated_users_count"
+      dynamic_endpoints_tested: "json.test_summary.total_endpoints_tested" 
+      test_summary: "json"
+
+    scenarios:
+      - condition: "json.performance_metrics.average_response_time < `1000`"
+        then:
+          capture:
+            performance_rating: "excellent"
+      - condition: "json.performance_metrics.average_response_time >= `1000`"
+        then:
+          capture:
+            performance_rating: "acceptable"

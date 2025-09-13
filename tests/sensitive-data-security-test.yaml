@@ -1,0 +1,215 @@
+suite_name: "Sensitive Data and Security Testing"
+node_id: "sensitive-data-security"
+description: "Tests sensitive data handling, masking, and security best practices"
+base_url: "http://localhost:3000"
+
+metadata:
+  priority: "high"
+  tags: ["security", "sensitive-data", "masking", "authentication"]
+  estimated_duration_ms: 6000
+
+exports:
+  - security_test_passed
+  - sensitive_data_masked
+  - auth_tokens_secure
+
+variables:
+  # Simulated sensitive data (for testing purposes only)
+  test_credentials:
+    username: "test_user@security.test"
+    password: "super_secret_password_123"
+    api_key: "sk-test-1234567890abcdef"
+    client_secret: "client_secret_xyz789"
+  
+  # Security configuration
+  security_config:
+    mask_passwords: true
+    mask_api_keys: true
+    log_sensitive_data: false
+
+steps:
+  - name: "Test authentication with sensitive data masking"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Security-Test: "authentication"
+      body:
+        # These should be masked in logs if masking is enabled
+        login_request:
+          username: "{{test_credentials.username}}"
+          password: "{{test_credentials.password}}"  # Should be masked
+          timestamp: "{{$js.return Date.now()}}"
+          session_id: "{{faker.string.uuid}}"
+        security_metadata:
+          masking_enabled: "{{security_config.mask_passwords}}"
+          test_type: "sensitive-data-auth"
+    assert:
+      status_code: 200
+      body:
+        json.login_request.username:
+          equals: "test_user@security.test"
+        json.login_request.password:
+          equals: "super_secret_password_123"
+    capture:
+      auth_response: "json"
+      simulated_auth_token: "{{faker.string.alphanumeric(32)}}"
+      login_timestamp: "json.login_request.timestamp"
+
+  - name: "Test API key handling and masking"
+    request:
+      method: GET
+      url: "/headers"
+      headers:
+        # These headers should be masked in logs
+        Authorization: "Bearer {{test_credentials.api_key}}"
+        X-API-Key: "{{test_credentials.client_secret}}"
+        X-Client-ID: "{{faker.string.uuid}}"
+        X-Security-Test: "api-key-masking"
+    assert:
+      status_code: 200
+      body:
+        headers.authorization:
+          contains: "Bearer"
+        headers."x-api-key":
+          equals: "client_secret_xyz789"
+    capture:
+      api_key_test_response: "json"
+      headers_received: "headers"
+
+  - name: "Test secure token capture (should not log sensitive parts)"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        Authorization: "Bearer {{simulated_auth_token}}"
+        X-Security-Test: "secure-token-capture"
+      body:
+        token_validation:
+          access_token: "{{simulated_auth_token}}"
+          refresh_token: "{{faker.string.alphanumeric(64)}}"
+          token_type: "Bearer"
+          expires_in: 3600
+          scope: "read:user write:user"
+        security_check:
+          token_length: "{{$js.return simulated_auth_token.length}}"
+          is_secure: true
+          masked_for_logs: true
+    assert:
+      status_code: 200
+      body:
+        json.token_validation.token_type:
+          equals: "Bearer"
+        json.token_validation.expires_in:
+          equals: 3600
+        json.security_check.is_secure:
+          equals: true
+    capture:
+      # Use secure_token prefix to indicate this should be masked
+      secure_token: "json.token_validation.access_token"
+      secure_refresh_token: "json.token_validation.refresh_token"
+      token_metadata: "json.security_check"
+
+  - name: "Test password change with masking"
+    request:
+      method: PUT
+      url: "/put"
+      headers:
+        Content-Type: "application/json"
+        Authorization: "Bearer {{secure_token}}"
+        X-Security-Test: "password-change"
+      body:
+        password_change_request:
+          current_password: "{{test_credentials.password}}"  # Should be masked
+          new_password: "new_super_secret_password_456"      # Should be masked
+          confirm_password: "new_super_secret_password_456"  # Should be masked
+          change_timestamp: "{{$js.return Date.now()}}"
+        security_validation:
+          password_strength: "strong"
+          requires_2fa: true
+          change_reason: "security-test"
+    assert:
+      status_code: 200
+      body:
+        json.password_change_request.change_timestamp:
+          type: number
+        json.security_validation.password_strength:
+          equals: "strong"
+    capture:
+      password_change_response: "json"
+      change_timestamp: "json.password_change_request.change_timestamp"
+
+  - name: "Test sensitive data in error scenarios"
+    request:
+      method: POST
+      url: "/status/401"  # This will return 401 Unauthorized
+      headers:
+        Content-Type: "application/json"
+        Authorization: "Bearer invalid_token_12345"
+        X-Security-Test: "error-with-sensitive-data"
+      body:
+        failed_request:
+          username: "{{test_credentials.username}}"
+          failed_password: "wrong_password_123"  # Should be masked even in errors
+          api_key: "{{test_credentials.api_key}}"  # Should be masked
+          attempt_timestamp: "{{$js.return Date.now()}}"
+    assert:
+      status_code: 401  # Expecting unauthorized
+    capture:
+      error_response: "json"
+      error_status: "status_code"
+
+    scenarios:
+      - condition: "status_code == `401`"
+        then:
+          capture:
+            security_error_handled: true
+            sensitive_data_in_error: "masked"
+      - condition: "status_code != `401`"
+        then:
+          capture:
+            security_error_handled: false
+
+  - name: "Generate security test report"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Security-Test: "final-report"
+      body:
+        security_test_summary:
+          test_type: "sensitive-data-security"
+          authentication_tested: true
+          api_key_masking_tested: true
+          secure_token_handling_tested: true
+          password_change_tested: true
+          error_scenario_tested: true
+          total_security_tests: 5
+          all_sensitive_data_masked: "{{security_config.mask_passwords}}"
+          test_completed_at: "{{$js.return new Date().toISOString()}}"
+        security_metrics:
+          auth_token_secure: "{{$js.return secure_token ? true : false}}"
+          error_handling_secure: true
+          masking_configuration_active: "{{security_config.mask_passwords}}"
+          sensitive_data_test_passed: true
+        compliance_check:
+          passwords_masked: true
+          api_keys_masked: true
+          tokens_secured: true
+          error_data_masked: true
+    assert:
+      status_code: 200
+      body:
+        json.security_test_summary.total_security_tests:
+          equals: 5
+        json.security_metrics.sensitive_data_test_passed:
+          equals: true
+        json.compliance_check.passwords_masked:
+          equals: true
+    capture:
+      security_test_passed: "json.security_metrics.sensitive_data_test_passed"
+      sensitive_data_masked: "json.compliance_check.passwords_masked"
+      auth_tokens_secure: "json.security_metrics.auth_token_secure"

@@ -163,6 +163,7 @@ export interface StepExecutionResult {
   assertions_results?: AssertionResult[];
   captured_variables?: Record<string, any>;
   available_variables?: Record<string, any>;
+  iteration_results?: StepExecutionResult[];
   error_message?: string;
 }
 

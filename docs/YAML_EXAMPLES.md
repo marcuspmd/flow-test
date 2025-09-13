@@ -6,6 +6,7 @@ This document provides comprehensive examples of YAML test suite configurations 
 - [Basic Test Suite](#basic-test-suite)
 - [Authentication Flows](#authentication-flows)
 - [API Testing Patterns](#api-testing-patterns)
+- [Iteration Patterns](#iteration-patterns)
 - [Data-Driven Testing](#data-driven-testing)
 - [Error Handling](#error-handling)
 - [Performance Testing](#performance-testing)
@@ -69,7 +70,7 @@ steps:
 ```yaml
 # File: tests/auth/jwt-auth-test.yaml
 suite_name: "JWT Authentication Test"
-base_url: "https://api.example.com"
+base_url: "{{httpbin_url}}"
 
 exports: ["auth_token", "user_id", "refresh_token"]
 
@@ -174,7 +175,7 @@ steps:
   - name: "Use Access Token"
     request:
       method: GET
-      url: "https://api.example.com/protected/resource"
+      url: "/get"  # httpbin.org endpoint
       headers:
         Authorization: "{{token_type}} {{access_token}}"
 
@@ -188,12 +189,10 @@ steps:
 ```yaml
 # File: tests/crud-operations.yaml
 suite_name: "CRUD Operations Test"
-base_url: "https://api.example.com"
+base_url: "{{httpbin_url}}"
 
-imports:
-  - name: "auth"
-    path: "./auth/jwt-auth-test.yaml"
-
+# Use Global Registry instead of imports
+# Reference variables from auth-flows-test.yaml via Global Registry
 variables:
   test_user:
     name: "John Doe"
@@ -206,7 +205,7 @@ steps:
       method: POST
       url: "/users"
       headers:
-        Authorization: "Bearer {{auth.auth_token}}"
+        Authorization: "Bearer {{auth_flows_test.jwt_token}}"
         Content-Type: "application/json"
       body: "{{test_user}}"
 
@@ -225,7 +224,7 @@ steps:
       method: GET
       url: "/users/{{created_user_id}}"
       headers:
-        Authorization: "Bearer {{auth.auth_token}}"
+        Authorization: "Bearer {{auth_flows_test.jwt_token}}"
 
     assert:
       status_code: 200
@@ -239,7 +238,7 @@ steps:
       method: PUT
       url: "/users/{{created_user_id}}"
       headers:
-        Authorization: "Bearer {{auth.auth_token}}"
+        Authorization: "Bearer {{auth_flows_test.jwt_token}}"
         Content-Type: "application/json"
       body:
         name: "John Smith"
@@ -257,7 +256,7 @@ steps:
       method: DELETE
       url: "/users/{{created_user_id}}"
       headers:
-        Authorization: "Bearer {{auth.auth_token}}"
+        Authorization: "Bearer {{auth_flows_test.jwt_token}}"
 
     assert:
       status_code: 204
@@ -267,7 +266,7 @@ steps:
       method: GET
       url: "/users/{{created_user_id}}"
       headers:
-        Authorization: "Bearer {{auth.auth_token}}"
+        Authorization: "Bearer {{auth_flows_test.jwt_token}}"
 
     assert:
       status_code: 404
@@ -277,12 +276,10 @@ steps:
 ```yaml
 # File: tests/file-operations.yaml
 suite_name: "File Operations Test"
-base_url: "https://api.example.com"
+base_url: "{{httpbin_url}}"
 
-imports:
-  - name: "auth"
-    path: "./auth/jwt-auth-test.yaml"
-
+# Use Global Registry instead of imports
+# Reference variables from auth-flows-test.yaml via Global Registry
 variables:
   test_file:
     name: "test-document.pdf"
@@ -295,7 +292,7 @@ steps:
       method: POST
       url: "/files/upload"
       headers:
-        Authorization: "Bearer {{auth.auth_token}}"
+        Authorization: "Bearer {{auth_flows_test.jwt_token}}"
         Content-Type: "multipart/form-data"
       body:
         file: "@test-document.pdf"
@@ -318,7 +315,7 @@ steps:
       method: GET
       url: "/files/{{file_id}}"
       headers:
-        Authorization: "Bearer {{auth.auth_token}}"
+        Authorization: "Bearer {{auth_flows_test.jwt_token}}"
 
     assert:
       status_code: 200
@@ -332,7 +329,7 @@ steps:
       method: GET
       url: "{{download_url}}"
       headers:
-        Authorization: "Bearer {{auth.auth_token}}"
+        Authorization: "Bearer {{auth_flows_test.jwt_token}}"
 
     assert:
       status_code: 200
@@ -346,11 +343,474 @@ steps:
       method: DELETE
       url: "/files/{{file_id}}"
       headers:
-        Authorization: "Bearer {{auth.auth_token}}"
+        Authorization: "Bearer {{auth_flows_test.jwt_token}}"
 
     assert:
       status_code: 204
 ```
+
+## Iteration Patterns
+
+Iteration patterns allow you to eliminate repetitive YAML code by iterating over arrays or ranges. This powerful feature makes tests more maintainable and concise.
+
+### Array Iteration
+
+```yaml
+# File: tests/array-iteration-example.yaml
+suite_name: "Array Iteration Example"
+base_url: "{{httpbin_url}}"
+
+exports: ["users_tested", "creation_summary"]
+
+variables:
+  test_users:
+    - id: 1
+      name: "Alice Smith"
+      email: "alice@example.com"
+      role: "admin"
+    - id: 2
+      name: "Bob Johnson"
+      email: "bob@example.com"
+      role: "user"
+    - id: 3
+      name: "Charlie Brown"
+      email: "charlie@example.com"
+      role: "moderator"
+
+steps:
+  # Instead of writing 3 separate steps, use iteration
+  - name: "Create user {{item.name}}"
+    iterate:
+      over: "{{test_users}}"
+      as: "item"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Test-Type: "user-creation"
+      body:
+        user_id: "{{item.id}}"
+        name: "{{item.name}}"
+        email: "{{item.email}}"
+        role: "{{item.role}}"
+        created_at: "{{$js.return new Date().toISOString()}}"
+
+    assert:
+      status_code: 200
+      body:
+        json.user_id:
+          equals: "{{item.id}}"
+        json.name:
+          equals: "{{item.name}}"
+        json.email:
+          equals: "{{item.email}}"
+
+    capture:
+      created_user_id: "json.user_id"
+      user_creation_timestamp: "json.created_at"
+
+  # Summary step after iteration
+  - name: "Generate user creation summary"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        test_summary:
+          users_created: 3
+          total_iterations: "{{test_users.length}}"
+          test_completed_at: "{{$js.return new Date().toISOString()}}"
+
+    assert:
+      status_code: 200
+
+    capture:
+      users_tested: "json.test_summary.users_created"
+      creation_summary: "json.test_summary"
+```
+
+### Range Iteration
+
+```yaml
+# File: tests/range-iteration-example.yaml
+suite_name: "Range Iteration Example"
+base_url: "{{httpbin_url}}"
+
+exports: ["load_test_results", "performance_metrics"]
+
+variables:
+  load_test_config:
+    iterations: 10
+    delay_ms: 100
+    endpoint: "/get"
+
+steps:
+  # Range iteration for load testing
+  - name: "Load test iteration {{index}}"
+    iterate:
+      range: "1..10"
+      as: "index"
+    request:
+      method: GET
+      url: "{{load_test_config.endpoint}}"
+      headers:
+        X-Load-Test: "true"
+        X-Iteration: "{{index}}"
+        X-Test-Batch: "range-iteration"
+      params:
+        iteration: "{{index}}"
+        timestamp: "{{$js.return Date.now()}}"
+        test_id: "LOAD_TEST_{{index}}"
+
+    assert:
+      status_code: 200
+      body:
+        args.iteration:
+          equals: "{{index}}"
+      response_time_ms:
+        less_than: 2000
+
+    capture:
+      iteration_response_time: "response_time_ms"
+      iteration_timestamp: "json.args.timestamp"
+
+  # Performance analysis after iterations
+  - name: "Analyze load test performance"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        analysis:
+          total_iterations: 10
+          test_type: "load_test"
+          completed_at: "{{$js.return new Date().toISOString()}}"
+          performance_data:
+            average_response_time: "{{$js.return Math.round(Math.random() * 100 + 50)}}"
+            max_iterations: 10
+
+    assert:
+      status_code: 200
+
+    capture:
+      load_test_results: "json.analysis"
+      performance_metrics: "json.analysis.performance_data"
+```
+
+### Nested Array Iteration
+
+```yaml
+# File: tests/nested-iteration-example.yaml
+suite_name: "Nested Array Iteration"
+base_url: "{{httpbin_url}}"
+
+variables:
+  test_scenarios:
+    - scenario_name: "user_registration"
+      test_cases:
+        - name: "Valid User 1"
+          email: "user1@example.com"
+          expected_status: 201
+        - name: "Valid User 2"
+          email: "user2@example.com"
+          expected_status: 201
+    - scenario_name: "error_handling"
+      test_cases:
+        - name: "Invalid Email"
+          email: "invalid-email"
+          expected_status: 400
+        - name: "Missing Data"
+          email: ""
+          expected_status: 400
+
+steps:
+  # Iterate through test cases in first scenario
+  - name: "Test {{item.name}} in user registration"
+    iterate:
+      over: "{{test_scenarios[0].test_cases}}"
+      as: "item"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Scenario: "{{test_scenarios[0].scenario_name}}"
+      body:
+        name: "{{item.name}}"
+        email: "{{item.email}}"
+        test_type: "registration"
+
+    assert:
+      status_code: "{{item.expected_status}}"
+
+    scenarios:
+      - condition: "status_code == `201`"
+        then:
+          capture:
+            successful_registration: "body.json"
+            user_created: "true"
+
+      - condition: "status_code >= `400`"
+        then:
+          capture:
+            registration_error: "body.json"
+            error_handled: "true"
+
+  # Iterate through error test cases
+  - name: "Test {{item.name}} in error handling"
+    iterate:
+      over: "{{test_scenarios[1].test_cases}}"
+      as: "item"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Scenario: "{{test_scenarios[1].scenario_name}}"
+      body:
+        name: "{{item.name}}"
+        email: "{{item.email}}"
+        test_type: "error_validation"
+
+    assert:
+      status_code: "{{item.expected_status}}"
+
+    capture:
+      validation_result: "body.json"
+```
+
+### Combined Array and Range Iteration
+
+```yaml
+# File: tests/combined-iteration-example.yaml
+suite_name: "Combined Iteration Patterns"
+base_url: "{{httpbin_url}}"
+
+variables:
+  api_endpoints:
+    - path: "/get"
+      method: "GET"
+      description: "Get endpoint"
+    - path: "/post"
+      method: "POST"
+      description: "Post endpoint"
+    - path: "/put"
+      method: "PUT"
+      description: "Put endpoint"
+
+steps:
+  # First: Array iteration over endpoints
+  - name: "Test {{item.description}} endpoint"
+    iterate:
+      over: "{{api_endpoints}}"
+      as: "item"
+    request:
+      method: "{{item.method}}"
+      url: "{{item.path}}"
+      headers:
+        Accept: "application/json"
+        X-Test-Endpoint: "{{item.path}}"
+      body:
+        endpoint: "{{item.path}}"
+        method: "{{item.method}}"
+        description: "{{item.description}}"
+
+    assert:
+      status_code: 200
+
+    capture:
+      endpoint_response: "body.json"
+      endpoint_tested: "{{item.path}}"
+
+  # Then: Range iteration for stress testing
+  - name: "Stress test iteration {{index}}"
+    iterate:
+      range: "1..5"
+      as: "index"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Stress-Test: "true"
+        X-Iteration: "{{index}}"
+      body:
+        stress_test:
+          iteration: "{{index}}"
+          timestamp: "{{$js.return Date.now()}}"
+          random_data: "{{$js.return 'data_' + Math.random().toString(36).substr(2, 9)}}"
+
+    assert:
+      status_code: 200
+      response_time_ms:
+        less_than: 1000
+
+    capture:
+      stress_iteration_time: "response_time_ms"
+      stress_data: "body.json"
+```
+
+### Iteration with Variable Capture and Reuse
+
+```yaml
+# File: tests/iteration-variable-reuse.yaml
+suite_name: "Iteration with Variable Reuse"
+base_url: "{{httpbin_url}}"
+
+exports: ["created_users", "user_summary"]
+
+variables:
+  user_templates:
+    - template_name: "admin_template"
+      base_role: "admin"
+      permissions: ["read", "write", "delete"]
+    - template_name: "user_template"
+      base_role: "user"
+      permissions: ["read"]
+    - template_name: "guest_template"
+      base_role: "guest"
+      permissions: []
+
+steps:
+  # Create users based on templates
+  - name: "Create user from {{item.template_name}}"
+    iterate:
+      over: "{{user_templates}}"
+      as: "item"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        user_data:
+          template: "{{item.template_name}}"
+          role: "{{item.base_role}}"
+          permissions: "{{item.permissions}}"
+          created_at: "{{$js.return new Date().toISOString()}}"
+          unique_id: "USER_{{$js.return Math.random().toString(36).substr(2, 9)}}"
+
+    assert:
+      status_code: 200
+
+    capture:
+      created_user: "body.json.user_data"
+      user_id: "body.json.user_data.unique_id"
+      template_used: "{{item.template_name}}"
+
+  # Verify each created user with range iteration
+  - name: "Verify user access level {{index}}"
+    iterate:
+      range: "1..3"  # Match number of templates
+      as: "index"
+    request:
+      method: GET
+      url: "/get"
+      params:
+        user_check: "{{index}}"
+        verification_type: "access_level"
+        timestamp: "{{$js.return Date.now()}}"
+
+    assert:
+      status_code: 200
+
+    capture:
+      verification_result: "body.args"
+      check_iteration: "{{index}}"
+
+  # Summary of all iterations
+  - name: "Generate iteration summary"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        summary:
+          total_templates_processed: "{{user_templates.length}}"
+          total_verifications: 3
+          test_completed_at: "{{$js.return new Date().toISOString()}}"
+          iteration_types: ["array", "range"]
+
+    assert:
+      status_code: 200
+
+    capture:
+      created_users: "{{user_templates.length}}"
+      user_summary: "body.json.summary"
+```
+
+### Benefits of Iteration Patterns
+
+#### Before Iteration (Repetitive)
+```yaml
+# ❌ Repetitive approach
+steps:
+  - name: "Test user Alice"
+    request:
+      method: POST
+      body: { name: "Alice", email: "alice@example.com", role: "admin" }
+    assert:
+      status_code: 201
+    capture:
+      alice_id: "body.id"
+
+  - name: "Test user Bob"
+    request:
+      method: POST
+      body: { name: "Bob", email: "bob@example.com", role: "user" }
+    assert:
+      status_code: 201
+    capture:
+      bob_id: "body.id"
+
+  - name: "Test user Charlie"
+    request:
+      method: POST
+      body: { name: "Charlie", email: "charlie@example.com", role: "moderator" }
+    assert:
+      status_code: 201
+    capture:
+      charlie_id: "body.id"
+```
+
+#### After Iteration (Concise)
+```yaml
+# ✅ Clean iteration approach
+variables:
+  test_users:
+    - { name: "Alice", email: "alice@example.com", role: "admin" }
+    - { name: "Bob", email: "bob@example.com", role: "user" }
+    - { name: "Charlie", email: "charlie@example.com", role: "moderator" }
+
+steps:
+  - name: "Test user {{item.name}}"
+    iterate:
+      over: "{{test_users}}"
+      as: "item"
+    request:
+      method: POST
+      body:
+        name: "{{item.name}}"
+        email: "{{item.email}}"
+        role: "{{item.role}}"
+    assert:
+      status_code: 201
+    capture:
+      user_id: "body.id"
+```
+
+### Key Advantages
+
+1. **Code Reduction**: Eliminate repetitive YAML blocks
+2. **Maintainability**: Single definition for multiple test cases
+3. **Scalability**: Easy to add/remove test data without changing steps
+4. **Dynamic Variables**: Access iteration context (index, isFirst, isLast)
+5. **Variable Isolation**: Each iteration has its own variable scope
+6. **Performance**: Range iterations for load testing scenarios
 
 ## Data-Driven Testing
 
@@ -358,7 +818,7 @@ steps:
 ```yaml
 # File: tests/data-driven-registration.yaml
 suite_name: "Data Driven User Registration"
-base_url: "https://api.example.com"
+base_url: "{{httpbin_url}}"
 
 variables:
   test_cases:
@@ -476,15 +936,15 @@ base_url: "{{api_base_url}}"
 variables:
   environments:
     development:
-      api_base_url: "https://dev-api.example.com"
+      api_base_url: "{{httpbin_url}}"
       test_user: "dev-user@example.com"
       expected_response_time: 2000
     staging:
-      api_base_url: "https://staging-api.example.com"
+      api_base_url: "{{httpbin_url}}"
       test_user: "staging-user@example.com"
       expected_response_time: 1000
     production:
-      api_base_url: "https://api.example.com"
+      api_base_url: "{{httpbin_url}}"
       test_user: "prod-user@example.com"
       expected_response_time: 500
 
@@ -872,17 +1332,10 @@ steps:
 ```yaml
 # File: tests/microservices-integration.yaml
 suite_name: "Microservices Integration Test"
-base_url: "https://api.example.com"
+base_url: "{{httpbin_url}}"
 
-imports:
-  - name: "auth"
-    path: "./auth/jwt-auth-test.yaml"
-  - name: "user"
-    path: "./user-service-test.yaml"
-  - name: "order"
-    path: "./order-service-test.yaml"
-  - name: "payment"
-    path: "./payment-service-test.yaml"
+# Use Global Registry - reference exported variables from other test nodes
+# Example: {{auth_flows_test.jwt_token}}, {{user_service.user_id}}, etc.
 
 variables:
   test_scenario: "complete_purchase_flow"
@@ -1276,4 +1729,169 @@ steps:
       validation_report: "body.report"
 ```
 
-This collection of examples demonstrates the full range of capabilities available in the Flow Test Engine, from basic API testing to complex integration scenarios with conditional logic, performance validation, and dynamic test generation.
+## Iteration Patterns
+
+### Array Iteration
+```yaml
+# File: tests/array-iteration-example.yaml
+suite_name: "Array Iteration Example"
+base_url: "{{httpbin_url}}"
+
+variables:
+  test_users:
+    - id: 1
+      name: "Alice Smith"
+      email: "alice@example.com"
+      role: "admin"
+    - id: 2
+      name: "Bob Johnson"
+      email: "bob@example.com"
+      role: "user"
+    - id: 3
+      name: "Charlie Brown"
+      email: "charlie@example.com"
+      role: "moderator"
+
+steps:
+  # Instead of creating 3 separate steps, use iteration
+  - name: "Create user {{item.name}}"
+    iterate:
+      over: "{{test_users}}"
+      as: "item"
+    request:
+      method: POST
+      url: "/users"
+      headers:
+        Content-Type: "application/json"
+      body:
+        user_id: "{{item.id}}"
+        name: "{{item.name}}"
+        email: "{{item.email}}"
+        role: "{{item.role}}"
+
+    assert:
+      status_code: 201
+      body:
+        id: "{{item.id}}"
+        name: "{{item.name}}"
+        email: "{{item.email}}"
+
+    capture:
+      created_user_id: "body.id"
+      user_creation_time: "body.created_at"
+```
+
+### Range Iteration
+```yaml
+# File: tests/range-iteration-example.yaml
+suite_name: "Range Iteration Example"
+base_url: "{{httpbin_url}}"
+
+steps:
+  # Load test with multiple iterations
+  - name: "Load test iteration {{index}}"
+    iterate:
+      range: "1..10"
+      as: "index"
+    request:
+      method: GET
+      url: "/performance/test"
+      headers:
+        X-Iteration: "{{index}}"
+      params:
+        iteration: "{{index}}"
+        batch: "load-test"
+
+    assert:
+      status_code: 200
+      response_time_ms:
+        less_than: 1000
+
+    capture:
+      iteration_response_time: "response_time_ms"
+      iteration_result: "body.result"
+```
+
+### Nested Data Iteration
+```yaml
+# File: tests/nested-iteration-example.yaml
+suite_name: "Nested Data Iteration"
+base_url: "{{httpbin_url}}"
+
+variables:
+  test_scenarios:
+    - scenario: "valid_data"
+      test_cases:
+        - name: "Valid User 1"
+          email: "user1@example.com"
+          expected_status: 201
+        - name: "Valid User 2"
+          email: "user2@example.com"
+          expected_status: 201
+    - scenario: "invalid_data"
+      test_cases:
+        - name: "Invalid Email"
+          email: "invalid-email"
+          expected_status: 400
+
+steps:
+  # Iterate through nested test cases
+  - name: "Test scenario {{item.scenario}} - {{item.name}}"
+    iterate:
+      over: "{{test_scenarios[0].test_cases}}"
+      as: "item"
+    request:
+      method: POST
+      url: "/users/register"
+      body:
+        name: "{{item.name}}"
+        email: "{{item.email}}"
+
+    assert:
+      status_code: "{{item.expected_status}}"
+
+    scenarios:
+      - condition: "status_code == `201`"
+        then:
+          capture:
+            successful_registration: "body.user_id"
+      - condition: "status_code >= `400`"
+        then:
+          capture:
+            validation_error: "body.error_message"
+```
+
+## Benefits of Iteration
+
+### Before Iteration (Repetitive)
+```yaml
+steps:
+  - name: "Test user 1"
+    request:
+      method: POST
+      body: { name: "Alice", email: "alice@example.com" }
+  - name: "Test user 2"
+    request:
+      method: POST
+      body: { name: "Bob", email: "bob@example.com" }
+  - name: "Test user 3"
+    request:
+      method: POST
+      body: { name: "Charlie", email: "charlie@example.com" }
+```
+
+### After Iteration (Concise)
+```yaml
+steps:
+  - name: "Test user {{item.name}}"
+    iterate:
+      over: "{{test_users}}"
+      as: "item"
+    request:
+      method: POST
+      body:
+        name: "{{item.name}}"
+        email: "{{item.email}}"
+```
+
+This collection of examples demonstrates the full range of capabilities available in the Flow Test Engine, from basic API testing to complex integration scenarios with conditional logic, performance validation, dynamic test generation, and powerful iteration patterns.

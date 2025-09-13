@@ -10,6 +10,7 @@ import { HttpService } from "./http.service";
 import { AssertionService } from "./assertion.service";
 import { CaptureService } from "./capture.service";
 import { ScenarioService } from "./scenario.service";
+import { IterationService } from "./iteration.service";
 import { getLogger } from "./logger.service";
 import {
   DiscoveredTest,
@@ -39,6 +40,7 @@ export class ExecutionService {
   private assertionService: AssertionService;
   private captureService: CaptureService;
   private scenarioService: ScenarioService;
+  private iterationService: IterationService;
 
   // Estatísticas de performance
   private performanceData: {
@@ -75,6 +77,7 @@ export class ExecutionService {
     );
     this.assertionService = new AssertionService();
     this.captureService = new CaptureService();
+    this.iterationService = new IterationService();
     this.scenarioService = new ScenarioService();
 
     this.performanceData = {
@@ -879,6 +882,17 @@ export class ExecutionService {
     await this.hooks.onStepStart?.(step, context);
 
     try {
+      // Check if step has iteration configuration - if so, execute multiple times
+      if (step.iterate) {
+        return await this.executeIteratedStep(
+          step,
+          suite,
+          stepIndex,
+          stepStartTime,
+          context
+        );
+      }
+
       // Check if step has scenarios WITHOUT request - if so, use scenario-based execution
       if (step.scenarios && Array.isArray(step.scenarios) && !step.request) {
         return await this.executeScenarioStep(
@@ -1219,5 +1233,134 @@ export class ExecutionService {
       requests_per_second: Math.round(rps * 100) / 100,
       slowest_endpoints: slowestEndpoints,
     };
+  }
+
+  /**
+   * Executes a step with iteration configuration multiple times
+   */
+  private async executeIteratedStep(
+    step: any,
+    suite: TestSuite,
+    stepIndex: number,
+    stepStartTime: number,
+    context: any
+  ): Promise<StepExecutionResult> {
+    try {
+      // Validate iteration configuration
+      const validationErrors = this.iterationService.validateIteration(step.iterate);
+      if (validationErrors.length > 0) {
+        throw new Error(`Invalid iteration configuration: ${validationErrors.join(', ')}`);
+      }
+
+      // Expand iteration into contexts
+      const variableContext = this.globalVariables.getAllVariables();
+      const iterationContexts = this.iterationService.expandIteration(step.iterate, variableContext);
+
+      if (iterationContexts.length === 0) {
+        this.logger.warn(`No iterations to execute for step "${step.name}"`);
+        return {
+          step_name: step.name,
+          status: "success",
+          duration_ms: Date.now() - stepStartTime,
+          request_details: undefined,
+          response_details: undefined,
+          assertions_results: [],
+          captured_variables: {},
+          available_variables: variableContext,
+        };
+      }
+
+      // Execute each iteration
+      const iterationResults: StepExecutionResult[] = [];
+      let allIterationsSuccessful = true;
+
+      for (let i = 0; i < iterationContexts.length; i++) {
+        const iterationContext = iterationContexts[i];
+
+        // Create a snapshot of current variables to restore later
+        const variableSnapshot = this.globalVariables.createSnapshot();
+
+        try {
+          // Set iteration variable in context
+          this.globalVariables.setRuntimeVariable(
+            iterationContext.variableName,
+            iterationContext.value
+          );
+
+          // Create iteration-specific step name
+          const iterationStepName = `${step.name} [${i + 1}/${iterationContexts.length}]`;
+          const iterationStep = {
+            ...step,
+            name: iterationStepName,
+            iterate: undefined // Remove iterate to prevent infinite recursion
+          };
+
+          this.logger.info(`[${iterationStepName}] Starting iteration ${i + 1} of ${iterationContexts.length}`);
+
+          // Execute the step for this iteration
+          const iterationResult = await this.executeStep(iterationStep, suite, stepIndex);
+          iterationResults.push(iterationResult);
+
+          if (iterationResult.status !== "success") {
+            allIterationsSuccessful = false;
+
+            // Check if should stop on first failure
+            if (!step.continue_on_failure) {
+              this.logger.warn(`[${iterationStepName}] Stopping iterations due to failure`);
+              break;
+            }
+          }
+
+        } finally {
+          // Restore variable state (removing iteration variable)
+          variableSnapshot();
+        }
+      }
+
+      // Combine results from all iterations
+      const totalDuration = Date.now() - stepStartTime;
+      const combinedCapturedVariables: Record<string, any> = {};
+      const combinedAssertions: any[] = [];
+
+      // Merge captured variables and assertions from all iterations
+      iterationResults.forEach((result, index) => {
+        if (result.captured_variables) {
+          Object.entries(result.captured_variables).forEach(([key, value]) => {
+            // Prefix with iteration index to avoid conflicts
+            combinedCapturedVariables[`${key}_iteration_${index}`] = value;
+          });
+        }
+        if (result.assertions_results) {
+          combinedAssertions.push(...result.assertions_results);
+        }
+      });
+
+      return {
+        step_name: step.name,
+        status: allIterationsSuccessful ? "success" : "failure",
+        duration_ms: totalDuration,
+        request_details: iterationResults[0]?.request_details || undefined,
+        response_details: iterationResults[iterationResults.length - 1]?.response_details || undefined,
+        assertions_results: combinedAssertions,
+        captured_variables: combinedCapturedVariables,
+        available_variables: this.globalVariables.getAllVariables(),
+        iteration_results: iterationResults, // Include individual iteration results
+      };
+
+    } catch (error: any) {
+      this.logger.error(`Error executing iterated step "${step.name}": ${error.message}`);
+
+      return {
+        step_name: step.name,
+        status: "failure",
+        duration_ms: Date.now() - stepStartTime,
+        request_details: undefined,
+        response_details: undefined,
+        assertions_results: [],
+        captured_variables: {},
+        available_variables: this.globalVariables.getAllVariables(),
+        error_message: error.message,
+      };
+    }
   }
 }

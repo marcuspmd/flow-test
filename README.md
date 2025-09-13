@@ -5,7 +5,8 @@ A powerful TypeScript-based API testing engine that allows creating complex test
 ## ✨ Key Features
 
 - **Request Chaining**: Capture values from responses and use them in subsequent requests
-- **Variable Interpolation**: Hierarchical variable system with Faker.js and JavaScript support  
+- **Variable Interpolation**: Hierarchical variable system with Faker.js and JavaScript support
+- **Iteration Patterns**: Array and range iteration to eliminate repetitive test steps
 - **Advanced Assertions**: Multiple assertion types with flexible operators
 - **Conditional Scenarios**: Implement different test paths based on response conditions
 - **Comprehensive Reporting**: JSON, Console, and HTML report formats
@@ -188,20 +189,73 @@ steps:
         formatted_date: "{{$js.return new Date().toISOString().split('T')[0]}}"
 ```
 
+#### Iteration Patterns
+```yaml
+# Example from tests/iteration-examples.yaml
+steps:
+  # Array iteration - eliminates repetitive test steps
+  - name: "Create user {{item.name}}"
+    iterate:
+      over: "{{test_users}}"
+      as: "item"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        user_id: "{{item.id}}"
+        name: "{{item.name}}"
+        email: "{{item.email}}"
+        role: "{{item.role}}"
+    assert:
+      status_code: 200
+      body:
+        json.user_id:
+          equals: "{{item.id}}"
+
+  # Range iteration - for load testing or repeated operations
+  - name: "Load test iteration {{index}}"
+    iterate:
+      range: "1..5"
+      as: "index"
+    request:
+      method: GET
+      url: "/get"
+      headers:
+        X-Iteration: "{{index}}"
+        X-Test-Batch: "range-iteration"
+      params:
+        iteration: "{{index}}"
+    assert:
+      status_code: 200
+      body:
+        args.iteration:
+          equals: "{{index}}"
+```
+
 #### Faker.js Integration
 ```yaml
 # Example from tests/faker-demo.yaml
-variables:
-  # Generate realistic test data
-  fake_user:
-    name: "{{$faker.person.fullName}}"
-    email: "{{$faker.internet.email}}"
-    phone: "{{$faker.phone.number}}"
-    address: "{{$faker.location.streetAddress}}"
-    company: "{{$faker.company.name}}"
-    
-  # Dynamic arrays with multiple fake data
-  users: "{{$faker.helpers.multiple(person.fullName, {count: 5})}}"
+steps:
+  - name: "Generate fake user data"
+    request:
+      method: POST
+      url: "/post"
+      body:
+        # Faker person data (no $ prefix)
+        firstName: "{{faker.person.firstName}}"
+        lastName: "{{faker.person.lastName}}"
+        fullName: "{{faker.person.fullName}}"
+        email: "{{faker.internet.email}}"
+        phone: "{{faker.phone.number}}"
+        
+        # Faker location data
+        city: "{{faker.location.city}}"
+        streetAddress: "{{faker.location.streetAddress}}"
+        
+        # Faker text data
+        description: "{{faker.lorem.sentence}}"
 ```
 
 #### Environment Variables

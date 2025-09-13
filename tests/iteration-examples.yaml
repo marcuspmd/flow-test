@@ -1,0 +1,119 @@
+suite_name: "Iteration Examples - Array and Range"
+node_id: "iteration-examples"
+description: "Demonstrates iteration functionality with both array and range patterns"
+base_url: "{{httpbin_url}}"
+
+metadata:
+  priority: "high"
+  tags: ["iteration", "examples", "array", "range"]
+  estimated_duration_ms: 5000
+
+exports:
+  - users_tested
+  - range_test_summary
+
+variables:
+  # Test users for array iteration
+  test_users:
+    - id: 1
+      name: "Alice Smith"
+      email: "alice@example.com"
+      role: "admin"
+    - id: 2
+      name: "Bob Johnson"
+      email: "bob@example.com"
+      role: "user"
+    - id: 3
+      name: "Charlie Brown"
+      email: "charlie@example.com"
+      role: "moderator"
+
+  # API endpoints to test in range
+  load_test_endpoints:
+    - "/get"
+    - "/post"
+    - "/headers"
+
+steps:
+  # Example 1: Array Iteration
+  - name: "Create user {{item.name}}"
+    iterate:
+      over: "{{test_users}}"
+      as: "item"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Test-Type: "user-creation"
+      body:
+        user_id: "{{item.id}}"
+        name: "{{item.name}}"
+        email: "{{item.email}}"
+        role: "{{item.role}}"
+        created_at: "{{$js.return new Date().toISOString()}}"
+    assert:
+      status_code: 200
+      body:
+        json.user_id:
+          equals: "{{item.id}}"
+        json.name:
+          equals: "{{item.name}}"
+        json.email:
+          equals: "{{item.email}}"
+    capture:
+      created_user_id: "json.user_id"
+      user_creation_timestamp: "json.created_at"
+
+  # Example 2: Range Iteration for Load Testing
+  - name: "Load test iteration {{index}}"
+    iterate:
+      range: "1..5"
+      as: "index"
+    request:
+      method: GET
+      url: "/get"
+      headers:
+        X-Load-Test: "true"
+        X-Iteration: "{{index}}"
+        X-Test-Batch: "range-iteration"
+      params:
+        iteration: "{{index}}"
+        timestamp: "{{$js.return Date.now()}}"
+    assert:
+      status_code: 200
+      body:
+        args.iteration:
+          equals: "{{index}}"
+    capture:
+      iteration_response_time: "response_time_ms"
+      iteration_timestamp: "json.args.timestamp"
+
+  # Example 3: Combined Results Summary
+  - name: "Generate iteration test summary"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Test-Type: "summary"
+      body:
+        test_summary:
+          array_iterations_completed: 3
+          range_iterations_completed: 5
+          total_iterations: 8
+          test_completed_at: "{{$js.return new Date().toISOString()}}"
+        performance_metrics:
+          average_response_time: "{{$js.return Math.round(Math.random() * 100 + 50)}}"
+          users_created_count: 3
+          load_test_iterations: 5
+    assert:
+      status_code: 200
+      body:
+        json.test_summary.total_iterations:
+          equals: 8
+        json.performance_metrics.users_created_count:
+          equals: 3
+    capture:
+      users_tested: "json.test_summary.users_created_count"
+      range_test_summary: "json.test_summary"

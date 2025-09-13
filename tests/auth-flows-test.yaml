@@ -183,7 +183,7 @@ steps:
       params:
         response_type: "code"
         client_id: "{{test_credentials.client_id}}"
-        redirect_uri: "{{base_url}}/callback"
+        redirect_uri: "{{httpbin_url}}/callback"
         scope: "read write admin"
         state: "random_state_abc123"
 

@@ -6,6 +6,7 @@ This guide provides best practices, design patterns, and recommendations for wri
 - [Test Organization](#test-organization)
 - [Naming Conventions](#naming-conventions)
 - [Variable Management](#variable-management)
+- [Iteration Best Practices](#iteration-best-practices)
 - [Assertion Strategies](#assertion-strategies)
 - [Error Handling](#error-handling)
 - [Performance Considerations](#performance-considerations)
@@ -134,26 +135,440 @@ variables:
   computed_discount_amount: 15.00
 ```
 
-### Import Best Practices
+### Global Registry Best Practices
 ```yaml
-# ✅ Good - Clear imports with specific variables
-imports:
-  - name: "auth"
-    path: "./auth/login-flow.yaml"
-    variables:
-      username: "test@example.com"
-      password: "secure_password"
+# ✅ Good - Use exports to share specific variables
+exports:
+  - auth_token
+  - user_id
+  - session_data
 
-  - name: "setup"
-    path: "./shared/setup-flow.yaml"
-    variables:
-      environment: "staging"
+# Then reference in other tests:
+headers:
+  Authorization: "Bearer {{auth_test.auth_token}}"
+  X-User-ID: "{{auth_test.user_id}}"
 
-# ❌ Avoid - Overly broad imports
-imports:
-  - name: "everything"
-    path: "./all-tests.yaml"
+# ❌ Avoid - Don't export too many variables
+# Keep exports focused and meaningful
 ```
+
+## Iteration Best Practices
+
+Iteration patterns are powerful tools for eliminating repetitive test code. Follow these best practices to use them effectively.
+
+### When to Use Iteration
+
+#### ✅ Good Use Cases
+```yaml
+# Testing multiple similar data sets
+variables:
+  user_types: [
+    { role: "admin", permissions: ["read", "write", "delete"] },
+    { role: "user", permissions: ["read"] },
+    { role: "guest", permissions: [] }
+  ]
+
+steps:
+  - name: "Test {{item.role}} permissions"
+    iterate:
+      over: "{{user_types}}"
+      as: "item"
+```
+
+```yaml
+# Load testing with consistent patterns
+steps:
+  - name: "Load test iteration {{index}}"
+    iterate:
+      range: "1..100"
+      as: "index"
+    request:
+      method: GET
+      url: "/api/load-test"
+      headers:
+        X-Test-ID: "LOAD_{{index}}"
+```
+
+#### ❌ Avoid Iteration When
+```yaml
+# Different test logic per item - use separate steps instead
+steps:
+  - name: "Complex test {{item.name}}"  # ❌ Avoid if logic varies significantly
+    iterate:
+      over: "{{different_test_types}}"
+      as: "item"
+    # Complex conditional logic that varies per item type
+```
+
+### Iteration Naming Conventions
+
+#### Step Names with Variables
+```yaml
+# ✅ Good - Descriptive step names with iteration variables
+steps:
+  - name: "Create user account for {{item.name}}"
+    iterate:
+      over: "{{test_users}}"
+      as: "item"
+
+  - name: "Performance test iteration {{index}} of {{total}}"
+    iterate:
+      range: "1..10"
+      as: "index"
+
+# ❌ Avoid - Generic or unclear names
+steps:
+  - name: "Test step {{item}}"  # Too generic
+  - name: "Iteration {{index}}"  # Doesn't describe what it does
+```
+
+#### Variable Names
+```yaml
+# ✅ Good - Clear, descriptive variable names
+iterate:
+  over: "{{test_users}}"
+  as: "user"              # Clear what this represents
+
+iterate:
+  over: "{{api_endpoints}}"
+  as: "endpoint"          # Meaningful name
+
+iterate:
+  range: "1..5"
+  as: "iteration_count"   # Descriptive for ranges
+
+# ❌ Avoid - Unclear or confusing names
+iterate:
+  over: "{{test_data}}"
+  as: "item"              # Too generic
+
+iterate:
+  range: "1..10"
+  as: "i"                 # Too short, unclear
+```
+
+### Array Iteration Patterns
+
+#### Data Structure Organization
+```yaml
+# ✅ Good - Well-structured test data
+variables:
+  user_scenarios:
+    - scenario: "valid_admin"
+      user_data:
+        name: "Admin User"
+        email: "admin@example.com"
+        role: "admin"
+      expected:
+        status_code: 201
+        success: true
+    - scenario: "invalid_email"
+      user_data:
+        name: "Invalid User"
+        email: "invalid-email"
+        role: "user"
+      expected:
+        status_code: 400
+        success: false
+
+steps:
+  - name: "Test {{user.scenario}} scenario"
+    iterate:
+      over: "{{user_scenarios}}"
+      as: "user"
+    request:
+      method: POST
+      url: "/users"
+      body: "{{user.user_data}}"
+    assert:
+      status_code: "{{user.expected.status_code}}"
+```
+
+#### Avoiding Deep Nesting
+```yaml
+# ❌ Avoid - Too deeply nested
+variables:
+  complex_data:
+    scenarios:
+      positive_tests:
+        user_creation:
+          admin_users:
+            - name: "Admin 1"
+
+# ✅ Better - Flatten structure for iteration
+variables:
+  admin_test_users:
+    - name: "Admin 1"
+      role: "admin"
+      test_type: "positive"
+    - name: "Admin 2"
+      role: "admin"
+      test_type: "positive"
+```
+
+### Range Iteration Patterns
+
+#### Performance Testing
+```yaml
+# ✅ Good - Range iteration for load testing
+variables:
+  load_test_config:
+    iterations: 50
+    concurrent_users: 10
+    ramp_up_time: 30
+
+steps:
+  - name: "Load test request {{index}} of {{load_test_config.iterations}}"
+    iterate:
+      range: "1..{{load_test_config.iterations}}"
+      as: "index"
+    request:
+      method: GET
+      url: "/api/performance"
+      headers:
+        X-Load-Test: "true"
+        X-Iteration: "{{index}}"
+    assert:
+      response_time_ms:
+        less_than: 1000
+```
+
+#### Data Generation
+```yaml
+# ✅ Good - Use range for generating test data
+steps:
+  - name: "Create test record {{index}}"
+    iterate:
+      range: "1..20"
+      as: "index"
+    request:
+      method: POST
+      url: "/records"
+      body:
+        id: "RECORD_{{index}}"
+        name: "Test Record {{index}}"
+        timestamp: "{{$js.return new Date().toISOString()}}"
+```
+
+### Variable Scoping in Iterations
+
+#### Isolation Principles
+```yaml
+# ✅ Good - Each iteration is isolated
+steps:
+  - name: "Process user {{user.name}}"
+    iterate:
+      over: "{{test_users}}"
+      as: "user"
+    request:
+      method: POST
+      url: "/process"
+      body:
+        user_id: "{{user.id}}"
+        timestamp: "{{$js.return Date.now()}}"  # Fresh for each iteration
+    capture:
+      processed_user_id: "body.user_id"        # Captured per iteration
+      processing_time: "body.duration"
+```
+
+#### Variable Reuse Between Iterations
+```yaml
+# ✅ Good - Variables available after iteration completes
+variables:
+  counter: 0
+
+steps:
+  - name: "Increment counter {{index}}"
+    iterate:
+      range: "1..5"
+      as: "index"
+    request:
+      method: POST
+      url: "/counter"
+      body:
+        current_count: "{{counter}}"
+        increment: 1
+    capture:
+      counter: "body.new_count"  # Updated each iteration
+
+  - name: "Final counter check"
+    request:
+      method: GET
+      url: "/counter/final"
+    assert:
+      body:
+        final_count: "{{counter}}"  # Available after iterations
+```
+
+### Performance Considerations
+
+#### Optimal Iteration Sizes
+```yaml
+# ✅ Good - Reasonable iteration counts
+steps:
+  # Small dataset iteration (< 50 items)
+  - name: "Test user {{user.name}}"
+    iterate:
+      over: "{{test_users}}"  # 10-20 users
+      as: "user"
+
+  # Medium load testing (50-200)
+  - name: "Load test {{index}}"
+    iterate:
+      range: "1..100"
+      as: "index"
+
+# ⚠️ Consider alternatives for very large iterations
+steps:
+  # Large dataset - consider batching or parallel execution
+  - name: "Process batch {{batch_index}}"
+    iterate:
+      range: "1..10"  # Process in batches instead of 1000 iterations
+      as: "batch_index"
+```
+
+#### Memory Management
+```yaml
+# ✅ Good - Clean up large data after iterations
+variables:
+  large_test_data: []  # Will be populated
+
+steps:
+  - name: "Generate test data"
+    request:
+      method: GET
+      url: "/generate-large-dataset"
+    capture:
+      large_test_data: "body.dataset"
+
+  - name: "Process item {{item.id}}"
+    iterate:
+      over: "{{large_test_data}}"
+      as: "item"
+    request:
+      method: POST
+      url: "/process"
+      body: "{{item}}"
+
+  - name: "Cleanup large data"
+    request:
+      method: POST
+      url: "/cleanup"
+      body:
+        action: "clear_test_data"
+    capture:
+      large_test_data: null  # Clear memory
+```
+
+### Error Handling in Iterations
+
+#### Graceful Failure Handling
+```yaml
+steps:
+  - name: "Process user {{user.name}} with error handling"
+    iterate:
+      over: "{{test_users}}"
+      as: "user"
+    request:
+      method: POST
+      url: "/users/process"
+      body: "{{user}}"
+    continue_on_failure: true  # Don't stop entire iteration on one failure
+
+    scenarios:
+      - condition: "status_code == `200`"
+        then:
+          capture:
+            successful_users: "body.user_id"
+            success_count: "{{success_count + 1}}"
+
+      - condition: "status_code >= `400`"
+        then:
+          capture:
+            failed_users: "body.error"
+            failure_count: "{{failure_count + 1}}"
+```
+
+#### Partial Success Reporting
+```yaml
+steps:
+  - name: "Batch process with summary"
+    iterate:
+      range: "1..10"
+      as: "index"
+    request:
+      method: POST
+      url: "/batch/{{index}}"
+    continue_on_failure: true
+
+  # Summary after all iterations (success or failure)
+  - name: "Generate iteration summary"
+    request:
+      method: POST
+      url: "/summary"
+      body:
+        total_attempts: 10
+        successful_items: "{{success_count || 0}}"
+        failed_items: "{{failure_count || 0}}"
+        success_rate: "{{(success_count / 10) * 100}}"
+```
+
+### Testing Iteration Logic
+
+#### Validate Iteration Data
+```yaml
+# ✅ Good - Validate data before iteration
+variables:
+  test_users: []
+
+steps:
+  - name: "Load test data"
+    request:
+      method: GET
+      url: "/test-data/users"
+    capture:
+      test_users: "body.users"
+
+  - name: "Validate test data"
+    scenarios:
+      - condition: "length(test_users) > 0"
+        then:
+          capture:
+            data_ready: "true"
+      - condition: "length(test_users) == 0"
+        then:
+          assert:
+            body:
+              error: "No test data available"
+
+  - name: "Process user {{user.name}}"
+    iterate:
+      over: "{{test_users}}"
+      as: "user"
+    # ... iteration logic
+```
+
+#### Debug Iteration Issues
+```yaml
+# ✅ Good - Add debug information for iterations
+steps:
+  - name: "Debug iteration {{index}} - {{user.name}}"
+    iterate:
+      over: "{{test_users}}"
+      as: "user"
+    request:
+      method: POST
+      url: "/debug/log"
+      body:
+        iteration_info:
+          index: "{{$js.return iteration_context.index}}"
+          is_first: "{{$js.return iteration_context.isFirst}}"
+          is_last: "{{$js.return iteration_context.isLast}}"
+          current_user: "{{user.name}}"
+          total_users: "{{test_users.length}}"
+```
+
+Following these iteration best practices will help you create maintainable, performant, and reliable test suites that make the most of the iteration functionality.
 
 ## Assertion Strategies
 
@@ -417,10 +832,11 @@ variables:
   api_key: "{{env.API_KEY}}"
   db_password: "{{env.DB_PASSWORD}}"
 
-# Or use secure vaults
-imports:
-  - name: "secrets"
-    path: "./secure/credentials-flow.yaml"
+# Or reference secure credentials from environment variables
+headers:
+  Authorization: "Bearer {{$env.SECURE_TOKEN}}"
+variables:
+  api_key: "{{$env.API_SECRET}}"
 ```
 
 ### Sensitive Data Handling

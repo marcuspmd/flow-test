@@ -841,6 +841,83 @@ const interpolated = variableService.interpolate('{{api_url}}/users/{{user_id}}'
 - Hierarchical scope resolution
 - Support for dot notation for imported variables
 
+#### `IterationService`
+Service for handling iteration patterns in test steps, supporting both array and range iterations.
+
+```typescript
+// Basic usage
+const iterationService = new IterationService();
+
+// Array iteration configuration
+const arrayConfig: ArrayIterationConfig = {
+  over: "{{test_users}}",
+  as: "item"
+};
+
+// Range iteration configuration
+const rangeConfig: RangeIterationConfig = {
+  range: "1..5",
+  as: "index"
+};
+
+// Expand iteration contexts
+const contexts = iterationService.expandIteration(arrayConfig, variableContext);
+contexts.forEach(context => {
+  console.log(`Iteration ${context.index}: ${context.value}`);
+});
+```
+
+**Main responsibilities:**
+- Parse and validate iteration configurations
+- Expand array iterations into individual contexts
+- Generate range iterations with start/end bounds
+- Provide iteration metadata (index, isFirst, isLast)
+- Variable isolation and scoping for each iteration
+
+**Example usage:**
+```typescript
+import { IterationService } from './src/services/iteration.service';
+
+async function demonstrateIteration() {
+  const iterationService = new IterationService();
+
+  // Array iteration example
+  const testUsers = [
+    { id: 1, name: 'Alice', email: 'alice@example.com' },
+    { id: 2, name: 'Bob', email: 'bob@example.com' },
+    { id: 3, name: 'Charlie', email: 'charlie@example.com' }
+  ];
+
+  const arrayConfig = {
+    over: "{{test_users}}",
+    as: "item"
+  };
+
+  const arrayContexts = iterationService.expandIteration(arrayConfig, { test_users: testUsers });
+  console.log('Array iteration contexts:');
+  arrayContexts.forEach(ctx => {
+    console.log(`- Iteration ${ctx.index}: ${ctx.value.name} (${ctx.value.email})`);
+    console.log(`  isFirst: ${ctx.isFirst}, isLast: ${ctx.isLast}`);
+  });
+
+  // Range iteration example
+  const rangeConfig = {
+    range: "1..5",
+    as: "index"
+  };
+
+  const rangeContexts = iterationService.expandIteration(rangeConfig, {});
+  console.log('Range iteration contexts:');
+  rangeContexts.forEach(ctx => {
+    console.log(`- Iteration ${ctx.index}: value=${ctx.value}`);
+  });
+
+  // Validation
+  console.log('Array config valid:', iterationService.validateIterationConfig(arrayConfig));
+  console.log('Range config valid:', iterationService.validateIterationConfig(rangeConfig));
+}
+```
+
 #### `GlobalRegistryService`
 Global registry service for variables exported between flows.
 
@@ -986,6 +1063,36 @@ interface VariableContext {
 }
 ```
 
+### `IterationConfig`
+Configuration for iteration patterns in test steps.
+
+```typescript
+interface ArrayIterationConfig {
+  over: string; // Variable reference like "{{test_users}}"
+  as: string;   // Variable name for each item like "item"
+}
+
+interface RangeIterationConfig {
+  range: string; // Range expression like "1..10"
+  as: string;    // Variable name for index like "index"
+}
+
+type IterationConfig = ArrayIterationConfig | RangeIterationConfig;
+```
+
+### `IterationContext`
+Context information for each iteration execution.
+
+```typescript
+interface IterationContext {
+  index: number;      // 0-based iteration index
+  value: any;         // Current iteration value (array item or range number)
+  variableName: string; // Variable name from "as" field
+  isFirst: boolean;   // True if this is the first iteration
+  isLast: boolean;    // True if this is the last iteration
+}
+```
+
 ## Convenience Functions
 
 ### `createEngine(configPath?: string)`
@@ -1092,11 +1199,8 @@ variables:
   test_user: "user@example.com"
   test_password: "password123"
 
-imports:
-  - name: "common"
-    path: "./common.yaml"
-    variables:
-      api_version: "v2"
+# Use Global Registry to reference variables from other test nodes
+# Example: {{common_test.api_version}}
 
 steps:
   - name: "Login"

@@ -1,0 +1,187 @@
+suite_name: "Debug and System Introspection Test"
+node_id: "debug-introspection"
+description: "Tests debug variables, system introspection, and troubleshooting features"
+base_url: "{{httpbin_url}}"
+
+metadata:
+  priority: "low"
+  tags: ["debug", "introspection", "troubleshooting", "system"]
+  estimated_duration_ms: 5000
+
+exports:
+  - debug_info_captured
+  - system_variables_count
+  - environment_variables_available
+
+variables:
+  debug_mode: true
+  test_environment: "debug-testing"
+  custom_debug_value: "debug-test-12345"
+
+steps:
+  - name: "Test system environment variables introspection"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Debug-Mode: "environment-variables"
+      body:
+        # Test environment variable access
+        current_user: "{{$env.USER}}"
+        home_directory: "{{$env.HOME}}"
+        path_variable: "{{$env.PATH}}"
+        node_env: "{{$env.NODE_ENV}}"
+        custom_env: "{{$env.FLOW_TEST_CUSTOM}}"
+        # Debug system variables (if they exist)
+        debug_env_dump: "{{_environment_variables}}"
+        debug_all_vars: "{{_all_variables}}"
+        system_info:
+          timestamp: "{{$js.return Date.now()}}"
+          debug_session_id: "{{faker.string.uuid}}"
+    assert:
+      status_code: 200
+      body:
+        json.current_user:
+          type: string
+        json.home_directory:
+          type: string
+    capture:
+      environment_user: "json.current_user"
+      environment_home: "json.home_directory"
+      debug_env_variables: "json.debug_env_dump"
+      debug_all_variables: "json.debug_all_vars"
+      system_timestamp: "json.system_info.timestamp"
+
+  - name: "Test variable scope and resolution debugging"
+    request:
+      method: POST
+      url: "/post" 
+      headers:
+        Content-Type: "application/json"
+        X-Debug-Mode: "variable-resolution"
+      body:
+        variable_scopes:
+          suite_variables:
+            debug_mode: "{{debug_mode}}"
+            test_environment: "{{test_environment}}"
+            custom_debug_value: "{{custom_debug_value}}"
+          captured_variables:
+            environment_user: "{{environment_user}}"
+            system_timestamp: "{{system_timestamp}}"
+          faker_variables:
+            random_name: "{{faker.person.fullName}}"
+            random_email: "{{faker.internet.email}}"
+            random_uuid: "{{faker.string.uuid}}"
+          javascript_expressions:
+            current_time: "{{$js.return Date.now()}}"
+            random_number: "{{$js.return Math.floor(Math.random() * 1000)}}"
+            formatted_date: "{{$js.return new Date().toISOString()}}"
+    assert:
+      status_code: 200
+      body:
+        json.variable_scopes.suite_variables.debug_mode:
+          equals: true
+        json.variable_scopes.captured_variables.environment_user:
+          type: string
+    capture:
+      variable_resolution_test: "json"
+      total_variables_tested: "{{$js.return Object.keys(json.variable_scopes).length}}"
+
+  - name: "Test assertion debugging and error scenarios"
+    request:
+      method: GET
+      url: "/status/200"
+      headers:
+        X-Debug-Mode: "assertion-testing"
+        X-Expected-Status: "200"
+    assert:
+      status_code: 200
+      headers:
+        content-length:
+          type: string
+      response_time_ms:
+        less_than: 5000
+    capture:
+      assertion_test_passed: true
+      response_content_length: "headers['content-length']"
+      response_time_debug: "response_time_ms"
+
+    scenarios:
+      - condition: "response_time_ms < `1000`"
+        then:
+          capture:
+            performance_debug: "fast_response"
+      - condition: "response_time_ms >= `1000`"
+        then:
+          capture:
+            performance_debug: "slow_response"
+
+  - name: "Test request/response debugging"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Debug-Mode: "request-response-debugging"
+        X-Custom-Header: "debug-test-header"
+      body:
+        debug_request_info:
+          method: "POST"
+          url: "/post"
+          timestamp: "{{$js.return Date.now()}}"
+          test_data: "debug-introspection"
+        captured_data:
+          environment_user: "{{environment_user}}"
+          system_timestamp: "{{system_timestamp}}"
+          variable_count: "{{total_variables_tested}}"
+        performance_data:
+          previous_response_time: "{{response_time_debug}}"
+          performance_rating: "{{performance_debug}}"
+    assert:
+      status_code: 200
+      body:
+        json.debug_request_info.method:
+          equals: "POST"
+        json.captured_data.variable_count:
+          type: number
+    capture:
+      debug_request_response: "json"
+      final_debug_timestamp: "json.debug_request_info.timestamp"
+
+  - name: "Generate debug summary report"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Debug-Mode: "summary-report"
+      body:
+        debug_summary:
+          test_type: "debug-introspection"
+          environment_variables_tested: true
+          variable_resolution_tested: true
+          assertion_debugging_tested: true
+          request_response_debugging_tested: true
+          total_debug_steps: 5
+          debug_session_completed: "{{$js.return new Date().toISOString()}}"
+        captured_debug_info:
+          environment_user: "{{environment_user}}"
+          system_variables: "{{debug_env_variables}}"
+          performance_data: "{{performance_debug}}"
+          final_timestamp: "{{final_debug_timestamp}}"
+        system_health:
+          all_tests_passed: true
+          debug_mode_functional: "{{debug_mode}}"
+          introspection_working: true
+    assert:
+      status_code: 200
+      body:
+        json.debug_summary.total_debug_steps:
+          equals: 5
+        json.system_health.all_tests_passed:
+          equals: true
+    capture:
+      debug_info_captured: "json.debug_summary"
+      system_variables_count: "{{$js.return Object.keys(debug_env_variables || {}).length}}"
+      environment_variables_available: "{{$js.return environment_user ? true : false}}"

@@ -93,6 +93,14 @@ export class GlobalVariablesService {
   }
 
   /**
+   * Sets a single variable in runtime scope
+   */
+  setRuntimeVariable(name: string, value: any): void {
+    this.context.runtime[name] = value;
+    this.clearCache();
+  }
+
+  /**
    * Sets variables in suite scope
    */
   setSuiteVariables(variables: Record<string, any>): void {
@@ -319,19 +327,19 @@ export class GlobalVariablesService {
       return envValue || null;
     }
 
-    // First, tries to resolve as exported variable (suite.variable)
-    if (expression.includes(".") && this.globalRegistry) {
-      const exportedValue = this.globalRegistry.getExportedVariable(expression);
-      if (exportedValue !== undefined) {
-        return exportedValue;
-      }
-    }
-
     // Support for paths like: user.name, config.timeout
     const parts = expression.split(".");
     const baseName = parts[0];
 
     let value = this.getVariable(baseName);
+
+    // If not found in local scopes, try to resolve as exported variable (suite.variable)
+    if (value === undefined && expression.includes(".") && this.globalRegistry) {
+      const exportedValue = this.globalRegistry.getExportedVariable(expression);
+      if (exportedValue !== undefined) {
+        return exportedValue;
+      }
+    }
 
     // If not found in regular scopes, try to resolve from dependent flows' exports
     if (
