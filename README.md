@@ -1,77 +1,21 @@
 # Flow Test Engine
 
-A powerful TypeScript-based API testing engine that allows creating complex test flows using declarative YAML configuration files. Features request chaining, variable interpolation, response assertions, and data capture between test steps.
+A TypeScript-based API testing engine for writing rich, declarative flows in YAML. It supports request chaining, variable interpolation, flexible assertions, conditional scenarios, and clean reports in JSON and HTML.
 
-## ✨ Key Features
+![HTML report overview](public/assets/flow-test.png)
 
-- **Request Chaining**: Capture values from responses and use them in subsequent requests
-- **Variable Interpolation**: Hierarchical variable system with Faker.js and JavaScript support
-- **Iteration Patterns**: Array and range iteration to eliminate repetitive test steps
-- **Advanced Assertions**: Multiple assertion types with flexible operators
-- **Conditional Scenarios**: Implement different test paths based on response conditions
-- **Comprehensive Reporting**: JSON, Console, and HTML report formats
-- **Modular Architecture**: Well-structured TypeScript codebase
+## Key Features
 
-## � Directory Structure & Organization
+- Request chaining and cross-step data capture
+- Variable interpolation with environment overrides and Faker.js
+- Iteration patterns (arrays and ranges)
+- Powerful assertions and conditional scenarios
+- Reporting to JSON and HTML (plus console summary)
+- Directory-based discovery and filtering (tags, priorities, suites)
 
-The Flow Test Engine supports **hierarchical test organization** with automatic discovery in subdirectories. This allows you to organize tests by domain, functionality, or any logical grouping.
+## Quick Start
 
-### Supported Directory Structures
-
-```
-tests/
-├── start-flow.yaml                    # Root level tests
-├── auth-flows-test.yaml
-├── api-demo/                         # Subdirectory with 4 tests
-│   ├── basic-get.yaml
-│   ├── basic-post.yaml
-│   ├── headers-test.yaml
-│   └── status-codes.yaml
-├── ecommerce-api/                    # Complex flows (7 tests)
-│   ├── user-onboarding.yaml
-│   ├── shopping-journey.yaml
-│   ├── checkout-process.yaml
-│   ├── post-purchase.yaml
-│   ├── payment-flow.yaml
-│   ├── inventory-check.yaml
-│   └── order-tracking.yaml
-└── realistic-flows/                  # User journey tests (4 tests)
-    ├── complete-user-journey.yaml
-    ├── error-handling.yaml
-    ├── data-validation.yaml
-    └── performance-check.yaml
-```
-
-### Directory-Based Execution
-
-```bash
-# Discover all tests (62 total across all directories)
-./dist/cli.js --dry-run
-
-# Run specific subdirectory
-./dist/cli.js --directory tests/api-demo --verbose        # 4 tests, 100% success
-./dist/cli.js --directory tests/realistic-flows --verbose # 4 tests, 100% success
-./dist/cli.js --directory tests/ecommerce-api --verbose   # 7 tests available
-
-# Run with tag filtering
-./dist/cli.js --tag checkout-process --verbose           # 1 specific test
-./dist/cli.js --tag user-onboarding,shopping-journey --verbose
-
-# Run complete user journey (multiple tags)
-./dist/cli.js --tag user-onboarding,shopping-journey,checkout-process,post-purchase --verbose
-```
-
-### Benefits of Directory Organization
-
-- **🔍 Automatic Discovery**: Finds all `**/*.yaml` files recursively
-- **📊 Organized Execution**: Run tests by domain or functionality
-- **🎯 Selective Testing**: Execute specific directories or tag combinations
-- **📈 Scalability**: Supports unlimited subdirectory depth
-- **🔄 Flexibility**: Mix root-level and subdirectory tests seamlessly
-
-## �🚀 Quick Start
-
-### Installation
+### Install
 
 ```bash
 git clone https://github.com/marcuspmd/flow-test.git
@@ -79,251 +23,142 @@ cd flow-test
 npm install
 ```
 
-### Basic Usage
+### Run
 
 ```bash
-# 🚀 COMPLETE WORKFLOW: Import Swagger → Run Tests → Cleanup (Pipeline Ready)
+# Complete workflow: Import Swagger → Run tests → Cleanup
 npm test
 
-# Run specific test file
+# Run a specific test suite (ts-node)
 npm run dev tests/start-flow.yaml
 
-# Run with different verbosity levels
-npm run test:verbose    # Detailed output with request/response data
-npm run test:silent     # Errors only
+# Verbose or silent presets
+npm run test:verbose
+npm run test:silent
 
-# Run tests with priority filtering
-npm run test:critical   # Only critical priority tests
-npm run test:high       # Critical and high priority tests
+# Priority filters via helper scripts
+npm run test:critical   # only critical
+npm run test:high       # critical + high
 ```
 
-### Advanced Directory-Based Execution
+### CLI (direct usage)
 
-### Benefits of Directory Organization
-
-- **🔍 Automatic Discovery**: Finds all `**/*.yaml` files recursively
-- **📊 Organized Execution**: Run tests by domain or functionality
-- **🎯 Selective Testing**: Execute specific directories or tag combinations
-- **📈 Scalability**: Supports unlimited subdirectory depth
-- **🔄 Flexibility**: Mix root-level and subdirectory tests seamlessly
-
-## 🔄 Swagger/OpenAPI Import
-
-Automatically generate comprehensive test suites from OpenAPI/Swagger specifications. The engine converts API documentation into executable YAML test files with proper request/response validation.
-
-### Import Commands
+During development, prefer `npm run dev`. After building, you can run the compiled CLI:
 
 ```bash
-# Import OpenAPI 3.0 specification
-flow-test --import-swagger api.json
-
-# Import with custom output directory
-flow-test --import-swagger api.yaml --swagger-output ./tests/imported-api
-
-# Import Swagger 2.0 specification
-flow-test --import-swagger swagger.json --swagger-output ./tests/legacy-api
-
-# Import and run immediately
-# Import and run immediately
-flow-test --import-swagger api.json && flow-test --directory ./tests/imported-api --verbose
+npm run build
+node dist/cli.js --dry-run
+node dist/cli.js --directory tests --verbose
+node dist/cli.js --tag smoke,regression
 ```
 
-### Automated Swagger Testing
+## Directory Structure & Discovery
 
-For a complete import → test → cleanup workflow, use the automated script:
+The engine discovers `**/*.yaml` recursively (excluding `node_modules`, `dist`, `results`, and others configured in `flow-test.config.yml`). Organize tests by domain or feature as you prefer.
+
+Benefits:
+- Automatic discovery of nested `tests/**.yaml`
+- Run by directory, tag, suite, node ID, or priority
+- Scales well as your test matrix grows
+
+## Swagger/OpenAPI Import
+
+Generate suites from an OpenAPI/Swagger spec.
 
 ```bash
-# 🚀 One-command solution: Import, test, and cleanup
+# Import OpenAPI 3.0 or Swagger 2.0
+node dist/cli.js --import-swagger tests/__swagger_example.json
+
+# Custom output directory
+node dist/cli.js --import-swagger api.yaml --swagger-output ./tests/imported-api
+
+# Import and run
+node dist/cli.js --import-swagger api.json && node dist/cli.js --directory ./tests/imported-api --verbose
+```
+
+To perform the end-to-end import → run → cleanup in one command, use:
+
+```bash
 npm test
-
-# This script does:
-# 1. Imports tests/__swagger_example.json
-# 2. Runs ALL tests (existing + imported) with automatic discovery
-# 3. Always cleans up imported test directory (even if tests fail)
-# 4. Generates comprehensive reports
 ```
 
-### CI/CD Pipeline Integration
+## Reports
 
-Perfect for automated testing pipelines:
-
-```yaml
-# .github/workflows/test.yml
-name: API Tests
-on: [push, pull_request]
-
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
-        with:
-          node-version: '18'
-      - run: npm install
-      - run: npm test  # Complete workflow: import → run ALL tests → cleanup
-      - name: Upload test results
-        uses: actions/upload-artifact@v3
-        with:
-          name: test-results
-          path: results/
-```
-
-### Docker Integration
-
-```dockerfile
-# Dockerfile (included in repository)
-FROM node:18-alpine
-WORKDIR /app
-COPY package*.json ./
-RUN npm install
-COPY . .
-RUN npm run build
-CMD ["npm", "test"]
-```
-
-### Jenkins Pipeline
-
-```groovy
-// Jenkinsfile
-pipeline {
-    agent any
-    stages {
-        stage('Test') {
-            steps {
-                sh 'npm install'
-                sh 'npm test'  // Complete validation: import + ALL tests + cleanup
-            }
-        }
-    }
-    post {
-        always {
-            archiveArtifacts artifacts: 'results/*.json', fingerprint: true
-        }
-    }
-}
-```
-
-### Docker Integration
-
-```dockerfile
-# Dockerfile (included in repository)
-FROM node:18-alpine
-WORKDIR /app
-COPY package*.json ./
-RUN npm install
-COPY . .
-RUN npm run build
-CMD ["npm", "test"]
-```
+- JSON artifacts in `results/` (latest at `results/latest.json`)
+- HTML report viewer via:
 
 ```bash
-# Build and run
-docker build -t flow-test .
-docker run flow-test
-
-# Or use docker-compose (includes mock server)
-docker-compose up
+npm run report:html
 ```
 
-### GitLab CI/CD
+Example visuals:
 
-```yaml
-# .gitlab-ci.yml
-stages:
-  - test
+![Flow overview](public/assets/flow.png)
+![Iterator example](public/assets/test-iterator.png)
+![Scenario view](public/assets/test-scenarios.png)
+![Failure details](public/assets/test-fail.png)
 
-test:
-  image: node:18
-  stage: test
-  script:
-    - npm install
-    - npm test  # Complete validation workflow
-  artifacts:
-    paths:
-      - results/
-    expire_in: 1 week
-```
+## Example Suites
 
-## 📋 Example Test Files
-```
-
-### Generated Test Structure
-
-When you import a Swagger spec, the engine creates:
-
-```
-tests/imported-api/
-├── user-operations.yaml     # All user-related endpoints
-├── product-catalog.yaml     # Product management endpoints
-├── order-processing.yaml    # Order and checkout flows
-├── admin-functions.yaml     # Administrative operations
-└── integration-flows.yaml   # Cross-API integration tests
-```
-
-### Import Features
-
-- **📋 Complete Coverage**: Generates tests for all endpoints and methods
-- **🏷️ Smart Tagging**: Automatic tagging by operation type and resource
-- **🔗 Request Chaining**: Intelligent linking of related operations
-- **✅ Response Validation**: Comprehensive assertions for all response schemas
-- **📊 Example Data**: Uses specification examples or generates realistic test data
-
-### Example: Import & Test Workflow
+Run any file in `tests/` directly:
 
 ```bash
-# 1. Import your API specification
-flow-test --import-swagger https://petstore.swagger.io/v2/swagger.json --swagger-output ./tests/petstore
-
-# 2. Review generated tests
-ls -la tests/petstore/
-
-# 3. Run the imported tests
-flow-test --directory tests/petstore --verbose
-
-# 4. Clean up after testing (optional)
-rm -rf tests/petstore
-```
-
-### Ready-to-Use CI/CD Files
-
-The repository includes ready-to-use CI/CD configuration files:
-
-- **`.github/workflows/test.yml`** - GitHub Actions workflow
-- **`Dockerfile`** - Container build configuration
-- **`docker-compose.yml`** - Development environment with mock server
-
-Simply copy these files to your project and customize as needed!
-
-## 📋 Example Test Files
-
-The repository includes comprehensive test examples that you can run immediately:
-
-```bash
-# Basic getting started example
-tests/start-flow.yaml                    # Simple HTTP flow demo
-
-# Authentication patterns
-tests/auth-flows-test.yaml              # JWT, OAuth2, refresh tokens
-tests/javascript-expressions-test.yaml  # Advanced JS expressions
-
-# Data generation and variables
-tests/faker-demo.yaml                   # Faker.js integration examples
-tests/environment-variables-test.yaml   # Environment variable usage
-tests/variable-interpolation-test.yaml  # Variable scoping and interpolation
-
-# Advanced features
-tests/complex-conditional-scenarios.yaml # Conditional test logic
-tests/microservices-integration-test.yaml # Multi-service testing
-tests/performance-test.yaml             # Performance validation
-
-# Run any test file:
 npm run dev tests/faker-demo.yaml
 ```
 
-## 📝 YAML Configuration
+Handy examples:
+- `tests/start-flow.yaml` – Basic HTTP flow demo
+- `tests/auth-flows-test.yaml` – Auth patterns (JWT, refresh)
+- `tests/environment-variables-test.yaml` – Env variables
+- `tests/variable-interpolation-test.yaml` – Interpolation and capture
+- `tests/performance-test.yaml` – Performance checks
 
-### Basic Structure
+## Configuration
+
+The engine reads `flow-test.config.yml` by default (override with `--config`). The schema includes:
+
+```yaml
+# flow-test.config.yml
+project_name: "Flow Test Demo Project"
+test_directory: "./tests"
+
+globals:
+  variables:
+    httpbin_url: "http://localhost:3000"
+  timeouts:
+    default: 30000
+    slow_tests: 60000
+
+discovery:
+  patterns: ["**/*.yaml"]
+  exclude: ["**/node_modules/**", "**/dist/**", "**/results/**", "**/temp/**"]
+
+priorities:
+  levels: [critical, high, medium, low]
+  required: [critical, high]
+  fail_fast_on_required: false
+
+execution:
+  mode: sequential           # or parallel
+  max_parallel: 3
+  timeout: 60000
+  continue_on_failure: true
+  retry_failed:
+    enabled: true
+    max_attempts: 2
+    delay_ms: 2000
+
+reporting:
+  formats: [html, json]
+  output_dir: "./results"
+  aggregate: true
+  include_performance_metrics: true
+  include_variables_state: true
+```
+
+Environment variables prefixed with `FLOW_TEST_` override globals (e.g., `FLOW_TEST_HTTPBIN_URL`).
+
+### YAML Suite Basics
 
 ```yaml
 # Example from tests/start-flow.yaml
@@ -603,30 +438,7 @@ Other:
   -v, --version            Show version information
 ```
 
-## 📊 Reports
-
-### Automatic Logging
-All test executions automatically generate detailed JSON logs in the `results/` directory:
-
-```
-results/
-├── suite-name_2024-01-15_10-30-45.json
-├── login-test_2024-01-15_10-25-30.json
-└── latest.json (symlink to most recent)
-```
-
-### HTML Reports
-Generate visual HTML reports:
-
-```bash
-# Generate HTML report from latest results
-npm run report:html
-
-# Generate from specific file
-flow-test-html results/my-test.json --output report.html
-```
-
-## 🏗️ Project Structure
+## Project Structure
 
 ```
 flow-test/
@@ -649,12 +461,10 @@ flow-test/
 │       ├── engine.types.ts     # Core type definitions
 │       ├── config.types.ts     # Configuration types
 │       └── swagger.types.ts    # Swagger/OpenAPI types
-├── tests/                       # Test files (62 total)
+├── tests/                       # Test files
 │   ├── start-flow.yaml         # Basic demo
 │   ├── auth-flows-test.yaml    # Authentication patterns
-│   ├── api-demo/               # 4 basic API tests
-│   ├── ecommerce-api/          # 7 complex e-commerce flows
-│   └── realistic-flows/        # 4 user journey tests
+│   └── ...                      # Many focused YAML suites
 ├── results/                     # Execution results and logs
 │   ├── latest.json            # Most recent execution
 │   └── *.json                 # Historical results
@@ -664,42 +474,28 @@ flow-test/
     └── ...
 ```
 
-## 🔧 Development
-
-### Build & Test
+## Development
 
 ```bash
 npm run build     # Compile TypeScript
-npm test          # 🚀 Complete validation: Import Swagger → Run ALL tests → Cleanup
+npm test          # Import Swagger example → run all → cleanup
 ```
 
-### Development Workflow
-
-```bash
-# Development cycle
-npm run build     # Build the project
-npm run dev       # Run development server with hot reload
-npm test          # Validate everything works perfectly (all tests)
-```
-
-### Contributing
+## Contributing
 
 1. Fork the repository
 2. Create a feature branch
-3. Make your changes
-4. Add tests for new functionality
-5. Submit a pull request
+3. Make your changes and add/adjust tests
+4. Open a pull request with a short rationale and, if possible, a report screenshot
 
-## 📄 License
+## License
 
-MIT License - see package.json for details.
+MIT – see `package.json` for details.
 
-## 📚 Documentation
+## More Docs
 
-For detailed examples and advanced usage, see the `docs/` directory:
-
-- [YAML Examples](./docs/YAML_EXAMPLES.md) - Comprehensive test examples
-- [API Documentation](./docs/API_DOCUMENTATION.md) - Complete API reference
-- [Best Practices](./docs/BEST_PRACTICES.md) - Guidelines and recommendations
-- [Troubleshooting](./docs/TROUBLESHOOTING.md) - Common issues and solutions
-- [Configuration](./docs/CONFIGURATION.md) - Advanced configuration options
+- `docs/YAML_EXAMPLES.md` – Comprehensive YAML patterns
+- `docs/API_DOCUMENTATION.md` – API reference
+- `docs/BEST_PRACTICES.md` – Recommendations
+- `docs/TROUBLESHOOTING.md` – Common issues and fixes
+- `docs/CONFIGURATION.md` – Full config schema and samples

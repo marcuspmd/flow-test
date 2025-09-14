@@ -89,7 +89,7 @@ npm install
 ls -la tests/your-test.yaml
 
 # Check if paths are absolute or relative correctly
-npm start ./tests/your-test.yaml  # Use relative path
+node dist/cli.js ./tests/your-test.yaml  # Use relative path
 ```
 
 4. **Clear node_modules and reinstall:**
@@ -105,13 +105,10 @@ npm install
 **Enable detailed logging:**
 ```bash
 # Maximum verbosity
-npm start your-test.yaml --verbose
+node dist/cli.js your-test.yaml --verbose
 
 # Detailed output
-npm start your-test.yaml --detailed
-
-# Continue on failures to see all issues
-npm start your-test.yaml --continue --verbose
+node dist/cli.js your-test.yaml --detailed
 ```
 
 **Log levels:**
@@ -122,13 +119,10 @@ npm start your-test.yaml --continue --verbose
 
 ### Save Debug Output
 
-**Save execution results for analysis:**
+Execution results are written automatically to `results/` (latest at `results/latest.json`).
+Generate an HTML viewer with:
 ```bash
-# Save to JSON file
-npm start your-test.yaml --verbose --output debug-results.json
-
-# Save to custom location
-npm start your-test.yaml --output ./debug/session-2024-01-15.json
+npm run report:html
 ```
 
 **Debug output includes:**
@@ -331,11 +325,8 @@ priorities:
   fail_fast_on_required: true
 ```
 
-3. **Debug config loading:**
-```bash
-# Run with debug config
-npm start your-test.yaml --config-debug
-```
+3. **Inspect effective config:**
+Temporarily add a debug step or run a quick script that calls `ConfigManager.saveDebugConfig('results/config-debug.yaml')` if you need a full dump.
 
 ## Variable Issues
 
@@ -656,7 +647,7 @@ steps:
 
 **Enable comprehensive logging:**
 ```bash
-npm start your-test.yaml --verbose --output debug.log
+node dist/cli.js your-test.yaml --verbose
 ```
 
 **Analyze logs for patterns:**
@@ -688,7 +679,7 @@ npm start your-test.yaml --verbose --output debug.log
 **Profile test execution:**
 ```bash
 # Use Node.js profiler
-node --prof ./dist/main.js your-test.yaml
+node --prof dist/cli.js your-test.yaml
 
 # Analyze profile
 node --prof-process isolate-*.log > profile.txt

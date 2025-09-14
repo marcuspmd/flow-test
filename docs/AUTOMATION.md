@@ -130,7 +130,7 @@ run_tests() {
     cd "$PROJECT_ROOT"
 
     # Build command
-    local cmd="npm start $TEST_FILE"
+    local cmd="node dist/cli.js $TEST_FILE"
 
     if [ "$VERBOSE" = "true" ]; then
         cmd="$cmd --verbose"
@@ -262,7 +262,7 @@ run_single_test() {
     log_info "Running test: $test_name"
 
     cd "$PROJECT_ROOT"
-    if npm start "$test_file" > "$log_file" 2>&1; then
+    if node dist/cli.js "$test_file" > "$log_file" 2>&1; then
         echo "SUCCESS:$test_name"
         return 0
     else
@@ -450,7 +450,7 @@ run_warmup() {
 
     # Run a few requests to warm up the system
     for i in {1..5}; do
-        npm start "$TEST_FILE" --silent > /dev/null 2>&1
+        node dist/cli.js "$TEST_FILE" --silent > /dev/null 2>&1
         log_info "Warmup request $i completed"
         sleep 1
     done
@@ -483,7 +483,7 @@ run_performance_test() {
                 local request_start=$(date +%s%N)
                 local output
 
-                if output=$(npm start "$TEST_FILE" --silent 2>&1); then
+                if output=$(node dist/cli.js "$TEST_FILE" --silent 2>&1); then
                     local request_end=$(date +%s%N)
                     local response_time=$(( (request_end - request_start) / 1000000 )) # Convert to milliseconds
 

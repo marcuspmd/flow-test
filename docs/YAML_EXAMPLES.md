@@ -5,7 +5,7 @@ This document provides comprehensive examples of YAML test suite configurations 
 Conventions used in examples:
 - JMESPath expressions reference the response body with the `body.` prefix (e.g., `body.user.id`).
 - Exported auth token variable is named `auth_token` and referenced via the suite alias when needed (e.g., `{{auth_flows_test.auth_token}}`).
- - JavaScript in templates/captures: use `{{js: ...}}` para expressões curtas ou `{{$js.return ...}}` para blocos com `return`.
+- JavaScript in templates/captures: use `{{js: ...}}` for short expressions or `{{$js.return ...}}` for blocks that return a value.
 
 ## Table of Contents
 - [Basic Test Suite](#basic-test-suite)
@@ -1743,13 +1743,13 @@ The Flow Test Engine can automatically generate test suites from OpenAPI/Swagger
 
 ```bash
 # Import OpenAPI spec and generate tests
-flow-test --import-swagger api.json
+node dist/cli.js --import-swagger api.json
 
 # Import with custom output directory
-flow-test --import-swagger api.yaml --swagger-output ./tests/api
+node dist/cli.js --import-swagger api.yaml --swagger-output ./tests/api
 
 # Import Swagger 2.0 specification
-flow-test --import-swagger swagger.json --swagger-output ./tests/legacy-api
+node dist/cli.js --import-swagger swagger.json --swagger-output ./tests/legacy-api
 ```
 
 ### Generated Test Structure
