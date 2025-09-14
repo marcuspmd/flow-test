@@ -9,21 +9,30 @@ services:
       - .:/app
       - /app/node_modules
     working_dir: /app
-    command: npm test
+    # Instala deps, builda, executa testes (com args opcionais) e gera relatório
+    command: sh -lc "npm ci && npm run build && node dist/cli.js ${FLOW_TEST_ARGS:---simple} && node dist/report-generator/cli.js results/latest.json"
     environment:
       - NODE_ENV=test
+      - FLOW_TEST_HTTPBIN_URL=http://httpbin
+    depends_on:
+      httpbin:
+        condition: service_healthy
     networks:
       - flow-test-network
 
-  mock-server:
-    image: node:18-alpine
-    container_name: flow-test-mock
+  # Removed mock-server; standardizing on httpbin
+
+  httpbin:
+    image: kennethreitz/httpbin
+    container_name: flow-test-httpbin
     ports:
-      - "3000:3000"
-    volumes:
-      - ./mock-server.js:/app/mock-server.js
-    working_dir: /app
-    command: node mock-server.js
+      - "8080:80"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost/status/200')"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+      start_period: 2s
     networks:
       - flow-test-network
 

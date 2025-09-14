@@ -11,11 +11,17 @@
 ## Build, Test, and Development Commands
 - `npm run build` — Compile TypeScript (strict) to `dist/`.
 - `npm run dev tests/<file>.yaml` — Run CLI via ts-node against a suite.
-- `npm test` — Start mock server and run default tests.
+- `npm test` — Run full suite via Docker Compose (httpbin service).
 - `npm run test:verbose|test:silent|test:all` — Control logging/scope.
-- `npm run server` — Run local mock server (`mock-server.js`).
+- `npm run server:docker` — Start only httpbin service (Docker).
 - `npm run docs` / `npm run docs:serve` — Build and serve API docs.
 - `npm run report:html` — Generate HTML report from `results/latest.json`.
+
+### Docusaurus Docs (preview)
+- `cd docs-website && npm install` — Install docs site deps
+- `npm run start` — Start local docs on http://localhost:3000 (from docs-website)
+- `npm run build` — Build static docs to `docs-website/build`
+The site autoloads markdown from `../docs` (existing repo docs) and generates sidebars automatically.
 
 ## Coding Style & Naming Conventions
 - Language: TypeScript (`strict: true`), Node >= 16.
@@ -39,7 +45,7 @@
 
 ## Security & Configuration Tips
 - Do not commit secrets. Use env vars in YAML via `{{$env.VAR}}`.
-- Test against the mock server (`npm run server`) to avoid leaking real data.
+- Use the Dockerized httpbin service (`npm run server:docker`) to avoid leaking real data.
 
 ## Agent-Specific Instructions
 - Do not modify `dist/`. Keep patches minimal and scoped.

@@ -26,7 +26,7 @@ npm install
 ### Run
 
 ```bash
-# Complete workflow: Import Swagger → Run tests → Cleanup
+# Run via Docker Compose (default npm test)
 npm test
 
 # Run a specific test suite (ts-node)
@@ -39,6 +39,10 @@ npm run test:silent
 # Priority filters via helper scripts
 npm run test:critical   # only critical
 npm run test:high       # critical + high
+ 
+# Direct Compose command (equivalent)
+docker compose up --build --abort-on-container-exit --exit-code-from flow-test flow-test
+# Results available in ./results (on host)
 ```
 
 ### CLI (direct usage)
@@ -124,7 +128,7 @@ test_directory: "./tests"
 
 globals:
   variables:
-    httpbin_url: "http://localhost:3000"
+    httpbin_url: "http://localhost:8080"
   timeouts:
     default: 30000
     slow_tests: 60000
@@ -510,3 +514,4 @@ MIT – see `package.json` for details.
 - [Best Practices](docs/BEST_PRACTICES.md) – Recommendations
 - [Troubleshooting](docs/TROUBLESHOOTING.md) – Common issues and fixes
 - [Configuration](docs/CONFIGURATION.md) – Full config schema and samples
+- [Codex Cloud Integration](docs/integrations/CODEX_CLOUD.md) – CI + optional cloud publish

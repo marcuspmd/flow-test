@@ -1,18 +1,25 @@
 /**
- * Componente SummaryCards - Cards informativos de métricas
+ * @packageDocumentation
+ * This module contains the `SummaryCardsComponent` for the HTML report.
  *
- * Responsabilidades:
- * - Exibir métricas principais do relatório
- * - Cards visuais para Total Tests, Passed, Failed, Success Rate
- * - Ícones SVG otimizados e esquemas de cores consistentes
- * - Layout responsivo em grid
- * - Hover effects e transições suaves
+ * @remarks
+ * This component is responsible for displaying key metrics of the test report,
+ * such as Total Tests, Passed, Failed, and Success Rate, in a visually appealing way.
+ * It features a responsive grid layout, SVG icons, and smooth hover effects.
  */
 
 import { BaseComponent } from "./base-component";
 import { SummaryCardsProps, SummaryCardData } from "./types";
 
+/**
+ * Renders the summary metric cards at the top of the report.
+ */
 export class SummaryCardsComponent extends BaseComponent {
+  /**
+   * Retrieves the SVG path for a given icon name.
+   * @param iconName - The name of the icon to retrieve.
+   * @returns The SVG path string.
+   */
   private getIconSvg(iconName: string): string {
     const icons: Record<string, string> = {
       tests: `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>`,
@@ -24,6 +31,11 @@ export class SummaryCardsComponent extends BaseComponent {
     return icons[iconName] || icons.chart;
   }
 
+  /**
+   * Gets the Tailwind CSS classes for a given color scheme.
+   * @param colorScheme - The color scheme name (e.g., 'primary', 'success').
+   * @returns An object with CSS class strings for different elements.
+   */
   private getColorClasses(colorScheme: string): {
     bgGradient: string;
     border: string;
@@ -69,31 +81,28 @@ export class SummaryCardsComponent extends BaseComponent {
     return colorMap[colorScheme as keyof typeof colorMap] || colorMap.primary;
   }
 
+  /**
+   * Renders a single summary card.
+   * @param card - The data for the card to render.
+   * @returns An HTML string for a single card.
+   */
   private renderCard(card: SummaryCardData): string {
     const colors = this.getColorClasses(card.colorScheme);
     const iconSvg = this.getIconSvg(card.icon);
 
     return this.html`
-      <div class="bg-gradient-to-br ${
-        colors.bgGradient
-      } p-6 rounded-xl shadow-md border ${
-      colors.border
-    } hover:shadow-lg transition-all duration-300 group">
+      <div class="bg-gradient-to-br ${colors.bgGradient} p-6 rounded-xl shadow-md border ${colors.border} hover:shadow-lg transition-all duration-300 group">
         <div class="flex items-center">
-          <!-- Ícone -->
-          <div class="p-3 rounded-full ${
-            colors.iconBg
-          } text-white mr-4 group-hover:scale-110 transition-transform duration-200">
+          <!-- Icon -->
+          <div class="p-3 rounded-full ${colors.iconBg} text-white mr-4 group-hover:scale-110 transition-transform duration-200">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               ${iconSvg}
             </svg>
           </div>
 
-          <!-- Conteúdo do card -->
+          <!-- Card Content -->
           <div class="flex-1">
-            <h3 class="text-sm font-medium ${
-              colors.titleColor
-            } uppercase tracking-wide mb-1">
+            <h3 class="text-sm font-medium ${colors.titleColor} uppercase tracking-wide mb-1">
               ${this.escapeHtml(card.title)}
             </h3>
             <p class="text-3xl font-bold ${colors.valueColor} leading-none">
@@ -101,28 +110,31 @@ export class SummaryCardsComponent extends BaseComponent {
             </p>
           </div>
 
-          <!-- Indicador visual adicional -->
-          <div class="w-1 h-12 ${
-            colors.iconBg
-          } rounded-full opacity-30 group-hover:opacity-60 transition-opacity duration-200"></div>
+          <!-- Additional Visual Indicator -->
+          <div class="w-1 h-12 ${colors.iconBg} rounded-full opacity-30 group-hover:opacity-60 transition-opacity duration-200"></div>
         </div>
       </div>
     `;
   }
 
+  /**
+   * Renders the entire summary cards section.
+   * @param props - The properties containing the card data.
+   * @returns An HTML string for the summary cards section.
+   */
   render(props: SummaryCardsProps): string {
     const { cards } = props;
 
     if (!cards || cards.length === 0) {
       return this.html`
         <div class="text-center p-8 bg-secondary rounded-xl border border-default">
-          <p class="text-secondary">Nenhuma métrica disponível</p>
+          <p class="text-secondary">No metrics available</p>
         </div>
       `;
     }
 
     return this.html`
-      <section class="mb-8" aria-label="Resumo das métricas de teste">
+      <section class="mb-8" aria-label="Test metrics summary">
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 animate-fade-in">
           ${this.renderList(cards, (card) => this.renderCard(card))}
         </div>

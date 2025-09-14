@@ -1,0 +1,987 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flow Test Engine Docs</title>
+    <style>
+        /* TSDoc.org inspired styling with dark mode support */
+        :root {
+            --color-primary: #0366d6;
+            --color-text: #24292e;
+            --color-text-light: #6a737d;
+            --color-bg: #ffffff;
+            --color-bg-light: #f6f8fa;
+            --color-border: #e1e4e8;
+            --color-code-bg: #f6f8fa;
+            --color-sidebar-bg: #f8f9fa;
+            --color-hover-bg: rgba(3, 102, 214, 0.08);
+            --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica', Arial, sans-serif;
+            --font-mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+        }
+
+        [data-theme="dark"] {
+            --color-primary: #4f8fff;
+            --color-text: #f0f6fc;
+            --color-text-light: #9ca3af;
+            --color-bg: #1f2937;
+            --color-bg-light: #374151;
+            --color-border: #4b5563;
+            --color-code-bg: #374151;
+            --color-sidebar-bg: #2d3748;
+            --color-hover-bg: rgba(79, 143, 255, 0.15);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font-family);
+            line-height: 1.6;
+            color: var(--color-text);
+            background: var(--color-bg);
+            margin: 0;
+            padding: 0;
+            display: grid;
+            grid-template-columns: 280px 1fr 300px;
+            grid-template-rows: auto 1fr;
+            min-height: 100vh;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        .container {
+            max-width: none;
+            margin: 0;
+            padding: 0;
+            display: contents;
+        }
+
+        .header {
+            background: var(--color-bg-light);
+            border-bottom: 1px solid var(--color-border);
+            padding: 20px 32px;
+            grid-column: 1 / -1;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            transition: background-color 0.3s ease;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .header h1 {
+            margin: 0;
+            color: var(--color-text);
+            font-size: 32px;
+            font-weight: 600;
+        }
+
+        .header p {
+            margin: 8px 0 0 0;
+            color: var(--color-text-light);
+            font-size: 18px;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: var(--color-primary);
+            color: white;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            transition: all 0.3s ease;
+        }
+
+        .badge:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(3, 102, 214, 0.3);
+        }
+
+        .theme-toggle {
+            background: var(--color-bg-light);
+            border: 1px solid var(--color-border);
+            border-radius: 8px;
+            padding: 8px 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .theme-toggle:hover {
+            background: var(--color-hover-bg);
+            border-color: var(--color-primary);
+        }
+
+        .sidebar {
+            background: var(--color-sidebar-bg);
+            border-right: 1px solid var(--color-border);
+            padding: 32px 24px;
+            overflow-y: auto;
+            position: sticky;
+            top: 0;
+            height: calc(100vh - 80px);
+            transition: background-color 0.3s ease;
+            min-width: 320px;
+            box-sizing: border-box;
+        }
+
+        .sidebar h2 {
+            margin: 0 0 32px 0;
+            color: var(--color-text);
+            font-size: 20px;
+            font-weight: 700;
+            border-bottom: 2px solid var(--color-border);
+            padding-bottom: 12px;
+        }
+
+        .nav-section {
+            margin-bottom: 40px;
+        }
+
+        .nav-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .nav-section h3 {
+            margin: 0 0 12px 0;
+            color: var(--color-text);
+            font-size: 14px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .nav-list {
+            margin: 0;
+            padding: 0;
+            list-style: none;
+        }
+
+        .nav-list li {
+            margin: 4px 0;
+        }
+
+        .nav-list a {
+            color: var(--color-text-light);
+            text-decoration: none;
+            font-weight: 400;
+            font-size: 15px;
+            display: block;
+            padding: 10px 16px;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+            margin: 2px 0;
+        }
+
+        .nav-list a:hover {
+            background: var(--color-hover-bg);
+            color: var(--color-primary);
+            transform: translateX(4px);
+        }
+
+        .nav-list a.active {
+            background: var(--color-primary);
+            color: white;
+            font-weight: 500;
+        }
+
+        .main-content {
+            background: var(--color-bg);
+            padding: 32px 40px;
+            overflow-y: auto;
+            max-height: calc(100vh - 80px);
+            transition: background-color 0.3s ease;
+            max-width: none;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .right-sidebar {
+            background: var(--color-sidebar-bg);
+            border-left: 1px solid var(--color-border);
+            padding: 32px 24px;
+            overflow-y: auto;
+            position: sticky;
+            top: 0;
+            height: calc(100vh - 80px);
+            transition: background-color 0.3s ease;
+            min-width: 300px;
+            box-sizing: border-box;
+        }
+
+        .right-sidebar h3 {
+            margin: 0 0 20px 0;
+            color: var(--color-text);
+            font-size: 16px;
+            font-weight: 600;
+            border-bottom: 1px solid var(--color-border);
+            padding-bottom: 8px;
+        }
+
+        .toc-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .toc-list li {
+            margin: 8px 0;
+        }
+
+        .toc-list a {
+            color: var(--color-text-light);
+            text-decoration: none;
+            font-size: 14px;
+            display: block;
+            padding: 6px 12px;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+        }
+
+        .toc-list a:hover {
+            background: var(--color-hover-bg);
+            color: var(--color-primary);
+        }
+
+        .main-content h2 {
+            color: var(--color-text);
+            border-bottom: 2px solid var(--color-border);
+            padding-bottom: 12px;
+            margin: 48px 0 24px 0;
+            font-size: 32px;
+            font-weight: 600;
+        }
+
+        .main-content h3 {
+            color: var(--color-text);
+            margin: 32px 0 16px 0;
+            font-size: 24px;
+            font-weight: 600;
+        }
+
+        .main-content h4 {
+            color: var(--color-text);
+            margin: 28px 0 16px 0;
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .main-content p {
+            margin: 16px 0;
+            font-size: 16px;
+            line-height: 1.7;
+        }
+
+        .main-content > *:first-child {
+            margin-top: 0;
+        }
+
+        pre {
+            background: var(--color-code-bg);
+            border: 1px solid var(--color-border);
+            border-radius: 8px;
+            padding: 20px 20px 20px 20px;
+            overflow-x: auto;
+            margin: 20px 0;
+            font-family: var(--font-mono);
+            font-size: 14px;
+            line-height: 1.5;
+            position: relative;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .code-block {
+            position: relative;
+        }
+
+        .copy-button {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: var(--color-bg);
+            border: 1px solid var(--color-border);
+            border-radius: 4px;
+            padding: 6px 10px;
+            font-size: 12px;
+            color: var(--color-text-light);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            z-index: 1;
+        }
+
+        .copy-button:hover {
+            background: var(--color-primary);
+            color: white;
+            border-color: var(--color-primary);
+        }
+
+        .copy-button.copied {
+            background: #28a745;
+            color: white;
+            border-color: #28a745;
+        }
+
+        pre:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            border-color: var(--color-primary);
+        }
+
+        code {
+            background: var(--color-code-bg);
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-family: var(--font-mono);
+            font-size: 13px;
+            border: 1px solid var(--color-border);
+            transition: all 0.3s ease;
+        }
+
+        pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            font-size: 14px;
+        }
+
+        .method-signature {
+            font-family: var(--font-mono);
+            background: var(--color-code-bg);
+            padding: 16px 20px;
+            border-radius: 8px;
+            border: 2px solid var(--color-border);
+            margin: 16px 0;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .method-signature:hover {
+            border-color: var(--color-primary);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 16px 0;
+        }
+
+        th, td {
+            border: 1px solid var(--color-border);
+            padding: 12px 16px;
+            text-align: left;
+        }
+
+        th {
+            background: var(--color-bg-light);
+            font-weight: 600;
+        }
+
+
+        .source-link {
+            color: var(--color-primary);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .source-link:hover {
+            text-decoration: underline;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: var(--color-text-light);
+        }
+
+        /* Enhanced styling for parsed content */
+        .api-section {
+            background: linear-gradient(135deg, var(--color-primary), #4f8fff);
+            color: white;
+            padding: 24px 32px;
+            border-radius: 12px;
+            margin: 40px 0 32px 0;
+            box-shadow: 0 6px 20px rgba(3, 102, 214, 0.2);
+            font-size: 28px;
+            font-weight: 700;
+        }
+
+        .constants-section {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            color: white;
+            padding: 24px 32px;
+            border-radius: 12px;
+            margin: 40px 0 32px 0;
+            box-shadow: 0 6px 20px rgba(40, 167, 69, 0.2);
+            font-size: 28px;
+            font-weight: 700;
+        }
+
+        .subsection {
+            color: var(--color-primary);
+            border-bottom: 2px solid var(--color-border);
+            padding-bottom: 8px;
+            margin: 24px 0 16px 0;
+        }
+
+        .method-header {
+            background: var(--color-bg-light);
+            padding: 12px 16px;
+            border-left: 4px solid var(--color-primary);
+            border-radius: 0 8px 8px 0;
+            margin: 20px 0 16px 0;
+            font-weight: 600;
+        }
+
+        .params-header, .returns-header, .examples-header {
+            color: var(--color-primary);
+            font-weight: 600;
+            margin: 20px 0 12px 0;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--color-border);
+        }
+
+        .param-item {
+            background: var(--color-bg-light);
+            padding: 12px 16px;
+            margin: 8px 0;
+            border-radius: 6px;
+            border-left: 3px solid var(--color-primary);
+        }
+
+        .param-item code {
+            color: var(--color-primary);
+            font-weight: 600;
+        }
+
+        .method-table {
+            margin: 16px 0;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .method-table thead th {
+            background: var(--color-primary);
+            color: white;
+        }
+
+        .inline-code {
+            background: var(--color-code-bg);
+            color: var(--color-primary);
+            font-weight: 500;
+        }
+
+        .language-typescript::before,
+        .language-javascript::before,
+        .language-yaml::before,
+        .language-json::before {
+            content: attr(class);
+            position: absolute;
+            top: 8px;
+            right: 12px;
+            font-size: 11px;
+            color: var(--color-text-light);
+            text-transform: uppercase;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        /* Tables */
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 20px 0;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        th, td {
+            border: 1px solid var(--color-border);
+            padding: 16px 20px;
+            text-align: left;
+            transition: background-color 0.3s ease;
+        }
+
+        th {
+            background: var(--color-bg-light);
+            font-weight: 600;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        tr:hover td {
+            background: var(--color-hover-bg);
+        }
+
+        /* Responsive design */
+        @media (max-width: 1200px) {
+            body {
+                grid-template-columns: 260px 1fr 280px;
+            }
+        }
+
+        @media (max-width: 1024px) {
+            body {
+                grid-template-columns: 1fr 280px;
+            }
+
+            .sidebar {
+                display: none;
+            }
+
+            .main-content {
+                padding: 32px 24px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            body {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto auto 1fr;
+            }
+
+            .header {
+                padding: 16px 20px;
+                flex-direction: column;
+                gap: 12px;
+                align-items: flex-start;
+            }
+
+            .header-left, .header-right {
+                width: 100%;
+                justify-content: space-between;
+            }
+
+            .sidebar, .right-sidebar {
+                display: none;
+            }
+
+            .main-content {
+                max-height: none;
+                padding: 24px 20px;
+                grid-column: 1;
+            }
+
+            .api-section, .constants-section {
+                padding: 20px 24px;
+                font-size: 24px;
+            }
+
+            pre {
+                padding: 16px;
+                font-size: 13px;
+                overflow-x: auto;
+                margin: 20px 0;
+            }
+
+            .copy-button {
+                top: 8px;
+                right: 8px;
+                padding: 4px 8px;
+                font-size: 11px;
+            }
+
+            table {
+                font-size: 14px;
+            }
+
+            th, td {
+                padding: 12px 16px;
+            }
+        }
+    </style>
+    <script>
+      window.location.replace('./typedoc-site/index.html');
+    </script>
+</head>
+<body>
+    <p style="padding:24px;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif;">Redirecting to <a href="./typedoc-site/index.html">TypeDoc site</a>...</p>
+    <header class="header">
+        <div class="header-left">
+            <div>
+                <h1>📚 Flow Test Engine</h1>
+                <p>TypeScript API Testing Engine - Official TSDoc Documentation</p>
+            </div>
+        </div>
+        <div class="header-right">
+            <button class="theme-toggle" onclick="toggleTheme()">
+                <span id="theme-icon">🌙</span>
+                <span id="theme-text">Dark</span>
+            </button>
+            <span class="badge">
+                <span>✨</span>
+                TSDoc Official
+            </span>
+        </div>
+    </header>
+
+    <nav class="sidebar">
+        <h2>📋 Navigation</h2>
+
+        <div class="nav-section">
+            <h3>API Reference</h3>
+            <ul class="nav-list" id="api-nav">
+                <li><a href="#" onclick="loadDocument('API_DOCUMENTATION.md')">Overview</a></li>
+                <li><a href="typedoc-site/index.html">TypeDoc HTML (full)</a></li>
+                <li><a href="#" onclick="loadDocument('markdown/index.md')">Markdown Index</a></li>
+            </ul>
+        </div>
+
+        <div class="nav-section">
+            <h3>Documentation</h3>
+            <ul class="nav-list" id="docs-nav">
+                <li><a href="#" onclick="loadDocument('API_DOCUMENTATION.md')" class="active">API Documentation</a></li>
+                <li><a href="#" onclick="loadDocument('AUTOMATION.md')">Automation Guide</a></li>
+                <li><a href="#" onclick="loadDocument('BEST_PRACTICES.md')">Best Practices</a></li>
+                <li><a href="#" onclick="loadDocument('CONFIGURATION.md')">Configuration</a></li>
+                <li><a href="#" onclick="loadDocument('DEPENDENCIES.md')">Dependencies</a></li>
+                <li><a href="#" onclick="loadDocument('SCENARIO_TESTING_GUIDE.md')">Scenario Testing</a></li>
+                <li><a href="#" onclick="loadDocument('TROUBLESHOOTING.md')">Troubleshooting</a></li>
+                <li><a href="#" onclick="loadDocument('YAML_EXAMPLES.md')">YAML Examples</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <main class="main-content">
+        <div id="markdown-content" class="loading">
+            Loading TSDoc documentation...
+        </div>
+    </main>
+
+    <aside class="right-sidebar">
+        <h3>📋 On This Page</h3>
+        <ul class="toc-list" id="page-toc">
+            <li class="loading">Loading contents...</li>
+        </ul>
+    </aside>
+
+    <script>
+        // Keep this SPA as the default TSDoc-like viewer
+        let currentDocument = 'API_DOCUMENTATION.md';
+
+        async function loadDocument(filename = 'README.md') {
+            try {
+                currentDocument = filename;
+                const response = await fetch(filename);
+                const markdown = await response.text();
+
+                // Parse markdown and generate HTML
+                const html = parseMarkdown(markdown);
+                document.getElementById('markdown-content').innerHTML = html;
+
+                // Update active navigation
+                updateActiveNav(filename);
+
+                // API navigation no longer auto-generated from README
+
+                // Generate page TOC
+                generatePageTOC(html);
+
+            } catch (error) {
+                document.getElementById('markdown-content').innerHTML =
+                    '<p style="color: #d73a49;">Error loading documentation: ' + error.message + '</p>';
+            }
+        }
+
+        function updateActiveNav(filename) {
+            // Remove active class from all navigation links
+            document.querySelectorAll('.nav-list a').forEach(link => {
+                link.classList.remove('active');
+            });
+
+            // Add active class to current link
+            const activeLink = document.querySelector(`[onclick="loadDocument('${filename}')"]`);
+            if (activeLink) {
+                activeLink.classList.add('active');
+            }
+        }
+
+        function parseMarkdown(markdown) {
+            let html = markdown;
+
+            // Store code blocks to prevent them from being processed
+            const codeBlocks = [];
+            let codeIndex = 0;
+
+            // Extract code blocks first with copy button
+            html = html.replace(/```([^\n]*)\n([\s\S]*?)\n```/g, (match, lang, code) => {
+                const placeholder = `__CODE_BLOCK_${codeIndex}__`;
+                const langClass = lang ? ` class="language-${lang.toLowerCase()}"` : '';
+                const langLabel = lang ? lang.toUpperCase() : 'CODE';
+                codeBlocks[codeIndex] = `<div class="code-block">
+                    <pre${langClass}><code>${syntaxHighlight(escapeHtml(code), lang)}</code></pre>
+                    <button class="copy-button" onclick="copyCode(this)" data-code="${escapeHtml(code).replace(/"/g, '&quot;')}">
+                        📋 Copy
+                    </button>
+                </div>`;
+                codeIndex++;
+                return placeholder;
+            });
+
+            // Process headers
+            html = html.replace(/^## :factory: (.+)$/gm, (match, title) => {
+                const id = title.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+                return `<h2 id="${id}" class="api-section">🏭 ${title}</h2>`;
+            });
+
+            html = html.replace(/^## :wrench: (.+)$/gm, (match, title) => {
+                const id = title.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+                return `<h2 id="${id}" class="constants-section">🔧 ${title}</h2>`;
+            });
+
+            html = html.replace(/^### (.+)$/gm, '<h3 class="subsection">$1</h3>');
+            html = html.replace(/^#### :gear: (.+)$/gm, '<h4 class="method-header">⚙️ $1</h4>');
+
+            // Process tables (method signatures)
+            html = html.replace(/^\|\s*Method\s*\|\s*Type\s*\|\s*$\n^\|\s*[-:]+\s*\|\s*[-:]+\s*\|\s*$\n((?:\|.*\|\s*$\n?)*)/gm, (match, rows) => {
+                let table = '<table class="method-table"><thead><tr><th>Method</th><th>Type</th></tr></thead><tbody>';
+
+                const tableRows = rows.split('\n').filter(row => row.trim() && row.includes('|'));
+                tableRows.forEach(row => {
+                    const cells = row.split('|').map(cell => cell.trim()).filter(cell => cell);
+                    if (cells.length >= 2) {
+                        const method = cells[0].replace(/`([^`]+)`/g, '<code>$1</code>');
+                        const type = cells[1].replace(/`([^`]+)`/g, '<code>$1</code>');
+                        table += `<tr><td>${method}</td><td>${type}</td></tr>`;
+                    }
+                });
+
+                table += '</tbody></table>';
+                return table;
+            });
+
+            // Special sections
+            html = html.replace(/^Parameters:\s*$/gm, '<h5 class="params-header">📥 Parameters</h5>');
+            html = html.replace(/^Returns:\s*$/gm, '<h5 class="returns-header">📤 Returns</h5>');
+            html = html.replace(/^Examples:\s*$/gm, '<h5 class="examples-header">💡 Examples</h5>');
+
+            // Parameter items
+            html = html.replace(/^\* `([^`]+)`: ?-? ?(.+)$/gm, '<div class="param-item"><code>$1</code>: $2</div>');
+
+            // Links
+            html = html.replace(/\[:link: Source\]\(([^)]+)\)/g, '<a href="$1" class="source-link" target="_blank">🔗 View Source</a>');
+
+            // Bold and italic
+            html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+            html = html.replace(/(?<!\*)\*([^*\n]+)\*(?!\*)/g, '<em>$1</em>');
+
+            // Inline code (avoiding already processed code)
+            html = html.replace(/`([^`]+)`/g, '<code class="inline-code">$1</code>');
+
+            // Convert remaining text to paragraphs
+            const lines = html.split('\n');
+            let processedLines = [];
+            let inParagraph = false;
+
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].trim();
+
+                if (!line) {
+                    if (inParagraph) {
+                        processedLines.push('</p>');
+                        inParagraph = false;
+                    }
+                    continue;
+                }
+
+                // Skip lines that are already HTML
+                if (line.startsWith('<') || line.includes('__CODE_BLOCK_')) {
+                    if (inParagraph) {
+                        processedLines.push('</p>');
+                        inParagraph = false;
+                    }
+                    processedLines.push(line);
+                } else {
+                    if (!inParagraph) {
+                        processedLines.push('<p>');
+                        inParagraph = true;
+                    }
+                    processedLines.push(line);
+                }
+            }
+
+            if (inParagraph) {
+                processedLines.push('</p>');
+            }
+
+            html = processedLines.join('\n');
+
+            // Restore code blocks
+            for (let i = 0; i < codeBlocks.length; i++) {
+                html = html.replace(`__CODE_BLOCK_${i}__`, codeBlocks[i]);
+            }
+
+            return html;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function syntaxHighlight(code, lang) {
+            if (lang === 'typescript' || lang === 'javascript') {
+                return code
+                    .replace(/\b(const|let|var|function|class|interface|type|export|import|from|async|await|return|if|else|for|while|try|catch|finally|throw|new|this|public|private|protected|static)\b/g, '<span style="color: #d73a49; font-weight: 600;">$1</span>')
+                    .replace(/\b(string|number|boolean|object|Array|Promise|void|any|unknown)\b/g, '<span style="color: #005cc5;">$1</span>')
+                    .replace(/'([^']*)'/g, '<span style="color: #032f62;">&#39;$1&#39;</span>')
+                    .replace(/"([^"]*)"/g, '<span style="color: #032f62;">&quot;$1&quot;</span>')
+                    .replace(/\/\/.*$/gm, '<span style="color: #6a737d;">$&</span>')
+                    .replace(/\/\*[\s\S]*?\*\//g, '<span style="color: #6a737d;">$&</span>')
+                    .replace(/\b(\d+)\b/g, '<span style="color: #005cc5;">$1</span>');
+            }
+            return code;
+        }
+
+        function copyCode(button) {
+            const code = button.getAttribute('data-code');
+            navigator.clipboard.writeText(code).then(() => {
+                const originalText = button.innerHTML;
+                button.innerHTML = '✓ Copied';
+                button.classList.add('copied');
+                setTimeout(() => {
+                    button.innerHTML = originalText;
+                    button.classList.remove('copied');
+                }, 2000);
+            }).catch(() => {
+                // Fallback for older browsers
+                const textarea = document.createElement('textarea');
+                textarea.value = code;
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+
+                const originalText = button.innerHTML;
+                button.innerHTML = '✓ Copied';
+                button.classList.add('copied');
+                setTimeout(() => {
+                    button.innerHTML = originalText;
+                    button.classList.remove('copied');
+                }, 2000);
+            });
+        }
+
+        function generatePageTOC(html) {
+            const tocContainer = document.getElementById('page-toc');
+            const headers = html.match(/<h[2-4][^>]*id="([^"]*)[^>]*>([^<]*)</g) || [];
+
+            if (headers.length === 0) {
+                tocContainer.innerHTML = '<li style="color: var(--color-text-light); font-size: 12px;">No sections found</li>';
+                return;
+            }
+
+            const tocItems = headers.map(header => {
+                const idMatch = header.match(/id="([^"]*)"/);
+                const textMatch = header.match(/>([^<]*)</);
+                if (idMatch && textMatch) {
+                    const id = idMatch[1];
+                    const text = textMatch[1].replace(/[🏭🔧⚙️📥📤💡]/g, '').trim();
+                    return `<li><a href="#${id}" onclick="scrollToSection('${id}')">${text}</a></li>`;
+                }
+                return '';
+            }).filter(Boolean);
+
+            tocContainer.innerHTML = tocItems.join('');
+        }
+
+        function generateAPINav(markdown) {
+            const headers = markdown.match(/^## :factory: (.+)/gm) || [];
+            const apiNav = document.getElementById('api-nav');
+
+            if (headers.length === 0) {
+                apiNav.innerHTML = '<li style="color: var(--color-text-light); font-size: 12px;">No API sections found</li>';
+                return;
+            }
+
+            const navItems = headers.map(header => {
+                const name = header.replace('## :factory: ', '');
+                const id = name.toLowerCase().replace(/\\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+                return `<li><a href="#${id}" onclick="scrollToSection('${id}')">${name}</a></li>`;
+            });
+
+            apiNav.innerHTML = navItems.join('');
+        }
+
+        function scrollToSection(sectionId) {
+            const element = document.getElementById(sectionId);
+            if (element) {
+                element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }
+
+        // Theme management
+        function toggleTheme() {
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+
+            document.documentElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+
+            const themeIcon = document.getElementById('theme-icon');
+            const themeText = document.getElementById('theme-text');
+
+            if (newTheme === 'dark') {
+                themeIcon.textContent = '☀️';
+                themeText.textContent = 'Light';
+            } else {
+                themeIcon.textContent = '🌙';
+                themeText.textContent = 'Dark';
+            }
+        }
+
+        function initializeTheme() {
+            const savedTheme = localStorage.getItem('theme');
+            const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const theme = savedTheme || (prefersDark ? 'dark' : 'light');
+
+            document.documentElement.setAttribute('data-theme', theme);
+
+            const themeIcon = document.getElementById('theme-icon');
+            const themeText = document.getElementById('theme-text');
+
+            if (theme === 'dark') {
+                themeIcon.textContent = '☀️';
+                themeText.textContent = 'Light';
+            } else {
+                themeIcon.textContent = '🌙';
+                themeText.textContent = 'Dark';
+            }
+        }
+
+        // Load documentation when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeTheme();
+            loadDocument('README.md');
+        });
+    </script>
+</body>
+</html>

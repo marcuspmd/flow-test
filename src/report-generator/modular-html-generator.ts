@@ -71,7 +71,7 @@ export class ModularHtmlGenerator {
 
       // Substitui variáveis comuns que aparecem no relatório
       result = result
-        .replace(/\{\{httpbin_url\}\}/g, "http://localhost:3000")
+          .replace(/\{\{httpbin_url\}\}/g, "http://localhost:8080")
         .replace(/\{\{user_id\}\}/g, "1000")
         .replace(/\{\{user_name\}\}/g, "John Doe")
         .replace(/\{\{company_data\}\}/g, "[Company Data]")

@@ -16,7 +16,7 @@ test_directory: "./tests"
 
 globals:
   variables:
-    httpbin_url: "http://localhost:3000"
+    httpbin_url: "http://localhost:8080"
   timeouts:
     default: 30000
     slow_tests: 60000
@@ -58,7 +58,7 @@ test_directory: "./tests"
 
 globals:
   variables:
-    httpbin_url: "http://localhost:3000"
+    httpbin_url: "http://localhost:8080"
   timeouts:
     default: 60000
     slow_tests: 120000
@@ -298,4 +298,3 @@ To inject into the engine as globals, export them with the `FLOW_TEST_` prefix (
 - Keep secrets in environment variables; never commit secrets.
 - Validate config in CI.
 - Use parallel mode for performance suites only.
-

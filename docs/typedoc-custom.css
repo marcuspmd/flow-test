@@ -1,0 +1,165 @@
+/* Custom CSS that overrides TypeDoc default theme variables (light/dark) to look like TSDoc */
+
+/* Light palette aligned with report-generator theme.css */
+@media (prefers-color-scheme: light) {
+  :root {
+    --color-background: #ffffff;                 /* --color-bg-primary */
+    --color-background-secondary: #f8fafc;       /* --color-bg-secondary */
+    --color-background-active: #f1f5f9;          /* --color-bg-tertiary */
+    --color-text: #1e293b;                       /* --color-text-primary */
+    --color-contrast-text: #0b1220;              /* darker for contrast */
+    --color-text-aside: #64748b;                 /* --color-text-secondary */
+    --color-accent: #e2e8f0;                     /* --color-border */
+    --color-link: #3b82f6;                       /* --color-primary */
+    --color-focus-outline: #1e40af;              /* --color-primary-dark */
+    --color-active-menu-item: rgba(59,130,246,0.10);
+  }
+}
+
+/* Also handle explicit theme selection */
+html[data-theme="light"] {
+  --color-background: #ffffff;
+  --color-background-secondary: #f8fafc;
+  --color-background-active: #f1f5f9;
+  --color-text: #1e293b;
+  --color-contrast-text: #0b1220;
+  --color-text-aside: #64748b;
+  --color-accent: #e2e8f0;
+  --color-link: #3b82f6;
+  --color-focus-outline: #1e40af;
+  --color-active-menu-item: rgba(59,130,246,0.10);
+}
+
+/* Dark palette aligned with report-generator dark theme */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-background: #0f172a;                 /* --color-bg-primary */
+    --color-background-secondary: #1e293b;       /* --color-bg-secondary */
+    --color-background-active: #334155;          /* --color-bg-tertiary */
+    --color-text: #f8fafc;                       /* --color-text-primary */
+    --color-contrast-text: #ffffff;
+    --color-text-aside: #cbd5e1;                 /* --color-text-secondary */
+    --color-accent: #334155;                     /* --color-border */
+    --color-link: #60a5fa;                       /* blue-400 */
+    --color-focus-outline: #3b82f6;              /* --color-primary */
+    --color-active-menu-item: rgba(96,165,250,0.15);
+  }
+}
+
+html[data-theme="dark"] {
+  --color-background: #0f172a;
+  --color-background-secondary: #1e293b;
+  --color-background-active: #334155;
+  --color-text: #f8fafc;
+  --color-contrast-text: #ffffff;
+  --color-text-aside: #cbd5e1;
+  --color-accent: #334155;
+  --color-link: #60a5fa;
+  --color-focus-outline: #3b82f6;
+  --color-active-menu-item: rgba(96,165,250,0.15);
+}
+
+/* Typography + layout */
+body { font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+.container-main { max-width: 1240px; }
+.col-content { padding: 1rem 1.25rem; }
+.tsd-page-title h1 { font-size: 2.1rem; font-weight: 700; letter-spacing: -0.0125em; margin-bottom: .35rem; }
+.tsd-page-title .tsd-breadcrumb { color: var(--color-text-aside); }
+
+/* Sidebar */
+.tsd-navigation, .tsd-navigation .tsd-navigation { background: var(--color-background-secondary); border-right: 1px solid var(--color-accent); }
+.tsd-navigation a, .tsd-navigation li button { color: var(--color-text-aside); }
+.tsd-navigation a:hover, .tsd-navigation li button:hover { background: var(--color-active-menu-item); color: var(--color-link); }
+.tsd-navigation .current > a { background: var(--color-active-menu-item); color: var(--color-link); }
+
+/* Headings & panels */
+.tsd-panel > h2, .tsd-panel > h3 { border-bottom: 2px solid var(--color-accent); padding-bottom: .6rem; }
+.tsd-panel { background: var(--color-background); border: 1px solid var(--color-accent); border-radius: .5rem; padding: .75rem .9rem; margin: .5rem 0; box-shadow: 0 1px 2px rgba(0,0,0,0.03); }
+.tsd-panel-group { margin: .5rem 0; }
+.tsd-panel-group .tsd-panel { margin: .4rem 0; }
+.tsd-accordion .tsd-accordion-summary { padding: .45rem .6rem; }
+.tsd-index-accordion details { margin: .4rem 0; }
+.tsd-index-accordion details summary { padding: .45rem .6rem; }
+.tsd-index-accordion details summary { font-weight: 700; }
+
+/* Tables & code */
+table, .tsd-signatures { border: 1px solid var(--color-accent); border-radius: 8px; overflow: hidden; margin: .5rem 0; }
+thead th { background: var(--color-background-secondary); }
+pre, code.tsd-tag { background: var(--color-background-secondary); border: 1px solid var(--color-accent); border-radius: 8px; padding: .75rem .9rem; }
+code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: .95em; }
+
+/* Links */
+a { color: var(--color-link); text-underline-offset: 2px; }
+a:hover { text-decoration: underline; }
+
+/* Badges & footer */
+.tsd-badge { background: var(--color-background-secondary); border: 1px solid var(--color-accent); color: var(--color-text-aside); }
+.tsd-generator { color: var(--color-text-aside); }
+
+/* Hide kind icons (M, V, C) before members */
+.tsd-kind-icon { display: none !important; }
+.tsd-member-summary-name svg.tsd-kind-icon { display: none !important; }
+.tsd-accordion-summary svg { display: none; }
+
+/* Search dialog + input */
+#tsd-search { border: 1px solid var(--color-accent); border-radius: .5rem; box-shadow: 0 10px 30px rgba(0,0,0,0.08); }
+#tsd-search-input { border: 1px solid var(--color-accent); border-radius: .5rem; padding: .5rem .75rem; outline-color: var(--color-focus-outline); }
+#tsd-search-results { border-top: 1px solid var(--color-accent); }
+
+/* Toolbar tweaks */
+.tsd-page-toolbar { border-bottom: 1px solid var(--color-accent); backdrop-filter: saturate(180%) blur(6px); }
+.tsd-toolbar-contents .title { font-weight: 700; letter-spacing: -0.01em; }
+
+/* Layout refinements: single scrolling context, responsive sidebars */
+.container-main { max-width: 1400px; margin: 0 auto; }
+.container-main { display: grid !important; grid-template-columns: minmax(220px, 18rem) 1fr minmax(220px, 20rem); }
+.col-content, .tsd-navigation, .col-sidebar { max-height: none !important; overflow: visible !important; }
+
+/* Make navs look like real menus */
+.tsd-navigation.primary, .tsd-navigation.secondary { background: var(--color-background); border: 1px solid var(--color-accent); border-radius: .5rem; box-shadow: 0 1px 2px rgba(0,0,0,0.04); padding: .5rem; }
+.tsd-navigation.primary { margin: 1rem .75rem 1rem 1rem; position: sticky; top: calc(var(--dim-header-height, 3.5rem) + .75rem); height: max-content; align-self: start; }
+.tsd-navigation.secondary { margin: 1rem 1rem 1rem .75rem; position: sticky; top: calc(var(--dim-header-height, 3.5rem) + .75rem); height: max-content; align-self: start; }
+.tsd-navigation a, .tsd-navigation li button { color: var(--color-text-aside); border-radius: .5rem; padding: .45rem .6rem; display: block; }
+.tsd-navigation li { margin: .06rem 0; }
+.tsd-navigation ul { padding-left: .5rem; }
+.tsd-navigation .tsd-navigation ul { padding-left: .5rem; }
+
+/* Nested navigation spacing (override TypeDoc defaults) */
+.tsd-small-nested-navigation > li > details { margin-left: 0 !important; }
+.tsd-navigation ul { margin: 0 !important; }
+.tsd-navigation ul ul { padding-left: .6rem !important; }
+.tsd-navigation ul ul ul { padding-left: .6rem !important; }
+.tsd-navigation li > details { margin: 0 !important; }
+.tsd-navigation li > details > summary { padding: .4rem .6rem !important; }
+.tsd-navigation .tsd-accordion .tsd-accordion-summary { margin: 0 !important; }
+.tsd-navigation.primary .tsd-accordion, .tsd-navigation.secondary .tsd-accordion { margin: 0 !important; }
+.tsd-navigation a:hover, .tsd-navigation li button:hover { background: var(--color-active-menu-item); color: var(--color-link); }
+.tsd-navigation .current > a { background: var(--color-active-menu-item); color: var(--color-link); font-weight: 700; border-left: 3px solid var(--color-link); }
+.tsd-navigation .tsd-accordion-summary { padding: .6rem .7rem; border-radius: .5rem; }
+.tsd-navigation .tsd-accordion-summary:hover { background: var(--color-active-menu-item); color: var(--color-link); }
+
+/* Responsive: collapse right TOC sidebar on smaller widths */
+@media (max-width: 1100px) {
+  .container-main { grid-template-columns: minmax(240px, 18rem) 1fr; }
+  .col-sidebar { display: none; }
+}
+
+/* Responsive: stack left nav on top for narrow screens */
+@media (max-width: 900px) {
+  .container-main { grid-template-columns: 1fr; }
+  .tsd-navigation.primary { position: relative; top: 0; margin: .5rem 1rem; }
+}
+
+/* Large screens: avoid independent scrolling in side menus */
+@media (min-width: 1200px) {
+  /* TypeDoc wrappers often use these classes for sticky/overflow */
+  .page-menu, .site-menu,
+  .tsd-navigation.primary, .tsd-navigation.secondary,
+  .col-sidebar, .tsd-navigation {
+    max-height: none !important;
+    overflow: visible !important;
+    position: static !important;
+    top: auto !important;
+  }
+  .container-main { grid-template-columns: minmax(260px, 20rem) 1fr minmax(260px, 22rem); }
+}
