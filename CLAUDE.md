@@ -53,9 +53,8 @@ The codebase follows a modular architecture:
 
 ### Swagger/OpenAPI Integration
 
-- `src/core/swagger/parser/` - OpenAPI/Swagger parsing and validation
-  - `swagger-parser.ts` - Main parser for JSON/YAML specifications
-  - `validator.ts` - Comprehensive validation for OpenAPI 3.x and Swagger 2.0
+- `src/services/swagger-import.service.ts` - Importer that reads OpenAPI/Swagger specs and generates YAML suites
+- CLI support: `--import-swagger <file>` with optional `--swagger-output <dir>`
 
 ### Report Generator
 

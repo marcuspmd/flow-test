@@ -12,8 +12,8 @@ Welcome to the comprehensive Flow Test Engine documentation suite. This index pr
 - **[Configuration Guide](./CONFIGURATION.md)** - Environment setup and configuration options
 
 ### Basic Usage
-1. **Installation**: Follow the [README](../README.md#installation) for setup instructions
-2. **First Test**: Try the [Basic API Test](./YAML_EXAMPLES.md#1-basic-api-test-flow) example
+1. **Installation**: Follow the [README](../README.md#install) for setup instructions
+2. **First Test**: Try the [Basic API Test](./YAML_EXAMPLES.md#simple-api-test) example
 3. **Configuration**: Set up your environment using the [Configuration Guide](./CONFIGURATION.md)
 
 ## 👨‍💻 Developer Documentation
@@ -25,9 +25,9 @@ Welcome to the comprehensive Flow Test Engine documentation suite. This index pr
 
 ### Advanced Features
 - **Variable System**: Learn about [variable scoping](./BEST_PRACTICES.md#variable-management) and interpolation
-- **JMESPath Expressions**: Master [data extraction](./YAML_EXAMPLES.md#data-extraction-with-jmespath) techniques
-- **Conditional Logic**: Implement [dynamic scenarios](./YAML_EXAMPLES.md#conditional-scenarios) and flow control
-- **Flow Imports**: Create [modular test suites](./YAML_EXAMPLES.md#flow-imports) for reusability
+- **JMESPath Expressions**: Master [data extraction](./API_DOCUMENTATION.md#captureservice) techniques
+- **Conditional Logic**: Implement [dynamic scenarios](./YAML_EXAMPLES.md#conditional-logic-with-complex-scenarios) and flow control
+- **Swagger/OpenAPI Import**: Generate suites via [Swagger/OpenAPI import](./YAML_EXAMPLES.md#swaggeropenapi-import)
 
 ## 🛠️ Operations & DevOps
 
@@ -37,9 +37,9 @@ Welcome to the comprehensive Flow Test Engine documentation suite. This index pr
 - **[Troubleshooting Guide](./TROUBLESHOOTING.md)** - Debug and resolve issues
 
 ### Environment Management
-- **Development**: [Dev environment setup](./CONFIGURATION.md#development-environment)
-- **Staging**: [Staging configuration](./CONFIGURATION.md#staging-environment)
-- **Production**: [Production setup](./CONFIGURATION.md#production-environment)
+- **Development**: [Dev environment setup](./CONFIGURATION.md#development)
+- **Staging**: [Staging configuration](./CONFIGURATION.md#staging)
+- **Production**: [Production setup](./CONFIGURATION.md#production)
 
 ## 🔧 Troubleshooting & Support
 
@@ -58,21 +58,21 @@ Welcome to the comprehensive Flow Test Engine documentation suite. This index pr
 ### Testing Patterns
 | Pattern | Documentation | Examples |
 |---------|---------------|----------|
-| **Basic API Testing** | [YAML Examples](./YAML_EXAMPLES.md#1-basic-api-test-flow) | Request/response validation |
-| **Authentication** | [YAML Examples](./YAML_EXAMPLES.md#2-authentication-flow) | Token management, sessions |
-| **CRUD Operations** | [YAML Examples](./YAML_EXAMPLES.md#3-crud-operations) | Create, read, update, delete |
-| **Data-Driven Testing** | [YAML Examples](./YAML_EXAMPLES.md#4-data-driven-testing) | Variable iteration, datasets |
-| **Error Handling** | [YAML Examples](./YAML_EXAMPLES.md#5-error-handling) | Failure scenarios, recovery |
-| **Performance Testing** | [YAML Examples](./YAML_EXAMPLES.md#6-performance-testing) | Load testing, timing |
-| **Advanced Scenarios** | [YAML Examples](./YAML_EXAMPLES.md#7-advanced-scenarios) | Complex flows, conditionals |
+| **Basic API Testing** | [YAML Examples](./YAML_EXAMPLES.md#basic-test-suite) | Request/response validation |
+| **Authentication** | [YAML Examples](./YAML_EXAMPLES.md#authentication-flows) | Token management, sessions |
+| **CRUD Operations** | [YAML Examples](./YAML_EXAMPLES.md#crud-operations) | Create, read, update, delete |
+| **Data-Driven Testing** | [YAML Examples](./YAML_EXAMPLES.md#data-driven-testing) | Variable iteration, datasets |
+| **Error Handling** | [YAML Examples](./YAML_EXAMPLES.md#error-handling) | Failure scenarios, recovery |
+| **Performance Testing** | [YAML Examples](./YAML_EXAMPLES.md#performance-testing) | Load testing, timing |
+| **Advanced Scenarios** | [YAML Examples](./YAML_EXAMPLES.md#advanced-scenarios) | Complex flows, conditionals |
 
 ### Technical Features
 | Feature | Documentation | Use Cases |
 |---------|---------------|-----------|
 | **Variable Interpolation** | [Best Practices](./BEST_PRACTICES.md#variable-management) | Dynamic values, data sharing |
-| **JMESPath Expressions** | [YAML Examples](./YAML_EXAMPLES.md#data-extraction-with-jmespath) | JSON data extraction |
-| **Conditional Scenarios** | [YAML Examples](./YAML_EXAMPLES.md#conditional-scenarios) | Dynamic test paths |
-| **Flow Imports** | [YAML Examples](./YAML_EXAMPLES.md#flow-imports) | Modular test design |
+| **JMESPath Expressions** | [API Documentation](./API_DOCUMENTATION.md#captureservice) | JSON data extraction |
+| **Conditional Scenarios** | [YAML Examples](./YAML_EXAMPLES.md#conditional-logic-with-complex-scenarios) | Dynamic test paths |
+| **Swagger/OpenAPI Import** | [YAML Examples](./YAML_EXAMPLES.md#swaggeropenapi-import) | Auto-generate suites |
 | **Assertions** | [API Documentation](./API_DOCUMENTATION.md#assertionservice) | Response validation |
 | **HTTP Client** | [API Documentation](./API_DOCUMENTATION.md#httpservice) | Request execution |
 
@@ -82,8 +82,8 @@ Welcome to the comprehensive Flow Test Engine documentation suite. This index pr
 | **Environment Config** | [Configuration Guide](./CONFIGURATION.md) | Environment-specific settings |
 | **CI/CD Integration** | [Configuration Guide](./CONFIGURATION.md#cicd-integration) | Pipeline automation |
 | **Test Automation** | [Automation Scripts](./AUTOMATION.md) | Script-based execution |
-| **Parallel Testing** | [Automation Scripts](./AUTOMATION.md#run-parallel-tests.sh) | Concurrent execution |
-| **Performance Testing** | [Automation Scripts](./AUTOMATION.md#run-performance-tests.sh) | Load and performance validation |
+| **Parallel Testing** | [Automation Scripts](./AUTOMATION.md#run-parallel-tests) | Concurrent execution |
+| **Performance Testing** | [Automation Scripts](./AUTOMATION.md#run-performance-tests) | Load and performance validation |
 
 ## 📖 Reading Paths
 

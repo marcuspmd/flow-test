@@ -10,7 +10,28 @@ import {
 } from "../types/engine.types";
 
 /**
- * Serviço de descoberta de testes
+ * Test discovery service responsible for finding and loading test files
+ *
+ * This service scans directories for YAML test files, validates their structure,
+ * and resolves dependencies between different test suites. It supports filtering
+ * by priority, tags, and file patterns.
+ *
+ * @example
+ * ```typescript
+ * const configManager = new ConfigManager();
+ * const discovery = new TestDiscovery(configManager);
+ *
+ * // Discover all tests in directory
+ * const tests = await discovery.discoverTests();
+ *
+ * // Filter by priority and tags
+ * const filtered = discovery.filterTests(tests, {
+ *   priorities: ['critical', 'high'],
+ *   tags: ['smoke', 'api']
+ * });
+ * ```
+ *
+ * @public
  */
 export class TestDiscovery {
   private configManager: ConfigManager;
@@ -20,7 +41,23 @@ export class TestDiscovery {
   }
 
   /**
-   * Descobre todos os testes no diretório configurado
+   * Discovers all test files in the configured directory
+   *
+   * Scans the test directory recursively for YAML files, validates their structure
+   * as valid test suites, and returns an array of discovered tests with metadata.
+   *
+   * @returns Promise resolving to array of discovered test configurations
+   * @throws Error if test directory doesn't exist or YAML files are invalid
+   *
+   * @example
+   * ```typescript
+   * const tests = await discovery.discoverTests();
+   * console.log(`Found ${tests.length} test suites`);
+   *
+   * tests.forEach(test => {
+   *   console.log(`- ${test.suite.suite_name} (${test.filePath})`);
+   * });
+   * ```
    */
   async discoverTests(): Promise<DiscoveredTest[]> {
     const config = this.configManager.getConfig();

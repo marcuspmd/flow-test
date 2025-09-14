@@ -23,7 +23,11 @@
     "server": "node mock-server.js",
     "prepare": "npm run build",
     "docs": "npm run build && npx @microsoft/api-extractor run --config api-extractor.json",
-    "docs:serve": "npm run docs && cd docs && python3 -m http.server 8080",
+    "docs:typedoc": "npm run build && npx typedoc",
+    "docs:typedoc:markdown": "npm run build && npx typedoc --plugin typedoc-plugin-markdown --out ./docs/markdown",
+    "docs:generate": "npm run docs && npm run docs:typedoc",
+    "docs:serve": "npm run docs:typedoc && cd docs/api && python3 -m http.server 8080",
+    "docs:check": "npx typedoc --validation --treatWarningsAsErrors",
     "report:html": "ts-node src/report-generator/cli.ts",
     "report:generate": "ts-node src/report-generator/cli.ts results/latest.json",
     "report:regenerate": "ts-node regenerate-html.ts"
@@ -64,6 +68,8 @@
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^20.14.2",
     "ts-node": "^10.9.2",
+    "typedoc": "^0.28.12",
+    "typedoc-plugin-markdown": "^4.8.1",
     "typescript": "^5.4.5"
   },
   "engines": {

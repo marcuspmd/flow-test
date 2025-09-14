@@ -4,7 +4,7 @@ This directory contains automation scripts for running Flow Test suites in vario
 
 ## Available Scripts
 
-### `run-tests.sh`
+### Run Tests
 Main test runner script with environment detection and configuration management.
 
 ```bash
@@ -201,7 +201,7 @@ main() {
 main "$@"
 ```
 
-### `run-parallel-tests.sh`
+### Run Parallel Tests
 Script for running multiple test suites in parallel.
 
 ```bash
@@ -387,7 +387,7 @@ main() {
 main "$@"
 ```
 
-### `run-performance-tests.sh`
+### Run Performance Tests
 Script for running performance and load tests.
 
 ```bash

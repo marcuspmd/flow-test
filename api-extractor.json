@@ -2,7 +2,9 @@
   "$schema": "https://developer.microsoft.com/json-schemas/api-extractor/v7/api-extractor.schema.json",
   "mainEntryPointFilePath": "./dist/index.d.ts",
   "apiReport": {
-    "enabled": false
+    "enabled": true,
+    "reportFolder": "./docs/api-report/",
+    "reportTempFolder": "./temp/"
   },
   "messages": {
     "extractorMessageReporting": {

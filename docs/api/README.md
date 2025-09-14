@@ -1,8 +1,12 @@
+**Flow Test Engine v1.0.0**
+
+***
+
 # Flow Test Engine
 
 A TypeScript-based API testing engine for writing rich, declarative flows in YAML. It supports request chaining, variable interpolation, flexible assertions, conditional scenarios, and clean reports in JSON and HTML.
 
-![HTML report overview](public/assets/flow-test.png)
+![HTML report overview](_media/flow-test.png)
 
 ## Key Features
 
@@ -93,10 +97,10 @@ npm run report:html
 
 Example visuals:
 
-![Flow overview](public/assets/flow.png)
-![Iterator example](public/assets/test-iterator.png)
-![Scenario view](public/assets/test-scenarios.png)
-![Failure details](public/assets/test-fail.png)
+![Flow overview](_media/flow.png)
+![Iterator example](_media/test-iterator.png)
+![Scenario view](_media/test-scenarios.png)
+![Failure details](_media/test-fail.png)
 
 ## Example Suites
 
