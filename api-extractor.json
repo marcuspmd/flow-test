@@ -8,21 +8,37 @@
   },
   "messages": {
     "extractorMessageReporting": {
-      "ae-missing-release-tag": { "logLevel": "warning" },
-      "ae-unresolved-link": { "logLevel": "warning" },
-      "ae-forgotten-export": { "logLevel": "warning" }
+      "ae-missing-release-tag": {
+        "logLevel": "none"
+      },
+      "ae-unresolved-link": {
+        "logLevel": "none"
+      },
+      "ae-forgotten-export": {
+        "logLevel": "none"
+      }
     },
     "tsdocMessageReporting": {
-      "tsdoc-undefined-tag": { "logLevel": "warning" },
-      "tsdoc-escape-right-brace": { "logLevel": "warning" },
-      "tsdoc-malformed-inline-tag": { "logLevel": "warning" },
-      "tsdoc-escape-greater-than": { "logLevel": "warning" },
-      "tsdoc-html-tag-missing-greater-than": { "logLevel": "warning" }
+      "tsdoc-undefined-tag": {
+        "logLevel": "none"
+      },
+      "tsdoc-escape-right-brace": {
+        "logLevel": "none"
+      },
+      "tsdoc-malformed-inline-tag": {
+        "logLevel": "none"
+      },
+      "tsdoc-escape-greater-than": {
+        "logLevel": "none"
+      },
+      "tsdoc-html-tag-missing-greater-than": {
+        "logLevel": "none"
+      }
     }
   },
   "docModel": {
     "enabled": true,
-    "apiJsonFilePath": "./docs/api/flow-test-engine.api.json"
+    "apiJsonFilePath": "./docs/api-model.json"
   },
   "dtsRollup": {
     "enabled": false

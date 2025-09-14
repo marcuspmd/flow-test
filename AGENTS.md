@@ -17,6 +17,12 @@
 - `npm run docs` / `npm run docs:serve` — Build and serve API docs.
 - `npm run report:html` — Generate HTML report from `results/latest.json`.
 
+### Docusaurus Docs (preview)
+- `cd docs-website && npm install` — Install docs site deps
+- `npm run start` — Start local docs on http://localhost:3000 (from docs-website)
+- `npm run build` — Build static docs to `docs-website/build`
+The site autoloads markdown from `../docs` (existing repo docs) and generates sidebars automatically.
+
 ## Coding Style & Naming Conventions
 - Language: TypeScript (`strict: true`), Node >= 16.
 - Indentation: 2 spaces; use semicolons and double quotes.
