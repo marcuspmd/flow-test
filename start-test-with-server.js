@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 const { execSync, spawn } = require('child_process');
+const fs = require('fs');
 const net = require('net');
 const path = require('path');
 
@@ -60,11 +61,17 @@ async function main() {
   console.log('🚀 Flow Test Engine - Smart Server Detection');
   
   try {
+    const skipLocalMock = process.env.SKIP_LOCAL_MOCK === '1' || process.env.SKIP_LOCAL_MOCK === 'true';
+    if (skipLocalMock) {
+      console.log('⏭️  SKIP_LOCAL_MOCK is set; will not start local mock server.');
+    }
     // Check if port 3000 is available (not occupied)
-    const port3000Available = await isPortAvailable(PORT);
+    const hasLocalMockFile = fs.existsSync(path.join(process.cwd(), 'mock-server.js'));
+    const canStartLocalMock = !skipLocalMock && hasLocalMockFile;
+    const port3000Available = canStartLocalMock ? await isPortAvailable(PORT) : false;
     console.log(`🔍 Port ${PORT} available: ${port3000Available}`);
     
-    if (port3000Available) {
+    if (port3000Available && canStartLocalMock) {
       console.log(`📡 Starting mock server on port ${PORT}...`);
       
       // Start mock server in background

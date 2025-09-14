@@ -4,46 +4,77 @@ import { StepExecutionResult } from "../types/config.types";
 import { getLogger } from "./logger.service";
 
 /**
- * Serviço HTTP responsável por executar requisições e processar respostas
+ * HTTP Service responsible for executing requests and processing responses
  *
- * Este serviço encapsula a lógica de execução de requisições HTTP usando axios,
- * incluindo construção de URLs, tratamento de erros, medição de performance
- * e normalização de respostas.
+ * This service encapsulates HTTP request execution logic using axios,
+ * including URL construction, error handling, performance measurement,
+ * and response normalization for the Flow Test Engine.
  *
- * @example
+ * @remarks
+ * The HttpService automatically handles:
+ * - URL construction from base URL and relative paths
+ * - Request timeout management
+ * - Response time measurement
+ * - Error normalization and logging
+ * - Header and body processing
+ *
+ * @example Basic HTTP request execution
  * ```typescript
- * const httpService = new HttpService('https://api.exemplo.com', 30000);
+ * const httpService = new HttpService('https://api.example.com', 30000);
  * const result = await httpService.executeRequest('Login', {
  *   method: 'POST',
  *   url: '/auth/login',
  *   body: { username: 'user', password: 'pass' }
  * });
+ *
+ * console.log(`Request completed in ${result.response_time}ms`);
+ * console.log(`Status: ${result.status_code}`);
  * ```
+ *
+ * @example Request with custom headers
+ * ```typescript
+ * const result = await httpService.executeRequest('GetUser', {
+ *   method: 'GET',
+ *   url: '/users/123',
+ *   headers: {
+ *     'Authorization': 'Bearer token',
+ *     'Content-Type': 'application/json'
+ *   }
+ * });
+ * ```
+ *
+ * @public
+ * @since 1.0.0
  */
 export class HttpService {
-  /** URL base para construção de URLs completas */
+  /** Base URL for constructing complete URLs from relative paths */
   private baseUrl?: string;
 
-  /** Timeout em milissegundos para requisições HTTP */
+  /** Timeout in milliseconds for HTTP requests */
   private timeout: number;
 
   private logger = getLogger();
 
   /**
-   * Construtor do HttpService
+   * Creates a new HttpService instance
    *
-   * @param baseUrl - URL base opcional para prefixar requisições relativas
-   * @param timeout - Timeout em milissegundos (padrão: 30000ms)
+   * @param baseUrl - Optional base URL to prefix relative request URLs
+   * @param timeout - Request timeout in milliseconds
    *
-   * @example
+   * @defaultValue timeout - 60000ms (60 seconds)
+   *
+   * @example Constructor with base URL
    * ```typescript
-   * // Com URL base
-   * const service = new HttpService('https://api.exemplo.com');
+   * const service = new HttpService('https://api.example.com');
+   * ```
    *
-   * // Com timeout customizado
-   * const service = new HttpService('https://api.exemplo.com', 60000);
+   * @example Constructor with custom timeout
+   * ```typescript
+   * const service = new HttpService('https://api.example.com', 60000);
+   * ```
    *
-   * // Sem URL base (URLs absolutas only)
+   * @example Constructor without base URL (absolute URLs only)
+   * ```typescript
    * const service = new HttpService();
    * ```
    */

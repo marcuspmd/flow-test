@@ -1,0 +1,16 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/api-documenter/v7/api-documenter.schema.json",
+  "configFile": "./api-extractor.json",
+  "inputFolder": "./docs/",
+  "outputTarget": "docfx",
+  "outputFolder": "./docs/api-docs/",
+  "newDocfxNamespaces": false,
+  "markdownDocumenter": {
+    "enabled": true,
+    "outputFolder": "./docs/markdown/",
+    "outputTarget": "markdown"
+  },
+  "tableOfContents": {
+    "enabled": true
+  }
+}

@@ -1,0 +1,92 @@
+/** @type {import('jest').Config} */
+module.exports = {
+  // Ambiente de execução
+  preset: 'ts-jest',
+  testEnvironment: 'node',
+
+  // Diretórios e arquivos
+  roots: ['<rootDir>/src'],
+  testMatch: [
+    '**/__tests__/**/*.ts',
+    '**/*.test.ts',
+    '**/*.spec.ts'
+  ],
+
+  // Transformações TypeScript
+  transform: {
+    '^.+\.ts$': 'ts-jest',
+  },
+
+  // Extensões de arquivo
+  moduleFileExtensions: ['ts', 'js', 'json'],
+
+  // Setup files
+  // setupFilesAfterEnv: ['<rootDir>/src/__tests__/setup.ts'],
+
+  // Cobertura de código - 90% obrigatório
+  collectCoverage: true,
+  coverageDirectory: 'coverage',
+  coverageReporters: ['text', 'text-summary', 'html', 'json', 'lcov'],
+  collectCoverageFrom: [
+    // Core modules (já testados)
+    'src/core/config.ts',
+    'src/core/discovery.ts',
+    'src/core/engine.ts',
+    'src/core/swagger/parser/swagger-parser.ts',
+    'src/core/swagger/parser/validator.ts',
+    // Services (todos os services, sem exclusões)
+    'src/services/assertion.service.ts',
+    'src/services/capture.service.ts',
+    'src/services/dependency.service.ts',
+    'src/services/faker.service.ts',
+    'src/services/global-registry.service.ts',
+    'src/services/http.service.ts',
+    'src/services/logger.service.ts',
+    'src/services/variable.service.ts',
+    // Report generator
+    'src/report-generator/**/*.ts',
+    // Excluir apenas arquivos de interface/utilitários
+    '!src/cli.ts',
+    '!src/index.ts',
+    '!src/main.ts',
+    '!src/**/*.d.ts',
+    '!src/__tests__/**',
+    '!src/**/*.test.ts',
+    '!src/**/*.spec.ts',
+  ],
+
+  // Thresholds rigorosos - 95% cobertura real em todos os módulos
+  coverageThreshold: {
+    global: {
+      statements: 95,
+      branches: 90,
+      functions: 95,
+      lines: 95,
+    },
+  },
+
+  // Configurações de teste
+  verbose: true,
+  clearMocks: true,
+  restoreMocks: true,
+
+  // Timeout para testes mais longos
+  testTimeout: 10000,
+
+  // Configurações adicionais para relatórios
+  testPathIgnorePatterns: [
+    '/node_modules/',
+    '/dist/',
+    '/coverage/',
+  ],
+
+  // Configurações adicionais para relatórios
+  reporters: [
+    'default',
+    ['jest-html-reporters', {
+      publicPath: './coverage/html-report',
+      filename: 'test-report.html',
+      expand: true,
+    }],
+  ],
+};

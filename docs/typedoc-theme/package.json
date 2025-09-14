@@ -1,0 +1,6 @@
+{
+  "name": "typedoc-theme-flow",
+  "private": true,
+  "type": "module",
+  "exports": "./index.mjs"
+}

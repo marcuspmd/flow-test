@@ -1,12 +1,6 @@
 import * as jmespath from "jmespath";
-import {
-  Assertions,
-  AssertionChecks,
-} from "../types/engine.types";
-import {
-  AssertionResult,
-  StepExecutionResult,
-} from "../types/config.types";
+import { Assertions, AssertionChecks } from "../types/engine.types";
+import { AssertionResult, StepExecutionResult } from "../types/config.types";
 import { getLogger } from "./logger.service";
 
 /**
@@ -74,14 +68,18 @@ export class AssertionService {
 
     // Valida status code
     if (processedAssertions.status_code !== undefined) {
-      if (typeof processedAssertions.status_code === 'number') {
+      if (typeof processedAssertions.status_code === "number") {
         assertionResults.push(
           this.validateStatusCode(processedAssertions.status_code, result)
         );
       } else {
         // Handle AssertionChecks for status_code
         assertionResults.push(
-          ...this.validateFieldChecks('status_code', processedAssertions.status_code, result.response_details!.status_code)
+          ...this.validateFieldChecks(
+            "status_code",
+            processedAssertions.status_code,
+            result.response_details!.status_code
+          )
         );
       }
     }
@@ -107,6 +105,13 @@ export class AssertionService {
           processedAssertions.response_time_ms,
           result
         )
+      );
+    }
+
+    // Valida custom assertions
+    if (processedAssertions.custom) {
+      assertionResults.push(
+        ...this.validateCustomAssertions(processedAssertions.custom, result)
       );
     }
 
@@ -296,6 +301,75 @@ export class AssertionService {
   }
 
   /**
+   * Validates custom JavaScript-based assertions.
+   */
+  private validateCustomAssertions(
+    customAssertions: Array<{
+      name: string;
+      condition: string;
+      message?: string;
+    }>,
+    result: StepExecutionResult
+  ): AssertionResult[] {
+    const results: AssertionResult[] = [];
+
+    for (const customAssertion of customAssertions) {
+      try {
+        // Create a safe context for evaluation
+        const context = {
+          status_code: result.response_details?.status_code,
+          headers: result.response_details?.headers || {},
+          body: result.response_details?.body || {},
+          response_time: result.duration_ms,
+        };
+
+        // Evaluate the condition using Function constructor for safety
+        const evaluationFunction = new Function(
+          "status_code",
+          "headers",
+          "body",
+          "response_time",
+          `return ${customAssertion.condition}`
+        );
+
+        const conditionResult = evaluationFunction(
+          context.status_code,
+          context.headers,
+          context.body,
+          context.response_time
+        );
+
+        const passed = Boolean(conditionResult);
+
+        results.push(
+          this.createAssertionResult(
+            `custom.${customAssertion.name}`,
+            true,
+            passed,
+            passed,
+            customAssertion.message ||
+              (passed ? "OK" : `Condition failed: ${customAssertion.condition}`)
+          )
+        );
+      } catch (error) {
+        results.push(
+          this.createAssertionResult(
+            `custom.${customAssertion.name}`,
+            true,
+            false,
+            false,
+            `Error evaluating condition: ${
+              error instanceof Error ? error.message : "Unknown error"
+            }`
+          )
+        );
+      }
+    }
+
+    return results;
+  }
+
+  /**
    * Validates a set of checks for a specific field.
    */
   private validateFieldChecks(
@@ -379,6 +453,83 @@ export class AssertionService {
           passed ? undefined : `Value does not match pattern: ${checks.regex}`
         )
       );
+    }
+
+    if (checks.type !== undefined) {
+      const actualType = this.getValueType(actualValue);
+      const passed = actualType === checks.type;
+      results.push(
+        this.createAssertionResult(
+          `${fieldName}.type`,
+          checks.type,
+          actualType,
+          passed
+        )
+      );
+    }
+
+    if (checks.exists !== undefined) {
+      const exists = actualValue !== undefined && actualValue !== null;
+      const passed = exists === checks.exists;
+      results.push(
+        this.createAssertionResult(
+          `${fieldName}.exists`,
+          checks.exists,
+          exists,
+          passed
+        )
+      );
+    }
+
+    if (checks.length !== undefined) {
+      const length = this.getValueLength(actualValue);
+      if (length === -1) {
+        results.push(
+          this.createAssertionResult(
+            `${fieldName}.length`,
+            "valid array or string",
+            actualValue,
+            false,
+            "Value must be an array or string to check length"
+          )
+        );
+      } else {
+        if (checks.length.equals !== undefined) {
+          const passed = length === checks.length.equals;
+          results.push(
+            this.createAssertionResult(
+              `${fieldName}.length.equals`,
+              checks.length.equals,
+              length,
+              passed
+            )
+          );
+        }
+
+        if (checks.length.greater_than !== undefined) {
+          const passed = length > checks.length.greater_than;
+          results.push(
+            this.createAssertionResult(
+              `${fieldName}.length.greater_than`,
+              `> ${checks.length.greater_than}`,
+              length,
+              passed
+            )
+          );
+        }
+
+        if (checks.length.less_than !== undefined) {
+          const passed = length < checks.length.less_than;
+          results.push(
+            this.createAssertionResult(
+              `${fieldName}.length.less_than`,
+              `< ${checks.length.less_than}`,
+              length,
+              passed
+            )
+          );
+        }
+      }
     }
 
     return results;
@@ -485,5 +636,25 @@ export class AssertionService {
         message ||
         (passed ? "OK" : `Expected: ${expected}, Received: ${actual}`),
     };
+  }
+
+  /**
+   * Gets the type of a value for type assertions.
+   */
+  private getValueType(value: any): string {
+    if (value === null) return "null";
+    if (Array.isArray(value)) return "array";
+    return typeof value;
+  }
+
+  /**
+   * Gets the length of a value for length assertions.
+   * Returns -1 if the value doesn't have a length property.
+   */
+  private getValueLength(value: any): number {
+    if (typeof value === "string" || Array.isArray(value)) {
+      return value.length;
+    }
+    return -1;
   }
 }

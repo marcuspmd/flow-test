@@ -1,34 +1,71 @@
 /**
- * Componente TestStep - Step individual de teste
+ * @packageDocumentation
+ * This module contains the `TestStepComponent` for the HTML report.
  *
- * Responsabilidades:
- * - Exibir informações do step (nome, status, duração)
- * - Sistema de tabs para diferentes tipos de conteúdo
- * - Tabs: Assertions, Request, Response, cURL
- * - Formatação de JSON e dados estruturados
- * - Highlighting de código e dados
+ * @remarks
+ * This component is responsible for rendering an individual test step.
+ * It includes a tabbed interface for displaying different types of content such as:
+ * - Assertions
+ * - Request & Response details
+ * - cURL command
+ * - Iterations
+ * - Conditional Scenarios
+ * It also handles data formatting, code highlighting, and status visualization.
  */
 
 import { BaseComponent } from "./base-component";
-import { TestStepProps, TabData, IterationStepData, ScenarioMeta } from "./types";
+import {
+  TestStepProps,
+  TabData,
+  IterationStepData,
+  ScenarioMeta,
+  Status,
+  TestStepData,
+  AssertionData,
+  RequestData,
+  ResponseData,
+} from "./types";
 
 export class TestStepComponent extends BaseComponent {
-  private getStatusIcon(status: "success" | "failure" | "info"): string {
-    if (status === "success") return "✓";
-    if (status === "failure") return "✗";
-    return "ℹ";
+  /**
+   * Normalizes a detailed status into a simpler category for styling.
+   * @param status - The detailed status of the step.
+   * @returns A simplified status: "success", "failure", or "info".
+   */
+  private normalizeStatus(status: Status): "success" | "failure" | "info" {
+    if (status === "success") return "success";
+    if (status === "failure" || status === "failed" || status === "error")
+      return "failure";
+    return "info"; // Represents a neutral state, e.g., a step with no assertions.
   }
 
+  /**
+   * Gets a simple visual icon for a given status.
+   * @param status - The status of the item.
+   * @returns A checkmark ("✓") for success, or a cross ("✗") for failure/other.
+   */
+  private getStatusIcon(status: Status): string {
+    if (status === "success") return "✓";
+    return "✗";
+  }
+
+  /**
+   * Gets a set of CSS classes based on the normalized status.
+   * @param status - The normalized status.
+   * @returns An object of CSS class strings for borders, backgrounds, and text.
+   */
   private getStatusClasses(status: "success" | "failure" | "info"): {
     border: string;
-    icon: string;
     bg: string;
+    text: string;
+    icon: string;
   } {
     if (status === "success") {
       return {
         border: "border-l-green-500",
         icon: "text-green-500",
         bg: "bg-green-50 dark:bg-green-900/10",
+        text: "text-green-700",
       };
     }
 
@@ -37,25 +74,41 @@ export class TestStepComponent extends BaseComponent {
         border: "border-l-red-500",
         icon: "text-red-500",
         bg: "bg-red-50 dark:bg-red-900/10",
+        text: "text-red-700",
       };
     }
 
-    // info (neutro)
+    // info or unknown (neutral)
     return {
       border: "border-l-blue-500",
       icon: "text-blue-500",
       bg: "bg-blue-50 dark:bg-blue-900/10",
+      text: "text-blue-700",
     };
   }
 
-  private countAllAssertions(step: any): number {
+  /**
+   * Counts all assertions in a step, including those from iterations.
+   * @param step - The test step data.
+   * @returns The total number of assertions.
+   */
+  private countAllAssertions(step: TestStepData): number {
     const direct = Array.isArray(step.assertions) ? step.assertions.length : 0;
     const fromIterations = Array.isArray(step.iterations)
-      ? step.iterations.reduce((sum: number, it: any) => sum + (Array.isArray(it.assertions) ? it.assertions.length : 0), 0)
+      ? step.iterations.reduce(
+          (sum: number, it: IterationStepData) =>
+            sum + (Array.isArray(it.assertions) ? it.assertions.length : 0),
+          0
+        )
       : 0;
     return direct + fromIterations;
   }
 
+  /**
+   * Safely converts data to a formatted JSON string.
+   * @param data - The data to format.
+   * @returns A formatted JSON string or the string representation of the data on error.
+   */
   private formatJson(data: any): string {
     try {
       return JSON.stringify(data, null, 2);
@@ -64,16 +117,23 @@ export class TestStepComponent extends BaseComponent {
     }
   }
 
+  /**
+   * Formats an assertion's technical field name into a human-readable name and operator.
+   * @param field - The technical field name (e.g., 'response_time_ms.less_than').
+   * @returns An object with a readable name and an optional operator.
+   */
   private formatAssertionField(field: string): {
     name: string;
     operator?: string;
   } {
-    // Extrai o operador do campo (ex: response_time_ms.less_than -> less_than)
+    if (!field || typeof field !== "string") {
+      return { name: "Field not specified" };
+    }
+
     const parts = field.split(".");
     const operator = parts.length > 1 ? parts[parts.length - 1] : undefined;
     const cleanField = parts[0];
 
-    // Converte campos técnicos em nomes mais legíveis
     const fieldMappings: Record<string, string> = {
       status_code: "Status Code",
       response_time_ms: "Response Time",
@@ -82,10 +142,8 @@ export class TestStepComponent extends BaseComponent {
       headers: "Headers",
     };
 
-    // Verifica se é um campo direto mapeado
     const displayName = fieldMappings[cleanField] || cleanField;
 
-    // Trata campos aninhados como body.message, headers.content-type
     if (field.startsWith("body.")) {
       return {
         name: `Body: ${field.substring(5)}`,
@@ -106,15 +164,23 @@ export class TestStepComponent extends BaseComponent {
     };
   }
 
+  /**
+   * Formats an assertion value based on its field type for better readability.
+   * @param value - The value to format.
+   * @param field - The technical field name, used to determine formatting type.
+   * @returns A formatted string representation of the value.
+   */
   private formatAssertionValue(value: any, field: string): string {
-    // Formatação especial para campos de performance
+    if (!field || typeof field !== "string") {
+      return String(value || "");
+    }
+
     if (field.includes("response_time") || field.includes("time")) {
       if (typeof value === "number") {
         return `${value}ms`;
       }
     }
 
-    // Formatação especial para status codes
     if (field === "status_code" && typeof value === "number") {
       const statusTexts: Record<number, string> = {
         200: "OK",
@@ -128,15 +194,19 @@ export class TestStepComponent extends BaseComponent {
       return `${value} ${statusTexts[value] || ""}`.trim();
     }
 
-    // Para outros valores, usar formatação JSON normal
     return this.formatJson(value);
   }
 
-  private renderAssertionsTab(assertions: any[]): string {
+  /**
+   * Renders the content for the "Assertions" tab.
+   * @param assertions - An array of assertion data.
+   * @returns An HTML string for the assertions list.
+   */
+  private renderAssertionsTab(assertions: AssertionData[]): string {
     if (!assertions || assertions.length === 0) {
       return this.html`
         <div class="text-secondary text-center py-4">
-          <p>Nenhuma asserção registrada</p>
+          <p>No assertions recorded</p>
         </div>
       `;
     }
@@ -160,25 +230,26 @@ export class TestStepComponent extends BaseComponent {
                 <div>
                   <span class="font-medium text-primary">
                     ${this.escapeHtml(
-                      this.formatAssertionField(assertion.field).name
+                      this.formatAssertionField(assertion.type).name
                     )}
                   </span>
                   ${
-                    this.formatAssertionField(assertion.field).operator
+                    this.formatAssertionField(assertion.type).operator
                       ? this.html`
                     <span class="text-secondary text-sm ml-2">
                       (${this.escapeHtml(
-                        this.formatAssertionField(assertion.field).operator
+                        this.formatAssertionField(assertion.type).operator
                       )})
                     </span>
                   `
                       : ""
                   }
                   ${
-                    assertion.message && assertion.message !== "OK"
+                    (assertion as any).message &&
+                    (assertion as any).message !== "OK"
                       ? this.html`
                     <div class="text-secondary text-xs mt-1">
-                      ${this.escapeHtml(assertion.message)}
+                      ${this.escapeHtml((assertion as any).message)}
                     </div>
                   `
                       : ""
@@ -194,7 +265,7 @@ export class TestStepComponent extends BaseComponent {
                       ${this.escapeHtml(
                         this.formatAssertionValue(
                           assertion.expected,
-                          assertion.field
+                          assertion.type
                         )
                       )}
                     </div>
@@ -209,7 +280,7 @@ export class TestStepComponent extends BaseComponent {
                       ${this.escapeHtml(
                         this.formatAssertionValue(
                           assertion.actual,
-                          assertion.field
+                          assertion.type
                         )
                       )}
                     </div>
@@ -224,11 +295,16 @@ export class TestStepComponent extends BaseComponent {
     `;
   }
 
-  private renderRequestTab(request: any): string {
+  /**
+   * Renders the content for the "Request" tab.
+   * @param request - The request data.
+   * @returns An HTML string for the request details.
+   */
+  private renderRequestTab(request?: RequestData): string {
     if (!request) {
       return this.html`
         <div class="text-secondary text-center py-4">
-          <p>Dados de request não disponíveis</p>
+          <p>Request data not available</p>
         </div>
       `;
     }
@@ -253,7 +329,7 @@ export class TestStepComponent extends BaseComponent {
               <div class="text-right flex-1 mr-4">
                 <div class="text-secondary text-xs">URL</div>
                 <div class="font-mono text-green-600 dark:text-green-400 break-all">
-                  ${this.escapeHtml(request.full_url || request.url || "")}
+                  ${this.escapeHtml(request.url || "")}
                 </div>
               </div>
             </div>
@@ -265,9 +341,9 @@ export class TestStepComponent extends BaseComponent {
             ? this.html`
           <div>
             <h4 class="font-semibold text-primary mb-2">Headers</h4>
-            <pre class="terminal-code">
-${this.escapeHtml(this.formatJson(request.headers))}
-            </pre>
+            <pre class="terminal-code">${this.escapeHtml(
+              this.formatJson(request.headers)
+            )}</pre>
           </div>
         `
             : ""
@@ -278,9 +354,9 @@ ${this.escapeHtml(this.formatJson(request.headers))}
             ? this.html`
           <div>
             <h4 class="font-semibold text-primary mb-2">Body</h4>
-            <pre class="terminal-code">
-${this.escapeHtml(this.formatJson(request.body))}
-            </pre>
+            <pre class="terminal-code">${this.escapeHtml(
+              this.formatJson(request.body)
+            )}</pre>
           </div>
         `
             : ""
@@ -289,11 +365,16 @@ ${this.escapeHtml(this.formatJson(request.body))}
     `;
   }
 
-  private renderResponseTab(response: any): string {
+  /**
+   * Renders the content for the "Response" tab.
+   * @param response - The response data.
+   * @returns An HTML string for the response details.
+   */
+  private renderResponseTab(response?: ResponseData): string {
     if (!response) {
       return this.html`
         <div class="text-secondary text-center py-4">
-          <p>Dados de response não disponíveis</p>
+          <p>Response data not available</p>
         </div>
       `;
     }
@@ -313,13 +394,7 @@ ${this.escapeHtml(this.formatJson(request.body))}
           </h4>
           <div class="flex items-center justify-between p-3 bg-primary rounded-lg border border-default">
             <div class="flex items-center space-x-3">
-              <span class="${
-                response.status_code >= 200 && response.status_code < 300
-                  ? "text-green-500"
-                  : response.status_code >= 400
-                  ? "text-red-500"
-                  : "text-yellow-500"
-              } text-lg">
+              <span class="${statusColor} text-lg">
                 ${
                   response.status_code >= 200 && response.status_code < 300
                     ? "✓"
@@ -333,13 +408,7 @@ ${this.escapeHtml(this.formatJson(request.body))}
               </div>
             </div>
             <div class="text-right">
-              <div class="font-mono ${
-                response.status_code >= 200 && response.status_code < 300
-                  ? "text-green-600 dark:text-green-400"
-                  : response.status_code >= 400
-                  ? "text-red-600 dark:text-red-400"
-                  : "text-yellow-600 dark:text-yellow-400"
-              } font-bold text-lg">
+              <div class="font-mono ${statusColor} font-bold text-lg">
                 ${response.status_code}
               </div>
             </div>
@@ -351,9 +420,9 @@ ${this.escapeHtml(this.formatJson(request.body))}
             ? this.html`
           <div>
             <h4 class="font-semibold text-primary mb-2">Headers</h4>
-            <pre class="terminal-code">
-${this.escapeHtml(this.formatJson(response.headers))}
-            </pre>
+            <pre class="terminal-code">${this.escapeHtml(
+              this.formatJson(response.headers)
+            )}</pre>
           </div>
         `
             : ""
@@ -364,9 +433,9 @@ ${this.escapeHtml(this.formatJson(response.headers))}
             ? this.html`
           <div>
             <h4 class="font-semibold text-primary mb-2">Body</h4>
-            <pre class="terminal-code">
-${this.escapeHtml(this.formatJson(response.body))}
-            </pre>
+            <pre class="terminal-code">${this.escapeHtml(
+              this.formatJson(response.body)
+            )}</pre>
           </div>
         `
             : ""
@@ -375,13 +444,19 @@ ${this.escapeHtml(this.formatJson(response.body))}
     `;
   }
 
-  private renderRawTab(request: any, response: any): string {
+  /**
+   * Renders the content for the "Raw" tab, showing raw HTTP request/response.
+   * @param request - The request data.
+   * @param response - The response data.
+   * @returns An HTML string for the raw data view.
+   */
+  private renderRawTab(request?: RequestData, response?: ResponseData): string {
     const hasRawData = request?.raw_request || response?.raw_response;
 
     if (!hasRawData) {
       return this.html`
         <div class="text-secondary text-center py-4">
-          <p>Dados brutos não disponíveis</p>
+          <p>Raw data not available</p>
         </div>
       `;
     }
@@ -397,15 +472,15 @@ ${this.escapeHtml(this.formatJson(response.body))}
               Raw Request
             </h4>
             <div class="relative">
-              <pre class="terminal-code">
-${this.escapeHtml(request.raw_request)}
-              </pre>
+              <pre class="terminal-code">${this.escapeHtml(
+                request.raw_request
+              )}</pre>
               <button
-                class="absolute top-2 right-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg p-2 shadow-md transition-colors duration-200"
+                class="absolute top-2 right-2 btn-copy"
                 onclick="navigator.clipboard.writeText('${this.escapeHtml(
                   request.raw_request
-                ).replace(/'/g, "\\'")}')"
-                title="Copiar request"
+                ).replace(/'/g, "'")}')"
+                title="Copy request"
               >
                 📋
               </button>
@@ -424,15 +499,15 @@ ${this.escapeHtml(request.raw_request)}
               Raw Response
             </h4>
             <div class="relative">
-              <pre class="terminal-code">
-${this.escapeHtml(response.raw_response)}
-              </pre>
+              <pre class="terminal-code">${this.escapeHtml(
+                response.raw_response
+              )}</pre>
               <button
-                class="absolute top-2 right-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg p-2 shadow-md transition-colors duration-200"
+                class="absolute top-2 right-2 btn-copy"
                 onclick="navigator.clipboard.writeText('${this.escapeHtml(
                   response.raw_response
-                ).replace(/'/g, "\\'")}')"
-                title="Copiar response"
+                ).replace(/'/g, "'")}')"
+                title="Copy response"
               >
                 📋
               </button>
@@ -445,9 +520,19 @@ ${this.escapeHtml(response.raw_response)}
     `;
   }
 
-  private renderIterationCard(parentStepId: string, it: IterationStepData): string {
+  /**
+   * Renders a single card for an iteration step.
+   * @param parentStepId - The ID of the parent test step.
+   * @param it - The iteration data.
+   * @returns An HTML string for the iteration card.
+   */
+  private renderIterationCard(
+    parentStepId: string,
+    it: IterationStepData
+  ): string {
     const itStepId = `${parentStepId}-it-${it.index}`;
-    const headerStatus = this.getStatusClasses(it.status);
+    const norm = this.normalizeStatus(it.status as Status);
+    const headerStatus = this.getStatusClasses(norm);
     const statusIcon = this.getStatusIcon(it.status);
 
     const tabs = this.renderTabs(
@@ -456,21 +541,29 @@ ${this.escapeHtml(response.raw_response)}
         request: it.request,
         response: it.response,
         curlCommand: it.curlCommand,
-      } as any,
+      } as TestStepData,
       itStepId
     );
 
     return this.html`
       <div class="card ${headerStatus.border}">
-        <div class="flex justify-between items-center p-3 ${headerStatus.bg} rounded-t-lg">
+        <div class="flex justify-between items-center p-3 ${
+          headerStatus.bg
+        } rounded-t-lg">
           <div class="flex items-center space-x-3">
             <div class="flex items-center space-x-2">
-              <span class="font-mono text-xs text-secondary">[${it.index}/${it.total}]</span>
+              <span class="font-mono text-xs text-secondary">[${it.index}/${
+      it.total
+    }]</span>
               <span class="text-lg ${headerStatus.icon}">${statusIcon}</span>
             </div>
-            <h4 class="font-medium text-primary">${this.escapeHtml(it.stepName)}</h4>
+            <h4 class="font-medium text-primary">${this.escapeHtml(
+              it.stepName
+            )}</h4>
           </div>
-          <div class="text-sm text-secondary">${this.formatDuration(it.duration)}</div>
+          <div class="text-sm text-secondary">${this.formatDuration(
+            it.duration
+          )}</div>
         </div>
         <div class="p-4 bg-tertiary border-t border-default">
           ${tabs}
@@ -479,7 +572,13 @@ ${this.escapeHtml(response.raw_response)}
     `;
   }
 
-  private renderIterationsTab(step: any, stepId: string): string {
+  /**
+   * Renders the content for the "Iterations" tab.
+   * @param step - The parent test step data.
+   * @param stepId - The ID of the parent test step.
+   * @returns An HTML string for the iterations list.
+   */
+  private renderIterationsTab(step: TestStepData, stepId: string): string {
     const iterations: IterationStepData[] = step.iterations || [];
     if (!iterations.length) return "";
 
@@ -489,17 +588,24 @@ ${this.escapeHtml(response.raw_response)}
           Iterations (${iterations.length})
         </h4>
         <div class="space-y-3">
-          ${this.renderList(iterations, (it) => this.renderIterationCard(stepId, it))}
+          ${this.renderList(iterations, (it) =>
+            this.renderIterationCard(stepId, it)
+          )}
         </div>
       </div>
     `;
   }
 
+  /**
+   * Renders the content for the "Scenarios" tab.
+   * @param meta - The scenario metadata.
+   * @returns An HTML string for the scenarios view.
+   */
   private renderScenariosTab(meta?: ScenarioMeta): string {
     if (!meta || !meta.has_scenarios) {
       return this.html`
         <div class="text-secondary text-center py-4">
-          <p>Nenhum cenário registrado</p>
+          <p>No scenarios recorded</p>
         </div>
       `;
     }
@@ -508,7 +614,7 @@ ${this.escapeHtml(response.raw_response)}
     return this.html`
       <div class="space-y-3">
         <h4 class="font-semibold text-primary text-sm uppercase tracking-wide">
-          Cenários (${evals.length}) • Executados: ${meta.executed_count}
+          Scenarios (${evals.length}) • Executed: ${meta.executed_count}
         </h4>
         <ul class="space-y-2">
           ${this.renderList(
@@ -517,15 +623,38 @@ ${this.escapeHtml(response.raw_response)}
               <li class="p-3 bg-primary rounded-lg border border-default">
                 <div class="flex items-center justify-between">
                   <div class="flex items-center gap-3">
-                    <span class="font-mono text-xs text-secondary">#${e.index}</span>
-                    <code class="text-xs text-primary">${this.escapeHtml(e.condition)}</code>
+                    <span class="font-mono text-xs text-secondary">#${
+                      e.index
+                    }</span>
+                    <code class="text-xs text-primary">${this.escapeHtml(
+                      e.condition
+                    )}</code>
                   </div>
                   <div class="flex items-center gap-2 text-xs">
-                    <span class="badge ${e.matched ? 'badge-green' : 'badge-gray'}">${e.matched ? 'matched' : 'not matched'}</span>
-                    <span class="badge ${e.executed ? 'badge-blue' : 'badge-gray'}">${e.executed ? 'executado' : 'não executado'}</span>
-                    ${e.branch && e.branch !== 'none' ? this.html`<span class="badge badge-indigo">${e.branch}</span>` : ''}
-                    ${typeof e.assertions_added === 'number' ? this.html`<span class="badge badge-amber">assertions: ${e.assertions_added}</span>` : ''}
-                    ${typeof e.captures_added === 'number' ? this.html`<span class="badge badge-teal">captures: ${e.captures_added}</span>` : ''}
+                    <span class="badge ${
+                      e.matched ? "badge-green" : "badge-gray"
+                    }">${e.matched ? "matched" : "not matched"}</span>
+                    <span class="badge ${
+                      e.executed ? "badge-blue" : "badge-gray"
+                    }">${e.executed ? "executed" : "not executed"}</span>
+                    ${
+                      e.branch && e.branch !== "none"
+                        ? this
+                            .html`<span class="badge badge-indigo">${e.branch}</span>`
+                        : ""
+                    }
+                    ${
+                      typeof e.assertions_added === "number"
+                        ? this
+                            .html`<span class="badge badge-amber">assertions: ${e.assertions_added}</span>`
+                        : ""
+                    }
+                    ${
+                      typeof e.captures_added === "number"
+                        ? this
+                            .html`<span class="badge badge-teal">captures: ${e.captures_added}</span>`
+                        : ""
+                    }
                   </div>
                 </div>
               </li>
@@ -536,11 +665,16 @@ ${this.escapeHtml(response.raw_response)}
     `;
   }
 
-  private renderCurlTab(curlCommand: string): string {
+  /**
+   * Renders the content for the "cURL" tab.
+   * @param curlCommand - The cURL command string.
+   * @returns An HTML string for the cURL command view.
+   */
+  private renderCurlTab(curlCommand?: string): string {
     if (!curlCommand) {
       return this.html`
         <div class="text-secondary text-center py-4">
-          <p>Comando cURL não disponível</p>
+          <p>cURL command not available</p>
         </div>
       `;
     }
@@ -549,15 +683,13 @@ ${this.escapeHtml(response.raw_response)}
       <div>
         <h4 class="font-semibold text-primary mb-2">cURL Command</h4>
         <div class="relative">
-          <pre class="terminal-code">
-${this.escapeHtml(curlCommand)}
-          </pre>
+          <pre class="terminal-code">${this.escapeHtml(curlCommand)}</pre>
           <button
-            class="absolute top-2 right-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg p-2 shadow-md transition-colors duration-200"
+            class="absolute top-2 right-2 btn-copy"
             onclick="navigator.clipboard.writeText('${this.escapeHtml(
               curlCommand
-            ).replace(/'/g, "\\'")}')"
-            title="Copiar comando"
+            ).replace(/'/g, "'")}')"
+            title="Copy command"
           >
             📋
           </button>
@@ -566,8 +698,14 @@ ${this.escapeHtml(curlCommand)}
     `;
   }
 
-  private renderTabs(step: any, stepId: string): string {
-    // Se for step com iterações, renderiza apenas a aba "Iterations"
+  /**
+   * Renders the tabbed interface for a test step's details.
+   * @param step - The data for the test step.
+   * @param stepId - The unique ID for the step, used to link tabs and content.
+   * @returns An HTML string for the tab container.
+   */
+  private renderTabs(step: TestStepData, stepId: string): string {
+    // If the step has iterations, render only the "Iterations" tab.
     if (Array.isArray(step.iterations) && step.iterations.length > 0) {
       const onlyTab: TabData = {
         id: `${stepId}-iterations`,
@@ -591,7 +729,7 @@ ${this.escapeHtml(curlCommand)}
           </div>
 
           <!-- Tab contents -->
-          <div id="${onlyTab.id}" class="tab-content " role="tabpanel">
+          <div id="${onlyTab.id}" class="tab-content" role="tabpanel">
             ${onlyTab.content}
           </div>
         </div>
@@ -600,7 +738,7 @@ ${this.escapeHtml(curlCommand)}
 
     const tabs: TabData[] = [];
 
-    // Tab de Assertions (sempre presente)
+    // Assertions tab (always present)
     tabs.push({
       id: `${stepId}-assertions`,
       label: `Assertions (${(step.assertions || []).length})`,
@@ -608,7 +746,7 @@ ${this.escapeHtml(curlCommand)}
       active: true,
     });
 
-    // Tab de Request (se disponível)
+    // Request tab (if available)
     if (step.request) {
       tabs.push({
         id: `${stepId}-request`,
@@ -617,7 +755,7 @@ ${this.escapeHtml(curlCommand)}
       });
     }
 
-    // Tab de Cenários (se disponível)
+    // Scenarios tab (if available)
     if (step.scenariosMeta && step.scenariosMeta.has_scenarios) {
       tabs.push({
         id: `${stepId}-scenarios`,
@@ -626,7 +764,7 @@ ${this.escapeHtml(curlCommand)}
       });
     }
 
-    // Tab de Response (se disponível)
+    // Response tab (if available)
     if (step.response) {
       tabs.push({
         id: `${stepId}-response`,
@@ -635,7 +773,7 @@ ${this.escapeHtml(curlCommand)}
       });
     }
 
-    // Tab de Raw (se disponível)
+    // Raw tab (if available)
     if (step.request?.raw_request || step.response?.raw_response) {
       tabs.push({
         id: `${stepId}-raw`,
@@ -644,7 +782,7 @@ ${this.escapeHtml(curlCommand)}
       });
     }
 
-    // Tab de cURL (se disponível)
+    // cURL tab (if available)
     if (step.curlCommand) {
       tabs.push({
         id: `${stepId}-curl`,
@@ -661,11 +799,9 @@ ${this.escapeHtml(curlCommand)}
             tabs,
             (tab) => this.html`
             <button
-              class="tab-button px-4 py-2 text-sm font-medium border-b-2 transition-colors duration-200 whitespace-nowrap ${
-                tab.active
-                  ? "border-blue-500 text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20"
-                  : "border-transparent text-secondary hover:text-primary hover:border-gray-300"
-              }"
+              class="tab-button px-4 py-2 text-sm font-medium border-b-2 transition-colors duration-200 whitespace-nowrap ${tab.active
+                ? "border-blue-500 text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20"
+                : "border-transparent text-secondary hover:text-primary hover:border-gray-300"}"
               onclick="switchTab('${stepId}-tabs', '${tab.id}')"
               role="tab"
               aria-selected="${tab.active ? "true" : "false"}"
@@ -694,22 +830,24 @@ ${this.escapeHtml(curlCommand)}
     `;
   }
 
+  /**
+   * Renders the entire test step component, including its header and collapsible content.
+   * @param props - The properties for the test step.
+   * @returns An HTML string for the complete test step.
+   */
   render(props: TestStepProps): string {
     const { step, index } = props;
     const totalAssertions = this.countAllAssertions(step);
-    const visualStatus: "success" | "failure" | "info" =
-      step.status === "failure" ? "failure" : totalAssertions > 0 ? "success" : "info";
+    const visualStatus = this.normalizeStatus(step.status as Status);
     const statusClasses = this.getStatusClasses(visualStatus);
-    const statusIcon = this.getStatusIcon(visualStatus);
+    const statusIcon = this.getStatusIcon(step.status);
     const stepId = step.stepId || this.generateId(`step-${index}`);
 
     return this.html`
       <div class="card ${statusClasses.border} mb-3">
-        <!-- Cabeçalho do step -->
+        <!-- Step Header -->
         <div
-          class="flex justify-between items-center p-3 cursor-pointer hover:${
-            statusClasses.bg
-          } transition-colors duration-200"
+          class="flex justify-between items-center p-3 cursor-pointer hover:${statusClasses.bg} transition-colors duration-200"
           onclick="toggleStep('${stepId}')"
           role="button"
           tabindex="0"
@@ -717,33 +855,23 @@ ${this.escapeHtml(curlCommand)}
           aria-controls="${stepId}-content"
         >
           <div class="flex items-center space-x-3">
-            <!-- Número e status -->
+            <!-- Number and Status -->
             <div class="flex items-center space-x-2">
-              <span class="font-mono text-sm text-secondary">
-                #${index + 1}
-              </span>
-              <span class="text-lg ${statusClasses.icon}">
-                ${statusIcon}
-              </span>
+              <span class="font-mono text-sm text-secondary">#${index + 1}</span>
+              <span class="text-lg ${statusClasses.icon}">${statusIcon}</span>
             </div>
 
-            <!-- Nome do step -->
-            <h3 class="font-medium text-primary">
-              ${this.escapeHtml(step.stepName)}
-            </h3>
+            <!-- Step Name -->
+            <h3 class="font-medium text-primary">${this.escapeHtml(step.stepName)}</h3>
             ${step.scenariosMeta && step.scenariosMeta.has_scenarios ? this.html`<span class="ml-2 badge badge-indigo">Scenario</span>` : ''}
-            ${
-              visualStatus === "info"
-                ? this.html`<span class="ml-2 badge badge-blue">Sem assertions</span>`
-                : ""
-            }
+            ${visualStatus === "info"
+              ? this.html`<span class="ml-2 badge badge-blue">No Assertions</span>`
+              : ""}
           </div>
 
-          <!-- Duração e controles -->
+          <!-- Duration and Controls -->
           <div class="flex items-center space-x-3">
-            <span class="text-sm text-secondary">
-              ${this.formatDuration(step.duration)}
-            </span>
+            <span class="text-sm text-secondary">${this.formatDuration(step.duration)}</span>
             <span
               id="${stepId}-icon"
               class="transform transition-transform duration-200 text-primary"
@@ -754,11 +882,8 @@ ${this.escapeHtml(curlCommand)}
           </div>
         </div>
 
-        <!-- Conteúdo do step -->
-        <div
-          id="${stepId}-content"
-          class="hidden border-t border-default"
-        >
+        <!-- Step Content -->
+        <div id="${stepId}-content" class="hidden border-t border-default">
           <div class="p-4 bg-tertiary">
             ${this.renderTabs(step, stepId)}
           </div>

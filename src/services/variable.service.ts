@@ -146,13 +146,18 @@ export class VariableService {
    */
   private resolveVariable(variablePath: string): any {
     // Check if it's a JavaScript expression (starts with 'js:', '$js.', or contains logical operators)
-    const hasLogicalOperators = /\|\||&&|[><=!]==?|\?|:/.test(variablePath);
-    if (variablePath.startsWith("js:") || variablePath.startsWith("$js.") || hasLogicalOperators) {
+    const hasLogicalOperators = /\|\||&&|[><=!]=?|\?|:/.test(variablePath);
+    if (
+      variablePath.startsWith("js:") ||
+      variablePath.startsWith("$js.") ||
+      hasLogicalOperators
+    ) {
       try {
         let jsExpression: string | null = null;
-        
+
         if (variablePath.startsWith("js:")) {
-          jsExpression = javascriptService.parseJavaScriptExpression(variablePath);
+          jsExpression =
+            javascriptService.parseJavaScriptExpression(variablePath);
         } else if (variablePath.startsWith("$js.")) {
           // Handle $js.return and $js.expression formats
           jsExpression = variablePath.substring(4); // Remove "$js."
@@ -160,7 +165,7 @@ export class VariableService {
           // Handle logical expressions like "jwt_login_success || false"
           jsExpression = variablePath;
         }
-        
+
         if (jsExpression) {
           // Update execution context with current variables
           const context: JavaScriptExecutionContext = {
@@ -169,7 +174,11 @@ export class VariableService {
           };
           // Use code block mode only for $js expressions, not for logical operators
           const useCodeBlock = variablePath.startsWith("$js.");
-          const result = javascriptService.executeExpression(jsExpression, context, useCodeBlock);
+          const result = javascriptService.executeExpression(
+            jsExpression,
+            context,
+            useCodeBlock
+          );
           return result;
         }
         return undefined;
@@ -182,7 +191,10 @@ export class VariableService {
     }
 
     // Check if it's a Faker expression (starts with 'faker.' or '$faker.')
-    if (variablePath.startsWith("faker.") || variablePath.startsWith("$faker.")) {
+    if (
+      variablePath.startsWith("faker.") ||
+      variablePath.startsWith("$faker.")
+    ) {
       try {
         let fakerExpression = variablePath;
         if (variablePath.startsWith("$faker.")) {

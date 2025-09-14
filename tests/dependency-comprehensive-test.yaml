@@ -123,10 +123,9 @@ steps:
   - name: "Test dependency cache effectiveness"
     request:
       method: "GET"
-      url: "/cache"
+      url: "/response-headers?X-Cache-Test=dependency-cache-validation&Cache-Control=max-age=60"
       headers:
         Authorization: "Bearer {{auth_token}}"
-        X-Cache-Test: "dependency-cache-validation"
         X-Original-Session: "{{session_id}}"
     assert:
       status_code: 200
@@ -134,7 +133,7 @@ steps:
         X-Cache-Test:
           equals: "dependency-cache-validation"
     metadata:
-      description: "Validates that cached dependency data is consistently available"
+      description: "Validates header propagation using httpbin's response-headers endpoint"
 
   - name: "Test dependency error handling"
     request:

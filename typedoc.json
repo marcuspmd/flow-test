@@ -1,54 +1,33 @@
 {
   "$schema": "https://typedoc.org/schema.json",
-  "name": "Flow Test Engine",
-  "entryPoints": ["./src/index.ts"],
-  "out": "./docs/api",
-  "theme": "default",
-  "categorizeByGroup": true,
-  "defaultCategory": "Other",
-  "categoryOrder": [
-    "Core",
-    "Services",
-    "Types",
-    "Report Generator",
-    "*"
+  "entryPoints": [
+    "src"
   ],
-  "sort": ["source-order"],
-  "exclude": [
-    "**/*.spec.ts",
-    "**/*.test.ts",
-    "**/node_modules/**",
-    "**/dist/**",
-    "**/temp/**"
-  ],
-  "excludePrivate": false,
+  "entryPointStrategy": "expand",
+  "out": "docs/typedoc-site",
+  "tsconfig": "tsconfig.json",
+  
+  "excludePrivate": true,
   "excludeProtected": false,
-  "excludeInternal": false,
-  "readme": "./README.md",
-  "includeVersion": true,
-  "searchInComments": true,
-  "searchInDocuments": true,
-  "cleanOutputDir": true,
-  "titleLink": "https://github.com/marcus/flow-test-engine",
-  "navigation": {
-    "includeCategories": true,
-    "includeGroups": true
-  },
-  "customCss": "./docs/styles/typedoc-custom.css",
-  "plugin": [
-    "typedoc-plugin-markdown"
+  "excludeExternals": false,
+  "customCss": "docs/typedoc-custom.css",
+  "exclude": [
+    "**/__tests__/**",
+    "**/__mocks__/**",
+    "**/*.test.ts",
+    "dist/**",
+    "temp/**"
   ],
-  "githubPages": true,
-  "hideGenerator": false,
-  "searchCategoryBoosts": {
-    "Core": 1.5,
-    "Services": 1.2
+  "readme": "none",
+  "name": "Flow Test Engine",
+  "categorizeByGroup": true,
+  "validation": {
+    "invalidLink": true,
+    "notDocumented": true,
+    "notExported": true
   },
-  "groupOrder": [
-    "Classes",
-    "Interfaces",
-    "Type Aliases",
-    "Functions",
-    "Variables"
-  ]
+  "treatWarningsAsErrors": false,
+  "navigationLinks": {
+    "GitHub": "https://github.com/marcuspmd/flow-test"
+  }
 }

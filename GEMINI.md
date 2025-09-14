@@ -97,4 +97,4 @@ The compiled CLI is available as `dist/cli.js` and can be invoked via `flow-test
 
 The project is well-equipped for CI/CD environments.
 - **GitHub Actions**: A workflow is defined in `.github/workflows/test.yml` that runs `npm test` on every push.
-- **Docker**: A `Dockerfile` and `docker-compose.yml` are provided to build and run the engine in a containerized environment, which also includes a mock server for testing.
+- **Docker**: A `Dockerfile` and `docker-compose.yml` are provided to build and run the engine in a containerized environment. Tests run against the Dockerized httpbin service.

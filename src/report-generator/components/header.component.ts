@@ -1,24 +1,35 @@
 /**
- * Componente Header - Cabeçalho do relatório
+ * @packageDocumentation
+ * This module contains the `HeaderComponent` for the HTML report.
  *
- * Responsabilidades:
- * - Exibir logo da aplicação
- * - Mostrar título do projeto
- * - Indicador visual de status (sucesso/falha)
- * - Toggle para alternar tema dark/light
- * - Design responsivo e acessível
+ * @remarks
+ * The header is responsible for displaying:
+ * - Application logo and project title.
+ * - A visual status indicator (success/failure).
+ * - A theme toggle for dark/light mode.
+ * - Generation timestamp.
+ * It is designed to be responsive and accessible.
  */
 
 import { BaseComponent } from "./base-component";
 import { HeaderProps } from "./types";
 
+/**
+ * The main header component for the HTML report.
+ */
 export class HeaderComponent extends BaseComponent {
+  /**
+   * Renders the header component with project information and controls.
+   *
+   * @param props - The properties required to render the header.
+   * @returns An HTML string representing the header.
+   */
   render(props: HeaderProps): string {
     const { projectName, logoBase64, statusClass } = props;
 
     return this.html`
       <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-8 p-6 bg-secondary rounded-xl border border-default">
-        <!-- Logo e título -->
+        <!-- Logo and Title -->
         <div class="flex items-center gap-6">
           <div class="flex-shrink-0">
             <img
@@ -36,30 +47,30 @@ export class HeaderComponent extends BaseComponent {
             <div class="flex items-center gap-3">
               <div class="w-3 h-3 rounded-full ${statusClass} shadow-sm"></div>
               <span class="text-sm text-secondary font-medium">
-                Relatório de Testes
+                Test Report
               </span>
             </div>
           </div>
         </div>
 
-        <!-- Controles do cabeçalho -->
+        <!-- Header Controls -->
         <div class="flex items-center gap-4">
-          <!-- Data e hora -->
+          <!-- Timestamp -->
           <div class="hidden sm:block text-right">
-            <div class="text-sm text-secondary">Gerado em</div>
+            <div class="text-sm text-secondary">Generated on</div>
             <div class="text-sm font-mono text-primary">
-              ${new Date().toLocaleString("pt-BR")}
+              ${new Date().toLocaleString()}
             </div>
           </div>
 
-          <!-- Toggle de tema -->
+          <!-- Theme Toggle -->
           <button
             id="theme-toggle"
             class="btn-secondary no-print group relative overflow-hidden"
-            title="Alternar tema"
-            aria-label="Alternar entre tema claro e escuro"
+            title="Toggle theme"
+            aria-label="Toggle between light and dark theme"
           >
-            <!-- Ícone de sol (modo claro) -->
+            <!-- Sun icon (light mode) -->
             <svg
               id="theme-toggle-light-icon"
               class="w-5 h-5 transition-transform group-hover:scale-110"
@@ -73,7 +84,7 @@ export class HeaderComponent extends BaseComponent {
               />
             </svg>
 
-            <!-- Ícone de lua (modo escuro) -->
+            <!-- Moon icon (dark mode) -->
             <svg
               id="theme-toggle-dark-icon"
               class="w-5 h-5 hidden transition-transform group-hover:scale-110"
