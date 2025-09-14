@@ -1,9 +1,20 @@
 /** @type {import('tailwindcss').Config} */
+/** @type {import('tailwindcss').Config} */
 module.exports = {
+  darkMode: 'class',
   content: [
-    './src/templates/**/*.html',
-    './src/report-generator/**/*.ts',
-    './src/report-generator/**/*.js'
+    './src/report-generator/html-generator.ts',
+    './src/report-generator/client/components/*.js',
+    './src/report-generator/client/ReportApp.js',
+    './src/report-generator/client/utils/*.js',
+    // Legacy paths (deprecated)
+    './src/report-generator/components/Layout.ts',
+    './src/report-generator/components/Header.ts',
+    './src/report-generator/components/Summary.ts',
+    './src/report-generator/components/Suite.ts',
+    './src/report-generator/components/Step.ts',
+    './src/report-generator/components/Tabs.ts',
+    './src/report-generator/components/Footer.ts'
   ],
   theme: {
     extend: {

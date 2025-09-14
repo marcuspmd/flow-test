@@ -1,51 +1,42 @@
-import fs from "fs";
-import path from "path";
-import { AggregatedResult, StepExecutionResult } from "../types/config.types";
+import fs from 'fs';
+import path from 'path';
+import { AggregatedResult, StepExecutionResult } from '../types/config.types';
 
 export interface HTMLGeneratorOptions {
   templateDir?: string;
   outputDir?: string;
   includeCurlCommands?: boolean;
   includeRawData?: boolean;
-  theme?: "light" | "dark" | "auto";
+  theme?: 'light' | 'dark' | 'auto';
 }
 
 export class HTMLReportGenerator {
   private options: HTMLGeneratorOptions;
-  private compiledCSS: string = "";
+  private compiledCSS: string = '';
+  private logoBase64: string = '';
 
   constructor(options: HTMLGeneratorOptions = {}) {
     this.options = {
-      templateDir: path.join(__dirname, "../templates"),
-      outputDir: "./results",
+      templateDir: path.join(__dirname, '../templates'),
+      outputDir: './results',
       includeCurlCommands: true,
       includeRawData: true,
-      theme: "light",
+      theme: 'auto',
       ...options,
     };
   }
 
-  /**
-   * Generates HTML report from JSON data
-   */
-  async generateFromJSON(
-    jsonPath: string,
-    outputPath?: string
-  ): Promise<string> {
+  async generateFromJSON(jsonPath: string, outputPath?: string): Promise<string> {
     const jsonData = await this.loadJSONData(jsonPath);
     return this.generateHTML(jsonData, outputPath);
   }
 
-  /**
-   * Generates HTML report from aggregated result object
-   */
-  async generateHTML(
-    data: AggregatedResult,
-    outputPath?: string
-  ): Promise<string> {
-    // Compile CSS if not already done
+  async generateHTML(data: AggregatedResult, outputPath?: string): Promise<string> {
     if (!this.compiledCSS) {
       await this.compileCSS();
+    }
+    if (!this.logoBase64) {
+      this.logoBase64 = this.loadLogo();
     }
 
     const html = this.buildHTMLReport(data);
@@ -54,22 +45,18 @@ export class HTMLReportGenerator {
       outputPath ||
       path.join(
         this.options.outputDir!,
-        `${this.sanitizeFileName(
-          data.project_name
-        )}_${this.generateTimestamp()}.html`
+        `${this.sanitizeFileName(data.project_name)}_${this.generateTimestamp()}.html`
       );
 
-    // Ensure output directory exists
     const outputDir = path.dirname(finalOutputPath);
     if (!fs.existsSync(outputDir)) {
       fs.mkdirSync(outputDir, { recursive: true });
     }
 
-    fs.writeFileSync(finalOutputPath, html, "utf8");
+    fs.writeFileSync(finalOutputPath, html, 'utf8');
 
-    // Also create latest.html
-    const latestPath = path.join(this.options.outputDir!, "latest.html");
-    fs.writeFileSync(latestPath, html, "utf8");
+    const latestPath = path.join(this.options.outputDir!, 'latest.html');
+    fs.writeFileSync(latestPath, html, 'utf8');
 
     return finalOutputPath;
   }
@@ -78,3443 +65,640 @@ export class HTMLReportGenerator {
     if (!fs.existsSync(jsonPath)) {
       throw new Error(`JSON file not found: ${jsonPath}`);
     }
-
-    const jsonContent = fs.readFileSync(jsonPath, "utf8");
+    const jsonContent = fs.readFileSync(jsonPath, 'utf8');
     return JSON.parse(jsonContent) as AggregatedResult;
   }
 
   private async compileCSS(): Promise<void> {
     try {
-      // For now, we'll include a basic CSS. In production, this would be compiled Tailwind
-      this.compiledCSS = await this.loadCompiledCSS();
+      this.compiledCSS = fs.readFileSync(path.join(__dirname, '../templates/styles.css'), 'utf8');
     } catch (error) {
-      console.warn("Could not load compiled CSS, using fallback");
+      console.warn('Could not load compiled CSS, using fallback');
       this.compiledCSS = this.getFallbackCSS();
     }
   }
 
-  private async loadCompiledCSS(): Promise<string> {
-    return `
-      /* Professional Testing Report Styles v3.0 - Enhanced Executive Dashboard */
-      :root {
-        --color-success: #059669;
-        --color-success-light: #ecfdf5;
-        --color-success-dark: #047857;
-        --color-error: #dc2626;
-        --color-error-light: #fef2f2;
-        --color-error-dark: #b91c1c;
-        --color-warning: #d97706;
-        --color-warning-light: #fffbeb;
-        --color-warning-dark: #b45309;
-        --color-info: #0369a1;
-        --color-info-light: #f0f9ff;
-        --color-info-dark: #0284c7;
-        --color-skipped: #6b7280;
-        --color-skipped-light: #f9fafb;
-        --color-purple: #7c3aed;
-        --color-purple-light: #f3f4f6;
-        --color-gray-50: #f9fafb;
-        --color-gray-100: #f3f4f6;
-        --color-gray-200: #e5e7eb;
-        --color-gray-300: #d1d5db;
-        --color-gray-400: #9ca3af;
-        --color-gray-500: #6b7280;
-        --color-gray-600: #4b5563;
-        --color-gray-700: #374151;
-        --color-gray-800: #1f2937;
-        --color-gray-900: #111827;
-        --border-radius: 0px;
-        --border-radius-lg: 0px;
-        --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-        --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
-        --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
-        --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1);
-        --font-mono: 'Monaco', 'Menlo', 'Consolas', 'Courier New', monospace;
-        --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Inter', sans-serif;
-      }
-
-      * { box-sizing: border-box; }
-
-      body {
-        font-family: var(--font-sans);
-        margin: 0;
-        background: linear-gradient(to br, var(--color-gray-50) 0%, #f8fafc 100%);
-        line-height: 1.6;
-        color: var(--color-gray-900);
-        font-size: 14px;
-      }
-
-      .container {
-        max-width: 1800px;
-        margin: 0 auto;
-        padding: 1rem 2rem 2rem;
-      }
-
-      /* Executive Summary Bar */
-      .executive-summary {
-        background: linear-gradient(135deg, var(--color-info) 0%, var(--color-purple) 100%);
-        color: white;
-        padding: 1.5rem 2rem;
-        border-radius: var(--border-radius-lg);
-        margin-bottom: 2rem;
-        box-shadow: var(--shadow-lg);
-        position: relative;
-        overflow: hidden;
-      }
-
-      .executive-summary::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        right: 0;
-        width: 100px;
-        height: 100px;
-        background: rgba(255, 255, 255, 0.1);
-        border-radius: 50%;
-        transform: translate(30px, -30px);
-      }
-
-      .executive-grid {
-        display: grid;
-        grid-template-columns: 2fr 1fr 1fr;
-        gap: 2rem;
-        align-items: center;
-      }
-
-      .executive-title {
-        font-size: 1.5rem;
-        font-weight: 700;
-        margin: 0 0 0.5rem 0;
-      }
-
-      .executive-subtitle {
-        font-size: 0.9rem;
-        opacity: 0.9;
-        margin: 0 0 1rem 0;
-      }
-
-      .executive-stats {
-        display: flex;
-        gap: 1.5rem;
-      }
-
-      .executive-stat {
-        text-align: center;
-      }
-
-      .executive-stat-value {
-        font-size: 2rem;
-        font-weight: 800;
-        line-height: 1;
-        margin: 0;
-      }
-
-      .executive-stat-label {
-        font-size: 0.75rem;
-        opacity: 0.8;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        margin: 0.25rem 0 0 0;
-      }
-
-      .status-indicator {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        font-size: 1.1rem;
-        font-weight: 600;
-        justify-self: end;
-      }
-
-      .status-icon {
-        width: 12px;
-        height: 12px;
-        border-radius: 50%;
-        animation: pulse 2s infinite;
-      }
-
-      .status-icon.success { background: #10b981; }
-      .status-icon.warning { background: #f59e0b; }
-      .status-icon.error { background: #ef4444; }
-
-      @keyframes pulse {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.5; }
-      }
-
-      /* Enhanced Header with Actions */
-      .header {
-        background: white;
-        padding: 1.5rem 2rem;
-        border-radius: var(--border-radius-lg);
-        box-shadow: var(--shadow-md);
-        margin-bottom: 2rem;
-        border: 1px solid var(--color-gray-200);
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-      }
-
-      .header-info h1 {
-        font-size: 1.75rem;
-        font-weight: 700;
-        color: var(--color-gray-900);
-        margin: 0 0 0.25rem 0;
-      }
-
-      .header-info p {
-        font-size: 0.9rem;
-        color: var(--color-gray-600);
-        margin: 0;
-      }
-
-      .header-actions {
-        display: flex;
-        gap: 1rem;
-        align-items: center;
-      }
-
-      .quick-filter {
-        display: flex;
-        gap: 0.5rem;
-        background: var(--color-gray-50);
-        padding: 0.25rem;
-
-        border: 1px solid var(--color-gray-200);
-      }
-
-      .filter-btn {
-        padding: 0.375rem 0.75rem;
-        border: none;
-        border-radius: calc(var(--border-radius) - 1px);
-        font-size: 0.75rem;
-        font-weight: 500;
-        cursor: pointer;
-        transition: all 0.15s ease;
-        background: transparent;
-        color: var(--color-gray-600);
-      }
-
-      .filter-btn:hover {
-        background: white;
-        color: var(--color-gray-900);
-        box-shadow: var(--shadow-sm);
-      }
-
-      .filter-btn.active {
-        background: var(--color-info);
-        color: white;
-        box-shadow: var(--shadow-sm);
-      }
-
-      .search-box {
-        position: relative;
-      }
-
-      .search-input {
-        padding: 0.5rem 0.75rem 0.5rem 2.25rem;
-        border: 1px solid var(--color-gray-300);
-
-        font-size: 0.875rem;
-        width: 200px;
-        transition: all 0.15s ease;
-      }
-
-      .search-input:focus {
-        outline: none;
-        border-color: var(--color-info);
-        box-shadow: 0 0 0 3px rgba(3, 105, 161, 0.1);
-      }
-
-      .search-icon {
-        position: absolute;
-        left: 0.75rem;
-        top: 50%;
-        transform: translateY(-50%);
-        color: var(--color-gray-400);
-        font-size: 0.875rem;
-      }
-
-      /* Enhanced Metrics Grid */
-      .metrics-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-        gap: 1.5rem;
-        margin: 2rem 0;
-      }
-
-      .metric-card {
-        background: white;
-        padding: 2rem;
-        border-radius: var(--border-radius-lg);
-        box-shadow: var(--shadow-md);
-        border: 1px solid var(--color-gray-200);
-        position: relative;
-        transition: all 0.15s ease;
-        overflow: hidden;
-      }
-
-      .metric-card:hover {
-        transform: translateY(-2px);
-        box-shadow: var(--shadow-lg);
-      }
-
-      .metric-card::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 4px;
-        height: 100%;
-        background: var(--color-info);
-        transition: width 0.15s ease;
-      }
-
-      .metric-card:hover::before {
-        width: 6px;
-      }
-
-      .metric-card-success::before { background: var(--color-success); }
-      .metric-card-error::before { background: var(--color-error); }
-      .metric-card-warning::before { background: var(--color-warning); }
-
-      .metric-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        margin-bottom: 1rem;
-      }
-
-      .metric-icon {
-        width: 40px;
-        height: 40px;
-
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.25rem;
-        color: white;
-        background: var(--color-info);
-      }
-
-      .metric-icon.success { background: var(--color-success); }
-      .metric-icon.error { background: var(--color-error); }
-      .metric-icon.warning { background: var(--color-warning); }
-
-      .metric-value {
-        font-size: 2.5rem;
-        font-weight: 800;
-        margin: 0 0 0.25rem 0;
-        line-height: 1;
-      }
-
-      .metric-label {
-        font-size: 0.8rem;
-        color: var(--color-gray-600);
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        font-weight: 600;
-        margin: 0 0 0.5rem 0;
-      }
-
-      .metric-subtitle {
-        font-size: 0.875rem;
-        color: var(--color-gray-500);
-        margin: 0;
-        display: flex;
-        align-items: center;
-        gap: 0.375rem;
-      }
-
-      .metric-trend {
-        display: flex;
-        align-items: center;
-        gap: 0.25rem;
-        font-size: 0.75rem;
-        font-weight: 600;
-      }
-
-      .metric-trend.positive {
-        color: var(--color-success);
-      }
-
-      .metric-trend.negative {
-        color: var(--color-error);
-      }
-
-      .mini-chart {
-        width: 60px;
-        height: 30px;
-        background: var(--color-gray-50);
-        border-radius: 4px;
-        position: relative;
-        overflow: hidden;
-      }
-
-      /* Performance Insights Section */
-      .insights-section {
-        background: white;
-        border-radius: var(--border-radius-lg);
-        box-shadow: var(--shadow-md);
-        border: 1px solid var(--color-gray-200);
-        margin-bottom: 2rem;
-      }
-
-      .insights-header {
-        padding: 1.5rem 2rem 1rem;
-        border-bottom: 1px solid var(--color-gray-200);
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-      }
-
-      .insights-title {
-        font-size: 1.25rem;
-        font-weight: 700;
-        color: var(--color-gray-900);
-        margin: 0;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-      }
-
-      .insights-content {
-        padding: 1.5rem 2rem;
-      }
-
-      .insight-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-        gap: 1.5rem;
-      }
-
-      .insight-card {
-        background: var(--color-gray-50);
-        padding: 1.5rem;
-
-        border: 1px solid var(--color-gray-200);
-      }
-
-      .insight-card.warning {
-        background: var(--color-warning-light);
-        border-color: var(--color-warning);
-      }
-
-      .insight-card.error {
-        background: var(--color-error-light);
-        border-color: var(--color-error);
-      }
-
-      .insight-card.success {
-        background: var(--color-success-light);
-        border-color: var(--color-success);
-      }
-
-      .insight-title {
-        font-weight: 600;
-        font-size: 1rem;
-        margin: 0 0 0.5rem 0;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-      }
-
-      .insight-description {
-        font-size: 0.875rem;
-        color: var(--color-gray-600);
-        margin: 0;
-      }
-
-      /* Enhanced Suite Cards */
-      .suite-card {
-        background: white;
-        border: 1px solid var(--color-gray-200);
-        border-radius: var(--border-radius-lg);
-        margin: 1.5rem 0;
-        overflow: hidden;
-        box-shadow: var(--shadow-md);
-        transition: all 0.15s ease;
-      }
-
-      .suite-header:hover {
-        box-shadow: var(--shadow-lg);
-      }
-
-      /* Enhanced Suite Headers */
-      .priority-badge {
-        display: inline-flex;
-        align-items: center;
-        padding: 0.125rem 0.5rem;
-        border-radius: calc(var(--border-radius) - 2px);
-        font-size: 0.6875rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.025em;
-      }
-
-      .priority-critical {
-        background: var(--color-error-light);
-        color: var(--color-error-dark);
-        border: 1px solid var(--color-error);
-      }
-
-      .priority-high {
-        background: var(--color-warning-light);
-        color: var(--color-warning-dark);
-        border: 1px solid var(--color-warning);
-      }
-
-      .priority-medium {
-        background: var(--color-info-light);
-        color: var(--color-info-dark);
-        border: 1px solid var(--color-info);
-      }
-
-      .priority-low {
-        background: var(--color-gray-100);
-        color: var(--color-gray-600);
-        border: 1px solid var(--color-gray-300);
-      }
-
-      .tags-container {
-        display: flex;
-        gap: 0.25rem;
-        flex-wrap: wrap;
-      }
-
-      .tag-badge {
-        background: var(--color-purple-light);
-        color: var(--color-purple);
-        padding: 0.125rem 0.375rem;
-        border-radius: calc(var(--border-radius) - 2px);
-        font-size: 0.6875rem;
-        font-weight: 500;
-        border: 1px solid rgba(124, 58, 237, 0.2);
-      }
-
-      .file-path {
-        color: var(--color-gray-600);
-        font-family: var(--font-mono);
-      }
-
-      .separator {
-        color: var(--color-gray-400);
-        margin: 0 0.375rem;
-      }
-
-      .duration.slow {
-        color: var(--color-warning);
-        font-weight: 600;
-      }
-
-      .feature-icon {
-        color: var(--color-info);
-        font-size: 0.75rem;
-        margin-left: 0.5rem;
-        opacity: 0.7;
-      }
-
-      .stat-item {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        padding: 0.75rem;
-        background: var(--color-gray-50);
-
-        border: 1px solid var(--color-gray-200);
-        min-width: 80px;
-      }
-
-      .stat-item.success {
-        background: var(--color-success-light);
-        border-color: var(--color-success);
-        color: var(--color-success-dark);
-      }
-
-      .stat-item.warning {
-        background: var(--color-warning-light);
-        border-color: var(--color-warning);
-        color: var(--color-warning-dark);
-      }
-
-      .stat-item.error {
-        background: var(--color-error-light);
-        border-color: var(--color-error);
-        color: var(--color-error-dark);
-      }
-
-      .stat-item.partial {
-        background: var(--color-warning-light);
-        border-color: var(--color-warning);
-        color: var(--color-warning-dark);
-      }
-
-      .stat-icon {
-        font-size: 0.875rem;
-        opacity: 0.8;
-      }
-
-      .stat-content {
-        display: flex;
-        flex-direction: column;
-        align-items: flex-start;
-      }
-
-      .stat-value {
-        font-family: var(--font-mono);
-        font-weight: 700;
-        font-size: 0.9375rem;
-        line-height: 1;
-      }
-
-      .stat-label {
-        font-size: 0.6875rem;
-        text-transform: uppercase;
-        letter-spacing: 0.025em;
-        opacity: 0.8;
-        font-weight: 500;
-      }
-
-      .suite-header {
-        padding: 1rem 1.25rem;
-        background: var(--color-gray-50);
-        border-bottom: 1px solid var(--color-gray-200);
-        cursor: pointer;
-        display: grid;
-        grid-template-columns: 1fr auto auto;
-        gap: 1rem;
-        align-items: center;
-        transition: background-color 0.15s ease;
-      }
-
-      .suite-header:hover {
-        background: var(--color-gray-100);
-      }
-
-      .suite-info {
-        display: flex;
-        flex-direction: column;
-        gap: 0.25rem;
-      }
-
-      .suite-name {
-        font-weight: 600;
-        font-size: 1rem;
-        color: var(--color-gray-900);
-        margin: 0;
-      }
-
-      .suite-details {
-        font-size: 0.875rem;
-        color: var(--color-gray-700);
-        font-family: var(--font-mono);
-      }
-
-      .suite-stats {
-        display: flex;
-        gap: 1rem;
-        font-size: 0.875rem;
-        color: var(--color-gray-700);
-      }
-
-      .stat-item {
-        display: flex;
-        align-items: center;
-        gap: 0.25rem;
-        font-family: var(--font-mono);
-      }
-
-      .suite-content {
-        display: none;
-        background: white;
-      }
-
-      .suite-content.expanded {
-        display: block;
-      }
-
-      /* Status Badges */
-      .status-badge {
-        display: inline-flex;
-        align-items: center;
-        padding: 0.25rem 0.75rem;
-
-        font-size: 0.75rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.025em;
-      }
-
-      .status-success { background: #dcfce7; color: #166534; }
-      .status-error { background: #fef2f2; color: #991b1b; }
-      .status-warning { background: #fef3c7; color: #92400e; }
-      .status-skipped { background: #f3f4f6; color: #6b7280; }
-
-      /* Step Cards */
-      .step-card {
-        border: 1px solid var(--color-gray-200);
-
-        margin: 0.75rem 0;
-        background: white;
-      }
-
-      .step-header {
-        padding: 0.875rem 1rem;
-        background: var(--color-gray-50);
-        border-bottom: 1px solid var(--color-gray-200);
-        cursor: pointer;
-        display: grid;
-        grid-template-columns: auto 1fr auto auto;
-        gap: 0.75rem;
-        align-items: center;
-        transition: background-color 0.15s ease;
-      }
-
-      .step-header:hover {
-        background: var(--color-gray-100);
-      }
-
-      .step-number {
-        font-family: var(--font-mono);
-        font-weight: 600;
-        font-size: 0.875rem;
-        color: var(--color-gray-700);
-        min-width: 2rem;
-      }
-
-      .step-info {
-        display: flex;
-        flex-direction: column;
-        gap: 0.125rem;
-      }
-
-      .step-name {
-        font-weight: 500;
-        font-size: 0.9375rem;
-        color: var(--color-gray-900);
-        margin: 0;
-      }
-
-      .step-method-url {
-        font-size: 0.8125rem;
-        font-family: var(--font-mono);
-        color: var(--color-gray-700);
-      }
-
-      .step-timing {
-        font-size: 0.75rem;
-        font-family: var(--font-mono);
-        color: var(--color-gray-700);
-      }
-
-      .step-content {
-        display: none;
-        background: white;
-      }
-
-      .step-content.expanded {
-        display: block;
-      }
-
-      /* Tabs */
-
-      .tab-header {
-        display: flex;
-        background: var(--color-gray-50);
-        border-bottom: 1px solid var(--color-gray-200);
-      }
-
-      .tab-button {
-        padding: 0.75rem 1rem;
-        background: none;
-        border: none;
-        cursor: pointer;
-        font-size: 0.875rem;
-        font-weight: 500;
-        color: var(--color-gray-700);
-        border-bottom: 2px solid transparent;
-        transition: all 0.15s ease;
-      }
-
-      .tab-button:hover {
-        color: var(--color-gray-900);
-        background: var(--color-gray-100);
-      }
-
-      .tab-button.active {
-        color: var(--color-info);
-        border-bottom-color: var(--color-info);
-        background: white;
-      }
-
-      .tab-content {
-        padding: 1rem;
-        display: none;
-        min-height: 50px;
-        background: white;
-        border: 1px solid var(--color-gray-200);
-        border-top: none;
-        border-bottom-left-radius: var(--border-radius);
-        border-bottom-right-radius: var(--border-radius);
-      }
-
-      .tab-content.active {
-        display: block;
-      }
-
-      .tab-container {
-        border-top: 1px solid var(--color-gray-200);
-        margin-top: 0.5rem;
-      }
-
-      /* Request/Response */
-      .request-response-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 1rem;
-        margin: 0;
-      }
-
-      .request-section, .response-section {
-        background: var(--color-gray-50);
-        border: 1px solid var(--color-gray-200);
-
-        overflow: hidden;
-      }
-
-      .section-header {
-        padding: 0.75rem 1rem;
-        background: var(--color-gray-100);
-        border-bottom: 1px solid var(--color-gray-200);
-        font-weight: 600;
-        font-size: 0.875rem;
-        color: var(--color-gray-900);
-      }
-
-      .section-content {
-        padding: 1.5rem;
-      }
-
-      /* Code Blocks */
-      .code-block {
-        background: var(--color-gray-900);
-        color: var(--color-gray-100);
-        padding: 1.5rem 4rem 1.5rem 1.5rem;
-
-        font-family: var(--font-mono);
-        font-size: 0.8125rem;
-        white-space: normal;
-        word-break: break-word;
-        position: relative;
-        border: 1px solid var(--color-gray-700);
-        line-height: 1.6;
-      }
-
-      .code-block .code-line {
-        display: block;
-        margin: 0;
-        padding: 0;
-        white-space: pre-wrap;
-        word-break: break-word;
-        min-height: 1.6em;
-      }
-
-      .code-block .code-line.wrap {
-        white-space: normal;
-        word-break: break-all;
-        word-wrap: break-word;
-      }
-
-      .code-block .code-line:empty::after {
-        content: "\\00a0";
-      }
-
-      .code-block.bash {
-        background: #1e1e1e;
-        color: #d4d4d4;
-        border: 1px solid #404040;
-      }
-
-      .code-block.json {
-        background: #1e1e1e;
-        color: #d4d4d4;
-        border: 1px solid #404040;
-      }
-
-      .code-block.http {
-        background: #1e1e1e;
-        color: #d4d4d4;
-        border: 1px solid #404040;
-      }
-
-      .code-block.bash::before {
-        content: 'bash';
-        position: absolute;
-        top: 0.25rem;
-        left: 1rem;
-        background: rgba(255, 255, 255, 0.1);
-        color: rgba(255, 255, 255, 0.7);
-        padding: 0.125rem 0.5rem;
-        border-radius: 3px;
-        font-size: 0.6875rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-      }
-
-      .code-block.json::before {
-        content: 'json';
-        position: absolute;
-        top: 0.25rem;
-        left: 1rem;
-        background: rgba(255, 255, 255, 0.1);
-        color: rgba(255, 255, 255, 0.7);
-        padding: 0.125rem 0.5rem;
-        border-radius: 3px;
-        font-size: 0.6875rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-      }
-
-      .code-block.http::before {
-        content: 'http';
-        position: absolute;
-        top: 0.25rem;
-        left: 1rem;
-        background: rgba(255, 255, 255, 0.1);
-        color: rgba(255, 255, 255, 0.7);
-        padding: 0.125rem 0.5rem;
-        border-radius: 3px;
-        font-size: 0.6875rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-      }
-
-      .copy-button {
-        position: absolute;
-        top: 0.5rem;
-        right: 0.5rem;
-        background: var(--color-gray-700);
-        color: white;
-        border: none;
-        padding: 0.25rem 0.5rem;
-
-        font-size: 0.6875rem;
-        cursor: pointer;
-        transition: all 0.15s ease;
-        font-weight: 500;
-        z-index: 10;
-        min-width: 40px;
-        text-align: center;
-      }
-
-      .copy-button:hover {
-        background: var(--color-gray-600);
-        transform: translateY(-1px);
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-      }
-
-      .copy-button:active {
-        transform: translateY(0);
-      }
-
-      /* Assertions */
-      .assertions-list {
-        margin: 0;
-        padding: 0;
-        list-style: none;
-      }
-
-      .assertion-item {
-        padding: 0.75rem;
-        margin: 0.5rem 0;
-
-        border: 1px solid;
-        font-size: 0.875rem;
-      }
-
-      .assertion-pass {
-        background: #f0fdf4;
-        border-color: #bbf7d0;
-        color: #166534;
-      }
-
-      .assertion-fail {
-        background: #fef2f2;
-        border-color: #fecaca;
-        color: #991b1b;
-      }
-
-      .assertion-field {
-        font-weight: 600;
-        font-family: var(--font-mono);
-      }
-
-      .assertion-values {
-        margin-top: 0.25rem;
-        font-family: var(--font-mono);
-        font-size: 0.8125rem;
-      }
-
-      /* Scenarios */
-      .scenarios-list {
-        margin: 0;
-        padding: 0;
-      }
-
-      .scenario-item {
-        padding: 0.75rem;
-        margin: 0.5rem 0;
-        border: 1px solid var(--color-gray-200);
-
-        background: var(--color-gray-50);
-      }
-
-      .scenario-name {
-        font-weight: 600;
-        margin-bottom: 0.25rem;
-        color: var(--color-gray-900);
-      }
-
-      .scenario-condition {
-        font-family: var(--font-mono);
-        font-size: 0.8125rem;
-        color: var(--color-gray-700);
-        margin-bottom: 0.5rem;
-      }
-
-      .scenario-result {
-        font-size: 0.875rem;
-        padding: 0.5rem;
-
-        background: white;
-        border: 1px solid var(--color-gray-200);
-      }
-
-      /* Skip Reasons */
-      .skip-reason {
-        background: #fafafa;
-        border: 1px solid var(--color-gray-300);
-
-        padding: 0.75rem;
-        margin: 0.5rem 0;
-        font-size: 0.875rem;
-        color: var(--color-gray-700);
-      }
-
-      .skip-reason-title {
-        font-weight: 600;
-        color: var(--color-gray-900);
-        margin-bottom: 0.25rem;
-      }
-
-      /* Responsive */
-      @media (max-width: 768px) {
-        .container { padding: 1.5rem; }
-        .metrics-grid { grid-template-columns: 1fr; }
-        .request-response-grid { grid-template-columns: 1fr; }
-        .suite-header { grid-template-columns: 1fr auto; }
-        .step-header { grid-template-columns: 1fr auto; }
-        .tab-header { flex-wrap: wrap; }
-        .title { font-size: 1.5rem; }
-      }
-
-      /* Utilities */
-      .text-xs { font-size: 0.75rem; }
-      .text-sm { font-size: 0.875rem; }
-      .font-mono { font-family: var(--font-mono); }
-      .font-semibold { font-weight: 600; }
-      .text-gray-700 { color: var(--color-gray-700); }
-      .mb-2 { margin-bottom: 0.5rem; }
-      .mt-4 { margin-top: 1rem; }
-      .p-3 { padding: 0.75rem; }
-
-      /* Expand/Collapse Icons */
-      .expand-icon {
-        transition: transform 0.2s ease;
-        font-size: 0.875rem;
-        color: var(--color-gray-700);
-      }
-
-      .expand-icon.expanded {
-        transform: rotate(90deg);
-      }
-    `;
+  private loadLogo(): string {
+    try {
+      const logoPath = '/Users/marcusp/Documents/flow-test/public/assets/Gemini_Generated_Image_sqoh86sqoh86sqoh.png';
+      const logoBuffer = fs.readFileSync(logoPath);
+      return `data:image/png;base64,${logoBuffer.toString('base64')}`;
+    } catch (error) {
+      console.warn('Could not load logo, using placeholder.');
+      return 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iY3VycmVudENvbG9yIiB3aWR0aD0iMzIiIGhlaWdodD0iMzIiPjxwYXRoIGQ9Ik0xMiAyQTEwIDEwIDAgMSAwIDEyIDIyQTEwIDEwIDAgMCAwIDEyIDJ6bTAgMThhOCA4IDAgMSAxIDAtMTYgOCA4IDAgMCAxIDAgMTZ6TTggMTJoNGwzLTNoM2wtNCA0IDQgNGgtM2wtMy0zaC00djJoNHYyaC00djJoNHYySDh6Ii8+PC9zdmc+';
+    }
   }
 
   private getFallbackCSS(): string {
-    return `
-      body { font-family: system-ui, sans-serif; margin: 40px; background: #f8f9fa; }
-      .container { max-width: 1200px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; }
-      .header { border-bottom: 2px solid #e9ecef; padding-bottom: 20px; margin-bottom: 30px; }
-      .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin: 30px 0; }
-      .metric { background: #f8f9fa; padding: 20px; border-radius: 6px; }
-    `;
+    return `body { font-family: sans-serif; background-color: #f0f2f5; color: #333; }`;
   }
 
   private buildHTMLReport(data: AggregatedResult): string {
-    const successRate = data.success_rate;
-    const statusColor =
-      successRate >= 90 ? "success" : successRate >= 70 ? "warning" : "error";
-    const statusText =
-      successRate >= 90
-        ? "All Systems Operational"
-        : successRate >= 70
-        ? "Some Issues Detected"
-        : "Critical Issues Found";
+    const { project_name } = data;
 
     return `<!DOCTYPE html>
-<html lang="en">
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Flow Test Report - ${this.escapeHtml(data.project_name)}</title>
+    <title>Test Report: ${this.escapeHtml(project_name)}</title>
     <style>${this.compiledCSS}</style>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
-<body>
-    <div class="container">
-        ${this.buildExecutiveSummary(data, statusColor, statusText)}
-        ${this.buildHeader(data)}
-        ${this.buildMetrics(data, statusColor)}
-        ${this.buildInsightsSection(data)}
-        ${this.buildSuitesSection(data)}
-        ${this.buildFooter(data)}
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+    <div class="min-h-screen">
+        <div class="container mx-auto px-4 py-6 max-w-7xl">
+            ${this.buildHeader(data.project_name, this.getOverallStatusClass(data))}
+            <div class="mb-8">
+                ${this.buildSummaryCards(data)}
+            </div>
+            <div class="space-y-4">
+                ${data.suites_results.map((suite: any) => this.buildSuiteCard(suite)).join('')}
+            </div>
+            ${this.buildFooter(data)}
+        </div>
     </div>
-
-    <script>
-        ${this.buildJavaScript()}
-    </script>
+    ${this.buildJavaScript()}
 </body>
 </html>`;
   }
 
-  private buildExecutiveSummary(
-    data: AggregatedResult,
-    statusColor: string,
-    statusText: string
-  ): string {
-    const totalDuration = this.formatDuration(data.total_duration_ms);
-    return `
-        <div class="executive-summary">
-            <div class="executive-grid">
-                <div>
-                    <h1 class="executive-title">${this.escapeHtml(
-                      data.project_name
-                    )}</h1>
-                    <p class="executive-subtitle">Comprehensive Test Execution Report • Generated ${new Date().toLocaleDateString()}</p>
-                    <div class="executive-stats">
-                        <div class="executive-stat">
-                            <div class="executive-stat-value">${data.success_rate.toFixed(
-                              0
-                            )}%</div>
-                            <div class="executive-stat-label">Success Rate</div>
-                        </div>
-                        <div class="executive-stat">
-                            <div class="executive-stat-value">${
-                              data.total_tests
-                            }</div>
-                            <div class="executive-stat-label">Total Tests</div>
-                        </div>
-                        <div class="executive-stat">
-                            <div class="executive-stat-value">${totalDuration}</div>
-                            <div class="executive-stat-label">Duration</div>
-                        </div>
-                    </div>
-                </div>
-                <div class="status-indicator">
-                    <div class="status-icon ${statusColor}"></div>
-                    <span>${statusText}</span>
-                </div>
-            </div>
-        </div>
-    `;
-  }
+  private loadClientComponents(): string {
+    const componentFiles = [
+      'Layout.js',
+      'Header.js',
+      'Summary.js',
+      'TestSuite.js',
+      'TestStep.js',
+      'Charts.js',
+      'FilterPanel.js',
+      'ReportApp.js'
+    ];
 
-  private buildHeader(data: AggregatedResult): string {
-    return `
-        <div class="header">
-            <div class="header-info">
-                <h1>Test Execution Details</h1>
-                <p>Generated with Enhanced Flow Test Engine v3.0 • ${data.start_time} to ${data.end_time}</p>
-            </div>
-            <div class="header-actions">
-                <div class="quick-filter">
-                    <button class="filter-btn active" onclick="filterResults('all')">All</button>
-                    <button class="filter-btn" onclick="filterResults('passed')">Passed</button>
-                    <button class="filter-btn" onclick="filterResults('failed')">Failed</button>
-                    <button class="filter-btn" onclick="filterResults('slow')">Slow</button>
-                </div>
-                <div class="search-box">
-                    <i class="fas fa-search search-icon"></i>
-                    <input type="text" class="search-input" placeholder="Search tests..." onkeyup="searchTests(this.value)">
-                </div>
-            </div>
-        </div>
-    `;
-  }
+    let componentsCode = '';
 
-  private buildMetrics(data: AggregatedResult, statusColor: string): string {
-    const avgResponseTime = data.performance_summary
-      ? data.performance_summary.average_response_time_ms
-      : 0;
-    const requestsPerSecond = data.performance_summary
-      ? data.performance_summary.requests_per_second
-      : 0;
+    componentFiles.forEach(filename => {
+      try {
+        // Try both development and production paths
+        const devPath = path.join(__dirname, '../../src/report-generator/client/components', filename === 'ReportApp.js' ? '../ReportApp.js' : filename);
+        const prodPath = path.join(__dirname, 'client/components', filename === 'ReportApp.js' ? '../ReportApp.js' : filename);
 
-    return `
-        <div class="metrics-grid">
-            <div class="metric-card metric-card-${statusColor}">
-                <div class="metric-header">
-                    <div class="metric-icon ${statusColor}">
-                        <i class="fas fa-chart-pie"></i>
-                    </div>
-                    <div class="metric-trend positive">
-                        <i class="fas fa-arrow-up"></i> +2.3%
-                    </div>
-                </div>
-                <div class="metric-value" style="color: var(--color-${statusColor})">${data.success_rate.toFixed(
-      1
-    )}%</div>
-                <div class="metric-label">Success Rate</div>
-                <div class="metric-subtitle">
-                    ${data.successful_tests} passed • ${
-      data.failed_tests
-    } failed
-                    <div class="mini-chart"></div>
-                </div>
-            </div>
+        let componentPath = devPath;
+        if (fs.existsSync(prodPath)) {
+          componentPath = prodPath;
+        } else if (!fs.existsSync(devPath)) {
+          console.warn(`Component file not found in either path: ${devPath} or ${prodPath}`);
+          return;
+        }
 
-            <div class="metric-card">
-                <div class="metric-header">
-                    <div class="metric-icon">
-                        <i class="fas fa-list-check"></i>
-                    </div>
-                </div>
-                <div class="metric-value">${data.total_tests}</div>
-                <div class="metric-label">Total Test Suites</div>
-                <div class="metric-subtitle">
-                    ${data.suites_results.length} suites executed
-                </div>
-            </div>
+        componentsCode += fs.readFileSync(componentPath, 'utf8') + '\n\n';
+      } catch (error) {
+        console.warn(`Failed to load component ${filename}:`, error);
+      }
+    });
 
-            <div class="metric-card">
-                <div class="metric-header">
-                    <div class="metric-icon">
-                        <i class="fas fa-clock"></i>
-                    </div>
-                </div>
-                <div class="metric-value">${this.formatDuration(
-                  data.total_duration_ms
-                )}</div>
-                <div class="metric-label">Execution Time</div>
-                <div class="metric-subtitle">
-                    Avg: ${avgResponseTime.toFixed(0)}ms per request
-                </div>
-            </div>
-
-            <div class="metric-card">
-                <div class="metric-header">
-                    <div class="metric-icon">
-                        <i class="fas fa-tachometer-alt"></i>
-                    </div>
-                </div>
-                <div class="metric-value">${requestsPerSecond.toFixed(1)}</div>
-                <div class="metric-label">Requests / Second</div>
-                <div class="metric-subtitle">
-                    ${
-                      data.performance_summary
-                        ? data.performance_summary.total_requests
-                        : 0
-                    } total requests
-                </div>
-            </div>
-        </div>
-    `;
-  }
-
-  private buildInsightsSection(data: AggregatedResult): string {
-    const insights = this.generateInsights(data);
-    if (insights.length === 0) return "";
-
-    return `
-        <div class="insights-section">
-            <div class="insights-header">
-                <h2 class="insights-title">
-                    <i class="fas fa-lightbulb"></i>
-                    Performance Insights & Recommendations
-                </h2>
-            </div>
-            <div class="insights-content">
-                <div class="insight-grid">
-                    ${insights
-                      .map(
-                        (insight) => `
-                        <div class="insight-card ${insight.type}">
-                            <div class="insight-title">
-                                <i class="fas ${insight.icon}"></i>
-                                ${insight.title}
-                            </div>
-                            <div class="insight-description">
-                                ${insight.description}
-                            </div>
-                        </div>
-                    `
-                      )
-                      .join("")}
-                </div>
-            </div>
-        </div>
-    `;
-  }
-
-  private generateInsights(
-    data: AggregatedResult
-  ): Array<{ type: string; icon: string; title: string; description: string }> {
-    const insights = [];
-    const perf = data.performance_summary;
-
-    // Performance insights
-    if (perf && perf.average_response_time_ms > 1000) {
-      insights.push({
-        type: "warning",
-        icon: "fa-clock",
-        title: "Slow Response Times Detected",
-        description: `Average response time of ${perf.average_response_time_ms.toFixed(
-          0
-        )}ms is above the recommended 1000ms threshold.`,
-      });
+    if (componentsCode.trim() === '') {
+      console.warn('No components loaded, falling back to server-side rendering');
+      return this.getFallbackComponents();
     }
 
-    // Success rate insights
-    if (data.success_rate < 90) {
-      insights.push({
-        type: "error",
-        icon: "fa-exclamation-triangle",
-        title: "Test Reliability Issues",
-        description: `${data.failed_tests} tests failed out of ${
-          data.total_tests
-        }. Success rate of ${data.success_rate.toFixed(
-          1
-        )}% is below target of 90%.`,
-      });
-    } else if (data.success_rate === 100) {
-      insights.push({
-        type: "success",
-        icon: "fa-check-circle",
-        title: "Perfect Test Execution",
-        description: `All ${data.total_tests} test suites executed successfully with 100% success rate.`,
-      });
-    }
-
-    // Duration insights
-    if (data.total_duration_ms > 300000) {
-      // 5 minutes
-      insights.push({
-        type: "warning",
-        icon: "fa-stopwatch",
-        title: "Long Execution Time",
-        description: `Total execution time of ${this.formatDuration(
-          data.total_duration_ms
-        )} may indicate optimization opportunities.`,
-      });
-    }
-
-    // RPS insights
-    if (perf && perf.requests_per_second < 5) {
-      insights.push({
-        type: "warning",
-        icon: "fa-tachometer-alt",
-        title: "Low Throughput",
-        description: `Current throughput of ${perf.requests_per_second.toFixed(
-          1
-        )} RPS is below optimal performance levels.`,
-      });
-    }
-
-    return insights;
+    return componentsCode;
   }
 
-  private buildSuitesSection(data: AggregatedResult): string {
+  private getFallbackComponents(): string {
     return `
-        <div class="suites-section">
-            <h3>Test Suites</h3>
-            ${data.suites_results
-              .map((suite) => this.buildSuiteCard(suite))
-              .join("")}
-        </div>
+      // Fallback: Simple client-side initialization
+      document.addEventListener('DOMContentLoaded', function() {
+        const loadingScreen = document.getElementById('loading-screen');
+        const reportContainer = document.getElementById('report-container');
+
+        if (loadingScreen) loadingScreen.style.display = 'none';
+        if (reportContainer) {
+          reportContainer.innerHTML = '<div class="p-8 text-center"><h1 class="text-2xl font-bold mb-4">Componentes não carregados</h1><p>Os componentes client-side não foram encontrados. Gerando relatório básico...</p></div>';
+          reportContainer.style.opacity = '1';
+        }
+      });
     `;
+  }
+
+  private buildClientInitializationScript(): string {
+    return `
+      // Initialize the client-side application
+      document.addEventListener('DOMContentLoaded', function() {
+        try {
+          // Load report data from external JSON file
+          fetch(window.reportDataUrl || './latest.json')
+            .then(response => {
+              if (!response.ok) {
+                throw new Error('Failed to load report data: ' + response.status);
+              }
+              return response.json();
+            })
+            .then(data => {
+              // Store data globally for components to access
+              window.reportData = data;
+
+              // Hide loading screen and show report container
+              const loadingScreen = document.getElementById('loading-screen');
+              const reportContainer = document.getElementById('report-container');
+
+              // Initialize the ReportApp with loaded data
+              const reportApp = new ReportApp({
+                containerId: 'report-container',
+                autoRefresh: false,
+                enableRouting: false
+              });
+
+              // Show the report with a smooth transition
+              setTimeout(() => {
+                if (loadingScreen) {
+                  loadingScreen.style.opacity = '0';
+                  setTimeout(() => {
+                    loadingScreen.style.display = 'none';
+                  }, 500);
+                }
+
+                if (reportContainer) {
+                  reportContainer.style.opacity = '1';
+                }
+              }, 500);
+            })
+            .catch(error => {
+              console.error('Failed to load report data:', error);
+              throw error;
+            });
+
+        } catch (error) {
+          console.error('Failed to initialize report:', error);
+
+          // Show error message
+          const errorMessage = document.createElement('div');
+          errorMessage.className = 'fixed inset-0 flex items-center justify-center bg-white dark:bg-gray-900';
+          errorMessage.innerHTML = \`
+            <div class="text-center max-w-md mx-auto p-8">
+              <div class="text-red-500 text-6xl mb-4">⚠️</div>
+              <h1 class="text-2xl font-bold text-gray-900 dark:text-white mb-4">Erro ao Carregar Relatório</h1>
+              <p class="text-gray-600 dark:text-gray-400 mb-6">Ocorreu um erro ao inicializar o relatório. Tente atualizar a página.</p>
+              <button onclick="location.reload()" class="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">
+                Atualizar Página
+              </button>
+              <details class="mt-4 text-left">
+                <summary class="cursor-pointer text-sm text-gray-500 dark:text-gray-400">Detalhes do erro</summary>
+                <pre class="mt-2 text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-2 rounded">\${error.message}</pre>
+              </details>
+            </div>
+          \`;
+
+          document.body.appendChild(errorMessage);
+
+          // Hide loading screen
+          const loadingScreen = document.getElementById('loading-screen');
+          if (loadingScreen) {
+            loadingScreen.style.display = 'none';
+          }
+        }
+      });
+
+      // Add custom CSS animations for the new components
+      const customStyles = document.createElement('style');
+      customStyles.textContent = \`
+        @keyframes fade-in-up {
+          from {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        .animate-fade-in-up {
+          animation: fade-in-up 0.5s ease-out;
+        }
+
+        /* Smooth scrolling */
+        html {
+          scroll-behavior: smooth;
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+          width: 8px;
+          height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+          background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+          background: rgba(156, 163, 175, 0.5);
+          border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+          background: rgba(156, 163, 175, 0.7);
+        }
+
+        .dark ::-webkit-scrollbar-thumb {
+          background: rgba(75, 85, 99, 0.5);
+        }
+
+        .dark ::-webkit-scrollbar-thumb:hover {
+          background: rgba(75, 85, 99, 0.7);
+        }
+
+        /* Loading animations */
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+
+        .animate-spin {
+          animation: spin 1s linear infinite;
+        }
+
+        @keyframes pulse {
+          50% { opacity: .5; }
+        }
+
+        .animate-pulse {
+          animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        /* Focus styles for accessibility */
+        .focus\\:ring-2:focus {
+          outline: 2px solid transparent;
+          outline-offset: 2px;
+          box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
+        }
+
+        /* Print styles */
+        @media print {
+          body {
+            background: white !important;
+            color: black !important;
+          }
+
+          .no-print,
+          .filter-panel,
+          .charts-container,
+          button {
+            display: none !important;
+          }
+
+          .bg-gray-800,
+          .bg-gray-700,
+          .dark\\:bg-gray-800,
+          .dark\\:bg-gray-700 {
+            background: white !important;
+            color: black !important;
+          }
+        }
+      \`;
+
+      document.head.appendChild(customStyles);
+    `;
+  }
+
+  // Legacy methods - keeping for backward compatibility but not used in new architecture
+  private buildHeader(projectName: string, statusClass: string): string {
+    return `<header class="flex justify-between items-center mb-8">
+            <div class="flex items-center space-x-4">
+                <img src="${this.logoBase64}" alt="Logo" class="h-12 w-12 object-contain"/>
+                <h1 class="text-3xl font-bold">${this.escapeHtml(projectName)}</h1>
+                <div class="w-4 h-4 rounded-full ${statusClass}"></div>
+            </div>
+            <div class="flex items-center space-x-4">
+                <button id="theme-toggle" class="text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg text-sm p-2.5">
+                    <svg id="theme-toggle-dark-icon" class="hidden w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path></svg>
+                    <svg id="theme-toggle-light-icon" class="hidden w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.707.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 5.05A1 1 0 003.636 6.464l.707.707a1 1 0 001.414-1.414l-.707-.707zM3 11a1 1 0 100-2H2a1 1 0 100 2h1zm7.536 2.464a1 1 0 01-1.414 0l-.707-.707a1 1 0 011.414-1.414l.707.707a1 1 0 010 1.414zM13.536 6.464a1 1 0 01-1.414 0l-.707-.707a1 1 0 011.414-1.414l.707.707a1 1 0 010 1.414z"></path></svg>
+                </button>
+            </div>
+        </header>`;
+  }
+
+  private buildSummaryCards(data: AggregatedResult): string {
+    const successRateColor = data.success_rate === 100 ? 'text-green-500' : data.success_rate >= 80 ? 'text-yellow-500' : 'text-red-500';
+
+    return `<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <!-- Total Tests Card -->
+            <div class="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 p-6 rounded-lg shadow-md border border-blue-200 dark:border-blue-800 hover:shadow-lg transition-shadow duration-200">
+                <div class="flex items-center">
+                    <div class="p-3 rounded-full bg-blue-500 text-white mr-4">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-medium text-blue-600 dark:text-blue-400 uppercase tracking-wide">Total Tests</h3>
+                        <p class="text-3xl font-bold text-gray-900 dark:text-white">${data.total_tests}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Passed Tests Card -->
+            <div class="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 p-6 rounded-lg shadow-md border border-green-200 dark:border-green-800 hover:shadow-lg transition-shadow duration-200">
+                <div class="flex items-center">
+                    <div class="p-3 rounded-full bg-green-500 text-white mr-4">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-medium text-green-600 dark:text-green-400 uppercase tracking-wide">Passed</h3>
+                        <p class="text-3xl font-bold text-gray-900 dark:text-white">${data.successful_tests}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Failed Tests Card -->
+            <div class="bg-gradient-to-br from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20 p-6 rounded-lg shadow-md border border-red-200 dark:border-red-800 hover:shadow-lg transition-shadow duration-200">
+                <div class="flex items-center">
+                    <div class="p-3 rounded-full bg-red-500 text-white mr-4">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-medium text-red-600 dark:text-red-400 uppercase tracking-wide">Failed</h3>
+                        <p class="text-3xl font-bold text-gray-900 dark:text-white">${data.failed_tests}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Success Rate Card -->
+            <div class="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 p-6 rounded-lg shadow-md border border-purple-200 dark:border-purple-800 hover:shadow-lg transition-shadow duration-200">
+                <div class="flex items-center">
+                    <div class="p-3 rounded-full bg-purple-500 text-white mr-4">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-medium text-purple-600 dark:text-purple-400 uppercase tracking-wide">Success Rate</h3>
+                        <p class="text-3xl font-bold ${successRateColor}">${data.success_rate.toFixed(1)}%</p>
+                    </div>
+                </div>
+            </div>
+        </div>`;
   }
 
   private buildSuiteCard(suite: any): string {
-    const statusClass =
-      suite.status === "success"
-        ? "success"
-        : suite.status === "failure"
-        ? "error"
-        : suite.status === "skipped"
-        ? "skipped"
-        : "warning";
-    const statusIcon =
-      suite.status === "success"
-        ? "✅"
-        : suite.status === "failure"
-        ? "❌"
-        : suite.status === "skipped"
-        ? "⏭️"
-        : "⚠️";
-    const avgStepTime = suite.steps_executed
-      ? suite.duration_ms / suite.steps_executed
-      : 0;
-    const hasSlowSteps = avgStepTime > 1000;
-    const hasVariableCapture = suite.steps_results?.some(
-      (step: any) => Object.keys(step.captured_variables || {}).length > 0
-    );
-    const hasCurlCommands = suite.steps_results?.some(
-      (step: any) => (step.request_details as any)?.curl_command
-    );
+    const statusClass = suite.status === 'success' ? 'border-green-500' : 'border-red-500';
+    const statusBgClass = suite.status === 'success' ? 'bg-green-50 dark:bg-green-900/20' : 'bg-red-50 dark:bg-red-900/20';
+    const statusIcon = suite.status === 'success' ? '✅' : '❌';
+    const successRate = suite.success_rate || 0;
 
-    return `
-        <div class="suite-card" data-status="${statusClass}">
-            <div class="suite-header" onclick="toggleSuite(this)">
-                <div class="suite-info">
-                    <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
-                        <h4 class="suite-name">${this.escapeHtml(
-                          suite.suite_name
-                        )}</h4>
-                        ${
-                          suite.priority
-                            ? `<span class="priority-badge priority-${suite.priority}">${suite.priority}</span>`
-                            : ""
-                        }
-                        ${
-                          suite.tags && suite.tags.length > 0
-                            ? `
-                            <div class="tags-container">
-                                ${suite.tags
-                                  .slice(0, 3)
-                                  .map(
-                                    (tag: string) =>
-                                      `<span class="tag-badge">${tag}</span>`
-                                  )
-                                  .join("")}
-                                ${
-                                  suite.tags.length > 3
-                                    ? `<span class="tag-badge">+${
-                                        suite.tags.length - 3
-                                      }</span>`
-                                    : ""
-                                }
+    return `<div class="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-lg transition-shadow duration-200">
+            <div class="p-6 ${statusBgClass} border-l-4 ${statusClass} cursor-pointer" onclick="toggleSuite(this)">
+                <div class="flex justify-between items-start">
+                    <div class="flex-1">
+                        <div class="flex items-center space-x-3 mb-2">
+                            <h3 class="text-xl font-bold text-gray-900 dark:text-white">${this.escapeHtml(suite.suite_name)}</h3>
+                            <span class="text-2xl">${statusIcon}</span>
+                        </div>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                            <div>
+                                <span class="font-medium text-gray-600 dark:text-gray-400">Steps:</span>
+                                <span class="ml-1 font-semibold">${suite.steps_executed || 0}</span>
                             </div>
-                        `
-                            : ""
-                        }
-                    </div>
-                    <div class="suite-details">
-                        <span class="file-path">${this.escapeHtml(
-                          suite.file_path || "Unknown file"
-                        )}</span>
-                        <span class="separator">•</span>
-                        <span class="duration ${
-                          hasSlowSteps ? "slow" : ""
-                        }">${this.formatDuration(suite.duration_ms)}</span>
-                        <span class="separator">•</span>
-                        <span class="avg-step-time">~${this.formatDuration(
-                          avgStepTime
-                        )}/step</span>
-                        ${
-                          hasVariableCapture
-                            ? '<i class="fas fa-code feature-icon" title="Variable Capture"></i>'
-                            : ""
-                        }
-                        ${
-                          hasCurlCommands
-                            ? '<i class="fas fa-terminal feature-icon" title="cURL Commands Available"></i>'
-                            : ""
-                        }
-                    </div>
-                </div>
-                <div class="suite-stats">
-                    <div class="stat-item ${
-                      (suite.steps_successful || 0) ===
-                      (suite.steps_executed || 0)
-                        ? "success"
-                        : "partial"
-                    }">
-                        <i class="fas fa-list-check stat-icon"></i>
-                        <div class="stat-content">
-                            <span class="stat-value">${
-                              suite.steps_successful || 0
-                            }/${suite.steps_executed || 0}</span>
-                            <span class="stat-label">Steps</span>
+                            <div>
+                                <span class="font-medium text-gray-600 dark:text-gray-400">Success Rate:</span>
+                                <span class="ml-1 font-semibold ${successRate === 100 ? 'text-green-600' : successRate >= 80 ? 'text-yellow-600' : 'text-red-600'}">${successRate.toFixed(1)}%</span>
+                            </div>
+                            <div>
+                                <span class="font-medium text-gray-600 dark:text-gray-400">Duration:</span>
+                                <span class="ml-1 font-semibold">${this.formatDuration(suite.duration_ms)}</span>
+                            </div>
+                            <div>
+                                <span class="font-medium text-gray-600 dark:text-gray-400">Priority:</span>
+                                <span class="ml-1 px-2 py-1 text-xs rounded-full ${this.getPriorityClass(suite.priority)}">${suite.priority || 'normal'}</span>
+                            </div>
                         </div>
                     </div>
-                    ${
-                      suite.steps_failed
-                        ? `
-                    <div class="stat-item error">
-                        <i class="fas fa-exclamation-triangle stat-icon"></i>
-                        <div class="stat-content">
-                            <span class="stat-value">${suite.steps_failed}</span>
-                            <span class="stat-label">Failed</span>
-                        </div>
+                    <div class="flex items-center space-x-3 ml-4">
+                        <span class="transform transition-transform duration-200 text-gray-500 dark:text-gray-400">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                            </svg>
+                        </span>
                     </div>
-                    `
-                        : ""
-                    }
-                    <div class="stat-item ${
-                      (suite.success_rate || 0) >= 90
-                        ? "success"
-                        : (suite.success_rate || 0) >= 70
-                        ? "warning"
-                        : "error"
-                    }">
-                        <i class="fas fa-percentage stat-icon"></i>
-                        <div class="stat-content">
-                            <span class="stat-value">${(
-                              suite.success_rate || 0
-                            ).toFixed(1)}%</span>
-                            <span class="stat-label">Success</span>
-                        </div>
-                    </div>
-                </div>
-                <div style="display: flex; align-items: center; gap: 0.75rem;">
-                    <div class="status-badge status-${statusClass}">
-                        ${statusIcon} ${suite.status.toUpperCase()}
-                    </div>
-                    <span class="expand-icon">▶</span>
                 </div>
             </div>
-            <div class="suite-content">
-                ${
-                  suite.error_message
-                    ? `
-                <div class="p-3 mb-2" style="background: #fef2f2; border: 1px solid #fecaca;  color: #991b1b;">
-                    <div class="skip-reason-title">Suite Error:</div>
-                    ${this.escapeHtml(suite.error_message)}
-                </div>
-                `
-                    : ""
-                }
-                ${
-                  suite.steps_results
-                    ? suite.steps_results
-                        .map((step: any, index: number) =>
-                          this.buildStepCard(step, index)
-                        )
-                        .join("")
-                    : ""
-                }
+            <div class="hidden p-4 space-y-2">
+                ${suite.steps_results.map((step: any, index: number) => this.buildStepCard(step, index)).join('')}
             </div>
-        </div>
-    `;
+        </div>`;
+  }
+
+  private buildAssertionsTab(assertions: any[]): string {
+    if (!assertions.length) return '<p class="text-gray-500 dark:text-gray-400 text-sm">No assertions were made.</p>';
+    return `<ul class="text-sm space-y-1">${assertions.map(a => `
+        <li class="flex items-center font-mono">
+            <span class="mr-2">${a.passed ? '<span class="text-green-500">✓</span>' : '<span class="text-red-500">✗</span>'}</span>
+            <span>${this.escapeHtml(a.field)}</span>
+            <span class="text-gray-500 dark:text-gray-400 mx-2">${this.escapeHtml(a.operator)}</span>
+            <span class="text-blue-500">${this.escapeHtml(a.expected)}</span>
+            ${!a.passed ? `<span class="text-red-500 ml-2">(Got: ${this.escapeHtml(a.actual)})</span>` : ''}
+        </li>`).join('')}</ul>`;
+  }
+
+  private buildRequestTab(request: any): string {
+    return `<div>
+              <h4 class="font-bold mb-1">Headers</h4>
+              <pre class="bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-100 p-2 rounded text-xs mb-2">${this.escapeHtml(JSON.stringify(request.headers, null, 2))}</pre>
+              <h4 class="font-bold mb-1">Body</h4>
+              <pre class="bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-100 p-2 rounded text-xs">${this.escapeHtml(JSON.stringify(request.body, null, 2))}</pre>
+          </div>`;
+  }
+
+  private buildResponseTab(response: any): string {
+    return `<div>
+              <h4 class="font-bold mb-1">Status: ${response.status_code}</h4>
+              <h4 class="font-bold mb-1">Headers</h4>
+              <pre class="bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-100 p-2 rounded text-xs mb-2">${this.escapeHtml(JSON.stringify(response.headers, null, 2))}</pre>
+              <h4 class="font-bold mb-1">Body</h4>
+              <pre class="bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-100 p-2 rounded text-xs">${this.escapeHtml(JSON.stringify(response.body, null, 2))}</pre>
+          </div>`;
+  }
+
+  private buildCurlTab(curl: string): string {
+    return `<pre class="bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-100 p-2 rounded text-xs">${this.escapeHtml(curl)}</pre>`;
+  }
+
+  private buildIterationTab(iterations: any): string {
+    return `<pre class="bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-100 p-2 rounded text-xs">${this.escapeHtml(JSON.stringify(iterations, null, 2))}</pre>`;
   }
 
   private buildStepCard(step: StepExecutionResult, index: number): string {
-    const statusClass =
-      step.status === "success"
-        ? "success"
-        : step.status === "failure"
-        ? "error"
-        : step.status === "skipped"
-        ? "skipped"
-        : "warning";
-    const statusIcon =
-      step.status === "success"
-        ? "✅"
-        : step.status === "failure"
-        ? "❌"
-        : step.status === "skipped"
-        ? "⏭️"
-        : "⚠️";
-    // Generate unique step ID based on step name and index for consistency
-    const stepNameSlug = step.step_name
-      .replace(/[^a-zA-Z0-9]/g, "-")
-      .toLowerCase();
-    const stepId = `step-${index}-${stepNameSlug}-${Math.random()
-      .toString(36)
-      .substr(2, 9)}`;
-
-    const method = step.request_details?.method || "N/A";
-    const url =
-      (step.request_details as any)?.full_url ||
-      step.request_details?.url ||
-      "N/A";
-    const statusCode = step.response_details?.status_code;
-
-    // Skip reason detection
-    let skipReason = "";
-    if (step.status === "skipped") {
-      skipReason =
-        step.error_message ||
-        "Step was skipped due to conditions or dependencies";
-    }
-
-    // Count assertions
-    const assertionsCount = step.assertions_results?.length || 0;
-    const passedAssertions =
-      step.assertions_results?.filter((a) => a.passed).length || 0;
-    const failedAssertions = assertionsCount - passedAssertions;
-
-    // Check for scenarios (you may need to add scenarios to StepExecutionResult type)
-    const hasScenarios = (step as any).scenarios_results?.length > 0;
-
-    // Check for iterations
-    const hasIterations = (step as any).iteration_results?.length > 0;
-    const iterationCount = hasIterations
-      ? (step as any).iteration_results.length
-      : 0;
-
-    return `
-        <div class="step-card">
-            <div class="step-header" onclick="toggleStep(this)">
-                <div class="step-number">#${index + 1}</div>
-                <div class="step-info">
-                    <div class="step-name">${this.escapeHtml(
-                      step.step_name
-                    )}</div>
-                    <div class="step-method-url">
-                        <span style="font-weight: 600;">${method}</span>
-                        ${url.length > 60 ? url.substring(0, 60) + "..." : url}
-                        ${statusCode ? ` → ${statusCode}` : ""}
-                    </div>
-                </div>
-                <div class="step-timing">${this.formatDuration(
-                  step.duration_ms
-                )}</div>
-                <div style="display: flex; align-items: center; gap: 0.5rem;">
-                    <div class="status-badge status-${statusClass}">
-                        ${statusIcon} ${step.status.toUpperCase()}
-                    </div>
-                    <span class="expand-icon">▶</span>
-                </div>
-            </div>
-            <div class="step-content">
-                ${
-                  skipReason
-                    ? `
-                <div class="skip-reason">
-                    <div class="skip-reason-title">Skip Reason:</div>
-                    ${this.escapeHtml(skipReason)}
-                </div>
-                `
-                    : ""
-                }
-
-                ${
-                  step.error_message && step.status !== "skipped"
-                    ? `
-                <div class="p-3 mb-2" style="background: #fef2f2; border: 1px solid #fecaca;  color: #991b1b;">
-                    <div class="skip-reason-title">Error Details:</div>
-                    ${this.escapeHtml(step.error_message)}
-                </div>
-                `
-                    : ""
-                }
-
-                <div class="tab-container">
-                    <div class="tab-header">
-                        <button class="tab-button active" onclick="switchTab(this, '${stepId}-overview')">Overview</button>
-                        ${
-                          step.request_details
-                            ? `<button class="tab-button" onclick="switchTab(this, '${stepId}-request')">Request</button>`
-                            : ""
-                        }
-                        ${
-                          step.response_details
-                            ? `<button class="tab-button" onclick="switchTab(this, '${stepId}-response')">Response</button>`
-                            : ""
-                        }
-                        ${
-                          assertionsCount > 0
-                            ? `<button class="tab-button" onclick="switchTab(this, '${stepId}-assertions')">Assertions (${passedAssertions}/${assertionsCount})</button>`
-                            : ""
-                        }
-                        ${
-                          hasScenarios
-                            ? `<button class="tab-button" onclick="switchTab(this, '${stepId}-scenarios')">Scenarios</button>`
-                            : ""
-                        }
-                        ${
-                          hasIterations
-                            ? `<button class="tab-button" onclick="switchTab(this, '${stepId}-iterations')">🔄 Iterations (${iterationCount})</button>`
-                            : ""
-                        }
-                        ${
-                          this.options.includeCurlCommands &&
-                          (step.request_details as any)?.curl_command
-                            ? `<button class="tab-button" onclick="switchTab(this, '${stepId}-curl')">cURL</button>`
-                            : ""
-                        }
-                    </div>
-
-                    <div id="${stepId}-overview" class="tab-content active">
-                        ${this.buildStepOverview(step)}
-                    </div>
-
-                    ${
-                      step.request_details
-                        ? `
-                    <div id="${stepId}-request" class="tab-content">
-                        ${this.buildRequestTab(step.request_details)}
-                    </div>
-                    `
-                        : ""
-                    }
-
-                    ${
-                      step.response_details
-                        ? `
-                    <div id="${stepId}-response" class="tab-content">
-                        ${this.buildResponseTab(step.response_details)}
-                    </div>
-                    `
-                        : ""
-                    }
-
-                    ${
-                      assertionsCount > 0
-                        ? `
-                    <div id="${stepId}-assertions" class="tab-content">
-                        ${this.buildAssertionsTab(
-                          step.assertions_results || []
-                        )}
-                    </div>
-                    `
-                        : ""
-                    }
-
-                    ${
-                      hasScenarios
-                        ? `
-                    <div id="${stepId}-scenarios" class="tab-content">
-                        ${this.buildScenariosTab(
-                          (step as any).scenarios_results
-                        )}
-                    </div>
-                    `
-                        : ""
-                    }
-
-                    ${
-                      hasIterations
-                        ? `
-                    <div id="${stepId}-iterations" class="tab-content">
-                        ${this.buildIterationsTab(
-                          (step as any).iteration_results
-                        )}
-                    </div>
-                    `
-                        : ""
-                    }
-
-                    ${
-                      this.options.includeCurlCommands &&
-                      (step.request_details as any)?.curl_command
-                        ? `
-                    <div id="${stepId}-curl" class="tab-content">
-                        ${this.buildCurlTab(
-                          (step.request_details as any).curl_command
-                        )}
-                    </div>
-                    `
-                        : ""
-                    }
-                </div>
-            </div>
-        </div>
-    `;
+    const statusClass = step.status === 'success' ? 'border-green-500' : 'border-red-500';
+    const statusIcon = step.status === 'success' ? '✓' : '✗';
+    const stepId = `step-${index}-${Math.random().toString(36).substr(2, 9)}`;
+    return `<div class="border-l-4 ${statusClass} rounded bg-gray-50 dark:bg-gray-700">
+              <div class="flex justify-between items-center p-2 cursor-pointer" onclick="toggleStep(this)">
+                  <div class="flex items-center space-x-2">
+                      <span class="font-mono text-sm">#${index + 1}</span>
+                      <span class="text-lg">${statusIcon}</span>
+                      <span>${this.escapeHtml(step.step_name)}</span>
+                  </div>
+                  <div class="flex items-center space-x-4">
+                      <span class="text-sm text-gray-500 dark:text-gray-400">${this.formatDuration(step.duration_ms)}</span>
+                      <span class="transform transition-transform duration-200">▶</span>
+                  </div>
+              </div>
+              <div class="hidden p-2 border-t border-gray-200 dark:border-gray-600">
+                  <div class="flex border-b border-gray-200 dark:border-gray-600 mb-2">
+                      <button class="tab-button active" onclick="switchTab(this, '${stepId}-assertions')">Assertions</button>
+                      ${step.request_details ? `<button class="tab-button" onclick="switchTab(this, '${stepId}-request')">Request</button>` : ''}
+                      ${step.response_details ? `<button class="tab-button" onclick="switchTab(this, '${stepId}-response')">Response</button>` : ''}
+                      ${step.iteration_results ? `<button class="tab-button" onclick="switchTab(this, '${stepId}-iteration')">Iteration</button>` : ''}
+                      ${step.request_details?.curl_command ? `<button class="tab-button" onclick="switchTab(this, '${stepId}-curl')">cURL</button>` : ''}
+                  </div>
+                  <div id="${stepId}-assertions" class="tab-content">${this.buildAssertionsTab(step.assertions_results || [])}</div>
+                  ${step.request_details ? `<div id="${stepId}-request" class="tab-content hidden">${this.buildRequestTab(step.request_details)}</div>` : ''}
+                  ${step.response_details ? `<div id="${stepId}-response" class="tab-content hidden">${this.buildResponseTab(step.response_details)}</div>` : ''}
+                  ${step.iteration_results ? `<div id="${stepId}-iteration" class="tab-content hidden">${this.buildIterationTab(step.iteration_results)}</div>` : ''}
+                  ${step.request_details?.curl_command ? `<div id="${stepId}-curl" class="tab-content hidden">${this.buildCurlTab(step.request_details.curl_command)}</div>` : ''}
+              </div>
+          </div>`;
   }
 
   private buildFooter(data: AggregatedResult): string {
-    return `
-        <div class="footer" style="text-align: center; margin-top: 2rem; padding-top: 2rem; border-top: 1px solid #e5e7eb; color: #6b7280;">
-            Generated on ${new Date().toLocaleString()}<br>
-            Execution: ${data.start_time} to ${data.end_time}<br>
-            <small>Powered by Flow Test Engine v1.0 with Enhanced HTML Reports</small>
-        </div>
-    `;
+    return `<footer class="text-center mt-8 text-sm text-gray-500 dark:text-gray-400">
+            <p>Generated on ${new Date().toLocaleString()} | Total Duration: ${this.formatDuration(data.total_duration_ms)}</p>
+            <p>Flow Test Engine</p>
+        </footer>`;
   }
 
   private buildJavaScript(): string {
-    return `
+    return `<script>
         function toggleSuite(element) {
-            const suiteCard = element.closest('.suite-card');
-            const content = suiteCard.querySelector('.suite-content');
-            const icon = suiteCard.querySelector('.expand-icon');
-
-            content.classList.toggle('expanded');
-            icon.classList.toggle('expanded');
+            const content = element.nextElementSibling;
+            const icon = element.querySelector('span.transform');
+            content.classList.toggle('hidden');
+            icon.classList.toggle('rotate-180');
         }
 
         function toggleStep(element) {
-            const stepCard = element.closest('.step-card');
-            const content = stepCard.querySelector('.step-content');
-            const icon = stepCard.querySelector('.expand-icon');
-
-            content.classList.toggle('expanded');
-            icon.classList.toggle('expanded');
+            const content = element.nextElementSibling;
+            const icon = element.querySelector('span.transform');
+            content.classList.toggle('hidden');
+            icon.classList.toggle('rotate-90');
         }
 
         function switchTab(button, targetId) {
-            try {
-                const tabContainer = button.closest('.tab-container');
-                if (!tabContainer) {
-                    console.error('Tab container not found for button:', button);
-                    return;
-                }
+            const tabContainer = button.parentElement;
+            const contentContainer = tabContainer.parentElement;
 
-                // Remove active class from all buttons in this container
-                tabContainer.querySelectorAll('.tab-button').forEach(btn => {
-                    btn.classList.remove('active');
-                });
+            tabContainer.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+            button.classList.add('active');
 
-                // Add active class to clicked button
-                button.classList.add('active');
-
-                // Hide all tab contents in this container
-                tabContainer.querySelectorAll('.tab-content').forEach(content => {
-                    content.classList.remove('active');
-                });
-
-                // Show target tab content
-                const targetContent = document.getElementById(targetId);
-                if (targetContent) {
-                    targetContent.classList.add('active');
-                } else {
-                    console.error('Target content not found:', targetId);
-                }
-            } catch (error) {
-                console.error('Error switching tabs:', error, 'Button:', button, 'TargetId:', targetId);
-            }
+            contentContainer.querySelectorAll('.tab-content').forEach(content => content.classList.add('hidden'));
+            document.getElementById(targetId).classList.remove('hidden');
         }
 
-        async function copyToClipboard(button, text) {
-            try {
-                await navigator.clipboard.writeText(text);
-                const originalText = button.textContent;
-                button.textContent = 'Copied!';
-                button.style.background = 'var(--color-success)';
+        const initTheme = () => {
+          const themeToggleBtn = document.getElementById('theme-toggle');
+          const themeToggleDarkIcon = document.getElementById('theme-toggle-dark-icon');
+          const themeToggleLightIcon = document.getElementById('theme-toggle-light-icon');
 
-                setTimeout(() => {
-                    button.textContent = originalText;
-                    button.style.background = 'var(--color-gray-700)';
-                }, 2000);
-            } catch (err) {
-                console.error('Failed to copy:', err);
-                button.textContent = 'Failed';
-                setTimeout(() => {
-                    button.textContent = 'Copy';
-                }, 2000);
-            }
-        }
+          if (localStorage.getItem('color-theme') === 'dark' || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+              document.documentElement.classList.add('dark');
+              themeToggleLightIcon.classList.remove('hidden');
+          } else {
+              document.documentElement.classList.remove('dark');
+              themeToggleDarkIcon.classList.remove('hidden');
+          }
 
-        // Filter and search functionality
-        function filterResults(filter) {
-            const buttons = document.querySelectorAll('.filter-btn');
-            const suites = document.querySelectorAll('.suite-card');
+          themeToggleBtn.addEventListener('click', function() {
+              themeToggleDarkIcon.classList.toggle('hidden');
+              themeToggleLightIcon.classList.toggle('hidden');
+              if (localStorage.getItem('color-theme')) {
+                  if (localStorage.getItem('color-theme') === 'light') {
+                      document.documentElement.classList.add('dark');
+                      localStorage.setItem('color-theme', 'dark');
+                  } else {
+                      document.documentElement.classList.remove('dark');
+                      localStorage.setItem('color-theme', 'light');
+                  }
+              } else {
+                  if (document.documentElement.classList.contains('dark')) {
+                      document.documentElement.classList.remove('dark');
+                      localStorage.setItem('color-theme', 'light');
+                  } else {
+                      document.documentElement.classList.add('dark');
+                      localStorage.setItem('color-theme', 'dark');
+                  }
+              }
+          });
 
-            // Update active button
-            buttons.forEach(btn => btn.classList.remove('active'));
-            event.target.classList.add('active');
+          const style = document.createElement('style');
+          style.innerHTML =
+            '.tab-button {' +
+            '  padding: 8px 16px;' +
+            '  cursor: pointer;' +
+            '  border: none;' +
+            '  background-color: transparent;' +
+            '  border-bottom: 2px solid transparent;' +
+            '  transition: all 0.2s ease-in-out;' +
+            '}' +
+            '.tab-button.active {' +
+            '  border-bottom: 2px solid #3b82f6;' +
+            '  color: #3b82f6;' +
+            '}' +
+            '.dark .tab-button.active {' +
+            '  border-bottom: 2px solid #60a5fa;' +
+            '  color: #60a5fa;' +
+            '}' +
+            '.tab-button:hover {' +
+            '  background-color: rgba(0,0,0,0.05);' +
+            '}' +
+            '.dark .tab-button:hover {' +
+            '  background-color: rgba(255,255,255,0.05);' +
+            '}';
+          document.head.appendChild(style);
+        };
 
-            // Filter suites
-            suites.forEach(suite => {
-                const status = suite.querySelector('.status-badge').textContent.toLowerCase();
-                const shouldShow = filter === 'all' ||
-                                  (filter === 'passed' && status.includes('success')) ||
-                                  (filter === 'failed' && status.includes('error')) ||
-                                  (filter === 'slow' && suite.dataset.duration > 2000);
-
-                suite.style.display = shouldShow ? 'block' : 'none';
-            });
-        }
-
-        function searchTests(query) {
-            const suites = document.querySelectorAll('.suite-card');
-            const searchTerm = query.toLowerCase();
-
-            suites.forEach(suite => {
-                const suiteName = suite.querySelector('.suite-name').textContent.toLowerCase();
-                const shouldShow = suiteName.includes(searchTerm);
-                suite.style.display = shouldShow ? 'block' : 'none';
-            });
-        }
-
-        // Auto-expand first failed step for quick debugging
-        document.addEventListener('DOMContentLoaded', function() {
-            const firstFailedStep = document.querySelector('.step-card .status-error');
-            if (firstFailedStep) {
-                const stepCard = firstFailedStep.closest('.step-card');
-                const content = stepCard.querySelector('.step-content');
-                const icon = stepCard.querySelector('.expand-icon');
-                if (content) {
-                    content.classList.add('expanded');
-                    if (icon) icon.classList.add('expanded');
-                }
-            }
-
-            // Add duration data for filtering
-            document.querySelectorAll('.suite-card').forEach(suite => {
-                const durationText = suite.querySelector('.suite-details').textContent;
-                const duration = parseInt(durationText.match(/\d+/)?.[0] || '0');
-                suite.dataset.duration = duration;
-            });
+        document.addEventListener('DOMContentLoaded', () => {
+          initTheme();
         });
-    `;
+    </script>`;
   }
 
   private formatDuration(ms: number): string {
     if (ms < 1000) return `${ms}ms`;
-    const seconds = ms / 1000;
-    if (seconds < 60) return `${seconds.toFixed(1)}s`;
-    const minutes = seconds / 60;
-    return `${minutes.toFixed(1)}m`;
+    return `${(ms / 1000).toFixed(2)}s`;
   }
 
   private generateTimestamp(): string {
-    return new Date()
-      .toISOString()
-      .replace(/[:.]/g, "-")
-      .replace(/T/, "_")
-      .slice(0, 19);
+    return new Date().toISOString().replace(/[:.]/g, '-').replace('T', '_').slice(0, 19);
   }
 
   private sanitizeFileName(name: string): string {
-    return name
-      .toLowerCase()
-      .replace(/[^a-z0-9\s-]/g, "")
-      .replace(/\s+/g, "-")
-      .replace(/-+/g, "-")
-      .replace(/^-|-$/g, "");
+    return name.toLowerCase().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
   }
 
   private escapeHtml(text: string | undefined | null): string {
-    if (text === undefined || text === null) return "";
-    if (typeof text !== "string") text = String(text);
-    return text
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#x27;");
+    if (text === undefined || text === null) return '';
+    return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
   }
 
-  private formatJsonForDisplay(obj: any): string {
-    if (obj === null || obj === undefined) return "";
-    if (typeof obj === "string") {
-      // Try to parse and re-format if it's a JSON string
-      try {
-        const parsed = JSON.parse(obj);
-        return JSON.stringify(parsed, null, 2);
-      } catch {
-        return obj;
-      }
-    }
-
-    return JSON.stringify(obj, null, 2);
+  private getOverallStatusClass(data: AggregatedResult): string {
+    return data.success_rate === 100 ? 'bg-green-500' : data.success_rate >= 80 ? 'bg-yellow-500' : 'bg-red-500';
   }
 
-  private cleanTextContent(text: string): string {
-    if (!text) return "";
-
-    return text
-      .replace(/\r\n/g, "\n") // Normalize Windows line endings
-      .replace(/\r/g, "\n") // Convert remaining \r to \n
-      .replace(/\\\s*\n\s*\\\s*$/g, "") // Remove trailing backslash patterns
-      .replace(/\\\s*$/g, "") // Remove trailing backslashes
-      .replace(/\n{3,}/g, "\n\n") // Replace multiple consecutive newlines with max 2
-      .replace(/\s+$/gm, "") // Remove trailing spaces from each line
-      .replace(/\t/g, "    ") // Convert tabs to 4 spaces for better visibility
-      .trim();
-  }
-
-  private formatJsonContent(content: string): string {
-    if (!content) return "";
-
-    try {
-      // Try to parse and pretty-format JSON
-      const parsed = JSON.parse(content);
-      return JSON.stringify(parsed, null, 2);
-    } catch {
-      // If not valid JSON, just clean it
-      return this.cleanTextContent(content);
-    }
-  }
-
-  private formatHttpContent(content: string): string {
-    if (!content) return "";
-
-    return content
-      .replace(/\r\n/g, "\n")
-      .replace(/\r/g, "\n")
-      .split("\n")
-      .map((line) => line.trimRight()) // Remove trailing spaces but keep leading spaces for indentation
-      .join("\n")
-      .trim();
-  }
-
-  private cleanCurlCommand(curlCommand: string): string {
-    if (!curlCommand) return "";
-
-    // More aggressive cleaning first
-    let cleaned = curlCommand
-      .trim()
-      // Remove all trailing backslashes and weird patterns
-      .replace(/\\+\s*\n\s*\\*\s*\n?\s*$/g, "")
-      .replace(/\\+\s*$/g, "")
-      .replace(/\s+\\+\s*$/g, "")
-      // Clean up any remaining line-ending junk
-      .replace(/\s+$/gm, "");
-
-    // Check if it's a multi-line cURL that should stay multi-line
-    const hasValidLineBreaks =
-      cleaned.includes(" \\\n") && cleaned.split("\n").length > 1;
-
-    if (hasValidLineBreaks) {
-      // Keep as multi-line but clean up indentation
-      cleaned = cleaned
-        .split("\n")
-        .map((line, index) => {
-          line = line.trim();
-          if (index === 0) {
-            return line.replace(/^\s*curl\s+/g, "curl ");
-          } else {
-            return "    " + line.replace(/^\\\s*/, "");
-          }
-        })
-        .filter((line) => line.trim() !== "") // Remove empty lines
-        .join("\n");
-    } else {
-      // Convert to single line - be more aggressive
-      cleaned = cleaned
-        .replace(/\\\s*\n\s*/g, " ") // Convert line breaks to spaces
-        .replace(/\s{2,}/g, " ") // Clean multiple spaces
-        .replace(/^\s*curl\s+/g, "curl ") // Fix command start
-        .replace(/'\s+-/g, "' -")
-        .replace(/"\s+-/g, '" -');
-    }
-
-    return cleaned.trim();
-  }
-
-  private escapeForJS(text: string | undefined | null): string {
-    if (text === undefined || text === null) return "";
-    const cleanText = this.cleanTextContent(text);
-
-    return cleanText
-      .replace(/\\/g, "\\\\") // Escape backslashes first
-      .replace(/'/g, "\\'")
-      .replace(/"/g, '\\"')
-      .replace(/\r\n/g, "\\n") // Handle Windows line endings
-      .replace(/\r/g, "\\n") // Handle Mac line endings
-      .replace(/\n/g, "\\n") // Handle Unix line endings
-      .replace(/\t/g, "\\t")
-      .replace(/\f/g, "\\f")
-      .replace(/\v/g, "\\v")
-      .replace(/\0/g, "\\0")
-      .replace(/\u2028/g, "\\u2028") // Line separator
-      .replace(/\u2029/g, "\\u2029") // Paragraph separator
-      .replace(/</g, "\\u003c") // Escape < to prevent XSS
-      .replace(/>/g, "\\u003e"); // Escape > to prevent XSS
-  }
-
-  private detectContentType(content: string): string {
-    if (!content || typeof content !== "string") return "text";
-
-    const trimmed = content.trim();
-
-    // Check for cURL commands
-    if (trimmed.startsWith("curl ") || trimmed.includes("curl ")) {
-      return "bash";
-    }
-
-    // Check for bash/shell commands
-    if (this.isBashContent(trimmed)) {
-      return "bash";
-    }
-
-    // Check for JSON
-    if (this.isJsonContent(trimmed)) {
-      return "json";
-    }
-
-    // Check for HTTP requests
-    if (this.isHttpContent(trimmed)) {
-      return "http";
-    }
-
-    return "text";
-  }
-
-  private isBashContent(content: string): boolean {
-    const bashPatterns = [
-      /^(npm|yarn|pnpm|bun)\s+/,
-      /^(node|ts-node|deno)\s+/,
-      /^(git|docker|kubectl)\s+/,
-      /^(ls|cd|mkdir|rm|cp|mv|cat|grep|find|sort|uniq)\s+/,
-      /^(export|echo|which|chmod|chown)\s+/,
-      /^(sudo|su)\s+/,
-      /^\w+\s+=\s+/,
-      /&&|\|\|/,
-      /;\s*$/,
-      /\$\w+/,
-      /^#\s+/,
-    ];
-
-    return bashPatterns.some((pattern) => pattern.test(content));
-  }
-
-  private isJsonContent(content: string): boolean {
-    if (!content.trim()) return false;
-    try {
-      JSON.parse(content);
-      return true;
-    } catch {
-      return (
-        (content.startsWith("{") && content.endsWith("}")) ||
-        (content.startsWith("[") && content.endsWith("]"))
-      );
-    }
-  }
-
-  private isHttpContent(content: string): boolean {
-    const httpPatterns = [
-      /^(GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS)\s+/,
-      /^HTTP\/[\d.]+\s+\d{3}/,
-      /^(Host|User-Agent|Accept|Content-Type|Authorization|Cookie):\s+/,
-    ];
-
-    return httpPatterns.some((pattern) => pattern.test(content));
-  }
-
-  private formatCodeBlock(content: string, language?: string): string {
-    if (!content) return "";
-
-    const detectedType = language || this.detectContentType(content);
-    let cleanContent: string;
-
-    // Use specific formatting based on content type
-    switch (detectedType) {
-      case "bash":
-        if (content.includes("curl ") || content.startsWith("curl ")) {
-          cleanContent = this.cleanCurlCommand(content);
-        } else {
-          cleanContent = this.cleanTextContent(content);
-        }
-        break;
-      case "json":
-        cleanContent = this.formatJsonContent(content);
-        break;
-      case "http":
-        cleanContent = this.formatHttpContent(content);
-        break;
+  private getPriorityClass(priority: string): string {
+    switch (priority?.toLowerCase()) {
+      case 'critical':
+        return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
+      case 'high':
+        return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200';
+      case 'medium':
+        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
+      case 'low':
+        return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
       default:
-        cleanContent = this.cleanTextContent(content);
-        break;
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200';
     }
-
-    // Convert to structured HTML lines
-    const formattedContent = this.convertToCodeLines(
-      cleanContent,
-      detectedType
-    );
-
-    return `
-      <div class="code-block ${detectedType}">
-        <button class="copy-button" onclick="copyToClipboard(this, '${this.escapeForJS(
-          cleanContent
-        )}')">Copy</button>
-        ${formattedContent}
-      </div>
-    `;
-  }
-
-  private convertToCodeLines(content: string, type: string): string {
-    if (!content) return '<div class="code-line">&nbsp;</div>';
-
-    const lines = content.split("\n");
-
-    return lines
-      .map((line, index) => {
-        // Handle empty lines
-        if (!line || line.trim() === "") {
-          return '<div class="code-line">&nbsp;</div>';
-        }
-
-        // Escape HTML but preserve spaces
-        const escapedLine = this.escapeHtml(line);
-
-        // Replace leading spaces with non-breaking spaces to preserve indentation
-        const preservedSpaces = escapedLine.replace(/^( +)/, (match, spaces) =>
-          "&nbsp;".repeat(spaces.length)
-        );
-
-        // For very long lines (like single-line URLs), allow wrapping
-        const shouldWrap =
-          type === "bash" && line.length > 100 && !line.includes(" \\");
-        const wrapClass = shouldWrap ? " wrap" : "";
-
-        return `<div class="code-line${wrapClass}">${preservedSpaces}</div>`;
-      })
-      .join("");
-  }
-
-  private buildStepOverview(step: StepExecutionResult): string {
-    const capturedVars = Object.keys(step.captured_variables || {}).length;
-    const availableVars = Object.keys(step.available_variables || {}).length;
-
-    return `
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
-            <div class="p-3" style="background: var(--color-gray-50);  border: 1px solid var(--color-gray-200);">
-                <div class="text-xs text-gray-700 font-semibold">EXECUTION TIME</div>
-                <div class="font-mono text-lg">${this.formatDuration(
-                  step.duration_ms
-                )}</div>
-            </div>
-            ${
-              step.assertions_results
-                ? `
-            <div class="p-3" style="background: var(--color-gray-50);  border: 1px solid var(--color-gray-200);">
-                <div class="text-xs text-gray-700 font-semibold">ASSERTIONS</div>
-                <div class="font-mono text-lg">${
-                  step.assertions_results.filter((a) => a.passed).length
-                }/${step.assertions_results.length}</div>
-            </div>
-            `
-                : ""
-            }
-            ${
-              capturedVars > 0
-                ? `
-            <div class="p-3" style="background: var(--color-gray-50);  border: 1px solid var(--color-gray-200);">
-                <div class="text-xs text-gray-700 font-semibold">CAPTURED VARS</div>
-                <div class="font-mono text-lg">${capturedVars}</div>
-            </div>
-            `
-                : ""
-            }
-        </div>
-
-        ${
-          capturedVars > 0
-            ? `
-        <div style="margin: 1rem 0;">
-            <h5 style="margin: 0 0 0.5rem 0; color: var(--color-gray-900); font-weight: 600;">Captured Variables</h5>
-            <div style="background: var(--color-gray-50); border: 1px solid var(--color-gray-200);  padding: 1.5rem;">
-                ${Object.entries(step.captured_variables || {})
-                  .map(([key, value]) => {
-                    const jsonValue = JSON.stringify(value, null, 2);
-                    const isLongValue = jsonValue.length > 80;
-                    return `
-                    <div style="margin-bottom: 0.75rem; font-family: var(--font-mono); font-size: 0.875rem;">
-                        <div style="font-weight: 600; color: var(--color-info); margin-bottom: 0.25rem;">
-                            ${this.escapeHtml(key)}:
-                        </div>
-                        <div style="color: var(--color-gray-700); ${
-                          isLongValue
-                            ? "background: var(--color-gray-100); padding: 0.5rem; border-radius: 4px; overflow-x: auto;"
-                            : ""
-                        } word-break: break-all;">
-                            ${
-                              isLongValue
-                                ? `<pre style="margin: 0; white-space: pre-wrap;">${this.escapeHtml(
-                                    jsonValue
-                                  )}</pre>`
-                                : this.escapeHtml(jsonValue)
-                            }
-                        </div>
-                    </div>
-                `;
-                  })
-                  .join("")}
-            </div>
-        </div>
-        `
-            : ""
-        }
-    `;
-  }
-
-  private buildRequestTab(request: any): string {
-    const headers = request.headers ? Object.entries(request.headers) : [];
-    const bodyStr = request.body
-      ? typeof request.body === "string"
-        ? request.body
-        : this.formatJsonForDisplay(request.body)
-      : null;
-    const rawRequest = request.raw_request;
-
-    return `
-        <div class="request-response-grid">
-            <div class="request-section">
-                <div class="section-header">📤 Request Details</div>
-                <div class="section-content">
-                    <div style="margin-bottom: 1rem;">
-                        <div style="display: flex; gap: 1rem; margin-bottom: 0.5rem;">
-                            <span style="font-weight: 600;">Method:</span>
-                            <span class="font-mono" style="background: var(--color-gray-100); padding: 0.125rem 0.5rem; ">${
-                              request.method
-                            }</span>
-                        </div>
-                        <div style="margin-bottom: 0.5rem;">
-                            <span style="font-weight: 600;">URL:</span>
-                            <div class="font-mono text-sm" style="background: var(--color-gray-100); padding: 0.5rem;  margin-top: 0.25rem; word-break: break-all;">
-                                ${this.escapeHtml(
-                                  request.full_url || request.url
-                                )}
-                            </div>
-                        </div>
-                    </div>
-
-                    ${
-                      headers.length > 0
-                        ? `
-                    <div style="margin-bottom: 1rem;">
-                        <span style="font-weight: 600;">Headers:</span>
-                        ${this.formatCodeBlock(
-                          headers
-                            .map(([key, value]) => {
-                              const stringValue = String(value || "");
-                              if (stringValue.trim() === "") {
-                                return `${key}: (empty)`;
-                              }
-                              const displayValue = stringValue
-                                .replace(/\n/g, "\\n")
-                                .replace(/\r/g, "\\r")
-                                .replace(/\t/g, "\\t");
-                              return `${key}: ${displayValue}`;
-                            })
-                            .join("\n"),
-                          "http"
-                        )}
-                    </div>
-                    `
-                        : ""
-                    }
-
-                    ${
-                      bodyStr
-                        ? `
-                    <div style="margin-bottom: 1rem;">
-                        <span style="font-weight: 600;">Body:</span>
-                        ${this.formatCodeBlock(bodyStr)}
-                    </div>
-                    `
-                        : ""
-                    }
-                </div>
-            </div>
-
-            ${
-              rawRequest
-                ? `
-            <div class="response-section">
-                <div class="section-header">🔍 Raw HTTP Request</div>
-                <div class="section-content">
-                    ${this.formatCodeBlock(rawRequest, "http")}
-                </div>
-            </div>
-            `
-                : ""
-            }
-        </div>
-    `;
-  }
-
-  private buildResponseTab(response: any): string {
-    const headers = response.headers ? Object.entries(response.headers) : [];
-    const bodyStr = response.body
-      ? typeof response.body === "string"
-        ? response.body
-        : this.formatJsonForDisplay(response.body)
-      : null;
-    const rawResponse = response.raw_response;
-
-    return `
-        <div class="request-response-grid">
-            <div class="request-section">
-                <div class="section-header">📥 Response Details</div>
-                <div class="section-content">
-                    <div style="margin-bottom: 1rem;">
-                        <div style="display: flex; gap: 1rem; margin-bottom: 0.5rem;">
-                            <span style="font-weight: 600;">Status:</span>
-                            <span class="font-mono" style="background: ${
-                              response.status_code >= 400
-                                ? "#fef2f2"
-                                : "#f0fdf4"
-                            }; color: ${
-      response.status_code >= 400 ? "#991b1b" : "#166534"
-    }; padding: 0.125rem 0.5rem; ">${response.status_code}</span>
-                        </div>
-                        <div style="margin-bottom: 0.5rem;">
-                            <span style="font-weight: 600;">Size:</span>
-                            <span class="font-mono">${
-                              response.size_bytes || 0
-                            } bytes</span>
-                        </div>
-                    </div>
-
-                    ${
-                      headers.length > 0
-                        ? `
-                    <div style="margin-bottom: 1rem;">
-                        <span style="font-weight: 600;">Headers:</span>
-                        ${this.formatCodeBlock(
-                          headers
-                            .map(([key, value]) => {
-                              const stringValue = String(value || "");
-                              if (stringValue.trim() === "") {
-                                return `${key}: (empty)`;
-                              }
-                              const displayValue = stringValue
-                                .replace(/\n/g, "\\n")
-                                .replace(/\r/g, "\\r")
-                                .replace(/\t/g, "\\t");
-                              return `${key}: ${displayValue}`;
-                            })
-                            .join("\n"),
-                          "http"
-                        )}
-                    </div>
-                    `
-                        : ""
-                    }
-
-                    ${
-                      bodyStr
-                        ? `
-                    <div style="margin-bottom: 1rem;">
-                        <span style="font-weight: 600;">Body:</span>
-                        ${this.formatCodeBlock(bodyStr)}
-                    </div>
-                    `
-                        : ""
-                    }
-                </div>
-            </div>
-
-            ${
-              rawResponse
-                ? `
-            <div class="response-section">
-                <div class="section-header">🔍 Raw HTTP Response</div>
-                <div class="section-content">
-                    ${this.formatCodeBlock(rawResponse, "http")}
-                </div>
-            </div>
-            `
-                : ""
-            }
-        </div>
-    `;
-  }
-
-  private buildAssertionsTab(assertions: any[]): string {
-    if (!assertions || assertions.length === 0) {
-      return '<div style="padding: 1.5rem; text-align: center; color: var(--color-gray-700);">No assertions defined for this step.</div>';
-    }
-
-    const passed = assertions.filter((a) => a.passed).length;
-    const failed = assertions.length - passed;
-
-    return `
-        <div style="margin-bottom: 1rem;">
-            <div style="display: flex; gap: 1rem;">
-                <div class="p-3" style="background: #f0fdf4;  border: 1px solid #bbf7d0;">
-                    <div class="text-xs font-semibold" style="color: #166534;">PASSED</div>
-                    <div class="font-mono text-lg" style="color: #166534;">${passed}</div>
-                </div>
-                ${
-                  failed > 0
-                    ? `
-                <div class="p-3" style="background: #fef2f2;  border: 1px solid #fecaca;">
-                    <div class="text-xs font-semibold" style="color: #991b1b;">FAILED</div>
-                    <div class="font-mono text-lg" style="color: #991b1b;">${failed}</div>
-                </div>
-                `
-                    : ""
-                }
-            </div>
-        </div>
-
-        <ul class="assertions-list">
-            ${assertions
-              .map(
-                (assertion) => `
-                <li class="assertion-item ${
-                  assertion.passed ? "assertion-pass" : "assertion-fail"
-                }">
-                    <div class="assertion-field">${this.escapeHtml(
-                      assertion.field
-                    )}</div>
-                    <div class="assertion-values">
-                        <div><strong>Expected:</strong> ${this.escapeHtml(
-                          JSON.stringify(assertion.expected)
-                        )}</div>
-                        <div><strong>Actual:</strong> ${this.escapeHtml(
-                          JSON.stringify(assertion.actual)
-                        )}</div>
-                        ${
-                          assertion.message
-                            ? `<div style="margin-top: 0.25rem;"><strong>Message:</strong> ${this.escapeHtml(
-                                assertion.message
-                              )}</div>`
-                            : ""
-                        }
-                    </div>
-                </li>
-            `
-              )
-              .join("")}
-        </ul>
-    `;
-  }
-
-  private buildScenariosTab(scenarios: any[]): string {
-    if (!scenarios || scenarios.length === 0) {
-      return '<div style="padding: 1.5rem; text-align: center; color: var(--color-gray-700);">No scenarios defined for this step.</div>';
-    }
-
-    return `
-        <div class="scenarios-list">
-            ${scenarios
-              .map(
-                (scenario, index) => `
-                <div class="scenario-item" style="border: 1px solid var(--color-gray-200);  padding: 1.5rem; margin-bottom: 1rem; background: var(--color-gray-50);">
-                    <div class="scenario-header" style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem;">
-                        <span class="scenario-number" style="background: var(--color-info); color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 600;">${
-                          index + 1
-                        }</span>
-                        <span class="scenario-name" style="font-weight: 600; color: var(--color-gray-900);">${this.escapeHtml(
-                          scenario.name || `Scenario ${index + 1}`
-                        )}</span>
-                        ${this.buildScenarioStatusBadge(scenario)}
-                    </div>
-
-                    <div class="scenario-condition" style="margin-bottom: 0.75rem;">
-                        <div style="font-weight: 600; color: var(--color-gray-700); margin-bottom: 0.25rem;">📋 Condition:</div>
-                        <div style="background: white; border: 1px solid var(--color-gray-300);  padding: 0.75rem; font-family: var(--font-mono); font-size: 0.875rem; white-space: pre-wrap; color: var(--color-gray-800);">${this.escapeHtml(
-                          scenario.condition || "No condition specified"
-                        )}</div>
-                    </div>
-
-                    <div class="scenario-details">
-                        ${this.buildScenarioExecutionInfo(scenario)}
-                        ${this.buildScenarioActions(scenario)}
-                        ${
-                          scenario.skip_reason
-                            ? this.buildSkipReason(scenario.skip_reason)
-                            : ""
-                        }
-                    </div>
-                </div>
-            `
-              )
-              .join("")}
-        </div>
-
-        <div style="margin-top: 1rem; padding: 1.5rem; background: var(--color-info-light); border: 1px solid #bfdbfe;  color: var(--color-info-dark);">
-            <div style="font-weight: 600; margin-bottom: 0.5rem;">💡 How Scenarios Work:</div>
-            <ul style="margin: 0; padding-left: 1.5rem; line-height: 1.5;">
-                <li><strong>Executed:</strong> The scenario's condition was true and its actions were performed</li>
-                <li><strong>Skipped:</strong> The scenario's condition was false or not met</li>
-                <li><strong>Condition:</strong> A JMESPath expression evaluated against the HTTP response</li>
-                <li><strong>Actions:</strong> Assertions and variable captures that run when the condition is true</li>
-            </ul>
-        </div>
-    `;
-  }
-
-  private buildCurlTab(curlCommand: string): string {
-    return `
-        <div>
-            <div style="margin-bottom: 1rem;">
-                <span style="font-weight: 600;">Complete cURL Command:</span>
-                <p style="font-size: 0.875rem; color: var(--color-gray-700); margin: 0.25rem 0;">
-                    Copy and paste this command into your terminal or import into Postman.
-                </p>
-            </div>
-            ${this.formatCodeBlock(curlCommand, "bash")}
-        </div>
-    `;
-  }
-
-  private buildScenarioStatusBadge(scenario: any): string {
-    const executed = scenario.executed || false;
-    const hasResult = scenario.result || scenario.captured_variables;
-
-    if (executed || hasResult) {
-      return '<span style="background: var(--color-success); color: white; padding: 0.25rem 0.5rem;  font-size: 0.75rem; font-weight: 600;">✓ EXECUTED</span>';
-    } else {
-      return '<span style="background: var(--color-warning); color: white; padding: 0.25rem 0.5rem;  font-size: 0.75rem; font-weight: 600;">⏭ SKIPPED</span>';
-    }
-  }
-
-  private buildScenarioExecutionInfo(scenario: any): string {
-    const executed = scenario.executed || false;
-    const hasResult = scenario.result || scenario.captured_variables;
-
-    if (executed || hasResult) {
-      return `
-        <div style="margin-bottom: 0.75rem;">
-          <div style="font-weight: 600; color: var(--color-success); margin-bottom: 0.25rem;">✅ Execution Status: SUCCESS</div>
-          <div style="font-size: 0.875rem; color: var(--color-gray-700);">This scenario's condition was met and its actions were executed.</div>
-        </div>
-      `;
-    } else {
-      return `
-        <div style="margin-bottom: 0.75rem;">
-          <div style="font-weight: 600; color: var(--color-warning); margin-bottom: 0.25rem;">⏭️ Execution Status: SKIPPED</div>
-          <div style="font-size: 0.875rem; color: var(--color-gray-700);">This scenario's condition was not met, so it was skipped. This is normal behavior.</div>
-        </div>
-      `;
-    }
-  }
-
-  private buildScenarioActions(scenario: any): string {
-    let actionsHtml = "";
-
-    // Show what actions would be performed if executed
-    if (scenario.then || scenario.actions) {
-      const actions = scenario.then || scenario.actions || {};
-      const hasAssert = actions.assert || actions.assertions;
-      const hasCapture = actions.capture;
-
-      if (hasAssert || hasCapture) {
-        actionsHtml += `
-          <div style="margin-bottom: 0.75rem;">
-            <div style="font-weight: 600; color: var(--color-gray-700); margin-bottom: 0.5rem;">🎯 Configured Actions:</div>
-            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-        `;
-
-        if (hasAssert) {
-          const assertCount =
-            typeof hasAssert === "object" ? Object.keys(hasAssert).length : 1;
-          actionsHtml += `<span style="background: var(--color-info-light); color: var(--color-info-dark); padding: 0.25rem 0.5rem;  font-size: 0.875rem;">🧪 ${assertCount} Assertion${
-            assertCount !== 1 ? "s" : ""
-          }</span>`;
-        }
-
-        if (hasCapture) {
-          const captureCount =
-            typeof hasCapture === "object" ? Object.keys(hasCapture).length : 1;
-          actionsHtml += `<span style="background: var(--color-purple-light); color: var(--color-purple); padding: 0.25rem 0.5rem;  font-size: 0.875rem;">📥 ${captureCount} Variable${
-            captureCount !== 1 ? "s" : ""
-          }</span>`;
-        }
-
-        actionsHtml += "</div></div>";
-      }
-    }
-
-    // Show actual results if executed
-    if (scenario.result && typeof scenario.result === "object") {
-      actionsHtml += `
-        <div style="margin-bottom: 0.75rem;">
-          <div style="font-weight: 600; color: var(--color-gray-700); margin-bottom: 0.5rem;">📊 Execution Results:</div>
-          ${this.formatCodeBlock(
-            this.formatJsonForDisplay(scenario.result),
-            "json"
-          ).replace(
-            'style="margin-top: 0.25rem;"',
-            'style="margin-top: 0.25rem; max-height: 200px; overflow-y: auto;"'
-          )}
-        </div>
-      `;
-    }
-
-    return actionsHtml;
-  }
-
-  private buildSkipReason(skipReason: string): string {
-    return `
-      <div style="margin-top: 0.75rem; padding: 0.75rem; background: var(--color-warning-light); border: 1px solid #fbbf24;  color: var(--color-warning-dark);">
-        <div style="font-weight: 600; margin-bottom: 0.25rem;">🔍 Skip Reason:</div>
-        <div style="font-size: 0.875rem;">${this.escapeHtml(skipReason)}</div>
-      </div>
-    `;
-  }
-
-  private buildIterationsTab(iterationResults: StepExecutionResult[]): string {
-    if (!iterationResults || iterationResults.length === 0) {
-      return '<div style="padding: 1.5rem; text-align: center; color: var(--color-gray-700);">No iterations executed for this step.</div>';
-    }
-
-    const totalIterations = iterationResults.length;
-    const successfulIterations = iterationResults.filter(
-      (i) => i.status === "success"
-    ).length;
-    const failedIterations = iterationResults.filter(
-      (i) => i.status === "failure"
-    ).length;
-    const totalDuration = iterationResults.reduce(
-      (sum, i) => sum + (i.duration_ms || 0),
-      0
-    );
-    const avgDuration =
-      totalIterations > 0 ? Math.round(totalDuration / totalIterations) : 0;
-
-    return `
-        <div class="iterations-container" style="padding: 1.5rem;">
-            <!-- Summary Header -->
-            <div class="iterations-summary" style="background: var(--color-blue-50); border: 1px solid var(--color-blue-200); padding: 1.5rem; margin-bottom: 1.5rem;">
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
-                    <div style="text-align: center;">
-                        <div style="font-size: 1.5rem; font-weight: 700; color: var(--color-blue);">${totalIterations}</div>
-                        <div style="font-size: 0.75rem; color: var(--color-gray-600); text-transform: uppercase;">Total Iterations</div>
-                    </div>
-                    <div style="text-align: center;">
-                        <div style="font-size: 1.5rem; font-weight: 700; color: var(--color-success);">${successfulIterations}</div>
-                        <div style="font-size: 0.75rem; color: var(--color-gray-600); text-transform: uppercase;">Successful</div>
-                    </div>
-                    <div style="text-align: center;">
-                        <div style="font-size: 1.5rem; font-weight: 700; color: var(--color-error);">${failedIterations}</div>
-                        <div style="font-size: 0.75rem; color: var(--color-gray-600); text-transform: uppercase;">Failed</div>
-                    </div>
-                    <div style="text-align: center;">
-                        <div style="font-size: 1.5rem; font-weight: 700; color: var(--color-gray-700);">${avgDuration}ms</div>
-                        <div style="font-size: 0.75rem; color: var(--color-gray-600); text-transform: uppercase;">Avg Duration</div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Single Iterations Accordion -->
-            <div class="iterations-accordion" style="border: 1px solid var(--color-gray-200); background: white;">
-                <!-- Accordion Header -->
-                <div class="accordion-header" onclick="toggleIterationsAccordion(this)" style="background: var(--color-blue); color: white; padding: 1rem 1.5rem; cursor: pointer; display: flex; align-items: center; justify-content: space-between; font-weight: 600;">
-                    <div style="display: flex; align-items: center; gap: 0.75rem;">
-                        <span style="font-size: 1.2rem;">🔄</span>
-                        <span>Iterations (${totalIterations})</span>
-                        <span style="background: var(--color-success); color: white; padding: 0.25rem 0.5rem; font-size: 0.75rem; font-weight: 600;">
-                            ✅ ${successfulIterations} SUCCESS
-                        </span>
-                    </div>
-                    <span class="accordion-arrow" style="font-size: 1.2rem; transition: transform 0.2s ease;">▶</span>
-                </div>
-
-                <!-- Accordion Content -->
-                <div class="accordion-content" style="display: none; padding: 1.5rem;">
-                    <div class="iterations-grid" style="display: grid; gap: 1rem;">
-                        ${iterationResults
-                          .map((iteration, index) => {
-                            const statusColor =
-                              iteration.status === "success"
-                                ? "var(--color-success)"
-                                : iteration.status === "failure"
-                                ? "var(--color-error)"
-                                : iteration.status === "skipped"
-                                ? "var(--color-warning)"
-                                : "var(--color-gray)";
-                            const statusIcon =
-                              iteration.status === "success"
-                                ? "✅"
-                                : iteration.status === "failure"
-                                ? "❌"
-                                : iteration.status === "skipped"
-                                ? "⏭"
-                                : "?";
-
-                            return `
-                                <div class="iteration-card" style="background: var(--color-gray-50); border: 1px solid var(--color-gray-200); padding: 1.5rem;">
-                                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem;">
-                                        <div style="display: flex; align-items: center; gap: 0.75rem;">
-                                            <span style="background: ${statusColor}; color: white; padding: 0.25rem 0.5rem; font-size: 0.75rem; font-weight: 600;">
-                                                ${statusIcon} ${iteration.status.toUpperCase()}
-                                            </span>
-                                            <span style="font-weight: 600; color: var(--color-gray-900);">Iteration ${
-                                              index + 1
-                                            }</span>
-                                        </div>
-                                        <span style="font-size: 0.875rem; color: var(--color-gray-600);">${
-                                          iteration.duration_ms || 0
-                                        }ms</span>
-                                    </div>
-
-                                    <!-- Iteration Details -->
-                                    <div class="iteration-details" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                                        <!-- Request -->
-                                        <div style="background: white; border: 1px solid var(--color-gray-200); padding: 0.75rem;">
-                                            <div style="font-weight: 600; font-size: 0.75rem; color: var(--color-blue); margin-bottom: 0.5rem; text-transform: uppercase;">Request</div>
-                                            <div style="font-size: 0.75rem; color: var(--color-gray-700);">
-                                                ${
-                                                  iteration.request_details
-                                                    ?.method || "GET"
-                                                } ${
-                              iteration.request_details?.url || "N/A"
-                            }
-                                            </div>
-                                        </div>
-
-                                        <!-- Response -->
-                                        <div style="background: white; border: 1px solid var(--color-gray-200); padding: 0.75rem;">
-                                            <div style="font-weight: 600; font-size: 0.75rem; color: var(--color-green); margin-bottom: 0.5rem; text-transform: uppercase;">Response</div>
-                                            <div style="font-size: 0.75rem; color: var(--color-gray-700);">
-                                                ${
-                                                  iteration.response_details
-                                                    ?.status_code || "N/A"
-                                                }
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <!-- Assertions -->
-                                    ${
-                                      iteration.assertions_results &&
-                                      iteration.assertions_results.length > 0
-                                        ? `
-                                        <div style="margin-top: 0.75rem;">
-                                            <div style="font-weight: 600; font-size: 0.75rem; color: var(--color-purple); margin-bottom: 0.5rem; text-transform: uppercase;">
-                                                Assertions (${
-                                                  iteration.assertions_results.filter(
-                                                    (a) => a.passed
-                                                  ).length
-                                                }/${
-                                            iteration.assertions_results.length
-                                          })
-                                            </div>
-                                            <div style="display: flex; flex-wrap: wrap; gap: 0.25rem;">
-                                                ${iteration.assertions_results
-                                                  .map(
-                                                    (assertion) =>
-                                                      `<span style="background: ${
-                                                        assertion.passed
-                                                          ? "var(--color-success)"
-                                                          : "var(--color-error)"
-                                                      }; color: white; padding: 0.125rem 0.375rem; font-size: 0.625rem; font-weight: 600;">
-                                                        ${
-                                                          assertion.passed
-                                                            ? "✓"
-                                                            : "✗"
-                                                        }
-                                                    </span>`
-                                                  )
-                                                  .join("")}
-                                            </div>
-                                        </div>
-                                    `
-                                        : ""
-                                    }
-
-                                    <!-- Variables -->
-                                    ${
-                                      iteration.captured_variables &&
-                                      Object.keys(iteration.captured_variables)
-                                        .length > 0
-                                        ? `
-                                        <div style="margin-top: 0.75rem;">
-                                            <div style="font-weight: 600; font-size: 0.75rem; color: var(--color-orange); margin-bottom: 0.5rem; text-transform: uppercase;">
-                                                Captured Variables (${
-                                                  Object.keys(
-                                                    iteration.captured_variables
-                                                  ).length
-                                                })
-                                            </div>
-                                            <div style="background: white; border: 1px solid var(--color-gray-200); padding: 0.5rem; max-height: 100px; overflow-y: auto;">
-                                                <div style="font-size: 0.75rem; font-family: var(--font-mono); color: var(--color-gray-800);">
-                                                    ${Object.entries(
-                                                      iteration.captured_variables
-                                                    )
-                                                      .map(
-                                                        ([key, value]) =>
-                                                          `${key}: ${
-                                                            typeof value ===
-                                                            "object"
-                                                              ? JSON.stringify(
-                                                                  value
-                                                                )
-                                                              : String(value)
-                                                          }`
-                                                      )
-                                                      .join("<br>")}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    `
-                                        : ""
-                                    }
-                                </div>
-                            `;
-                          })
-                          .join("")}
-                    </div>
-                </div>
-            </div>
-
-            <!-- How Iterations Work Info -->
-            <div style="margin-top: 1.5rem; padding: 1.5rem; background: var(--color-blue-50); border: 1px solid var(--color-blue-200); color: var(--color-blue-800);">
-                <div style="font-weight: 600; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
-                    <span style="font-size: 1.1rem;">🔄</span>
-                    How Iterations Work
-                </div>
-                <ul style="margin: 0; padding-left: 1.5rem; line-height: 1.6;">
-                    <li><strong>Loop Execution:</strong> This step was executed ${totalIterations} times based on iteration configuration</li>
-                    <li><strong>Variable Context:</strong> Each iteration has its own variable scope and captured data</li>
-                    <li><strong>Independent Results:</strong> Each iteration's success/failure is tracked separately</li>
-                    <li><strong>Performance:</strong> Total duration includes all iterations plus any iteration setup time</li>
-                </ul>
-            </div>
-        </div>
-
-        <style>
-            .iterations-container .accordion-arrow {
-                transition: transform 0.2s ease;
-            }
-            .iterations-container .accordion-header.expanded .accordion-arrow {
-                transform: rotate(90deg);
-            }
-        </style>
-
-        <script>
-            function toggleIterationsAccordion(header) {
-                const content = header.nextElementSibling;
-                const arrow = header.querySelector('.accordion-arrow');
-                const isVisible = content.style.display !== 'none';
-
-                content.style.display = isVisible ? 'none' : 'block';
-                header.classList.toggle('expanded', !isVisible);
-            }
-        </script>
-    `;
-  }
-
-  private buildIterationStatusBadge(iteration: StepExecutionResult): string {
-    const status = iteration.status;
-    switch (status) {
-      case "success":
-        return '<span style="background: var(--color-success); color: white; padding: 0.25rem 0.5rem;  font-size: 0.75rem; font-weight: 600;">✓ SUCCESS</span>';
-      case "failure":
-        return '<span style="background: var(--color-error); color: white; padding: 0.25rem 0.5rem;  font-size: 0.75rem; font-weight: 600;">❌ FAILED</span>';
-      case "skipped":
-        return '<span style="background: var(--color-warning); color: white; padding: 0.25rem 0.5rem;  font-size: 0.75rem; font-weight: 600;">⏭ SKIPPED</span>';
-      default:
-        return '<span style="background: var(--color-gray); color: white; padding: 0.25rem 0.5rem;  font-size: 0.75rem; font-weight: 600;">? UNKNOWN</span>';
-    }
-  }
-
-  private buildIterationRequestResponse(
-    iteration: StepExecutionResult
-  ): string {
-    const requestDetails = iteration.request_details;
-    const responseDetails = iteration.response_details;
-
-    if (!requestDetails && !responseDetails) {
-      return "";
-    }
-
-    let html = '<div style="margin-bottom: 0.75rem;">';
-
-    if (requestDetails) {
-      const method = (requestDetails as any).method || "GET";
-      const url =
-        (requestDetails as any).full_url ||
-        (requestDetails as any).url ||
-        "N/A";
-      html += `
-        <div style="margin-bottom: 0.5rem;">
-          <div style="font-weight: 600; color: var(--color-gray-700); margin-bottom: 0.25rem;">📤 Request:</div>
-          <div style="background: white; border: 1px solid var(--color-gray-300);  padding: 0.5rem; font-family: var(--font-mono); font-size: 0.75rem; color: var(--color-gray-800);">
-            <strong>${method}</strong> ${this.escapeHtml(url)}
-          </div>
-        </div>
-      `;
-    }
-
-    if (responseDetails) {
-      const statusCode = responseDetails.status_code;
-      html += `
-        <div>
-          <div style="font-weight: 600; color: var(--color-gray-700); margin-bottom: 0.25rem;">📥 Response:</div>
-          <div style="background: white; border: 1px solid var(--color-gray-300);  padding: 0.5rem; font-family: var(--font-mono); font-size: 0.75rem; color: var(--color-gray-800);">
-            Status: <strong>${statusCode}</strong>
-          </div>
-        </div>
-      `;
-    }
-
-    html += "</div>";
-    return html;
-  }
-
-  private buildIterationAssertions(iteration: StepExecutionResult): string {
-    const assertions = iteration.assertions_results;
-    if (!assertions || assertions.length === 0) {
-      return "";
-    }
-
-    const passedCount = assertions.filter((a) => a.passed).length;
-    const totalCount = assertions.length;
-
-    return `
-      <div style="margin-bottom: 0.75rem;">
-        <div style="font-weight: 600; color: var(--color-gray-700); margin-bottom: 0.25rem;">🧪 Assertions (${passedCount}/${totalCount}):</div>
-        <div style="background: white; border: 1px solid var(--color-gray-300);  padding: 0.5rem;">
-          ${assertions
-            .map(
-              (assertion) => `
-            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem; font-size: 0.75rem;">
-              <span style="color: ${
-                assertion.passed ? "var(--color-success)" : "var(--color-error)"
-              }; font-weight: 600;">
-                ${assertion.passed ? "✓" : "❌"}
-              </span>
-              <span style="font-family: var(--font-mono); color: var(--color-gray-800);">${this.escapeHtml(
-                assertion.message || `${assertion.field}: ${assertion.expected}`
-              )}</span>
-            </div>
-          `
-            )
-            .join("")}
-        </div>
-      </div>
-    `;
-  }
-
-  private buildIterationCapturedVariables(
-    iteration: StepExecutionResult
-  ): string {
-    const variables = iteration.captured_variables;
-    if (!variables || Object.keys(variables).length === 0) {
-      return "";
-    }
-
-    const varCount = Object.keys(variables).length;
-
-    return `
-      <div style="margin-bottom: 0.75rem;">
-        <div style="font-weight: 600; color: var(--color-gray-700); margin-bottom: 0.25rem;">📥 Captured Variables (${varCount}):</div>
-        <div style="background: white; border: 1px solid var(--color-gray-300);  padding: 0.5rem;">
-          ${Object.entries(variables)
-            .map(
-              ([key, value]) => `
-            <div style="display: flex; align-items: flex-start; gap: 0.5rem; margin-bottom: 0.25rem; font-size: 0.75rem;">
-              <code style="background: var(--color-gray-100); padding: 0.125rem 0.25rem; border-radius: 0.25rem; font-family: var(--font-mono); color: var(--color-purple); font-weight: 600;">${this.escapeHtml(
-                key
-              )}</code>
-              <span style="color: var(--color-gray-800); font-family: var(--font-mono); word-break: break-all;">=</span>
-              <code style="background: var(--color-gray-100); padding: 0.125rem 0.25rem; border-radius: 0.25rem; font-family: var(--font-mono); color: var(--color-gray-800); word-break: break-all; flex: 1;">${this.escapeHtml(
-                JSON.stringify(value)
-              )}</code>
-            </div>
-          `
-            )
-            .join("")}
-        </div>
-      </div>
-    `;
-  }
-
-  private buildIterationFullView(
-    iteration: StepExecutionResult,
-    index: number
-  ): string {
-    const requestDetails = iteration.request_details;
-    const responseDetails = iteration.response_details;
-    const assertions = iteration.assertions_results;
-    const variables = iteration.captured_variables;
-
-    const statusColor =
-      iteration.status === "success"
-        ? "var(--color-success)"
-        : iteration.status === "failure"
-        ? "var(--color-error)"
-        : iteration.status === "skipped"
-        ? "var(--color-warning)"
-        : "var(--color-gray)";
-
-    const statusIcon =
-      iteration.status === "success"
-        ? "✅"
-        : iteration.status === "failure"
-        ? "❌"
-        : iteration.status === "skipped"
-        ? "⏭️"
-        : "❓";
-
-    return `
-        <div class="iteration-full-view" style="padding: 1.5rem; height: 100%; overflow-y: auto;">
-            <!-- Iteration Header -->
-            <div class="iteration-header" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid var(--color-gray-200);">
-                <div style="display: flex; align-items: center; gap: 1rem;">
-                    <div style="background: ${statusColor}; color: white; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.25rem; font-weight: 600;">
-                        ${statusIcon}
-                    </div>
-                    <div>
-                        <h3 style="margin: 0; font-size: 1.25rem; font-weight: 700; color: var(--color-gray-900);">
-                          Iteration ${index + 1}
-                          ${
-                            iteration.status === "success"
-                              ? '<span style="color: var(--color-blue); font-size: 1.2rem; margin-left: 0.5rem;">🔄</span>'
-                              : ""
-                          }
-                        </h3>
-                        <p style="margin: 0.25rem 0 0 0; font-size: 0.875rem; color: var(--color-gray-600);">
-                            Duration: ${
-                              iteration.duration_ms || 0
-                            }ms • Status: ${iteration.status.toUpperCase()}
-                        </p>
-                    </div>
-                </div>
-                <div style="text-align: right;">
-                    <div style="font-size: 0.875rem; color: var(--color-gray-600);">Started at</div>
-                    <div style="font-size: 0.75rem; font-family: var(--font-mono); color: var(--color-gray-800);">
-                        ${new Date().toLocaleTimeString()}
-                    </div>
-                </div>
-            </div>
-
-            <!-- Main Content Grid -->
-            <div class="iteration-content-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
-
-                <!-- Request Section -->
-                <div class="request-section" style="background: var(--color-gray-50); border: 1px solid var(--color-gray-200); overflow: hidden;">
-                    <div class="section-header" style="background: var(--color-blue); color: white; padding: 0.75rem 1rem; font-weight: 600; font-size: 0.875rem;">
-                        📤 Request Details
-                    </div>
-                    <div class="section-content" style="padding: 1.5rem;">
-                        ${this.buildIterationRequestDetails(requestDetails)}
-                    </div>
-                </div>
-
-                <!-- Response Section -->
-                <div class="response-section" style="background: var(--color-gray-50); border: 1px solid var(--color-gray-200); overflow: hidden;">
-                    <div class="section-header" style="background: var(--color-green); color: white; padding: 0.75rem 1rem; font-weight: 600; font-size: 0.875rem;">
-                        📥 Response Details
-                    </div>
-                    <div class="section-content" style="padding: 1.5rem;">
-                        ${this.buildIterationResponseDetails(responseDetails)}
-                    </div>
-                </div>
-            </div>
-
-            <!-- Assertions Section -->
-            ${
-              assertions && assertions.length > 0
-                ? `
-                <div class="assertions-section" style="background: var(--color-gray-50); border: 1px solid var(--color-gray-200); margin-bottom: 1.5rem; overflow: hidden;">
-                    <div class="section-header" style="background: var(--color-purple); color: white; padding: 0.75rem 1rem; font-weight: 600; font-size: 0.875rem;">
-                        🧪 Assertions (${
-                          assertions.filter((a) => a.passed).length
-                        }/${assertions.length})
-                    </div>
-                    <div class="section-content" style="padding: 1.5rem;">
-                        ${this.buildIterationAssertionsDetails(assertions)}
-                    </div>
-                </div>
-            `
-                : ""
-            }
-
-            <!-- Variables Section -->
-            ${
-              variables && Object.keys(variables).length > 0
-                ? `
-                <div class="variables-section" style="background: var(--color-gray-50); border: 1px solid var(--color-gray-200); margin-bottom: 1.5rem; overflow: hidden;">
-                    <div class="section-header" style="background: var(--color-orange); color: white; padding: 0.75rem 1rem; font-weight: 600; font-size: 0.875rem;">
-                        📥 Captured Variables (${Object.keys(variables).length})
-                    </div>
-                    <div class="section-content" style="padding: 1.5rem;">
-                        ${this.buildIterationVariablesDetails(variables)}
-                    </div>
-                </div>
-            `
-                : ""
-            }
-
-            <!-- Error Section -->
-            ${
-              iteration.error_message
-                ? `
-                <div class="error-section" style="background: var(--color-error-light); border: 1px solid var(--color-error); padding: 1.5rem;">
-                    <div style="font-weight: 600; color: var(--color-error-dark); margin-bottom: 0.75rem; font-size: 0.875rem;">❌ Error Details</div>
-                    <div style="font-size: 0.875rem; color: var(--color-error-dark); font-family: var(--font-mono); background: white; padding: 0.75rem; border: 1px solid var(--color-error-light);">
-                        ${this.escapeHtml(iteration.error_message)}
-                    </div>
-                </div>
-            `
-                : ""
-            }
-        </div>
-    `;
-  }
-
-  private buildIterationRequestDetails(requestDetails: any): string {
-    if (!requestDetails) {
-      return '<div style="color: var(--color-gray-500); font-style: italic;">No request details available</div>';
-    }
-
-    const method = requestDetails.method || "GET";
-    const url = requestDetails.url || "";
-    const headers = requestDetails.headers || {};
-    const body = requestDetails.body;
-
-    const methodColor =
-      method === "GET"
-        ? "var(--color-blue)"
-        : method === "POST"
-        ? "var(--color-green)"
-        : method === "PUT"
-        ? "var(--color-orange)"
-        : method === "DELETE"
-        ? "var(--color-red)"
-        : "var(--color-gray)";
-
-    return `
-      <div class="request-details">
-        <div style="margin-bottom: 1rem;">
-          <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
-            <span style="background: ${methodColor}; color: white; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; font-family: var(--font-mono);">
-              ${method}
-            </span>
-            <span style="font-family: var(--font-mono); font-size: 0.875rem; color: var(--color-gray-800); word-break: break-all;">
-              ${this.escapeHtml(url)}
-            </span>
-          </div>
-        </div>
-
-        ${
-          Object.keys(headers).length > 0
-            ? `
-          <div style="margin-bottom: 1rem;">
-            <div style="font-weight: 600; font-size: 0.75rem; color: var(--color-gray-700); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em;">
-              Headers (${Object.keys(headers).length})
-            </div>
-            <div style="background: white; border: 1px solid var(--color-gray-200); border-radius: 4px; max-height: 150px; overflow-y: auto;">
-              ${Object.entries(headers)
-                .map(
-                  ([key, value]) => `
-                <div style="padding: 0.5rem; border-bottom: 1px solid var(--color-gray-100); display: flex; justify-content: space-between;">
-                  <span style="font-weight: 600; font-size: 0.75rem; color: var(--color-gray-700); font-family: var(--font-mono);">
-                    ${this.escapeHtml(key)}:
-                  </span>
-                  <span style="font-size: 0.75rem; color: var(--color-gray-800); font-family: var(--font-mono); word-break: break-word; margin-left: 1rem;">
-                    ${this.escapeHtml(String(value))}
-                  </span>
-                </div>
-              `
-                )
-                .join("")}
-            </div>
-          </div>
-        `
-            : ""
-        }
-
-        ${
-          body
-            ? `
-          <div>
-            <div style="font-weight: 600; font-size: 0.75rem; color: var(--color-gray-700); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em;">
-              Request Body
-            </div>
-            <div style="background: white; border: 1px solid var(--color-gray-200); border-radius: 4px; padding: 0.75rem; max-height: 200px; overflow-y: auto;">
-              <pre style="margin: 0; font-size: 0.75rem; font-family: var(--font-mono); color: var(--color-gray-800); white-space: pre-wrap; word-break: break-word;">
-${this.escapeHtml(
-  typeof body === "string" ? body : JSON.stringify(body, null, 2)
-)}
-              </pre>
-            </div>
-          </div>
-        `
-            : ""
-        }
-      </div>
-    `;
-  }
-
-  private buildIterationResponseDetails(responseDetails: any): string {
-    if (!responseDetails) {
-      return '<div style="color: var(--color-gray-500); font-style: italic;">No response details available</div>';
-    }
-
-    const status = responseDetails.status || 0;
-    const statusText = responseDetails.statusText || "";
-    const headers = responseDetails.headers || {};
-    const data = responseDetails.data;
-
-    const statusColor =
-      status >= 200 && status < 300
-        ? "var(--color-green)"
-        : status >= 300 && status < 400
-        ? "var(--color-blue)"
-        : status >= 400 && status < 500
-        ? "var(--color-orange)"
-        : status >= 500
-        ? "var(--color-red)"
-        : "var(--color-gray)";
-
-    return `
-      <div class="response-details">
-        <div style="margin-bottom: 1rem;">
-          <div style="display: flex; align-items: center; gap: 0.5rem;">
-            <span style="background: ${statusColor}; color: white; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; font-family: var(--font-mono);">
-              ${status}
-            </span>
-            <span style="font-size: 0.875rem; color: var(--color-gray-800);">
-              ${this.escapeHtml(statusText)}
-            </span>
-          </div>
-        </div>
-
-        ${
-          Object.keys(headers).length > 0
-            ? `
-          <div style="margin-bottom: 1rem;">
-            <div style="font-weight: 600; font-size: 0.75rem; color: var(--color-gray-700); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em;">
-              Response Headers (${Object.keys(headers).length})
-            </div>
-            <div style="background: white; border: 1px solid var(--color-gray-200); border-radius: 4px; max-height: 150px; overflow-y: auto;">
-              ${Object.entries(headers)
-                .map(
-                  ([key, value]) => `
-                <div style="padding: 0.5rem; border-bottom: 1px solid var(--color-gray-100); display: flex; justify-content: space-between;">
-                  <span style="font-weight: 600; font-size: 0.75rem; color: var(--color-gray-700); font-family: var(--font-mono);">
-                    ${this.escapeHtml(key)}:
-                  </span>
-                  <span style="font-size: 0.75rem; color: var(--color-gray-800); font-family: var(--font-mono); word-break: break-word; margin-left: 1rem;">
-                    ${this.escapeHtml(String(value))}
-                  </span>
-                </div>
-              `
-                )
-                .join("")}
-            </div>
-          </div>
-        `
-            : ""
-        }
-
-        ${
-          data
-            ? `
-          <div>
-            <div style="font-weight: 600; font-size: 0.75rem; color: var(--color-gray-700); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em;">
-              Response Body
-            </div>
-            <div style="background: white; border: 1px solid var(--color-gray-200); border-radius: 4px; padding: 0.75rem; max-height: 200px; overflow-y: auto;">
-              <pre style="margin: 0; font-size: 0.75rem; font-family: var(--font-mono); color: var(--color-gray-800); white-space: pre-wrap; word-break: break-word;">
-${this.escapeHtml(
-  typeof data === "string" ? data : JSON.stringify(data, null, 2)
-)}
-              </pre>
-            </div>
-          </div>
-        `
-            : ""
-        }
-      </div>
-    `;
-  }
-
-  private buildIterationAssertionsDetails(assertions: any[]): string {
-    if (!assertions || assertions.length === 0) {
-      return '<div style="color: var(--color-gray-500); font-style: italic;">No assertions to display</div>';
-    }
-
-    return `
-      <div class="assertions-details">
-        ${assertions
-          .map((assertion, index) => {
-            const statusColor = assertion.passed
-              ? "var(--color-green)"
-              : "var(--color-red)";
-            const statusIcon = assertion.passed ? "✅" : "❌";
-            const statusText = assertion.passed ? "PASSED" : "FAILED";
-
-            return `
-            <div style="background: white; border: 1px solid var(--color-gray-200); border-radius: 4px; margin-bottom: 0.75rem; overflow: hidden;">
-              <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem; background: ${
-                assertion.passed
-                  ? "var(--color-green-light)"
-                  : "var(--color-red-light)"
-              }; border-bottom: 1px solid var(--color-gray-200);">
-                <div style="display: flex; align-items: center; gap: 0.5rem;">
-                  <span style="color: ${statusColor}; font-size: 1rem;">${statusIcon}</span>
-                  <span style="font-weight: 600; font-size: 0.875rem; color: var(--color-gray-800);">
-                    Assertion ${index + 1}
-                  </span>
-                </div>
-                <span style="background: ${statusColor}; color: white; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600;">
-                  ${statusText}
-                </span>
-              </div>
-              <div style="padding: 0.75rem;">
-                <div style="margin-bottom: 0.5rem;">
-                  <span style="font-weight: 600; font-size: 0.75rem; color: var(--color-gray-700); text-transform: uppercase; letter-spacing: 0.05em;">
-                    Expected:
-                  </span>
-                  <span style="font-size: 0.875rem; color: var(--color-gray-800); font-family: var(--font-mono); margin-left: 0.5rem;">
-                    ${this.escapeHtml(String(assertion.expected || "N/A"))}
-                  </span>
-                </div>
-                <div style="margin-bottom: 0.5rem;">
-                  <span style="font-weight: 600; font-size: 0.75rem; color: var(--color-gray-700); text-transform: uppercase; letter-spacing: 0.05em;">
-                    Actual:
-                  </span>
-                  <span style="font-size: 0.875rem; color: var(--color-gray-800); font-family: var(--font-mono); margin-left: 0.5rem;">
-                    ${this.escapeHtml(String(assertion.actual || "N/A"))}
-                  </span>
-                </div>
-                ${
-                  assertion.message
-                    ? `
-                  <div>
-                    <span style="font-weight: 600; font-size: 0.75rem; color: var(--color-gray-700); text-transform: uppercase; letter-spacing: 0.05em;">
-                      Message:
-                    </span>
-                    <span style="font-size: 0.875rem; color: var(--color-gray-800); margin-left: 0.5rem;">
-                      ${this.escapeHtml(assertion.message)}
-                    </span>
-                  </div>
-                `
-                    : ""
-                }
-              </div>
-            </div>
-          `;
-          })
-          .join("")}
-      </div>
-    `;
-  }
-
-  private buildIterationVariablesDetails(
-    variables: Record<string, any>
-  ): string {
-    if (!variables || Object.keys(variables).length === 0) {
-      return '<div style="color: var(--color-gray-500); font-style: italic;">No variables captured</div>';
-    }
-
-    return `
-      <div class="variables-details">
-        ${Object.entries(variables)
-          .map(
-            ([key, value]) => `
-          <div style="background: white; border: 1px solid var(--color-gray-200); border-radius: 4px; margin-bottom: 0.75rem; overflow: hidden;">
-            <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem; background: var(--color-orange-light); border-bottom: 1px solid var(--color-gray-200);">
-              <span style="font-weight: 600; font-size: 0.875rem; color: var(--color-gray-800); font-family: var(--font-mono);">
-                ${this.escapeHtml(key)}
-              </span>
-              <span style="background: var(--color-orange); color: white; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600;">
-                ${typeof value}
-              </span>
-            </div>
-            <div style="padding: 0.75rem;">
-              <div style="background: var(--color-gray-50); border: 1px solid var(--color-gray-200); border-radius: 4px; padding: 0.75rem; max-height: 150px; overflow-y: auto;">
-                <pre style="margin: 0; font-size: 0.75rem; font-family: var(--font-mono); color: var(--color-gray-800); white-space: pre-wrap; word-break: break-word;">
-${this.escapeHtml(
-  typeof value === "string" ? value : JSON.stringify(value, null, 2)
-)}
-                </pre>
-              </div>
-            </div>
-          </div>
-        `
-          )
-          .join("")}
-      </div>
-    `;
   }
 }
