@@ -48,6 +48,84 @@
   --color-border-light: #475569;
 }
 
+/* Badges / Tags with better light-mode contrast */
+.badge {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  font-size: 0.75rem;
+  line-height: 1;
+  font-weight: 600;
+  border-radius: 9999px;
+  border: 1px solid transparent;
+}
+
+.badge-green {
+  background-color: #d1fae5; /* green-100 */
+  color: #065f46; /* green-800 */
+  border-color: #10b981; /* green-500 */
+}
+
+.badge-blue {
+  background-color: #dbeafe; /* blue-100 */
+  color: #1e3a8a; /* blue-900 */
+  border-color: #60a5fa; /* blue-400 */
+}
+
+.badge-indigo {
+  background-color: #e0e7ff; /* indigo-100 */
+  color: #3730a3; /* indigo-800 */
+  border-color: #818cf8; /* indigo-400 */
+}
+
+.badge-amber {
+  background-color: #fef3c7; /* amber-100 */
+  color: #92400e; /* amber-800 */
+  border-color: #fbbf24; /* amber-400 */
+}
+
+.badge-teal {
+  background-color: #ccfbf1; /* teal-100 */
+  color: #115e59; /* teal-800 */
+  border-color: #2dd4bf; /* teal-400 */
+}
+
+.badge-gray {
+  background-color: #f1f5f9; /* slate-100 */
+  color: #334155; /* slate-700 */
+  border-color: #cbd5e1; /* slate-300 */
+}
+
+.dark .badge-green {
+  background-color: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  border-color: #10b981;
+}
+.dark .badge-blue {
+  background-color: rgba(59, 130, 246, 0.15);
+  color: #60a5fa;
+  border-color: #3b82f6;
+}
+.dark .badge-indigo {
+  background-color: rgba(99, 102, 241, 0.15);
+  color: #a5b4fc;
+  border-color: #6366f1;
+}
+.dark .badge-amber {
+  background-color: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  border-color: #f59e0b;
+}
+.dark .badge-teal {
+  background-color: rgba(45, 212, 191, 0.15);
+  color: #5eead4;
+  border-color: #2dd4bf;
+}
+.dark .badge-gray {
+  background-color: rgba(148, 163, 184, 0.15);
+  color: #cbd5e1;
+  border-color: #94a3b8;
+}
+
 /* Classes customizadas que usam nossas variáveis */
 .bg-primary { background-color: var(--color-bg-primary) !important; }
 .bg-secondary { background-color: var(--color-bg-secondary) !important; }

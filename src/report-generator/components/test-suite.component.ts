@@ -113,13 +113,13 @@ export class TestSuiteComponent extends BaseComponent {
 
           <!-- Métricas e controles -->
           <div class="flex items-center space-x-4">
-            <!-- Success rate badge -->
-            <div class="px-3 py-1 rounded-full text-xs font-medium ${
+            <!-- Success rate badge (higher contrast in light mode) -->
+            <div class="text-xs font-medium ${
               parseFloat(metrics.successRate) === 100
-                ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
+                ? "badge badge-green"
                 : parseFloat(metrics.successRate) >= 80
-                ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400"
-                : "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400"
+                ? "badge badge-amber"
+                : "badge badge-gray"
             }">
               ${metrics.successRate}% success
             </div>
@@ -127,7 +127,7 @@ export class TestSuiteComponent extends BaseComponent {
             <!-- Expand/collapse icon -->
             <span
               id="${suiteId}-icon"
-              class="transform transition-transform duration-200 text-secondary"
+              class="transform transition-transform duration-200 text-primary"
               aria-hidden="true"
             >
               ▶

@@ -521,11 +521,11 @@ ${this.escapeHtml(response.raw_response)}
                     <code class="text-xs text-primary">${this.escapeHtml(e.condition)}</code>
                   </div>
                   <div class="flex items-center gap-2 text-xs">
-                    <span class="px-2 py-0.5 rounded-full ${e.matched ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'}">${e.matched ? 'matched' : 'not matched'}</span>
-                    <span class="px-2 py-0.5 rounded-full ${e.executed ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300' : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'}">${e.executed ? 'executado' : 'não executado'}</span>
-                    ${e.branch && e.branch !== 'none' ? this.html`<span class="px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300">${e.branch}</span>` : ''}
-                    ${typeof e.assertions_added === 'number' ? this.html`<span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">assertions: ${e.assertions_added}</span>` : ''}
-                    ${typeof e.captures_added === 'number' ? this.html`<span class="px-2 py-0.5 rounded-full bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300">captures: ${e.captures_added}</span>` : ''}
+                    <span class="badge ${e.matched ? 'badge-green' : 'badge-gray'}">${e.matched ? 'matched' : 'not matched'}</span>
+                    <span class="badge ${e.executed ? 'badge-blue' : 'badge-gray'}">${e.executed ? 'executado' : 'não executado'}</span>
+                    ${e.branch && e.branch !== 'none' ? this.html`<span class="badge badge-indigo">${e.branch}</span>` : ''}
+                    ${typeof e.assertions_added === 'number' ? this.html`<span class="badge badge-amber">assertions: ${e.assertions_added}</span>` : ''}
+                    ${typeof e.captures_added === 'number' ? this.html`<span class="badge badge-teal">captures: ${e.captures_added}</span>` : ''}
                   </div>
                 </div>
               </li>
@@ -731,10 +731,10 @@ ${this.escapeHtml(curlCommand)}
             <h3 class="font-medium text-primary">
               ${this.escapeHtml(step.stepName)}
             </h3>
-            ${step.scenariosMeta && step.scenariosMeta.has_scenarios ? this.html`<span class="ml-2 text-xs px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300">Scenario</span>` : ''}
+            ${step.scenariosMeta && step.scenariosMeta.has_scenarios ? this.html`<span class="ml-2 badge badge-indigo">Scenario</span>` : ''}
             ${
               visualStatus === "info"
-                ? this.html`<span class="ml-2 text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">Sem assertions</span>`
+                ? this.html`<span class="ml-2 badge badge-blue">Sem assertions</span>`
                 : ""
             }
           </div>
@@ -746,7 +746,7 @@ ${this.escapeHtml(curlCommand)}
             </span>
             <span
               id="${stepId}-icon"
-              class="transform transition-transform duration-200 text-secondary"
+              class="transform transition-transform duration-200 text-primary"
               aria-hidden="true"
             >
               ▶
