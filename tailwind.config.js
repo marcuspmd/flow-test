@@ -1,7 +1,34 @@
 /** @type {import('tailwindcss').Config} */
 /** @type {import('tailwindcss').Config} */
 module.exports = {
-  darkMode: 'class',
+  darkMode: ['class'],
+  safelist: [
+    // Force include dark mode classes
+    'dark:bg-gray-900',
+    'dark:text-gray-100',
+    'dark:text-gray-200',
+    'dark:text-gray-300',
+    'dark:text-gray-400',
+    'dark:bg-gray-800',
+    'dark:bg-gray-700',
+    'dark:border-gray-700',
+    'dark:border-gray-600',
+    'dark:hover:bg-gray-700',
+    'dark:hover:bg-gray-600',
+    'dark:text-white',
+    'dark:text-blue-400',
+    'dark:text-green-400',
+    'dark:text-red-400',
+    'dark:text-purple-400',
+    'dark:bg-blue-900/20',
+    'dark:bg-green-900/20',
+    'dark:bg-red-900/20',
+    'dark:bg-purple-900/20',
+    'dark:border-blue-800',
+    'dark:border-green-800',
+    'dark:border-red-800',
+    'dark:border-purple-800'
+  ],
   content: [
     './src/report-generator/html-generator.ts',
     './src/report-generator/client/components/*.js',
@@ -19,6 +46,42 @@ module.exports = {
   theme: {
     extend: {
       colors: {
+        primary: {
+          DEFAULT: '#1976d2', // azul logo
+          dark: '#1565c0',
+        },
+        accent: {
+          DEFAULT: '#43b581', // verde logo
+          dark: '#2e8c5a',
+        },
+        warning: {
+          DEFAULT: '#f7b500', // amarelo/dourado logo
+          dark: '#c49000',
+        },
+        bg: {
+          DEFAULT: '#f8fafc', // fundo claro
+          dark: '#10151c', // fundo escuro
+        },
+        bgSecondary: {
+          DEFAULT: '#ffffff',
+          dark: '#18202b',
+        },
+        text: {
+          DEFAULT: '#1a2733',
+          dark: '#e3eaf2',
+        },
+        title: {
+          DEFAULT: '#0a2540',
+          dark: '#b2c7e6',
+        },
+        status: {
+          DEFAULT: '#43b581',
+          dark: '#43b581',
+        },
+        logoShadow: {
+          DEFAULT: '0 2px 8px rgba(25, 118, 210, 0.08)',
+          dark: '0 2px 8px rgba(67, 181, 129, 0.18)',
+        },
         success: {
           50: '#f0fdf4',
           100: '#dcfce7',
@@ -33,13 +96,6 @@ module.exports = {
           600: '#dc2626',
           700: '#b91c1c',
         },
-        warning: {
-          50: '#fffbeb',
-          100: '#fef3c7',
-          500: '#f59e0b',
-          600: '#d97706',
-          700: '#b45309',
-        }
       },
       fontFamily: {
         'mono': ['Monaco', 'Menlo', 'Consolas', 'Courier New', 'monospace'],

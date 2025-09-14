@@ -9,6 +9,16 @@ async function regenerateHTML(): Promise<void> {
   try {
     console.log('🔄 Regenerating HTML report...');
 
+    // First, regenerate CSS
+    console.log('🎨 Regenerating CSS...');
+    const { execSync } = require('child_process');
+    try {
+      execSync('npm run build:css', { stdio: 'pipe' });
+      console.log('✅ CSS regenerated successfully');
+    } catch (error: any) {
+      console.warn('⚠️ CSS regeneration failed:', error.message);
+    }
+
     // Read the latest JSON file
     const jsonPath = path.join(__dirname, 'results', 'latest.json');
 
