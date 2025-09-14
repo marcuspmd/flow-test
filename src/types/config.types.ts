@@ -164,6 +164,7 @@ export interface StepExecutionResult {
   captured_variables?: Record<string, any>;
   available_variables?: Record<string, any>;
   iteration_results?: StepExecutionResult[];
+  scenarios_meta?: ScenarioMeta;
   error_message?: string;
 }
 
@@ -176,6 +177,22 @@ export interface AssertionResult {
   actual: any;
   passed: boolean;
   message?: string;
+}
+
+export interface ScenarioEvaluation {
+  index: number;
+  condition: string;
+  matched: boolean;
+  executed: boolean;
+  branch: "then" | "else" | "none";
+  assertions_added?: number;
+  captures_added?: number;
+}
+
+export interface ScenarioMeta {
+  has_scenarios: boolean;
+  executed_count: number;
+  evaluations: ScenarioEvaluation[];
 }
 
 /**

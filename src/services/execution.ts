@@ -682,11 +682,13 @@ export class ExecutionService {
     try {
       // First, try to find a scenario that matches the current conditions
       let executedScenario = false;
+      const evaluations: any[] = [];
       let httpResult: any = null;
       let assertionResults: any[] = [];
       let capturedVariables: Record<string, any> = {};
 
-      for (const scenario of step.scenarios) {
+      for (let i = 0; i < step.scenarios.length; i++) {
+        const scenario = step.scenarios[i];
         try {
           // Evaluate the condition using current variables
           const conditionMet = this.evaluateScenarioCondition(
@@ -746,8 +748,30 @@ export class ExecutionService {
             }
 
             executedScenario = true;
+
+            evaluations.push({
+              index: i + 1,
+              condition: scenario.condition,
+              matched: true,
+              executed: true,
+              branch: "then",
+              assertions_added: assertionResults.length,
+              captures_added: Object.keys(capturedVariables || {}).length,
+            });
+
             break;
           }
+
+          // Not matched (or no 'then') -> record evaluation row
+          evaluations.push({
+            index: i + 1,
+            condition: scenario.condition,
+            matched: conditionMet,
+            executed: false,
+            branch: "none",
+            assertions_added: 0,
+            captures_added: 0,
+          });
         } catch (error) {
           this.logger.warn(
             `Error evaluating scenario condition: ${scenario.condition}`,
@@ -771,6 +795,11 @@ export class ExecutionService {
             this.globalVariables.getAllVariables()
           ),
           error_message: "No matching scenario conditions",
+          scenarios_meta: {
+            has_scenarios: true,
+            executed_count: 0,
+            evaluations,
+          } as any,
         };
       }
 
@@ -785,6 +814,11 @@ export class ExecutionService {
         available_variables: this.filterAvailableVariables(
           this.globalVariables.getAllVariables()
         ),
+        scenarios_meta: {
+          has_scenarios: true,
+          executed_count: 1,
+          evaluations,
+        } as any,
         error_message: httpResult?.error_message,
       };
 
@@ -992,6 +1026,7 @@ export class ExecutionService {
         available_variables: this.filterAvailableVariables(
           this.globalVariables.getAllVariables()
         ),
+        scenarios_meta: (httpResult as any).scenarios_meta,
         error_message: httpResult.error_message,
       };
 

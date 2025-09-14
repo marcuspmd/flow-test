@@ -41,6 +41,8 @@ export interface TestStepData {
   response?: ResponseData;
   curlCommand?: string;
   stepId: string;
+  iterations?: IterationStepData[];
+  scenariosMeta?: ScenarioMeta;
 }
 
 export interface TestStepProps extends ComponentProps {
@@ -69,6 +71,35 @@ export interface ResponseData {
   headers: Record<string, any>;
   body: any;
   raw_response?: string;
+}
+
+export interface IterationStepData {
+  index: number; // 1-based index
+  total: number;
+  stepName: string;
+  status: "success" | "failure";
+  duration: number;
+  assertions: AssertionData[];
+  request?: RequestData;
+  response?: ResponseData;
+  curlCommand?: string;
+  stepId: string;
+}
+
+export interface ScenarioEvaluationUI {
+  index: number;
+  condition: string;
+  matched: boolean;
+  executed: boolean;
+  branch: "then" | "else" | "none";
+  assertions_added?: number;
+  captures_added?: number;
+}
+
+export interface ScenarioMeta {
+  has_scenarios: boolean;
+  executed_count: number;
+  evaluations: ScenarioEvaluationUI[];
 }
 
 export interface TabData {

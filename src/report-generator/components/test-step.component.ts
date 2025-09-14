@@ -10,14 +10,16 @@
  */
 
 import { BaseComponent } from "./base-component";
-import { TestStepProps, TabData } from "./types";
+import { TestStepProps, TabData, IterationStepData, ScenarioMeta } from "./types";
 
 export class TestStepComponent extends BaseComponent {
-  private getStatusIcon(status: string): string {
-    return status === "success" ? "✓" : "✗";
+  private getStatusIcon(status: "success" | "failure" | "info"): string {
+    if (status === "success") return "✓";
+    if (status === "failure") return "✗";
+    return "ℹ";
   }
 
-  private getStatusClasses(status: string): {
+  private getStatusClasses(status: "success" | "failure" | "info"): {
     border: string;
     icon: string;
     bg: string;
@@ -30,11 +32,28 @@ export class TestStepComponent extends BaseComponent {
       };
     }
 
+    if (status === "failure") {
+      return {
+        border: "border-l-red-500",
+        icon: "text-red-500",
+        bg: "bg-red-50 dark:bg-red-900/10",
+      };
+    }
+
+    // info (neutro)
     return {
-      border: "border-l-red-500",
-      icon: "text-red-500",
-      bg: "bg-red-50 dark:bg-red-900/10",
+      border: "border-l-blue-500",
+      icon: "text-blue-500",
+      bg: "bg-blue-50 dark:bg-blue-900/10",
     };
+  }
+
+  private countAllAssertions(step: any): number {
+    const direct = Array.isArray(step.assertions) ? step.assertions.length : 0;
+    const fromIterations = Array.isArray(step.iterations)
+      ? step.iterations.reduce((sum: number, it: any) => sum + (Array.isArray(it.assertions) ? it.assertions.length : 0), 0)
+      : 0;
+    return direct + fromIterations;
   }
 
   private formatJson(data: any): string {
@@ -238,17 +257,6 @@ export class TestStepComponent extends BaseComponent {
                 </div>
               </div>
             </div>
-            <button
-              class="absolute top-2 right-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg p-2 shadow-md transition-colors duration-200"
-              onclick="navigator.clipboard.writeText('${this.escapeHtml(
-                `${request.method || "GET"} ${
-                  request.full_url || request.url || ""
-                }`
-              ).replace(/'/g, "\\'")}')"
-              title="Copiar Method & URL"
-            >
-              📋
-            </button>
           </div>
         </div>
 
@@ -437,6 +445,97 @@ ${this.escapeHtml(response.raw_response)}
     `;
   }
 
+  private renderIterationCard(parentStepId: string, it: IterationStepData): string {
+    const itStepId = `${parentStepId}-it-${it.index}`;
+    const headerStatus = this.getStatusClasses(it.status);
+    const statusIcon = this.getStatusIcon(it.status);
+
+    const tabs = this.renderTabs(
+      {
+        assertions: it.assertions,
+        request: it.request,
+        response: it.response,
+        curlCommand: it.curlCommand,
+      } as any,
+      itStepId
+    );
+
+    return this.html`
+      <div class="card ${headerStatus.border}">
+        <div class="flex justify-between items-center p-3 ${headerStatus.bg} rounded-t-lg">
+          <div class="flex items-center space-x-3">
+            <div class="flex items-center space-x-2">
+              <span class="font-mono text-xs text-secondary">[${it.index}/${it.total}]</span>
+              <span class="text-lg ${headerStatus.icon}">${statusIcon}</span>
+            </div>
+            <h4 class="font-medium text-primary">${this.escapeHtml(it.stepName)}</h4>
+          </div>
+          <div class="text-sm text-secondary">${this.formatDuration(it.duration)}</div>
+        </div>
+        <div class="p-4 bg-tertiary border-t border-default">
+          ${tabs}
+        </div>
+      </div>
+    `;
+  }
+
+  private renderIterationsTab(step: any, stepId: string): string {
+    const iterations: IterationStepData[] = step.iterations || [];
+    if (!iterations.length) return "";
+
+    return this.html`
+      <div class="space-y-3">
+        <h4 class="font-semibold text-primary text-sm uppercase tracking-wide">
+          Iterations (${iterations.length})
+        </h4>
+        <div class="space-y-3">
+          ${this.renderList(iterations, (it) => this.renderIterationCard(stepId, it))}
+        </div>
+      </div>
+    `;
+  }
+
+  private renderScenariosTab(meta?: ScenarioMeta): string {
+    if (!meta || !meta.has_scenarios) {
+      return this.html`
+        <div class="text-secondary text-center py-4">
+          <p>Nenhum cenário registrado</p>
+        </div>
+      `;
+    }
+
+    const evals = meta.evaluations || [];
+    return this.html`
+      <div class="space-y-3">
+        <h4 class="font-semibold text-primary text-sm uppercase tracking-wide">
+          Cenários (${evals.length}) • Executados: ${meta.executed_count}
+        </h4>
+        <ul class="space-y-2">
+          ${this.renderList(
+            evals,
+            (e) => this.html`
+              <li class="p-3 bg-primary rounded-lg border border-default">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-3">
+                    <span class="font-mono text-xs text-secondary">#${e.index}</span>
+                    <code class="text-xs text-primary">${this.escapeHtml(e.condition)}</code>
+                  </div>
+                  <div class="flex items-center gap-2 text-xs">
+                    <span class="px-2 py-0.5 rounded-full ${e.matched ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'}">${e.matched ? 'matched' : 'not matched'}</span>
+                    <span class="px-2 py-0.5 rounded-full ${e.executed ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300' : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'}">${e.executed ? 'executado' : 'não executado'}</span>
+                    ${e.branch && e.branch !== 'none' ? this.html`<span class="px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300">${e.branch}</span>` : ''}
+                    ${typeof e.assertions_added === 'number' ? this.html`<span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">assertions: ${e.assertions_added}</span>` : ''}
+                    ${typeof e.captures_added === 'number' ? this.html`<span class="px-2 py-0.5 rounded-full bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300">captures: ${e.captures_added}</span>` : ''}
+                  </div>
+                </div>
+              </li>
+            `
+          )}
+        </ul>
+      </div>
+    `;
+  }
+
   private renderCurlTab(curlCommand: string): string {
     if (!curlCommand) {
       return this.html`
@@ -468,6 +567,37 @@ ${this.escapeHtml(curlCommand)}
   }
 
   private renderTabs(step: any, stepId: string): string {
+    // Se for step com iterações, renderiza apenas a aba "Iterations"
+    if (Array.isArray(step.iterations) && step.iterations.length > 0) {
+      const onlyTab: TabData = {
+        id: `${stepId}-iterations`,
+        label: `Iterations (${step.iterations.length})`,
+        content: this.renderIterationsTab(step, stepId),
+        active: true,
+      };
+      return this.html`
+        <div id="${stepId}-tabs" class="tabs-container">
+          <!-- Tab buttons -->
+          <div class="flex border-b border-default mb-4 overflow-x-auto">
+            <button
+              class="tab-button px-4 py-2 text-sm font-medium border-b-2 transition-colors duration-200 whitespace-nowrap border-blue-500 text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20"
+              onclick="switchTab('${stepId}-tabs', '${onlyTab.id}')"
+              role="tab"
+              aria-selected="true"
+              aria-controls="${onlyTab.id}"
+            >
+              ${this.escapeHtml(onlyTab.label)}
+            </button>
+          </div>
+
+          <!-- Tab contents -->
+          <div id="${onlyTab.id}" class="tab-content " role="tabpanel">
+            ${onlyTab.content}
+          </div>
+        </div>
+      `;
+    }
+
     const tabs: TabData[] = [];
 
     // Tab de Assertions (sempre presente)
@@ -484,6 +614,15 @@ ${this.escapeHtml(curlCommand)}
         id: `${stepId}-request`,
         label: "Request",
         content: this.renderRequestTab(step.request),
+      });
+    }
+
+    // Tab de Cenários (se disponível)
+    if (step.scenariosMeta && step.scenariosMeta.has_scenarios) {
+      tabs.push({
+        id: `${stepId}-scenarios`,
+        label: `Scenarios (${step.scenariosMeta.executed_count})`,
+        content: this.renderScenariosTab(step.scenariosMeta),
       });
     }
 
@@ -515,7 +654,7 @@ ${this.escapeHtml(curlCommand)}
     }
 
     return this.html`
-      <div class="tabs-container">
+      <div id="${stepId}-tabs" class="tabs-container">
         <!-- Tab buttons -->
         <div class="flex border-b border-default mb-4 overflow-x-auto">
           ${this.renderList(
@@ -527,7 +666,7 @@ ${this.escapeHtml(curlCommand)}
                   ? "border-blue-500 text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20"
                   : "border-transparent text-secondary hover:text-primary hover:border-gray-300"
               }"
-              onclick="switchTab('${stepId}', '${tab.id}')"
+              onclick="switchTab('${stepId}-tabs', '${tab.id}')"
               role="tab"
               aria-selected="${tab.active ? "true" : "false"}"
               aria-controls="${tab.id}"
@@ -557,8 +696,11 @@ ${this.escapeHtml(curlCommand)}
 
   render(props: TestStepProps): string {
     const { step, index } = props;
-    const statusClasses = this.getStatusClasses(step.status);
-    const statusIcon = this.getStatusIcon(step.status);
+    const totalAssertions = this.countAllAssertions(step);
+    const visualStatus: "success" | "failure" | "info" =
+      step.status === "failure" ? "failure" : totalAssertions > 0 ? "success" : "info";
+    const statusClasses = this.getStatusClasses(visualStatus);
+    const statusIcon = this.getStatusIcon(visualStatus);
     const stepId = step.stepId || this.generateId(`step-${index}`);
 
     return this.html`
@@ -589,6 +731,12 @@ ${this.escapeHtml(curlCommand)}
             <h3 class="font-medium text-primary">
               ${this.escapeHtml(step.stepName)}
             </h3>
+            ${step.scenariosMeta && step.scenariosMeta.has_scenarios ? this.html`<span class="ml-2 text-xs px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300">Scenario</span>` : ''}
+            ${
+              visualStatus === "info"
+                ? this.html`<span class="ml-2 text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">Sem assertions</span>`
+                : ""
+            }
           </div>
 
           <!-- Duração e controles -->

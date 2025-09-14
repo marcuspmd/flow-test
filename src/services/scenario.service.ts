@@ -30,7 +30,11 @@ export class ScenarioService {
     verbosity: string,
     variableContext?: Record<string, any>
   ): void {
-    for (const scenario of scenarios) {
+    const evaluations: any[] = [];
+    let executedCount = 0;
+
+    for (let i = 0; i < scenarios.length; i++) {
+      const scenario = scenarios[i];
       try {
         const conditionMet = this.evaluateCondition(scenario.condition, result);
 
@@ -44,14 +48,29 @@ export class ScenarioService {
 
         const scenarioBlock = conditionMet ? scenario.then : scenario.else;
 
+        let assertionsAdded = 0;
+        let capturesAdded = 0;
         if (scenarioBlock) {
-          this.executeScenarioBlock(
+          const execResult = this.executeScenarioBlock(
             scenarioBlock,
             result,
             verbosity,
             variableContext
           );
+          assertionsAdded = execResult.assertionsAdded;
+          capturesAdded = execResult.capturesAdded;
+          executedCount += 1;
         }
+
+        evaluations.push({
+          index: i + 1,
+          condition: scenario.condition,
+          matched: conditionMet,
+          executed: Boolean(scenarioBlock),
+          branch: scenarioBlock ? (conditionMet ? "then" : "else") : "none",
+          assertions_added: assertionsAdded,
+          captures_added: capturesAdded,
+        });
       } catch (error) {
         this.logger.error(`Error evaluating scenario`, {
           error: error as Error,
@@ -60,6 +79,12 @@ export class ScenarioService {
         result.status = "failure";
       }
     }
+
+    result.scenarios_meta = {
+      has_scenarios: scenarios.length > 0,
+      executed_count: executedCount,
+      evaluations,
+    } as any;
   }
 
   /**
@@ -143,7 +168,9 @@ export class ScenarioService {
     result: StepExecutionResult,
     verbosity: string,
     variableContext?: Record<string, any>
-  ): void {
+  ): { assertionsAdded: number; capturesAdded: number } {
+    let assertionsAdded = 0;
+    let capturesAdded = 0;
     // Executes scenario assertions
     if (block.assert) {
       const scenarioAssertions = this.assertionService.validateAssertions(
@@ -156,6 +183,7 @@ export class ScenarioService {
         result.assertions_results = [];
       }
       result.assertions_results.push(...scenarioAssertions);
+      assertionsAdded = scenarioAssertions.length;
 
       // Checks if any assertion failed
       const failedAssertions = scenarioAssertions.filter((a) => !a.passed);
@@ -193,7 +221,10 @@ export class ScenarioService {
         result.captured_variables = {};
       }
       Object.assign(result.captured_variables, capturedVariables);
+      capturesAdded = Object.keys(capturedVariables || {}).length;
     }
+
+    return { assertionsAdded, capturesAdded };
   }
 
   /**

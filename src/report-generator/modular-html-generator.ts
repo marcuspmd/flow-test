@@ -16,6 +16,7 @@ import {
   SummaryCardData,
   TestSuiteProps,
   HeaderProps,
+  TestStepData,
 } from "./components";
 
 // Tipos para os dados do relatório
@@ -262,44 +263,236 @@ export class ModularHtmlGenerator {
     suite: SuiteResult,
     index: number
   ): TestSuiteProps {
+    const rawSteps: StepResult[] = suite.steps_results || [];
+
+    // Detecta e agrupa iterações: "Name [i/N]"
+    const iterGroups = new Map<string, Array<{ step: StepResult; idx: number; total: number; order: number }>>();
+    const normalSteps: Array<{ step: StepResult; order: number }> = [];
+
+    rawSteps.forEach((s, i) => {
+      const name = s.step_name || '';
+      const m = name.match(/^(.*)\s\[(\d+)\/(\d+)\]$/);
+      if (m) {
+        const base = m[1].trim();
+        const idx = parseInt(m[2], 10);
+        const total = parseInt(m[3], 10);
+        const arr = iterGroups.get(base) || [];
+        arr.push({ step: s, idx, total, order: i });
+        iterGroups.set(base, arr);
+      } else {
+        normalSteps.push({ step: s, order: i });
+      }
+    });
+
+    // Constrói lista final de steps preservando ordem original
+    const finalSteps: TestStepData[] = [];
+    const usedGroups = new Set<string>();
+
+    normalSteps.forEach(({ step, order }, stepIndex) => {
+      const baseName = (step.step_name || '').trim();
+      const group = iterGroups.get(baseName);
+
+      const toTestStepData = (s: StepResult, si: number): TestStepData => {
+        const obj: any = {
+          stepName: s.step_name ? this.interpolateForDisplay(s.step_name) : `Step ${si + 1}`,
+          status: s.status === 'success' ? 'success' : 'failure',
+          duration: s.duration_ms || 0,
+          assertions: (s.assertions_results || []).map((a) => this.interpolateForDisplay(a)),
+          request: s.request_details
+            ? {
+                ...this.interpolateForDisplay(s.request_details),
+                raw_request: s.request_details.raw_request
+                  ? this.interpolateForDisplay(s.request_details.raw_request)
+                  : s.request_details.raw_request,
+              }
+            : undefined,
+          response: s.response_details
+            ? {
+                ...this.interpolateForDisplay(s.response_details),
+                raw_response: s.response_details.raw_response
+                  ? this.interpolateForDisplay(s.response_details.raw_response)
+                  : s.response_details.raw_response,
+              }
+            : undefined,
+          curlCommand: s.request_details?.curl_command
+            ? this.interpolateForDisplay(s.request_details.curl_command)
+            : undefined,
+          stepId: `step-${index}-${order}`,
+        };
+        if ((s as any).scenarios_meta) {
+          obj.scenariosMeta = this.interpolateForDisplay((s as any).scenarios_meta);
+        } else if ((s as any).available_variables && (s as any).available_variables.total_scenarios_tested != null) {
+          obj.scenariosMeta = {
+            has_scenarios: true,
+            executed_count: (s as any).available_variables.total_scenarios_tested,
+            evaluations: [],
+          };
+        }
+        return obj as any;
+      };
+
+      const parent = toTestStepData(step, stepIndex) as any;
+      if ((step as any).scenarios_meta) {
+        parent.scenariosMeta = this.interpolateForDisplay((step as any).scenarios_meta);
+      }
+
+      // Suporte a resultados de iteração embutidos no próprio step
+      const embeddedIterations = (step as any).iteration_results as StepResult[] | undefined;
+      if (Array.isArray(embeddedIterations) && embeddedIterations.length) {
+        parent.iterations = embeddedIterations.map((s, j) => {
+          const mIt = (s.step_name || '').match(/^(.*)\s\[(\d+)\/(\d+)\]$/);
+          const idx = mIt ? parseInt(mIt[2], 10) : j + 1;
+          const total = mIt ? parseInt(mIt[3], 10) : embeddedIterations.length;
+          const itObj: any = {
+            index: idx,
+            total,
+            stepName: this.interpolateForDisplay(s.step_name || baseName),
+            status: (s.status === 'success' ? 'success' : 'failure') as 'success' | 'failure',
+            duration: s.duration_ms || 0,
+            assertions: (s.assertions_results || []).map((a) => this.interpolateForDisplay(a)),
+            request: s.request_details
+              ? {
+                  ...this.interpolateForDisplay(s.request_details),
+                  raw_request: s.request_details.raw_request
+                    ? this.interpolateForDisplay(s.request_details.raw_request)
+                    : s.request_details.raw_request,
+                }
+              : undefined,
+            response: s.response_details
+              ? {
+                  ...this.interpolateForDisplay(s.response_details),
+                  raw_response: s.response_details.raw_response
+                    ? this.interpolateForDisplay(s.response_details.raw_response)
+                    : s.response_details.raw_response,
+                }
+              : undefined,
+            curlCommand: s.request_details?.curl_command
+              ? this.interpolateForDisplay(s.request_details.curl_command)
+              : undefined,
+            stepId: `step-${index}-${order}-it-${idx}`,
+          };
+          if ((s as any).scenarios_meta) {
+            itObj.scenariosMeta = this.interpolateForDisplay((s as any).scenarios_meta);
+          } else if ((s as any).available_variables && (s as any).available_variables.total_scenarios_tested != null) {
+            itObj.scenariosMeta = {
+              has_scenarios: true,
+              executed_count: (s as any).available_variables.total_scenarios_tested,
+              evaluations: [],
+            };
+          }
+          return itObj as any;
+        });
+      }
+
+      if (group && group.length) {
+        usedGroups.add(baseName);
+        // Ordena por idx e mapeia para IterationStepData
+        const iterations = group
+          .sort((a, b) => a.idx - b.idx)
+          .map(({ step: s, idx, total, order: ord }) => {
+            const obj: any = {
+              index: idx,
+              total,
+              stepName: this.interpolateForDisplay(s.step_name || baseName),
+              status: (s.status === 'success' ? 'success' : 'failure') as 'success' | 'failure',
+              duration: s.duration_ms || 0,
+              assertions: (s.assertions_results || []).map((a) => this.interpolateForDisplay(a)),
+              request: s.request_details
+                ? {
+                    ...this.interpolateForDisplay(s.request_details),
+                    raw_request: s.request_details.raw_request
+                      ? this.interpolateForDisplay(s.request_details.raw_request)
+                      : s.request_details.raw_request,
+                  }
+                : undefined,
+              response: s.response_details
+                ? {
+                    ...this.interpolateForDisplay(s.response_details),
+                    raw_response: s.response_details.raw_response
+                      ? this.interpolateForDisplay(s.response_details.raw_response)
+                      : s.response_details.raw_response,
+                  }
+                : undefined,
+              curlCommand: s.request_details?.curl_command
+                ? this.interpolateForDisplay(s.request_details.curl_command)
+                : undefined,
+              stepId: `step-${index}-${ord}`,
+            };
+            if ((s as any).scenarios_meta) {
+              obj.scenariosMeta = this.interpolateForDisplay((s as any).scenarios_meta);
+            } else if ((s as any).available_variables && (s as any).available_variables.total_scenarios_tested != null) {
+              obj.scenariosMeta = {
+                has_scenarios: true,
+                executed_count: (s as any).available_variables.total_scenarios_tested,
+                evaluations: [],
+              };
+            }
+            return obj as any;
+          });
+
+        parent.iterations = iterations;
+      }
+
+      finalSteps.push(parent);
+    });
+
+    // Para grupos sem passo pai explícito, cria um passo sintético
+    iterGroups.forEach((arr, base) => {
+      if (usedGroups.has(base)) return;
+      const sorted = arr.sort((a, b) => a.idx - b.idx);
+      const status: 'success' | 'failure' = sorted.every((x) => x.step.status === 'success') ? 'success' : 'failure';
+      const duration = sorted.reduce((sum, x) => sum + (x.step.duration_ms || 0), 0);
+
+      const iterations = sorted.map(({ step: s, idx, total, order: ord }) => ({
+        index: idx,
+        total,
+        stepName: this.interpolateForDisplay(s.step_name || base),
+        status: (s.status === 'success' ? 'success' : 'failure') as 'success' | 'failure',
+        duration: s.duration_ms || 0,
+        assertions: (s.assertions_results || []).map((a) => this.interpolateForDisplay(a)),
+        request: s.request_details
+          ? {
+              ...this.interpolateForDisplay(s.request_details),
+              raw_request: s.request_details.raw_request
+                ? this.interpolateForDisplay(s.request_details.raw_request)
+                : s.request_details.raw_request,
+            }
+          : undefined,
+        response: s.response_details
+          ? {
+              ...this.interpolateForDisplay(s.response_details),
+              raw_response: s.response_details.raw_response
+                ? this.interpolateForDisplay(s.response_details.raw_response)
+                : s.response_details.raw_response,
+            }
+          : undefined,
+        curlCommand: s.request_details?.curl_command
+          ? this.interpolateForDisplay(s.request_details.curl_command)
+          : undefined,
+        stepId: `step-${index}-${ord}`,
+      }));
+
+      finalSteps.push({
+        stepName: this.interpolateForDisplay(base),
+        status,
+        duration,
+        assertions: [],
+        request: undefined,
+        response: undefined,
+        curlCommand: undefined,
+        stepId: `step-${index}-g${finalSteps.length}`,
+        iterations,
+      } as any);
+    });
+
+    // Ordena finalSteps pela ordem original aproximada
+    // Mantém a ordem de inserção (pais primeiro) e depois quaisquer grupos sintéticos no final
+
     return {
       suiteName: suite.suite_name || `Suite ${index + 1}`,
       status: suite.status === "success" ? "success" : "failure",
       duration: suite.duration_ms || 0,
-      steps: (suite.steps_results || []).map(
-        (step: StepResult, stepIndex: number) => ({
-          stepName: step.step_name
-            ? this.interpolateForDisplay(step.step_name)
-            : `Step ${stepIndex + 1}`,
-          status: step.status === "success" ? "success" : "failure",
-          duration: step.duration_ms || 0,
-          assertions: (step.assertions_results || []).map((assertion) =>
-            this.interpolateForDisplay(assertion)
-          ),
-          request: step.request_details
-            ? {
-                ...this.interpolateForDisplay(step.request_details),
-                raw_request: step.request_details.raw_request
-                  ? this.interpolateForDisplay(step.request_details.raw_request)
-                  : step.request_details.raw_request,
-              }
-            : undefined,
-          response: step.response_details
-            ? {
-                ...this.interpolateForDisplay(step.response_details),
-                raw_response: step.response_details.raw_response
-                  ? this.interpolateForDisplay(
-                      step.response_details.raw_response
-                    )
-                  : step.response_details.raw_response,
-              }
-            : undefined,
-          curlCommand: step.request_details?.curl_command
-            ? this.interpolateForDisplay(step.request_details.curl_command)
-            : undefined,
-          stepId: `step-${index}-${stepIndex}`,
-        })
-      ),
+      steps: finalSteps,
       suiteId: `suite-${index}`,
     };
   }
@@ -350,7 +543,12 @@ export class ModularHtmlGenerator {
 
         // Sistema de tabs
         function switchTab(containerId, targetTabId) {
-          const container = document.getElementById(containerId + '-content');
+          // containerId pode ser o ID direto do container de tabs (..-tabs)
+          // ou o ID base do step (buscamos ..-content como fallback)
+          let container = document.getElementById(containerId);
+          if (!container) {
+            container = document.getElementById(containerId + '-content');
+          }
           if (!container) return;
 
           // Remover ativo de todos os botões
