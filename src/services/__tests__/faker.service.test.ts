@@ -4,7 +4,9 @@
  */
 
 // Mock do faker - precisa estar antes do jest.mock
+const mockSeed = jest.fn();
 const mockFaker = {
+  seed: mockSeed,
   internet: {
     email: jest.fn().mockReturnValue("test@example.com"),
     userName: jest.fn().mockReturnValue("testuser"),
@@ -45,6 +47,8 @@ describe("FakerService", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    // Clear singleton instance
+    (FakerService as any).instance = undefined;
     fakerService = FakerService.getInstance();
   });
 
@@ -170,6 +174,142 @@ describe("FakerService", () => {
       const methods = fakerService.getAvailableMethods();
       const sortedMethods = [...methods].sort();
       expect(methods).toEqual(sortedMethods);
+    });
+  });
+
+  describe("Configuração e seed", () => {
+    test("deve criar instância com configuração", () => {
+      // Clear singleton to test fresh instance
+      (FakerService as any).instance = undefined;
+      const configuredService = FakerService.getInstance({ seed: 123 });
+      expect(configuredService).toBeDefined();
+      expect(mockSeed).toHaveBeenCalledWith(123);
+    });
+
+    test("deve atualizar configuração", () => {
+      fakerService.updateConfig({ seed: 456 });
+      expect(fakerService).toBeDefined();
+      expect(mockSeed).toHaveBeenCalledWith(456);
+    });
+
+    test("deve definir seed", () => {
+      fakerService.setSeed(789);
+      expect(fakerService).toBeDefined();
+      expect(mockSeed).toHaveBeenCalledWith(789);
+    });
+
+    test("deve resetar seed", () => {
+      fakerService.resetSeed();
+      expect(fakerService).toBeDefined();
+      expect(mockSeed).toHaveBeenCalledWith();
+    });
+
+    test("deve inicializar configuração sem seed", () => {
+      // Clear singleton to test fresh instance
+      (FakerService as any).instance = undefined;
+      const service = FakerService.getInstance({});
+      expect(service).toBeDefined();
+    });
+  });
+
+  describe("Tratamento de erros", () => {
+    test("deve lançar erro para método não allowlistado", () => {
+      expect(() => {
+        fakerService.executeMethod("hacker.password");
+      }).toThrow("Faker method 'hacker.password' is not allowlisted for security reasons");
+    });
+
+    test("deve lançar erro para path inválido", () => {
+      expect(() => {
+        fakerService.executeMethod("invalid");
+      }).toThrow("Invalid Faker method path: invalid. Expected format: 'category.method'");
+    });
+
+    test("deve lançar erro para path com muitas partes", () => {
+      expect(() => {
+        fakerService.executeMethod("invalid.too.many.parts");
+      }).toThrow("Invalid Faker method path: invalid.too.many.parts. Expected format: 'category.method'");
+    });
+
+    test("deve lançar erro para categoria inexistente", () => {
+      // Mock temporário para simular categoria inexistente
+      const originalMock = mockFaker;
+      (mockFaker as any).nonexistent = undefined;
+
+      expect(() => {
+        fakerService.executeMethod("nonexistent.method");
+      }).toThrow("Faker category 'nonexistent' not found");
+    });
+
+    test("deve lançar erro para método inexistente na categoria", () => {
+      // Mock temporário para simular método inexistente
+      (mockFaker.person as any).nonexistent = "not a function";
+
+      expect(() => {
+        fakerService.executeMethod("person.nonexistent");
+      }).toThrow("Faker method 'nonexistent' not found in category 'person'");
+
+      // Restaurar mock original
+      delete (mockFaker.person as any).nonexistent;
+    });
+  });
+
+  describe("parseArguments - cobertura completa", () => {
+    test("deve parsear argumentos JSON diretos", () => {
+      const result = fakerService.parseFakerExpression('number.int({"min": 1, "max": 10})');
+      expect(result).toBe(5);
+    });
+
+    test("deve parsear argumentos com aspas simples", () => {
+      const result = fakerService.parseFakerExpression("helpers.arrayElement(['x', 'y', 'z'])");
+      expect(result).toBe("a");
+    });
+
+    test("deve parsear argumentos como array", () => {
+      const result = fakerService.parseFakerExpression('helpers.arrayElement("test", "test2")');
+      expect(result).toBe("a");
+    });
+
+    test("deve tratar argumentos como string quando JSON falha", () => {
+      const result = fakerService.parseFakerExpression('lorem.word(invalid_json_here)');
+      expect(result).toBe("lorem");
+    });
+
+    test("deve tratar erro de parsing de argumentos", () => {
+      expect(() => {
+        fakerService.parseFakerExpression('invalid.method({malformed json})');
+      }).toThrow("Error parsing Faker arguments");
+    });
+  });
+
+  describe("Execução de métodos com argumentos", () => {
+    test("deve executar método com argumentos", () => {
+      const result = fakerService.executeMethod("number.int", [{ min: 1, max: 10 }]);
+      expect(result).toBe(5);
+      expect(mockFaker.number.int).toHaveBeenCalledWith({ min: 1, max: 10 });
+    });
+
+    test("deve executar método arrayElement com argumentos", () => {
+      const result = fakerService.executeMethod("helpers.arrayElement", [["a", "b", "c"]]);
+      expect(result).toBe("a");
+      expect(mockFaker.helpers.arrayElement).toHaveBeenCalledWith(["a", "b", "c"]);
+    });
+  });
+
+  describe("Tratamento de exceções na execução", () => {
+    test("deve capturar e relançar erros de execução", () => {
+      // Mock para simular erro durante execução
+      const originalMethod = mockFaker.person.firstName;
+      mockFaker.person.firstName = jest.fn().mockImplementation(() => {
+        throw new Error("Simulated faker error");
+      });
+
+      expect(() => {
+        fakerService.executeMethod("person.firstName");
+      }).toThrow("Error executing Faker method 'person.firstName': Error: Simulated faker error");
+
+      // Restaurar mock original
+      mockFaker.person.firstName = originalMethod;
     });
   });
 });

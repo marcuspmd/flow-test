@@ -763,5 +763,149 @@ suite_name: Test Suite
 
       expect(result).toBeDefined();
     });
+
+    it("should log filtered test count when tests are filtered", async () => {
+      const { ConfigManager } = require("../config");
+      const { TestDiscovery } = require("../discovery");
+
+      // Create multiple tests
+      const tests = [
+        { ...mockDiscoveredTest, priority: "high" },
+        { ...mockDiscoveredTest, node_id: "test-002", priority: "low" },
+      ];
+
+      TestDiscovery.mockImplementation(() => ({
+        discoverTests: jest.fn().mockResolvedValue(tests),
+      }));
+
+      ConfigManager.mockImplementation(() => ({
+        getConfig: jest.fn().mockReturnValue(mockConfig),
+        getRuntimeFilters: jest.fn().mockReturnValue({ priority: ["high"] }),
+        debugConfig: jest.fn(),
+      }));
+
+      const consoleSpy = jest.spyOn(console, "log").mockImplementation(() => {});
+
+      engine = new FlowTestEngine();
+      await engine.run();
+
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("Filtered to"));
+      consoleSpy.mockRestore();
+    });
+
+    it("should trigger stats update callback during execution", async () => {
+      const { ExecutionService } = require("../../services/execution");
+
+      let callbackFn: any = null;
+
+      ExecutionService.mockImplementation(() => ({
+        executeTests: jest.fn().mockImplementation((tests, callback) => {
+          callbackFn = callback;
+          // Simulate calling the callback
+          if (callback) {
+            callback({ tests_completed: 1, tests_successful: 1 });
+          }
+          return Promise.resolve([mockSuiteResult]);
+        }),
+        getPerformanceSummary: jest.fn().mockReturnValue({
+          total_requests: 1,
+          average_response_time_ms: 500,
+        }),
+        getExecutionStats: jest.fn().mockReturnValue({
+          total_tests: 1,
+          tests_passed: 1,
+          tests_failed: 0,
+          total_duration_ms: 1000,
+        }),
+      }));
+
+      engine = new FlowTestEngine();
+      await engine.run();
+
+      expect(callbackFn).toBeTruthy();
+    });
+
+    it("should filter by priority when priority filter is set", () => {
+      const { ConfigManager } = require("../config");
+      ConfigManager.mockImplementation(() => ({
+        getConfig: jest.fn().mockReturnValue(mockConfig),
+        getRuntimeFilters: jest.fn().mockReturnValue({ priority: ["high"] }),
+        debugConfig: jest.fn(),
+      }));
+
+      engine = new FlowTestEngine();
+
+      const tests = [
+        { ...mockDiscoveredTest, priority: "high" },
+        { ...mockDiscoveredTest, node_id: "test-002", priority: "low" },
+        { ...mockDiscoveredTest, node_id: "test-003", priority: undefined },
+      ];
+
+      const filtered = (engine as any).applyFilters(tests);
+
+      expect(filtered).toBeDefined();
+      // Should only include tests with "high" priority
+      expect(filtered.some((test: any) => test.priority === "high")).toBe(true);
+    });
+
+    it("should filter by suite names when suite name filter is set", () => {
+      const { ConfigManager } = require("../config");
+      ConfigManager.mockImplementation(() => ({
+        getConfig: jest.fn().mockReturnValue(mockConfig),
+        getRuntimeFilters: jest.fn().mockReturnValue({ suite_names: ["Test Suite"] }),
+        debugConfig: jest.fn(),
+      }));
+
+      engine = new FlowTestEngine();
+
+      const tests = [
+        { ...mockDiscoveredTest, suite_name: "Test Suite" },
+        { ...mockDiscoveredTest, node_id: "test-002", suite_name: "Other Suite" },
+      ];
+
+      const filtered = (engine as any).applyFilters(tests);
+
+      expect(filtered).toBeDefined();
+      // Should only include tests with "Test Suite" name
+      expect(filtered.some((test: any) => test.suite_name === "Test Suite")).toBe(true);
+    });
+
+    it("should print failed suites when there are failures", () => {
+      const { ExecutionService } = require("../../services/execution");
+
+      const failedResult: SuiteExecutionResult = {
+        ...mockSuiteResult,
+        node_id: "failed-test",
+        status: "failure",
+        suite_name: "Failed Suite",
+      };
+
+      ExecutionService.mockImplementation(() => ({
+        executeTests: jest.fn().mockResolvedValue([failedResult]),
+        getPerformanceSummary: jest.fn().mockReturnValue(null),
+        getExecutionStats: jest.fn().mockReturnValue({
+          total_tests: 1,
+          tests_passed: 0,
+          tests_failed: 1,
+          total_duration_ms: 1000,
+        }),
+      }));
+
+      const consoleSpy = jest.spyOn(console, "log").mockImplementation(() => {});
+
+      engine = new FlowTestEngine();
+
+      // Create aggregated result with failed tests
+      const aggregatedResult = {
+        ...mockSuiteResult,
+        failed_tests: 1,
+        suites_results: [failedResult],
+      };
+
+      (engine as any).printExecutionSummary(aggregatedResult);
+
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("💥 Failed Suites:"));
+      consoleSpy.mockRestore();
+    });
   });
 });

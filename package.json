@@ -32,7 +32,8 @@
     "prepare": "npm run build",
     "docs:extract": "npm run build && npx @microsoft/api-extractor run --config api-extractor.json",
     "docs:api-md": "npx @microsoft/api-documenter markdown --input ./docs --output ./docs/markdown",
-    "docs:generate": "npm run docs:extract && npm run docs:api-md && echo '📚 API Markdown generated at docs/markdown'",
+    "docs:generate": "node scripts/generate-docs.js",
+    "docs:clean": "rm -rf docs/markdown docs/api || true",
     "docs:serve": "npm run docs:generate && cd docs && python3 -m http.server 8090",
     "docs:check": "npx @microsoft/api-extractor run --config api-extractor.json --local",
     "docs:lint": "npx @microsoft/api-extractor run --config api-extractor.json --local",
@@ -83,7 +84,6 @@
     "ts-jest": "^29.4.1",
     "ts-node": "^10.9.2",
     "tsdoc-markdown": "^1.4.1",
-    "typedoc": "^0.28.12",
     "typescript": "^5.4.5"
   },
   "engines": {
