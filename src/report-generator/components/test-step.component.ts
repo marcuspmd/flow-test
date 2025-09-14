@@ -45,6 +45,74 @@ export class TestStepComponent extends BaseComponent {
     }
   }
 
+  private formatAssertionField(field: string): {
+    name: string;
+    operator?: string;
+  } {
+    // Extrai o operador do campo (ex: response_time_ms.less_than -> less_than)
+    const parts = field.split(".");
+    const operator = parts.length > 1 ? parts[parts.length - 1] : undefined;
+    const cleanField = parts[0];
+
+    // Converte campos técnicos em nomes mais legíveis
+    const fieldMappings: Record<string, string> = {
+      status_code: "Status Code",
+      response_time_ms: "Response Time",
+      response_time: "Response Time",
+      body: "Response Body",
+      headers: "Headers",
+    };
+
+    // Verifica se é um campo direto mapeado
+    const displayName = fieldMappings[cleanField] || cleanField;
+
+    // Trata campos aninhados como body.message, headers.content-type
+    if (field.startsWith("body.")) {
+      return {
+        name: `Body: ${field.substring(5)}`,
+        operator: operator,
+      };
+    }
+
+    if (field.startsWith("headers.")) {
+      return {
+        name: `Header: ${field.substring(8)}`,
+        operator: operator,
+      };
+    }
+
+    return {
+      name: displayName,
+      operator: operator,
+    };
+  }
+
+  private formatAssertionValue(value: any, field: string): string {
+    // Formatação especial para campos de performance
+    if (field.includes("response_time") || field.includes("time")) {
+      if (typeof value === "number") {
+        return `${value}ms`;
+      }
+    }
+
+    // Formatação especial para status codes
+    if (field === "status_code" && typeof value === "number") {
+      const statusTexts: Record<number, string> = {
+        200: "OK",
+        201: "Created",
+        400: "Bad Request",
+        401: "Unauthorized",
+        403: "Forbidden",
+        404: "Not Found",
+        500: "Internal Server Error",
+      };
+      return `${value} ${statusTexts[value] || ""}`.trim();
+    }
+
+    // Para outros valores, usar formatação JSON normal
+    return this.formatJson(value);
+  }
+
   private renderAssertionsTab(assertions: any[]): string {
     if (!assertions || assertions.length === 0) {
       return this.html`
@@ -72,14 +140,27 @@ export class TestStepComponent extends BaseComponent {
                 </span>
                 <div>
                   <span class="font-medium text-primary">
-                    ${this.escapeHtml(assertion.type)}
+                    ${this.escapeHtml(
+                      this.formatAssertionField(assertion.field).name
+                    )}
                   </span>
                   ${
-                    assertion.operator
+                    this.formatAssertionField(assertion.field).operator
                       ? this.html`
                     <span class="text-secondary text-sm ml-2">
-                      (${this.escapeHtml(assertion.operator)})
+                      (${this.escapeHtml(
+                        this.formatAssertionField(assertion.field).operator
+                      )})
                     </span>
+                  `
+                      : ""
+                  }
+                  ${
+                    assertion.message && assertion.message !== "OK"
+                      ? this.html`
+                    <div class="text-secondary text-xs mt-1">
+                      ${this.escapeHtml(assertion.message)}
+                    </div>
                   `
                       : ""
                   }
@@ -87,20 +168,34 @@ export class TestStepComponent extends BaseComponent {
               </div>
 
               <div class="text-right text-xs">
-                <div class="text-secondary">Expected:</div>
-                <div class="font-mono text-blue-600 dark:text-blue-400">
-                  ${this.escapeHtml(assertion.expected)}
-                </div>
-                ${
-                  !assertion.passed
-                    ? this.html`
-                  <div class="text-secondary mt-1">Actual:</div>
-                  <div class="font-mono text-red-600 dark:text-red-400">
-                    ${this.escapeHtml(assertion.actual)}
+                <div class="flex items-center justify-end space-x-4">
+                  <div class="text-center">
+                    <div class="text-secondary text-xs">Expected</div>
+                    <div class="font-mono text-blue-600 dark:text-blue-400">
+                      ${this.escapeHtml(
+                        this.formatAssertionValue(
+                          assertion.expected,
+                          assertion.field
+                        )
+                      )}
+                    </div>
                   </div>
-                `
-                    : ""
-                }
+                  <div class="text-center">
+                    <div class="text-secondary text-xs">Actual</div>
+                    <div class="font-mono ${
+                      assertion.passed
+                        ? "text-green-600 dark:text-green-400"
+                        : "text-red-600 dark:text-red-400"
+                    }">
+                      ${this.escapeHtml(
+                        this.formatAssertionValue(
+                          assertion.actual,
+                          assertion.field
+                        )
+                      )}
+                    </div>
+                  </div>
+                </div>
               </div>
             </li>
           `
@@ -122,14 +217,38 @@ export class TestStepComponent extends BaseComponent {
     return this.html`
       <div class="space-y-4">
         <div>
-          <h4 class="font-semibold text-primary mb-2">Method & URL</h4>
-          <div class="p-3 bg-tertiary rounded-lg border border-default font-mono text-sm">
-            <span class="font-bold text-blue-600 dark:text-blue-400">
-              ${this.escapeHtml(request.method || "GET")}
-            </span>
-            <span class="ml-2 text-primary">
-              ${this.escapeHtml(request.url || "")}
-            </span>
+          <h4 class="font-semibold text-primary text-sm uppercase tracking-wide mb-3">
+            Method & URL
+          </h4>
+          <div class="relative">
+            <div class="flex items-center justify-between p-3 bg-primary rounded-lg border border-default pr-12">
+              <div class="flex items-center space-x-3">
+                <span class="text-blue-500 text-lg">🌐</span>
+                <div class="text-center">
+                  <div class="text-secondary text-xs">Method</div>
+                  <div class="font-mono text-blue-600 dark:text-blue-400 font-bold">
+                    ${this.escapeHtml(request.method || "GET")}
+                  </div>
+                </div>
+              </div>
+              <div class="text-right flex-1 mr-4">
+                <div class="text-secondary text-xs">URL</div>
+                <div class="font-mono text-green-600 dark:text-green-400 break-all">
+                  ${this.escapeHtml(request.full_url || request.url || "")}
+                </div>
+              </div>
+            </div>
+            <button
+              class="absolute top-2 right-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg p-2 shadow-md transition-colors duration-200"
+              onclick="navigator.clipboard.writeText('${this.escapeHtml(
+                `${request.method || "GET"} ${
+                  request.full_url || request.url || ""
+                }`
+              ).replace(/'/g, "\\'")}')"
+              title="Copiar Method & URL"
+            >
+              📋
+            </button>
           </div>
         </div>
 
@@ -138,7 +257,7 @@ export class TestStepComponent extends BaseComponent {
             ? this.html`
           <div>
             <h4 class="font-semibold text-primary mb-2">Headers</h4>
-            <pre class="p-3 bg-tertiary rounded-lg border border-default text-xs text-primary font-mono overflow-x-auto">
+            <pre class="terminal-code">
 ${this.escapeHtml(this.formatJson(request.headers))}
             </pre>
           </div>
@@ -151,7 +270,7 @@ ${this.escapeHtml(this.formatJson(request.headers))}
             ? this.html`
           <div>
             <h4 class="font-semibold text-primary mb-2">Body</h4>
-            <pre class="p-3 bg-tertiary rounded-lg border border-default text-xs text-primary font-mono overflow-x-auto">
+            <pre class="terminal-code">
 ${this.escapeHtml(this.formatJson(request.body))}
             </pre>
           </div>
@@ -181,11 +300,41 @@ ${this.escapeHtml(this.formatJson(request.body))}
     return this.html`
       <div class="space-y-4">
         <div>
-          <h4 class="font-semibold text-primary mb-2">Status Code</h4>
-          <div class="p-3 bg-tertiary rounded-lg border border-default">
-            <span class="text-lg font-bold ${statusColor}">
-              ${response.status_code}
-            </span>
+          <h4 class="font-semibold text-primary text-sm uppercase tracking-wide mb-3">
+            Status Code
+          </h4>
+          <div class="flex items-center justify-between p-3 bg-primary rounded-lg border border-default">
+            <div class="flex items-center space-x-3">
+              <span class="${
+                response.status_code >= 200 && response.status_code < 300
+                  ? "text-green-500"
+                  : response.status_code >= 400
+                  ? "text-red-500"
+                  : "text-yellow-500"
+              } text-lg">
+                ${
+                  response.status_code >= 200 && response.status_code < 300
+                    ? "✓"
+                    : response.status_code >= 400
+                    ? "✗"
+                    : "⚠"
+                }
+              </span>
+              <div class="text-center">
+                <div class="text-secondary text-xs">Status</div>
+              </div>
+            </div>
+            <div class="text-right">
+              <div class="font-mono ${
+                response.status_code >= 200 && response.status_code < 300
+                  ? "text-green-600 dark:text-green-400"
+                  : response.status_code >= 400
+                  ? "text-red-600 dark:text-red-400"
+                  : "text-yellow-600 dark:text-yellow-400"
+              } font-bold text-lg">
+                ${response.status_code}
+              </div>
+            </div>
           </div>
         </div>
 
@@ -194,7 +343,7 @@ ${this.escapeHtml(this.formatJson(request.body))}
             ? this.html`
           <div>
             <h4 class="font-semibold text-primary mb-2">Headers</h4>
-            <pre class="p-3 bg-tertiary rounded-lg border border-default text-xs text-primary font-mono overflow-x-auto">
+            <pre class="terminal-code">
 ${this.escapeHtml(this.formatJson(response.headers))}
             </pre>
           </div>
@@ -207,9 +356,79 @@ ${this.escapeHtml(this.formatJson(response.headers))}
             ? this.html`
           <div>
             <h4 class="font-semibold text-primary mb-2">Body</h4>
-            <pre class="p-3 bg-tertiary rounded-lg border border-default text-xs text-primary font-mono overflow-x-auto">
+            <pre class="terminal-code">
 ${this.escapeHtml(this.formatJson(response.body))}
             </pre>
+          </div>
+        `
+            : ""
+        }
+      </div>
+    `;
+  }
+
+  private renderRawTab(request: any, response: any): string {
+    const hasRawData = request?.raw_request || response?.raw_response;
+
+    if (!hasRawData) {
+      return this.html`
+        <div class="text-secondary text-center py-4">
+          <p>Dados brutos não disponíveis</p>
+        </div>
+      `;
+    }
+
+    return this.html`
+      <div class="space-y-6">
+        ${
+          request?.raw_request
+            ? this.html`
+          <div>
+            <h4 class="font-semibold text-primary mb-3 flex items-center gap-2">
+              <span class="text-blue-300 dark:text-blue-400">→</span>
+              Raw Request
+            </h4>
+            <div class="relative">
+              <pre class="terminal-code">
+${this.escapeHtml(request.raw_request)}
+              </pre>
+              <button
+                class="absolute top-2 right-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg p-2 shadow-md transition-colors duration-200"
+                onclick="navigator.clipboard.writeText('${this.escapeHtml(
+                  request.raw_request
+                ).replace(/'/g, "\\'")}')"
+                title="Copiar request"
+              >
+                📋
+              </button>
+            </div>
+          </div>
+        `
+            : ""
+        }
+
+        ${
+          response?.raw_response
+            ? this.html`
+          <div>
+            <h4 class="font-semibold text-primary mb-3 flex items-center gap-2">
+              <span class="text-green-300 dark:text-green-400">←</span>
+              Raw Response
+            </h4>
+            <div class="relative">
+              <pre class="terminal-code">
+${this.escapeHtml(response.raw_response)}
+              </pre>
+              <button
+                class="absolute top-2 right-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg p-2 shadow-md transition-colors duration-200"
+                onclick="navigator.clipboard.writeText('${this.escapeHtml(
+                  response.raw_response
+                ).replace(/'/g, "\\'")}')"
+                title="Copiar response"
+              >
+                📋
+              </button>
+            </div>
           </div>
         `
             : ""
@@ -231,17 +450,17 @@ ${this.escapeHtml(this.formatJson(response.body))}
       <div>
         <h4 class="font-semibold text-primary mb-2">cURL Command</h4>
         <div class="relative">
-          <pre class="p-3 bg-tertiary rounded-lg border border-default text-xs text-primary font-mono overflow-x-auto">
+          <pre class="terminal-code">
 ${this.escapeHtml(curlCommand)}
           </pre>
           <button
-            class="absolute top-2 right-2 btn-secondary text-xs py-1 px-2"
+            class="absolute top-2 right-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg p-2 shadow-md transition-colors duration-200"
             onclick="navigator.clipboard.writeText('${this.escapeHtml(
               curlCommand
             ).replace(/'/g, "\\'")}')"
             title="Copiar comando"
           >
-            📋 Copy
+            📋
           </button>
         </div>
       </div>
@@ -274,6 +493,15 @@ ${this.escapeHtml(curlCommand)}
         id: `${stepId}-response`,
         label: "Response",
         content: this.renderResponseTab(step.response),
+      });
+    }
+
+    // Tab de Raw (se disponível)
+    if (step.request?.raw_request || step.response?.raw_response) {
+      tabs.push({
+        id: `${stepId}-raw`,
+        label: "Raw",
+        content: this.renderRawTab(step.request, step.response),
       });
     }
 

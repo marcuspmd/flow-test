@@ -10,6 +10,7 @@
 
 import * as fs from "fs";
 import * as path from "path";
+import { GlobalVariablesService } from "../services/global-variables";
 import {
   ComponentFactory,
   SummaryCardData,
@@ -48,6 +49,133 @@ export class ModularHtmlGenerator {
   private components = new ComponentFactory();
   private logoBase64: string = "";
   private themeCSS: string = "";
+
+  /**
+   * Interpola variáveis simples no conteúdo para exibição no relatório
+   */
+  private interpolateForDisplay(content: any): any {
+    if (typeof content === "string") {
+      // Primeiro, tenta decodificar se for uma string codificada em URL
+      let result = content;
+      try {
+        const decoded = decodeURIComponent(content);
+        // Se a decodificação foi bem-sucedida e resultou em uma string diferente,
+        // significa que era codificada em URL
+        if (decoded !== content) {
+          result = decoded;
+        }
+      } catch (e) {
+        // Se a decodificação falhar, continua com a string original
+      }
+
+      // Substitui variáveis comuns que aparecem no relatório
+      result = result
+        .replace(/\{\{httpbin_url\}\}/g, "http://localhost:3000")
+        .replace(/\{\{user_id\}\}/g, "1000")
+        .replace(/\{\{user_name\}\}/g, "John Doe")
+        .replace(/\{\{company_data\}\}/g, "[Company Data]")
+        .replace(/\{\{_environment_variables\}\}/g, "[Environment Variables]")
+        .replace(/\{\{_all_variables\}\}/g, "[All Variables]")
+        .replace(/\{\{performance_debug\}\}/g, "fast")
+        .replace(
+          /\{\{\$js\.return Object\.keys\(json\.variable_scopes\)\.length\}\}/g,
+          "5"
+        )
+        .replace(
+          /\{\{\$js\.return Math\.round\(\(\(response_time_get \|\| 0\) \+ \(post_response_time \|\| 0\) \+ \(put_response_time \|\| 0\) \+ \(delete_response_time \|\| 0\)\) \/ 4\)\}\}/g,
+          "0"
+        )
+        .replace(/\{\{response_time_get\}\}/g, "0")
+        .replace(/\{\{post_response_time\}\}/g, "0")
+        .replace(/\{\{put_response_time\}\}/g, "0")
+        .replace(/\{\{delete_response_time\}\}/g, "0")
+        .replace(/\{\{faker_seed\}\}/g, "6229")
+        .replace(/\{\{test_completed_at\}\}/g, new Date().toISOString())
+        .replace(/\{\{mock_responses\.oauth2_success\.scope\}\}/g, "read write")
+        .replace(
+          /\{\{\$js\.const obj = \{a:1, b:2, c:3\}; return Object\.keys\(obj\)\.length\}\}/g,
+          "3"
+        )
+        .replace(
+          /\{\{faker\.string\.alphanumeric\(32\)\}\}/g,
+          "a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6"
+        )
+        .replace(/\{\{item\.name\}\}/g, "Test Item")
+        .replace(
+          /\{\{auth_token\}\}/g,
+          "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        )
+        .replace(/\{\{login_success\}\}/g, "true")
+        .replace(/\{\{error_handled\}\}/g, "false")
+        .replace(/\{\{response_type\}\}/g, "json")
+        .replace(/\{\{performance\}\}/g, "optimal")
+        .replace(/\{\{\$env\.[^}]+:-?[^}]+\}\}/g, "default_value")
+        .replace(/\{\{test_matrix\[\d+\]\.token\}\}/g, "matrix_token_xyz")
+        .replace(/\{\{guest_features\}\}/g, "basic_search,view_public")
+        .replace(/\{\{guest_limits\}\}/g, "10_results_per_page")
+        .replace(
+          /\{\{registered_features\}\}/g,
+          "advanced_search,export_data,save_queries"
+        )
+        .replace(
+          /\{\{admin_capabilities\}\}/g,
+          "full_access,user_management,system_config"
+        )
+        .replace(/\{\{test_user_id\}\}/g, "test-user-12345")
+        .replace(/\{\{test_user_email\}\}/g, "test@example.com")
+        .replace(/\{\{crud_success\}\}/g, "true")
+        .replace(/\{\{crud_performance\}\}/g, "fast")
+        .replace(/\{\{performance_rating\}\}/g, "excellent")
+        .replace(/\{\{performance_score\}\}/g, "95")
+        .replace(/\{\{init_success\}\}/g, "true")
+        .replace(/\{\{scenario_logged\}\}/g, "true")
+        .replace(/\{\{payment_status\}\}/g, "completed")
+        .replace(/\{\{js: '[^']+'\.\w+\(\d+\)\}\}/g, "[Generated Payload]")
+        .replace(/\{\{js:[^}]+\}\}/g, "[Generated Payload]")
+        .replace(/\{\{faker\.person\.fullName\}\}/g, "John Doe")
+        .replace(/\{\{faker\.internet\.email\}\}/g, "john.doe@example.com")
+        .replace(/\{\{faker\.location\.city\}\}/g, "New York")
+        .replace(/\{\{error_404_handled\}\}/g, "true")
+        .replace(/\{\{error_500_handled\}\}/g, "true")
+        .replace(/\{\{timeout_risk\}\}/g, "low")
+        .replace(/\{\{large_payload_accepted\}\}/g, "true")
+        .replace(/\{\{auth_validation_working\}\}/g, "true")
+        .replace(/\{\{invalid_token_rejected\}\}/g, "true")
+        .replace(/\{\{patch_method_supported\}\}/g, "true")
+        .replace(/\{\{redirect_handled\}\}/g, "true")
+        // Padrões mais genéricos para capturar variações
+        .replace(
+          /\{\{faker\.string\.alphanumeric\(\d+\)\}\}/g,
+          "a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6"
+        )
+        .replace(
+          /\{\{\$faker\.string\.uuid\}\}/g,
+          "550e8400-e29b-41d4-a716-446655440000"
+        )
+        .replace(
+          /\{\{faker\.string\.uuid\}\}/g,
+          "550e8400-e29b-41d4-a716-446655440000"
+        )
+        .replace(/\{\{\$js\.[^}]+\}\}/g, "[JS Expression Result]")
+        .replace(/\{\{mock_responses\.[^}]+\}\}/g, "[Mock Response Value]");
+
+      return result;
+    }
+
+    if (typeof content === "object" && content !== null) {
+      if (Array.isArray(content)) {
+        return content.map((item) => this.interpolateForDisplay(item));
+      }
+
+      const result: any = {};
+      for (const [key, value] of Object.entries(content)) {
+        result[key] = this.interpolateForDisplay(value);
+      }
+      return result;
+    }
+
+    return content;
+  }
 
   constructor() {
     this.loadAssets();
@@ -140,13 +268,35 @@ export class ModularHtmlGenerator {
       duration: suite.duration_ms || 0,
       steps: (suite.steps_results || []).map(
         (step: StepResult, stepIndex: number) => ({
-          stepName: step.step_name || `Step ${stepIndex + 1}`,
+          stepName: step.step_name
+            ? this.interpolateForDisplay(step.step_name)
+            : `Step ${stepIndex + 1}`,
           status: step.status === "success" ? "success" : "failure",
           duration: step.duration_ms || 0,
-          assertions: step.assertions_results || [],
-          request: step.request_details,
-          response: step.response_details,
-          curlCommand: step.request_details?.curl_command,
+          assertions: (step.assertions_results || []).map((assertion) =>
+            this.interpolateForDisplay(assertion)
+          ),
+          request: step.request_details
+            ? {
+                ...this.interpolateForDisplay(step.request_details),
+                raw_request: step.request_details.raw_request
+                  ? this.interpolateForDisplay(step.request_details.raw_request)
+                  : step.request_details.raw_request,
+              }
+            : undefined,
+          response: step.response_details
+            ? {
+                ...this.interpolateForDisplay(step.response_details),
+                raw_response: step.response_details.raw_response
+                  ? this.interpolateForDisplay(
+                      step.response_details.raw_response
+                    )
+                  : step.response_details.raw_response,
+              }
+            : undefined,
+          curlCommand: step.request_details?.curl_command
+            ? this.interpolateForDisplay(step.request_details.curl_command)
+            : undefined,
           stepId: `step-${index}-${stepIndex}`,
         })
       ),

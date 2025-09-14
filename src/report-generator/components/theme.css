@@ -228,3 +228,91 @@
     border: 1px solid #ccc !important;
   }
 }
+
+/* Estilo de terminal/code para outputs de terminal */
+.terminal-code {
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', 'Source Code Pro', 'Fira Code', monospace !important;
+  font-size: 0.875rem !important;
+  line-height: 1.5 !important;
+  background-color: #2d3748 !important;
+  color: #e2e8f0 !important;
+  border: 1px solid #4a5568 !important;
+  border-radius: 0.5rem !important;
+  padding: 1rem !important;
+  overflow-x: auto !important;
+  white-space: pre-wrap !important;
+  word-wrap: break-word !important;
+  position: relative !important;
+}
+
+.terminal-code::-webkit-scrollbar {
+  height: 8px !important;
+}
+
+.terminal-code::-webkit-scrollbar-track {
+  background: #4a5568 !important;
+  border-radius: 4px !important;
+}
+
+.terminal-code::-webkit-scrollbar-thumb {
+  background: #718096 !important;
+  border-radius: 4px !important;
+}
+
+.terminal-code::-webkit-scrollbar-thumb:hover {
+  background: #a0aec0 !important;
+}
+
+/* Syntax highlighting para terminal */
+.terminal-code .http-method {
+  color: #63b3ed !important;
+  font-weight: bold !important;
+}
+
+.terminal-code .http-version {
+  color: #a0aec0 !important;
+}
+
+.terminal-code .http-status {
+  color: #68d391 !important;
+  font-weight: bold !important;
+}
+
+.terminal-code .header-name {
+  color: #a0aec0 !important;
+}
+
+.terminal-code .header-value {
+  color: #fbb6ce !important;
+}
+
+.terminal-code .json-key {
+  color: #a0aec0 !important;
+}
+
+.terminal-code .json-string {
+  color: #fbb6ce !important;
+}
+
+.terminal-code .json-number {
+  color: #bee3f8 !important;
+}
+
+.terminal-code .json-boolean {
+  color: #63b3ed !important;
+}
+
+/* Tema escuro para terminal */
+.dark .terminal-code {
+  background-color: #1a202c !important;
+  border-color: #2d3748 !important;
+  color: #f7fafc !important;
+}
+
+/* Responsividade para terminal */
+@media (max-width: 768px) {
+  .terminal-code {
+    font-size: 0.75rem !important;
+    padding: 0.75rem !important;
+  }
+}

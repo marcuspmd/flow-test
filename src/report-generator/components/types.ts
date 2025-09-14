@@ -61,12 +61,14 @@ export interface RequestData {
   body: any;
   method: string;
   url: string;
+  raw_request?: string;
 }
 
 export interface ResponseData {
   status_code: number;
   headers: Record<string, any>;
   body: any;
+  raw_response?: string;
 }
 
 export interface TabData {
