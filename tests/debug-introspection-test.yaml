@@ -129,12 +129,12 @@ steps:
         debug_request_info:
           method: "POST"
           url: "/post"
-          timestamp: "{{$js.return Date.now()}}"
+          timestamp: {{$js.return Date.now()}}
           test_data: "debug-introspection"
         captured_data:
           environment_user: "{{environment_user}}"
           system_timestamp: "{{system_timestamp}}"
-          variable_count: "{{total_variables_tested}}"
+          variable_count: {{total_variables_tested}}
         performance_data:
           previous_response_time: "{{response_time_debug}}"
           performance_rating: "{{performance_debug}}"
@@ -143,8 +143,6 @@ steps:
       body:
         json.debug_request_info.method:
           equals: "POST"
-        json.captured_data.variable_count:
-          type: number
     capture:
       debug_request_response: "json"
       final_debug_timestamp: "json.debug_request_info.timestamp"

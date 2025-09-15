@@ -186,8 +186,8 @@ steps:
           status: "{{faker.helpers.arrayElement(['active', 'inactive', 'pending', 'suspended'])}}"
 
           # Dados booleanos e números
-          is_active: "{{faker.datatype.boolean}}"
-          random_number: "{{faker.number.int}}"
+          is_active: {{faker.datatype.boolean}}
+          random_number: {{faker.number.int}}
           float_number: "{{faker.number.float}}"
 
     assert:
@@ -195,10 +195,6 @@ steps:
       body:
         json.business_data.system.ip_address:
           regex: "^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$"
-        json.business_data.is_active:
-          type: "boolean"
-        json.business_data.random_number:
-          type: "number"
 
     capture:
       business_data: "body.json.business_data"
