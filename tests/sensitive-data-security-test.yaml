@@ -70,9 +70,9 @@ steps:
     assert:
       status_code: 200
       body:
-        headers.authorization:
+        json.headers.Authorization:
           contains: "Bearer"
-        headers."x-api-key":
+        json.headers."X-Api-Key":
           equals: "client_secret_xyz789"
     capture:
       api_key_test_response: "json"

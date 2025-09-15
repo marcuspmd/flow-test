@@ -12,7 +12,7 @@ email_domain: "body.json.user.email | split('@') | [1]"
 ```yaml
 email_domain: "body.json.user.email" # Capturar email completo e processar depois
 ```
-✅ **Alternativa com JavaScript ({{js:}}):**
+✅ **Alternativa com JavaScript (`{{js:}}`):**
 ```yaml
 email_domain: "{{js: body.json?.user?.email ? body.json.user.email.split('@')[1] : null }}"
 ```
@@ -41,7 +41,7 @@ is_fast_response: "body.json.metrics.response_time < 200"
 ```yaml
 response_time: "body.json.metrics.response_time"
 ```
-✅ **Alternativa com JavaScript ({{js:}}):**
+✅ **Alternativa com JavaScript (`{{js:}}`):**
 ```yaml
 is_fast_response: "{{js: (body.json?.metrics?.response_time ?? 0) < 200 }}"
 ```
@@ -79,7 +79,7 @@ processed_array: "{{active_names}}"  # dentro de capture
 ```yaml
 processed_array: "body.json.some.path.to.active_names"
 ```
-✅ **Alternativa com JavaScript ({{js:}}):**
+✅ **Alternativa com JavaScript (`{{js:}}`):**
 ```yaml
 processed_array: "{{js: (body.json?.some?.path?.to?.active_names || []).map(n => n.trim()) }}"
 ```

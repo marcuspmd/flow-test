@@ -1,50 +1,85 @@
 {
   "$schema": "https://developer.microsoft.com/json-schemas/api-extractor/v7/api-extractor.schema.json",
   "mainEntryPointFilePath": "./dist/index.d.ts",
+  "bundledPackages": [],
+  "compiler": {
+    "tsconfigFilePath": "./tsconfig.json",
+    "overrideTsconfig": {
+      "compilerOptions": {
+        "target": "es2018",
+        "module": "commonjs"
+      }
+    }
+  },
   "apiReport": {
     "enabled": true,
-    "reportFolder": "./docs/api-report/",
-    "reportTempFolder": "./temp/"
+    "reportFolder": "./website/docs/api-report/",
+    "reportTempFolder": "./temp/",
+    "includeForgottenExports": false
+  },
+  "docModel": {
+    "enabled": true,
+    "apiJsonFilePath": "./website/docs/api-model.json",
+    "projectFolderUrl": "https://github.com/marcuspmd/flow-test",
+    "includeForgottenExports": false
+  },
+  "dtsRollup": {
+    "enabled": true,
+    "untrimmedFilePath": "./website/docs/flow-test-engine.d.ts",
+    "publicTrimmedFilePath": "./website/docs/flow-test-engine.public.d.ts"
+  },
+  "tsdocMetadata": {
+    "enabled": true,
+    "tsdocMetadataFilePath": "./temp/tsdoc-metadata.json"
   },
   "messages": {
+    "compilerMessageReporting": {
+      "default": {
+        "logLevel": "warning"
+      }
+    },
     "extractorMessageReporting": {
       "ae-missing-release-tag": {
-        "logLevel": "none"
+        "logLevel": "warning",
+        "addToApiReportFile": true
       },
       "ae-unresolved-link": {
-        "logLevel": "none"
+        "logLevel": "warning",
+        "addToApiReportFile": false
       },
       "ae-forgotten-export": {
+        "logLevel": "warning",
+        "addToApiReportFile": true
+      },
+      "ae-internal-missing-underscore": {
+        "logLevel": "none"
+      },
+      "ae-missing-getter": {
         "logLevel": "none"
       }
     },
     "tsdocMessageReporting": {
       "tsdoc-undefined-tag": {
-        "logLevel": "none"
+        "logLevel": "warning"
       },
       "tsdoc-escape-right-brace": {
         "logLevel": "none"
       },
       "tsdoc-malformed-inline-tag": {
-        "logLevel": "none"
+        "logLevel": "warning"
       },
       "tsdoc-escape-greater-than": {
         "logLevel": "none"
       },
       "tsdoc-html-tag-missing-greater-than": {
         "logLevel": "none"
+      },
+      "tsdoc-characters-after-block-tag": {
+        "logLevel": "none"
+      },
+      "tsdoc-tag-should-not-have-braces": {
+        "logLevel": "none"
       }
     }
-  },
-  "docModel": {
-    "enabled": true,
-    "apiJsonFilePath": "./docs/api-model.json"
-  },
-  "dtsRollup": {
-    "enabled": false
-  },
-  "tsdocMetadata": {
-    "enabled": true,
-    "tsdocMetadataFilePath": "./temp/tsdoc-metadata.json"
   }
 }

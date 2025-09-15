@@ -8,7 +8,115 @@ import {
 } from "./javascript.service";
 
 /**
- * Service for managing global variables with hierarchy and cache
+ * Service for managing global variables with hierarchical scoping and intelligent caching
+ *
+ * The GlobalVariablesService provides a sophisticated variable management system that supports
+ * multi-level variable scoping, template interpolation, dependency resolution, and performance
+ * optimization through caching. It integrates with Faker.js for test data generation and
+ * JavaScript expressions for dynamic value computation.
+ *
+ * **Variable Hierarchy (highest to lowest priority):**
+ * 1. **Runtime Variables**: Set during test execution (highest priority)
+ * 2. **Imported Variables**: Variables imported from dependent flows
+ * 3. **Suite Variables**: Variables defined at the test suite level
+ * 4. **Global Variables**: Variables from configuration files
+ * 5. **Environment Variables**: System environment variables (lowest priority)
+ *
+ * **Supported Variable Sources:**
+ * - Configuration file global variables
+ * - System environment variables (all process.env)
+ * - Test suite-specific variables
+ * - Runtime-computed variables
+ * - Variables imported from dependent test flows
+ * - Faker.js generated test data ({{faker.name.firstName}})
+ * - JavaScript expressions ({{js:new Date().toISOString()}})
+ *
+ * @example Basic variable management
+ * ```typescript
+ * import { GlobalVariablesService, ConfigManager } from 'flow-test-engine';
+ *
+ * const configManager = new ConfigManager();
+ * const variableService = new GlobalVariablesService(configManager);
+ *
+ * // Set suite-level variables
+ * variableService.setSuiteVariables({
+ *   api_base: 'https://api.example.com',
+ *   version: 'v1'
+ * });
+ *
+ * // Set runtime variables (highest priority)
+ * variableService.setVariable('user_id', '12345');
+ * variableService.setVariable('session_token', 'abc123xyz');
+ *
+ * // Interpolate template strings
+ * const url = variableService.interpolate('{{api_base}}/{{version}}/users/{{user_id}}');
+ * // Result: 'https://api.example.com/v1/users/12345'
+ * ```
+ *
+ * @example Advanced template interpolation with Faker and JavaScript
+ * ```typescript
+ * const variableService = new GlobalVariablesService(configManager);
+ *
+ * // Templates with Faker.js integration
+ * const email = variableService.interpolate('{{faker.internet.email}}');
+ * const userName = variableService.interpolate('{{faker.person.firstName}}');
+ *
+ * // JavaScript expression evaluation
+ * const timestamp = variableService.interpolate('{{js:Date.now()}}');
+ * const uuid = variableService.interpolate('{{js:require("crypto").randomUUID()}}');
+ *
+ * // Complex template combining multiple sources
+ * const complexTemplate = variableService.interpolate(`
+ *   {
+ *     "user": {
+ *       "name": "{{faker.person.fullName}}",
+ *       "email": "{{faker.internet.email}}",
+ *       "created_at": "{{js:new Date().toISOString()}}",
+ *       "api_key": "{{api_key_prefix}}-{{js:Math.random().toString(36).substr(2, 9)}}"
+ *     }
+ *   }
+ * `);
+ * ```
+ *
+ * @example Dependency management and variable importing
+ * ```typescript
+ * const variableService = new GlobalVariablesService(configManager, globalRegistry);
+ *
+ * // Set flow dependencies
+ * variableService.setDependencies(['auth-flow', 'setup-flow']);
+ *
+ * // Variables from dependent flows are automatically available
+ * const template = variableService.interpolate('Authorization: Bearer {{auth_token}}');
+ * // auth_token was exported by the 'auth-flow' dependency
+ *
+ * // Check variable availability
+ * const allVars = variableService.getAllVariables();
+ * console.log('Available variables:', Object.keys(allVars));
+ * ```
+ *
+ * @example Performance optimization with caching
+ * ```typescript
+ * const variableService = new GlobalVariablesService(configManager);
+ *
+ * // Enable/disable caching (enabled by default)
+ * variableService.enableCache();
+ *
+ * // First interpolation - computed and cached
+ * const result1 = variableService.interpolate('{{complex_template_with_js}}');
+ *
+ * // Second interpolation - served from cache (much faster)
+ * const result2 = variableService.interpolate('{{complex_template_with_js}}');
+ *
+ * // Clear cache when variables change
+ * variableService.setVariable('base_url', 'https://new-api.com');
+ * // Cache is automatically cleared
+ *
+ * // Force cache clear
+ * variableService.clearCache();
+ * ```
+ *
+ * @public
+ * @since 1.0.0
  */
 export class GlobalVariablesService {
   private context: GlobalVariableContext;

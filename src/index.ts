@@ -1,61 +1,123 @@
 /**
- * Flow Test Engine v1.0
+ * @fileoverview Flow Test Engine v1.0 - Main API package for programmatic usage.
  *
- * API principal do package para uso programático.
+ * @remarks
+ * This module exports all classes, types, and functions necessary to integrate
+ * the Flow Test Engine into applications or custom scripts. It provides both
+ * direct class access and convenience functions for common use cases.
  *
- * Este módulo exporta todas as classes, tipos e funções necessárias
- * para integrar o Flow Test Engine em aplicações ou scripts personalizados.
+ * **Package Organization:**
+ * - **Core Classes**: FlowTestEngine, ConfigManager, TestDiscovery
+ * - **Service Classes**: HTTP, Assertion, Variable, and Reporting services
+ * - **Type Definitions**: Complete TypeScript interfaces and types
+ * - **Convenience Functions**: Quick-start functions for common scenarios
  *
- * @example
+ * @example Basic programmatic usage
  * ```typescript
- * import { FlowTestEngine, createEngine, runTests } from 'flow-test-engine';
+ * import { FlowTestEngine } from 'flow-test-engine';
  *
- * // Uso direto da classe
+ * // Direct class usage
  * const engine = new FlowTestEngine('./config.yml');
  * const result = await engine.run();
  *
- * // Usando função de conveniência
- * const result2 = await runTests('./config.yml');
- *
- * // Criação simplificada
- * const engine2 = createEngine('./config.yml');
+ * if (result.success_rate >= 95) {
+ *   console.log('✅ Tests passed successfully');
+ *   process.exit(0);
+ * } else {
+ *   console.log('❌ Some tests failed');
+ *   process.exit(1);
+ * }
  * ```
+ *
+ * @example Using convenience functions
+ * ```typescript
+ * import { runTests, planTests, createEngine } from 'flow-test-engine';
+ *
+ * // One-shot test execution
+ * const result = await runTests('./config.yml');
+ * console.log(`Success rate: ${result.success_rate}%`);
+ *
+ * // Dry run for planning
+ * const plan = await planTests('./config.yml');
+ * console.log(`Found ${plan.length} test suites to execute`);
+ *
+ * // Engine creation with default settings
+ * const engine = createEngine('./config.yml');
+ * ```
+ *
+ * @example Advanced integration with monitoring
+ * ```typescript
+ * import { FlowTestEngine, EngineHooks } from 'flow-test-engine';
+ *
+ * const hooks: EngineHooks = {
+ *   onExecutionStart: (stats) => {
+ *     console.log(`🚀 Starting ${stats.tests_discovered} tests`);
+ *   },
+ *   onSuiteEnd: (suite, result) => {
+ *     const status = result.status === 'success' ? '✅' : '❌';
+ *     console.log(`${status} ${suite.suite_name}`);
+ *   },
+ *   onExecutionEnd: (result) => {
+ *     console.log(`🏁 Completed: ${result.success_rate.toFixed(1)}% success`);
+ *   }
+ * };
+ *
+ * const engine = new FlowTestEngine('./config.yml', hooks);
+ * const result = await engine.run();
+ * ```
+ *
+ * @public
+ * @since 1.0.0
  */
 
-// Exporta a classe principal do engine
+// Export main engine classes
 export { FlowTestEngine } from "./core/engine";
 export { ConfigManager } from "./core/config";
 export { TestDiscovery } from "./core/discovery";
 
-// Exporta serviços para uso avançado
+// Export services for advanced usage
 export { GlobalVariablesService } from "./services/global-variables";
 export { PriorityService } from "./services/priority";
 export { ReportingService } from "./services/reporting";
 export { ExecutionService } from "./services/execution";
 
-// Exporta todos os tipos
+// Export all type definitions
 export * from "./types/engine.types";
 export * from "./types/config.types";
 
-// Exporta serviços legados compatíveis (para migration)
+// Export legacy compatible services (for migration)
 export { HttpService } from "./services/http.service";
 export { AssertionService } from "./services/assertion.service";
 export { CaptureService } from "./services/capture.service";
 
 /**
- * Função de conveniência para criação rápida do engine
+ * Convenience function for quick engine creation with default settings.
  *
- * Cria uma instância do FlowTestEngine com configuração mínima,
- * ideal para uso em scripts ou integração simples.
+ * @remarks
+ * Creates a FlowTestEngine instance with minimal configuration,
+ * ideal for use in scripts or simple integrations where you need
+ * a pre-configured engine instance.
  *
- * @param configPath - Caminho opcional para arquivo de configuração
- * @returns Nova instância do FlowTestEngine configurada
+ * @param configPath - Optional path to configuration file. If not provided, uses default discovery.
+ * @returns New configured FlowTestEngine instance
  *
- * @example
+ * @example Creating an engine with specific configuration
  * ```typescript
  * const engine = createEngine('./my-config.yml');
  * const result = await engine.run();
+ *
+ * console.log(`Executed ${result.total_tests} tests`);
+ * console.log(`Success rate: ${result.success_rate}%`);
  * ```
+ *
+ * @example Creating an engine with automatic config discovery
+ * ```typescript
+ * // Uses default config file discovery (flow-test.config.yml, etc.)
+ * const engine = createEngine();
+ * const result = await engine.run();
+ * ```
+ *
+ * @public
  */
 export function createEngine(configPath?: string) {
   const { FlowTestEngine } = require("./core/engine");
@@ -63,26 +125,66 @@ export function createEngine(configPath?: string) {
 }
 
 /**
- * Função de conveniência para execução one-shot
+ * Convenience function for one-shot test execution with comprehensive lifecycle management.
  *
- * Cria um engine, executa todos os testes e retorna o resultado.
- * Ideal para automação e integração em pipelines de CI/CD.
+ * @remarks
+ * Creates an engine, executes all tests, and returns the aggregated results.
+ * This is ideal for automation, CI/CD pipelines, and simple test execution
+ * scenarios where you want everything handled automatically.
  *
- * @param configPath - Caminho opcional para arquivo de configuração
- * @returns Promise que resolve para o resultado agregado da execução
+ * The function handles the complete lifecycle: engine creation, configuration
+ * loading, test discovery, execution, and result aggregation.
  *
- * @example
+ * @param configPath - Optional path to configuration file. If not provided, uses default discovery.
+ * @returns Promise that resolves to the aggregated execution results
+ * @throws {Error} When configuration is invalid or critical execution failure occurs
+ *
+ * @example Simple test execution
  * ```typescript
- * // Execução simples
- * const result = await runTests();
- * console.log(`Success rate: ${result.success_rate}%`);
+ * import { runTests } from 'flow-test-engine';
  *
- * // Com configuração específica
- * const result2 = await runTests('./prod-config.yml');
- * if (result2.failed_tests > 0) {
+ * // Execute with default configuration
+ * const result = await runTests();
+ * console.log(`Success rate: ${result.success_rate.toFixed(1)}%`);
+ * console.log(`Duration: ${result.total_duration_ms}ms`);
+ *
+ * // Exit with appropriate code for CI/CD
+ * process.exit(result.failed_tests > 0 ? 1 : 0);
+ * ```
+ *
+ * @example Production environment execution
+ * ```typescript
+ * const result = await runTests('./configs/production.yml');
+ *
+ * if (result.success_rate < 95) {
+ *   console.error(`Test success rate too low: ${result.success_rate}%`);
+ *   console.error(`Failed tests: ${result.failed_tests}`);
  *   process.exit(1);
  * }
+ *
+ * console.log('✅ All tests passed - deployment ready');
  * ```
+ *
+ * @example Error handling and reporting
+ * ```typescript
+ * try {
+ *   const result = await runTests('./config.yml');
+ *
+ *   // Generate summary report
+ *   console.log('\n📊 Test Execution Summary:');
+ *   console.log(`   Total Tests: ${result.total_tests}`);
+ *   console.log(`   Successful: ${result.successful_tests}`);
+ *   console.log(`   Failed: ${result.failed_tests}`);
+ *   console.log(`   Skipped: ${result.skipped_tests}`);
+ *   console.log(`   Duration: ${(result.total_duration_ms / 1000).toFixed(1)}s`);
+ *
+ * } catch (error) {
+ *   console.error('❌ Test execution failed:', error.message);
+ *   process.exit(2); // Different exit code for execution errors
+ * }
+ * ```
+ *
+ * @public
  */
 export async function runTests(configPath?: string) {
   const { FlowTestEngine } = require("./core/engine");
@@ -91,23 +193,77 @@ export async function runTests(configPath?: string) {
 }
 
 /**
- * Função para dry-run (apenas descoberta e planejamento)
+ * Function for dry-run execution (discovery and planning only)
  *
- * Executa apenas a fase de descoberta e planejamento dos testes
- * sem executar as requisições HTTP. Útil para validar configuração
- * e visualizar o plano de execução.
+ * Executes only the discovery and planning phases without making actual HTTP requests.
+ * This is useful for validating configuration, visualizing execution plans, checking
+ * test dependencies, and estimating execution time without running the actual tests.
  *
- * @param configPath - Caminho opcional para arquivo de configuração
- * @returns Promise que resolve para informações sobre testes descobertos
+ * The dry-run process includes:
+ * - Test file discovery and parsing
+ * - Dependency resolution and validation
+ * - Priority-based test ordering
+ * - Execution plan generation
  *
- * @example
+ * @param configPath - Optional path to configuration file
+ * @returns Promise that resolves to array of discovered and ordered test information
+ * @throws {Error} When configuration is invalid or test discovery fails
+ *
+ * @example Basic dry-run for configuration validation
  * ```typescript
+ * import { planTests } from 'flow-test-engine';
+ *
  * const plan = await planTests('./config.yml');
- * console.log(`Found ${plan.total_tests} tests to execute`);
- * plan.suites_results.forEach(suite => {
- *   console.log(`- ${suite.suite_name} (${suite.total_steps} steps)`);
+ * console.log(`📋 Execution Plan: ${plan.length} tests discovered`);
+ *
+ * plan.forEach((test, index) => {
+ *   console.log(`${index + 1}. ${test.suite_name} (${test.priority})`);
+ *   console.log(`   📁 ${test.file_path}`);
+ *   console.log(`   ⏱️  Est. Duration: ${test.estimated_duration}ms`);
  * });
  * ```
+ *
+ * @example Dependency analysis with dry-run
+ * ```typescript
+ * const tests = await planTests('./config.yml');
+ *
+ * // Analyze dependencies
+ * const testsWithDeps = tests.filter(t => t.dependencies?.length > 0);
+ * console.log(`\n🔗 Dependency Analysis (${testsWithDeps.length} tests have dependencies):`);
+ *
+ * testsWithDeps.forEach(test => {
+ *   console.log(`${test.suite_name}:`);
+ *   test.dependencies.forEach(dep => {
+ *     const depTest = tests.find(t => t.node_id === dep);
+ *     if (depTest) {
+ *       console.log(`  ↳ depends on: ${depTest.suite_name}`);
+ *     } else {
+ *       console.log(`  ⚠️  missing dependency: ${dep}`);
+ *     }
+ *   });
+ * });
+ * ```
+ *
+ * @example Execution time estimation
+ * ```typescript
+ * const plan = await planTests('./config.yml');
+ *
+ * const totalEstimatedTime = plan.reduce((sum, test) => {
+ *   return sum + (test.estimated_duration || 0);
+ * }, 0);
+ *
+ * console.log(`⏱️  Estimated execution time: ${(totalEstimatedTime / 1000).toFixed(1)}s`);
+ *
+ * const priorityBreakdown = plan.reduce((acc, test) => {
+ *   const priority = test.priority || 'medium';
+ *   acc[priority] = (acc[priority] || 0) + 1;
+ *   return acc;
+ * }, {} as Record<string, number>);
+ *
+ * console.log('🏷️  Priority breakdown:', priorityBreakdown);
+ * ```
+ *
+ * @public
  */
 export async function planTests(configPath?: string) {
   const { FlowTestEngine } = require("./core/engine");
@@ -116,22 +272,39 @@ export async function planTests(configPath?: string) {
 }
 
 /**
- * Versão do package
+ * Package version
  *
- * Versão atual do Flow Test Engine, seguindo semantic versioning.
+ * Current version of the Flow Test Engine, following semantic versioning.
+ *
+ * @public
  */
 export const VERSION = "1.0.0";
 
 /**
- * Informações do package
+ * Package information and metadata
  *
- * Metadados sobre o Flow Test Engine incluindo nome, versão e descrição.
- * Útil para integração em ferramentas que precisam identificar a versão.
+ * Metadata about the Flow Test Engine including name, version, and description.
+ * Useful for integration with tools that need to identify the version or
+ * display package information.
  *
- * @example
+ * @example Displaying package information
  * ```typescript
+ * import { PACKAGE_INFO } from 'flow-test-engine';
+ *
  * console.log(`Using ${PACKAGE_INFO.name} v${PACKAGE_INFO.version}`);
+ * console.log(`Description: ${PACKAGE_INFO.description}`);
  * ```
+ *
+ * @example Version checking in CI/CD
+ * ```typescript
+ * if (PACKAGE_INFO.version.startsWith('1.')) {
+ *   console.log('Using stable v1.x release');
+ * } else {
+ *   console.warn('Using pre-release version');
+ * }
+ * ```
+ *
+ * @public
  */
 export const PACKAGE_INFO = {
   name: "flow-test-engine",

@@ -1,3 +1,14 @@
+/**
+ * @fileoverview Test execution service for orchestrating test suite execution.
+ *
+ * @remarks
+ * This module provides the ExecutionService class which handles the complete
+ * test execution lifecycle including dependency resolution, scenario processing,
+ * HTTP request execution, assertion validation, and result aggregation.
+ *
+ * @packageDocumentation
+ */
+
 import fs from "fs";
 import path from "path";
 import yaml from "js-yaml";
@@ -24,7 +35,94 @@ import {
 } from "../types/engine.types";
 
 /**
- * Test execution service
+ * Comprehensive test execution service for orchestrating complete test suite execution.
+ *
+ * @remarks
+ * The ExecutionService is the core orchestrator for test execution, managing the
+ * complete lifecycle from dependency resolution through result aggregation. It
+ * coordinates multiple specialized services to provide comprehensive test execution
+ * with advanced features like scenarios, iterations, performance monitoring, and hooks.
+ *
+ * **Execution Workflow:**
+ * 1. **Dependency Resolution**: Resolves and validates inter-suite dependencies
+ * 2. **Variable Preparation**: Sets up global and local variable contexts
+ * 3. **Scenario Processing**: Handles conditional scenarios and branching logic
+ * 4. **Iteration Management**: Processes data-driven test iterations
+ * 5. **HTTP Execution**: Executes HTTP requests with comprehensive error handling
+ * 6. **Assertion Validation**: Validates responses against defined assertions
+ * 7. **Variable Capture**: Captures and stores variables for subsequent use
+ * 8. **Result Aggregation**: Compiles comprehensive execution results
+ *
+ * **Key Features:**
+ * - **Dependency Management**: Automatic resolution of test suite dependencies
+ * - **Scenario Support**: Conditional test execution based on runtime conditions
+ * - **Iteration Processing**: Data-driven testing with dynamic data sources
+ * - **Performance Monitoring**: Comprehensive timing and performance metrics
+ * - **Hook System**: Extensible hook system for custom execution logic
+ * - **Error Handling**: Robust error handling with detailed reporting
+ * - **Variable Management**: Sophisticated variable scoping and interpolation
+ * - **Result Aggregation**: Detailed execution results with metrics and statistics
+ *
+ * @example Basic test suite execution
+ * ```typescript
+ * const configManager = new ConfigManager();
+ * const globalRegistry = new GlobalRegistryService();
+ * const executionService = new ExecutionService(configManager, globalRegistry);
+ *
+ * const discoveredTest: DiscoveredTest = {
+ *   suite: testSuite,
+ *   filePath: './tests/api-test.yaml',
+ *   metadata: { priority: 'high', tags: ['api', 'smoke'] }
+ * };
+ *
+ * const result = await executionService.executeSuite(discoveredTest);
+ *
+ * console.log(`Execution completed: ${result.success ? 'PASSED' : 'FAILED'}`);
+ * console.log(`Steps executed: ${result.total_steps}`);
+ * console.log(`Assertions: ${result.total_assertions_passed}/${result.total_assertions}`);
+ * ```
+ *
+ * @example Advanced execution with hooks and monitoring
+ * ```typescript
+ * const hooks: EngineHooks = {
+ *   beforeSuite: async (suite) => {
+ *     console.log(`Starting suite: ${suite.suite_name}`);
+ *   },
+ *   afterStep: async (step, result) => {
+ *     if (!result.success) {
+ *       console.error(`Step failed: ${step.name}`, result.error_message);
+ *     }
+ *   },
+ *   afterSuite: async (suite, result) => {
+ *     console.log(`Suite completed in ${result.duration_ms}ms`);
+ *   }
+ * };
+ *
+ * const result = await executionService.executeSuite(discoveredTest, hooks);
+ *
+ * // Access detailed performance metrics
+ * const performance = result.performance_summary;
+ * console.log(`Average response time: ${performance.average_response_time}ms`);
+ * console.log(`Total data transferred: ${performance.total_data_size} bytes`);
+ * ```
+ *
+ * @example Batch execution with dependency resolution
+ * ```typescript
+ * const tests = await discovery.discoverTests();
+ * const orderedTests = dependencyService.resolveExecutionOrder(tests);
+ *
+ * const results = await executionService.executeMultipleSuites(orderedTests, {
+ *   maxConcurrency: 3,
+ *   continueOnFailure: false,
+ *   hooks: customHooks
+ * });
+ *
+ * const aggregatedStats = executionService.aggregateResults(results);
+ * console.log(`Overall success rate: ${aggregatedStats.success_rate}%`);
+ * ```
+ *
+ * @public
+ * @since 1.0.0
  */
 export class ExecutionService {
   private configManager: ConfigManager;

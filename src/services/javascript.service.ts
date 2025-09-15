@@ -1,6 +1,52 @@
+/**
+ * @fileoverview Secure JavaScript execution service for dynamic expressions in tests.
+ *
+ * @remarks
+ * This module provides the JavaScriptService for safely executing JavaScript expressions
+ * within test contexts. It includes comprehensive security controls, context management,
+ * and extensive utility functions for dynamic test logic execution.
+ *
+ * @packageDocumentation
+ */
 
 /**
- * Context available in JavaScript expressions
+ * Execution context available in JavaScript expressions with comprehensive data access.
+ *
+ * @remarks
+ * Provides a secure and structured context for JavaScript expression execution
+ * with access to response data, variables, utilities, and request information.
+ * The context is carefully controlled to prevent security vulnerabilities while
+ * providing maximum flexibility for test logic.
+ *
+ * @example Context usage in JavaScript expressions
+ * ```typescript
+ * const context: JavaScriptExecutionContext = {
+ *   response: {
+ *     body: { user: { id: 123, name: 'John' } },
+ *     headers: { 'content-type': 'application/json' },
+ *     status: 200,
+ *     statusText: 'OK'
+ *   },
+ *   variables: {
+ *     api_base_url: 'https://api.example.com',
+ *     auth_token: 'bearer-token-123'
+ *   },
+ *   captured: {
+ *     user_id: 123,
+ *     session_id: 'sess-abc-123'
+ *   },
+ *   utils: {
+ *     Date: Date,
+ *     Math: Math,
+ *     JSON: JSON
+ *   }
+ * };
+ *
+ * // Expression: response.body.user.id > 0 && variables.auth_token
+ * ```
+ *
+ * @public
+ * @since 1.0.0
  */
 export interface JavaScriptExecutionContext {
   // Response data
@@ -10,13 +56,13 @@ export interface JavaScriptExecutionContext {
     status?: number;
     statusText?: string;
   };
-  
+
   // Current variables from all scopes
   variables?: Record<string, any>;
-  
+
   // Captured variables from current step
   captured?: Record<string, any>;
-  
+
   // Request data for the current step
   request?: {
     body?: any;
@@ -24,7 +70,7 @@ export interface JavaScriptExecutionContext {
     method?: string;
     url?: string;
   };
-  
+
   // Utility functions
   utils?: {
     Date: DateConstructor;
@@ -69,13 +115,17 @@ export class JavaScriptService {
 
   /**
    * Executes a JavaScript expression in a secure sandbox
-   * 
+   *
    * @param expression - JavaScript code to execute
    * @param context - Execution context with available variables and data
    * @param asCodeBlock - If true, executes as code block instead of expression
    * @returns Result of the JavaScript expression
    */
-  public executeExpression(expression: string, context: JavaScriptExecutionContext = {}, asCodeBlock: boolean = false): any {
+  public executeExpression(
+    expression: string,
+    context: JavaScriptExecutionContext = {},
+    asCodeBlock: boolean = false
+  ): any {
     // First validate the expression
     const validation = this.validateExpression(expression);
     if (!validation.isValid) {
@@ -85,11 +135,11 @@ export class JavaScriptService {
     try {
       // Create sandbox with context
       const sandbox = this.createSandbox(context);
-      
+
       // Create parameter names and values for the Function constructor
       const paramNames = Object.keys(sandbox);
-      const paramValues = paramNames.map(name => sandbox[name]);
-      
+      const paramValues = paramNames.map((name) => sandbox[name]);
+
       // Create a secure function with timeout
       const timeoutMs = this.config.timeout;
       const wrappedExpression = `
@@ -99,7 +149,7 @@ export class JavaScriptService {
             throw new Error('JavaScript expression timeout exceeded');
           }
         };
-        
+
         // Simple timeout check (not perfect but better than nothing)
         try {
           ${asCodeBlock ? expression : `return (${expression});`}
@@ -107,11 +157,11 @@ export class JavaScriptService {
           throw error;
         }
       `;
-      
+
       // Execute in isolated function scope
       const func = new Function(...paramNames, wrappedExpression);
       const result = func.apply(null, paramValues);
-      
+
       return result;
     } catch (error) {
       throw new Error(`JavaScript execution error: ${error}`);
@@ -128,7 +178,7 @@ export class JavaScriptService {
       variables: context.variables || {},
       captured: context.captured || {},
       request: context.request || {},
-      
+
       // Safe utility functions
       Date: Date,
       Math: Math,
@@ -137,20 +187,22 @@ export class JavaScriptService {
       parseFloat: parseFloat,
       isNaN: isNaN,
       isFinite: isFinite,
-      
+
       // Array and Object methods
       Array: Array,
       Object: Object,
-      
+
       // String methods
       String: String,
-      
+
       // Safe console (if enabled)
-      console: this.config.enableConsole ? {
-        log: console.log,
-        warn: console.warn,
-        error: console.error,
-      } : undefined,
+      console: this.config.enableConsole
+        ? {
+            log: console.log,
+            warn: console.warn,
+            error: console.error,
+          }
+        : undefined,
     };
 
     // Add variables from context directly to sandbox scope (only valid identifiers)
@@ -181,11 +233,11 @@ export class JavaScriptService {
   public parseJavaScriptExpression(fullExpression: string): string | null {
     // Check if it's a JavaScript expression (starts with 'js:')
     const jsMatch = fullExpression.match(/^js:\s*(.+)$/);
-    
+
     if (jsMatch) {
       return jsMatch[1].trim();
     }
-    
+
     return null;
   }
 
@@ -193,7 +245,10 @@ export class JavaScriptService {
    * Validates if an expression is safe to execute
    * Checks for potentially dangerous patterns
    */
-  public validateExpression(expression: string): { isValid: boolean; reason?: string } {
+  public validateExpression(expression: string): {
+    isValid: boolean;
+    reason?: string;
+  } {
     // List of dangerous patterns to block
     const dangerousPatterns = [
       /require\s*\(/,
@@ -228,25 +283,25 @@ export class JavaScriptService {
     if (expression.length > 1000) {
       return {
         isValid: false,
-        reason: 'Expression is too long (max 1000 characters)',
+        reason: "Expression is too long (max 1000 characters)",
       };
     }
 
     // Check for too many nested levels (simple parentheses count)
     const openParens = (expression.match(/\(/g) || []).length;
     const closeParens = (expression.match(/\)/g) || []).length;
-    
+
     if (openParens !== closeParens) {
       return {
         isValid: false,
-        reason: 'Mismatched parentheses in expression',
+        reason: "Mismatched parentheses in expression",
       };
     }
 
     if (openParens > 20) {
       return {
         isValid: false,
-        reason: 'Expression is too complex (too many nested levels)',
+        reason: "Expression is too complex (too many nested levels)",
       };
     }
 

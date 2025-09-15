@@ -1,45 +1,81 @@
+/**
+ * @fileoverview HTTP service for executing API requests with comprehensive error handling and performance monitoring.
+ *
+ * @remarks
+ * This module provides the HttpService class which handles all HTTP communication for the Flow Test Engine.
+ * It includes request execution, response processing, error handling, and performance measurement capabilities.
+ *
+ * @packageDocumentation
+ */
+
 import axios, { AxiosResponse, AxiosError } from "axios";
 import { RequestDetails } from "../types/engine.types";
 import { StepExecutionResult } from "../types/config.types";
 import { getLogger } from "./logger.service";
 
 /**
- * HTTP Service responsible for executing requests and processing responses
- *
- * This service encapsulates HTTP request execution logic using axios,
- * including URL construction, error handling, performance measurement,
- * and response normalization for the Flow Test Engine.
+ * HTTP service for executing API requests with comprehensive monitoring and error handling.
  *
  * @remarks
- * The HttpService automatically handles:
- * - URL construction from base URL and relative paths
- * - Request timeout management
- * - Response time measurement
- * - Error normalization and logging
- * - Header and body processing
+ * The HttpService is responsible for all HTTP communication within the Flow Test Engine.
+ * It provides robust request execution with automatic URL construction, timeout management,
+ * performance monitoring, and standardized error handling.
  *
- * @example Basic HTTP request execution
+ * **Key Features:**
+ * - **Automatic URL Construction**: Combines base URLs with relative paths intelligently
+ * - **Timeout Management**: Configurable timeouts with fallback to service defaults
+ * - **Performance Monitoring**: Accurate response time measurement for all requests
+ * - **Error Standardization**: Consistent error format across all HTTP operations
+ * - **Request/Response Logging**: Detailed logging for debugging and monitoring
+ * - **Content Type Handling**: Automatic JSON serialization and deserialization
+ *
+ * @example Basic request execution
  * ```typescript
  * const httpService = new HttpService('https://api.example.com', 30000);
- * const result = await httpService.executeRequest('Login', {
+ * const result = await httpService.executeRequest('User Login', {
  *   method: 'POST',
  *   url: '/auth/login',
- *   body: { username: 'user', password: 'pass' }
+ *   body: { username: 'testuser', password: 'secret123' }
  * });
  *
  * console.log(`Request completed in ${result.response_time}ms`);
  * console.log(`Status: ${result.status_code}`);
+ * console.log(`Response:`, result.body);
  * ```
  *
- * @example Request with custom headers
+ * @example Request with authentication and custom headers
  * ```typescript
- * const result = await httpService.executeRequest('GetUser', {
+ * const result = await httpService.executeRequest('Get User Profile', {
  *   method: 'GET',
- *   url: '/users/123',
+ *   url: '/users/profile',
  *   headers: {
- *     'Authorization': 'Bearer token',
- *     'Content-Type': 'application/json'
+ *     'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+ *     'Content-Type': 'application/json',
+ *     'X-Client-Version': '1.0.0'
  *   }
+ * });
+ * ```
+ *
+ * @example Request with query parameters
+ * ```typescript
+ * const result = await httpService.executeRequest('Search Users', {
+ *   method: 'GET',
+ *   url: '/users/search',
+ *   params: {
+ *     q: 'john',
+ *     limit: 10,
+ *     offset: 0
+ *   }
+ * });
+ * ```
+ *
+ * @example Request with custom timeout
+ * ```typescript
+ * const result = await httpService.executeRequest('Upload File', {
+ *   method: 'POST',
+ *   url: '/files/upload',
+ *   body: formData,
+ *   timeout: 60000  // 60 second timeout for file upload
  * });
  * ```
  *

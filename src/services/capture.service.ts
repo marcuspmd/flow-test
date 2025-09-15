@@ -1,3 +1,14 @@
+/**
+ * @fileoverview Variable capture service for extracting data from HTTP responses.
+ *
+ * @remarks
+ * This module provides the CaptureService class which handles extraction of data
+ * from HTTP responses using JMESPath expressions. It enables dynamic variable
+ * capture for use in subsequent test steps with comprehensive error handling.
+ *
+ * @packageDocumentation
+ */
+
 import * as jmespath from "jmespath";
 import { StepExecutionResult } from "../types/config.types";
 import { getLogger } from "./logger.service";

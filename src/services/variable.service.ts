@@ -1,3 +1,14 @@
+/**
+ * @fileoverview Variable interpolation and resolution service for dynamic test data.
+ *
+ * @remarks
+ * This module provides the VariableService class which handles hierarchical variable
+ * resolution, interpolation using template syntax, and integration with external
+ * data sources like Faker.js and JavaScript expressions.
+ *
+ * @packageDocumentation
+ */
+
 import { GlobalVariableContext } from "../types/config.types";
 import { GlobalRegistryService } from "./global-registry.service";
 import { fakerService } from "./faker.service";

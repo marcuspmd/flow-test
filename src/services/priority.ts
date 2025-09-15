@@ -1,8 +1,97 @@
+/**
+ * @fileoverview Priority management service for test execution ordering and filtering.
+ *
+ * @remarks
+ * This module provides the PriorityService class which handles priority-based test
+ * ordering, filtering, and execution planning. It supports configurable priority
+ * levels with weighted sorting and comprehensive priority-based operations.
+ *
+ * @packageDocumentation
+ */
+
 import { ConfigManager } from "../core/config";
 import { DiscoveredTest } from "../types/engine.types";
 
 /**
- * Service for managing priorities and test ordering
+ * Comprehensive priority management service for test execution ordering and filtering.
+ *
+ * @remarks
+ * The PriorityService manages priority-based test operations including ordering,
+ * filtering, and execution planning. It supports configurable priority levels
+ * with weighted calculations, enabling sophisticated test execution strategies
+ * based on business requirements and quality gates.
+ *
+ * **Priority Features:**
+ * - **Configurable Levels**: Support for custom priority hierarchies
+ * - **Weighted Sorting**: Numerical weight assignment for precise ordering
+ * - **Filter Operations**: Advanced filtering by single or multiple priorities
+ * - **Execution Planning**: Priority-based execution order optimization
+ * - **Fail-Fast Support**: Early termination on high-priority failures
+ * - **Statistics & Analytics**: Priority distribution analysis and reporting
+ *
+ * **Standard Priority Levels:**
+ * - **Critical**: Mission-critical tests that must pass
+ * - **High**: Important tests for core functionality
+ * - **Medium**: Standard tests for general features
+ * - **Low**: Nice-to-have tests for edge cases
+ *
+ * **Advanced Operations:**
+ * - Priority weight calculation and normalization
+ * - Multi-criteria sorting with priority as primary factor
+ * - Execution time estimation based on priority distribution
+ * - Risk assessment using priority and historical data
+ *
+ * @example Basic priority operations
+ * ```typescript
+ * const configManager = new ConfigManager();
+ * const priorityService = new PriorityService(configManager);
+ *
+ * // Filter tests by priority
+ * const criticalTests = priorityService.filterByPriority(allTests, ['critical']);
+ * const highPriorityTests = priorityService.filterByPriority(allTests, ['critical', 'high']);
+ *
+ * // Order tests by priority
+ * const orderedTests = priorityService.orderByPriority(allTests);
+ * console.log('Execution order:', orderedTests.map(t => `${t.suite.node_id} (${t.priority})`));
+ * ```
+ *
+ * @example Advanced priority analysis
+ * ```typescript
+ * const priorityService = new PriorityService(configManager);
+ *
+ * // Get priority distribution
+ * const distribution = priorityService.getPriorityDistribution(tests);
+ * console.log(`Critical: ${distribution.critical}, High: ${distribution.high}`);
+ *
+ * // Calculate execution time by priority
+ * const timeEstimate = priorityService.estimateExecutionTime(tests, {
+ *   priorityFilter: ['critical', 'high'],
+ *   averageStepTime: 500 // ms
+ * });
+ *
+ * console.log(`Estimated time for high-priority tests: ${timeEstimate}ms`);
+ * ```
+ *
+ * @example Fail-fast execution strategy
+ * ```typescript
+ * const priorityService = new PriorityService(configManager);
+ *
+ * // Configure fail-fast behavior
+ * const criticalTests = priorityService.filterByPriority(tests, ['critical']);
+ * const execution = await executeWithFailFast(criticalTests, {
+ *   stopOnFirstFailure: true,
+ *   notifyOnFailure: true,
+ *   escalationLevel: 'immediate'
+ * });
+ *
+ * if (execution.hasFailures) {
+ *   console.error('Critical test failure detected - stopping execution');
+ *   process.exit(1);
+ * }
+ * ```
+ *
+ * @public
+ * @since 1.0.0
  */
 export class PriorityService {
   private configManager: ConfigManager;

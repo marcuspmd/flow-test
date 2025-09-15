@@ -1,50 +1,181 @@
 /**
- * Tipos específicos para o sistema de importação Swagger/OpenAPI
+ * @fileoverview Type definitions for Swagger/OpenAPI integration and specification handling.
  *
- * Este módulo contém as definições de tipos para trabalhar com especificações
- * OpenAPI 3.0+ e Swagger 2.0, incluindo estruturas para parsing, validação
- * e geração de código.
+ * @remarks
+ * This module contains comprehensive type definitions for working with OpenAPI 3.0+ and
+ * Swagger 2.0 specifications. It provides structured interfaces for parsing, validation,
+ * and code generation from API specifications with full type safety.
  *
- * @since 2.1.0
+ * @packageDocumentation
  */
 
-export type OpenAPIVersion = "2.0" | "3.0.0" | "3.0.1" | "3.0.2" | "3.0.3" | "3.1.0";
+export type OpenAPIVersion =
+  | "2.0"
+  | "3.0.0"
+  | "3.0.1"
+  | "3.0.2"
+  | "3.0.3"
+  | "3.1.0";
 
 /**
- * Especificação OpenAPI completa
+ * Complete OpenAPI specification structure.
+ *
+ * @remarks
+ * Represents the root object of an OpenAPI specification document. This interface
+ * supports both OpenAPI 3.x and legacy Swagger 2.0 specifications with appropriate
+ * field validation and type safety.
+ *
+ * @example Basic OpenAPI spec structure
+ * ```typescript
+ * const spec: OpenAPISpec = {
+ *   openapi: '3.0.0',
+ *   info: {
+ *     title: 'API Documentation',
+ *     version: '1.0.0'
+ *   },
+ *   servers: [{
+ *     url: 'https://api.example.com',
+ *     description: 'Production server'
+ *   }],
+ *   paths: {
+ *     '/users': {
+ *       get: {
+ *         summary: 'List users',
+ *         responses: { '200': { description: 'Success' } }
+ *       }
+ *     }
+ *   }
+ * };
+ * ```
+ *
+ * @public
+ * @since 2.1.0
  */
 export interface OpenAPISpec {
+  /** OpenAPI version (3.x specifications) */
   openapi?: string;
+
+  /** Swagger version (2.0 specifications - legacy) */
   swagger?: string;
+
+  /** API metadata and information */
   info: OpenAPIInfo;
+
+  /** Server configurations for OpenAPI 3.x */
   servers?: OpenAPIServer[];
+
+  /** Host information for Swagger 2.0 (legacy) */
   host?: string;
+
+  /** Base path for Swagger 2.0 (legacy) */
   basePath?: string;
+
+  /** Supported schemes for Swagger 2.0 (legacy) */
   schemes?: string[];
+
+  /** Available API paths and operations */
   paths: Record<string, OpenAPIPath>;
+
+  /** Reusable components for OpenAPI 3.x */
   components?: OpenAPIComponents;
+
+  /** Schema definitions for Swagger 2.0 (legacy) */
   definitions?: Record<string, OpenAPISchema>;
+
+  /** Parameter definitions for Swagger 2.0 (legacy) */
   parameters?: Record<string, OpenAPIParameter>;
+
+  /** Response definitions for Swagger 2.0 (legacy) */
   responses?: Record<string, OpenAPIResponse>;
+
+  /** Security definitions for Swagger 2.0 (legacy) */
   securityDefinitions?: Record<string, OpenAPISecurityScheme>;
+
+  /** API tags for grouping operations */
   tags?: OpenAPITag[];
+
+  /** External documentation references */
   externalDocs?: OpenAPIExternalDocs;
 }
 
 /**
- * Informações da API
+ * API metadata and information section.
+ *
+ * @remarks
+ * Contains essential information about the API including title, version,
+ * description, and contact details. This information is used for documentation
+ * generation and API discovery.
+ *
+ * @example API info configuration
+ * ```typescript
+ * const info: OpenAPIInfo = {
+ *   title: 'User Management API',
+ *   version: '2.1.0',
+ *   description: 'Comprehensive user management and authentication API',
+ *   contact: {
+ *     name: 'API Support',
+ *     email: 'support@example.com',
+ *     url: 'https://example.com/support'
+ *   },
+ *   license: {
+ *     name: 'MIT',
+ *     url: 'https://opensource.org/licenses/MIT'
+ *   }
+ * };
+ * ```
+ *
+ * @public
+ * @since 2.1.0
  */
 export interface OpenAPIInfo {
+  /** The title of the API */
   title: string;
+
+  /** A detailed description of the API */
   description?: string;
+
+  /** The version of the OpenAPI document */
   version: string;
+
+  /** Contact information for the exposed API */
   contact?: OpenAPIContact;
+
+  /** License information for the exposed API */
   license?: OpenAPILicense;
+
+  /** A URL to the Terms of Service for the API */
   termsOfService?: string;
 }
 
 /**
- * Servidor da API
+ * Server configuration for API endpoints.
+ *
+ * @remarks
+ * Defines server information including URL, description, and variable substitution
+ * for different environments (development, staging, production). Used in OpenAPI 3.x
+ * specifications to replace the legacy host/basePath approach.
+ *
+ * @example Server configuration with variables
+ * ```typescript
+ * const server: OpenAPIServer = {
+ *   url: 'https://{environment}.api.example.com/{basePath}',
+ *   description: 'Environment-specific API server',
+ *   variables: {
+ *     environment: {
+ *       default: 'production',
+ *       enum: ['development', 'staging', 'production'],
+ *       description: 'API environment'
+ *     },
+ *     basePath: {
+ *       default: 'v1',
+ *       description: 'API version path'
+ *     }
+ *   }
+ * };
+ * ```
+ *
+ * @public
+ * @since 2.1.0
  */
 export interface OpenAPIServer {
   url: string;

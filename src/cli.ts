@@ -1,26 +1,32 @@
 #!/usr/bin/env node
 
 /**
- * CLI do Flow Test Engine v1.0
+ * @fileoverview Command Line Interface for the Flow Test Engine v1.0.
  *
- * Interface de linha de comando para o Flow Test Engine.
- * Permite executar testes com diversas opções de configuração,
- * filtros e níveis de verbosidade.
+ * @remarks
+ * Provides a comprehensive CLI for executing API tests with support for
+ * configuration files, filtering, verbosity levels, dry-run planning,
+ * and Swagger import functionality.
  *
- * @example
+ * @example Basic usage
  * ```bash
- * # Execução básica
+ * # Execute tests with default configuration
  * flow-test
  *
- * # Com arquivo de configuração específico
- * flow-test -c ./config/prod.yml
+ * # Use specific configuration file
+ * flow-test -c ./config/production.yml
  *
- * # Com filtros
- * flow-test --priority high,critical --verbose
+ * # Filter by priority and enable verbose output
+ * flow-test --priority critical,high --verbose
  *
- * # Dry run para planejar execução
+ * # Dry run to plan execution without running tests
  * flow-test --dry-run --detailed
+ *
+ * # Import tests from Swagger specification
+ * flow-test --swagger-import ./api-spec.json --swagger-output ./tests/
  * ```
+ *
+ * @packageDocumentation
  */
 
 import { FlowTestEngine } from "./core/engine";
@@ -30,15 +36,29 @@ import {
   SuiteExecutionResult,
 } from "./types/config.types";
 import { ExecutionStats, TestSuite } from "./types/engine.types";
-import { SwaggerImportService, ImportOptions } from "./services/swagger-import.service";
+import {
+  SwaggerImportService,
+  ImportOptions,
+} from "./services/swagger-import.service";
 
 /**
- * Função principal do CLI
+ * Main CLI entry point function.
  *
- * Processa argumentos da linha de comando, configura o engine
- * e executa os testes com as opções especificadas.
+ * @remarks
+ * Processes command line arguments, configures the Flow Test Engine,
+ * and executes tests or performs other operations like Swagger import
+ * or dry-run planning based on the provided options.
  *
- * @returns Promise<void>
+ * @example Programmatic CLI usage
+ * ```typescript
+ * // Simulate CLI call
+ * process.argv = ['node', 'cli.js', '--config', './test-config.yml', '--verbose'];
+ * await main();
+ * ```
+ *
+ * @returns Promise that resolves when CLI execution completes
+ *
+ * @public
  */
 async function main() {
   const args = process.argv.slice(2);
@@ -343,8 +363,13 @@ CONFIGURATION:
 /**
  * Manipula importação de especificação Swagger/OpenAPI
  */
-async function handleSwaggerImport(specFilePath: string, outputDir?: string): Promise<void> {
-  console.log(`🔄 Importing Swagger/OpenAPI specification from: ${specFilePath}`);
+async function handleSwaggerImport(
+  specFilePath: string,
+  outputDir?: string
+): Promise<void> {
+  console.log(
+    `🔄 Importing Swagger/OpenAPI specification from: ${specFilePath}`
+  );
 
   try {
     const importService = new SwaggerImportService();
@@ -352,29 +377,29 @@ async function handleSwaggerImport(specFilePath: string, outputDir?: string): Pr
       groupByTags: true,
       generateDocs: true,
       includeExamples: true,
-      useFakerForData: true
+      useFakerForData: true,
     };
 
     const result = await importService.importSpec(
       specFilePath,
-      outputDir || './tests/imported',
+      outputDir || "./tests/imported",
       options
     );
 
     if (!result.success) {
-      console.error('❌ Import failed:');
-      result.errors.forEach(error => console.error(`  • ${error}`));
+      console.error("❌ Import failed:");
+      result.errors.forEach((error) => console.error(`  • ${error}`));
       process.exit(1);
     }
 
     // Show warnings if any
     if (result.warnings.length > 0) {
-      console.log('\n⚠️  Warnings:');
-      result.warnings.forEach(warning => console.warn(`  • ${warning}`));
+      console.log("\n⚠️  Warnings:");
+      result.warnings.forEach((warning) => console.warn(`  • ${warning}`));
     }
 
     // Show success summary
-    console.log('\n✅ Import completed successfully!');
+    console.log("\n✅ Import completed successfully!");
     console.log(`📁 Output directory: ${result.outputPath}`);
     console.log(`📄 Generated test suites: ${result.generatedSuites}`);
 
@@ -382,13 +407,12 @@ async function handleSwaggerImport(specFilePath: string, outputDir?: string): Pr
       console.log(`📚 Generated documentation files: ${result.generatedDocs}`);
     }
 
-    console.log('\n🚀 Next steps:');
-    console.log('  1. Review generated test files');
-    console.log('  2. Adjust variables and assertions as needed');
+    console.log("\n🚀 Next steps:");
+    console.log("  1. Review generated test files");
+    console.log("  2. Adjust variables and assertions as needed");
     console.log(`  3. Run tests: flow-test --directory ${result.outputPath}`);
-
   } catch (error) {
-    console.error('❌ Unexpected error during import:', error);
+    console.error("❌ Unexpected error during import:", error);
     process.exit(1);
   }
 }

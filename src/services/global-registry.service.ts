@@ -1,10 +1,38 @@
+/**
+ * @fileoverview Global variable registry service for cross-suite variable sharing.
+ *
+ * @remarks
+ * This module provides the GlobalRegistryService class which manages variable sharing
+ * between different test nodes, allowing secure and organized export/import of variables
+ * across test suites with comprehensive validation and debugging capabilities.
+ *
+ * @packageDocumentation
+ */
+
 import { getLogger } from "./logger.service";
 
 /**
- * Entry in the global variable registry
+ * Entry in the global variable registry with comprehensive metadata.
  *
- * Represents a variable exported by a node with metadata
- * for tracking and debugging.
+ * @remarks
+ * Represents a variable exported by a node with complete tracking information
+ * for debugging, validation, and audit purposes. Each entry maintains full
+ * context about the variable's origin and lifecycle.
+ *
+ * @example Registry entry structure
+ * ```typescript
+ * const entry: GlobalVariableEntry = {
+ *   nodeId: 'auth-flow',
+ *   suiteName: 'Authentication Flow',
+ *   variableName: 'auth_token',
+ *   value: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+ *   timestamp: Date.now(),
+ *   filePath: './tests/auth.yaml'
+ * };
+ * ```
+ *
+ * @public
+ * @since 1.0.0
  */
 interface GlobalVariableEntry {
   /** Node ID that exported the variable */
@@ -27,10 +55,29 @@ interface GlobalVariableEntry {
 }
 
 /**
- * Namespace of variables exported by a node
+ * Namespace of variables exported by a node with control metadata.
  *
- * Groups all variables exported by a specific node
- * with control metadata.
+ * @remarks
+ * Groups all variables exported by a specific node with comprehensive
+ * control and tracking metadata. Provides namespace isolation and
+ * organized variable management within the global registry system.
+ *
+ * @example Namespace structure
+ * ```typescript
+ * const namespace: NodeNamespace = {
+ *   nodeId: 'user-management',
+ *   suiteName: 'User Management Tests',
+ *   variables: new Map([
+ *     ['user_id', userIdEntry],
+ *     ['session_token', sessionEntry]
+ *   ]),
+ *   exports: ['user_id', 'session_token'],
+ *   filePath: './tests/user-management.yaml',
+ *   lastUpdated: Date.now()
+ * };
+ * ```
+ *
+ * @internal
  */
 interface NodeNamespace {
   /** Node ID of the owning node */
@@ -53,13 +100,34 @@ interface NodeNamespace {
 }
 
 /**
- * Global registry service for variables exported between flows
+ * Global registry service for secure variable sharing between test flows.
  *
- * Manages variable sharing between different test nodes,
- * allowing one node to export variables that can be consumed
- * by other nodes using the notation `nodeId.variable_name`.
+ * @remarks
+ * The GlobalRegistryService manages variable sharing between different test nodes,
+ * providing a secure and organized system for exporting variables from one test
+ * suite and importing them in others. It includes comprehensive validation,
+ * debugging capabilities, and integrity checking for reliable cross-suite communication.
  *
- * @example
+ * **Key Features:**
+ * - **Namespace Isolation**: Variables are organized by node ID to prevent conflicts
+ * - **Export Control**: Only explicitly declared variables can be exported
+ * - **Variable Indexing**: Fast lookup system for efficient variable resolution
+ * - **Audit Trail**: Complete tracking of variable lifecycle and modifications
+ * - **Integrity Validation**: Comprehensive validation of registry state
+ * - **Debug Support**: Detailed logging and state export for troubleshooting
+ *
+ * **Variable Naming Convention:**
+ * Variables are accessed using the pattern `nodeId.variableName` where:
+ * - `nodeId`: Unique identifier of the exporting test node
+ * - `variableName`: Name of the specific variable being accessed
+ *
+ * **Security Features:**
+ * - Variables must be explicitly declared in the exports list
+ * - Namespace isolation prevents accidental variable conflicts
+ * - Comprehensive validation prevents registry corruption
+ * - Detailed audit logging for security monitoring
+ *
+ * @example Basic variable export and consumption
  * ```typescript
  * const registry = new GlobalRegistryService();
  *
@@ -74,6 +142,53 @@ interface NodeNamespace {
  * const token = registry.getExportedVariable('auth.user_token');
  * const userId = registry.getExportedVariable('auth.user_id');
  * ```
+ *
+ * @example Advanced registry management
+ * ```typescript
+ * const registry = new GlobalRegistryService();
+ *
+ * // Register multiple nodes with different exports
+ * registry.registerNode('auth', 'Authentication', ['token', 'user_id'], './auth.yaml');
+ * registry.registerNode('products', 'Product Tests', ['product_id', 'category'], './products.yaml');
+ *
+ * // Set variables
+ * registry.setExportedVariable('auth', 'token', 'jwt-token-123');
+ * registry.setExportedVariable('products', 'product_id', 'prod-789');
+ *
+ * // Get all variables from a namespace
+ * const authVars = registry.getNodeVariables('auth');
+ * const allVars = registry.getAllExportedVariables();
+ *
+ * // Registry introspection
+ * const stats = registry.getStats();
+ * console.log(`Total nodes: ${stats.total_nodes}`);
+ * console.log(`Total variables: ${stats.total_exported_variables}`);
+ *
+ * // Validate registry integrity
+ * const validation = registry.validateIntegrity();
+ * if (!validation.valid) {
+ *   console.error('Registry integrity issues:', validation.errors);
+ * }
+ * ```
+ *
+ * @example Registry snapshots and debugging
+ * ```typescript
+ * // Create snapshot for rollback capability
+ * const restoreSnapshot = registry.createSnapshot();
+ *
+ * // Make changes
+ * registry.setExportedVariable('auth', 'token', 'new-token');
+ *
+ * // Export state for debugging
+ * const debugState = registry.exportState();
+ * console.log('Registry state:', debugState);
+ *
+ * // Restore if needed
+ * restoreSnapshot();
+ * ```
+ *
+ * @public
+ * @since 1.0.0
  */
 export class GlobalRegistryService {
   /** Main registry mapping node ID to its namespace */

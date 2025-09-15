@@ -1,74 +1,144 @@
 /**
- * Definições de tipos específicas para o motor de testes
+ * @fileoverview Core type definitions for the Flow Test Engine.
  *
- * Este módulo contém as definições de tipos da arquitetura v1.0 do Flow Test Engine.
- * Estende e substitui common.types.ts com nova arquitetura aprimorada,
- * incluindo suporte a metadados, hooks, filtros avançados e estatísticas detalhadas.
+ * @remarks
+ * This module contains the fundamental type definitions for the Flow Test Engine v1.0 architecture.
+ * It provides comprehensive interfaces for test suites, steps, HTTP requests, assertions,
+ * and execution results with support for advanced features like scenarios, iterations, and dependencies.
  *
  * @since 1.0.0
+ * @packageDocumentation
  */
 
 /**
- * Detalhes de uma requisição HTTP com suporte estendido
+ * HTTP request details with comprehensive configuration options.
  *
- * Versão aprimorada que inclui timeout configurável e métodos HTTP adicionais
- * como HEAD e OPTIONS para casos de uso avançados.
+ * @remarks
+ * Enhanced version supporting all major HTTP methods including HEAD and OPTIONS
+ * for advanced use cases, with configurable timeouts and parameter support.
+ *
+ * @example
+ * ```typescript
+ * const request: RequestDetails = {
+ *   method: "POST",
+ *   url: "/api/users",
+ *   headers: {
+ *     "Content-Type": "application/json",
+ *     "Authorization": "Bearer {{auth_token}}"
+ *   },
+ *   body: {
+ *     name: "John Doe",
+ *     email: "john@example.com"
+ *   },
+ *   timeout: 30000
+ * };
+ * ```
+ *
+ * @public
  */
 export interface RequestDetails {
+  /** HTTP method for the request */
   method: "GET" | "POST" | "PUT" | "DELETE" | "PATCH" | "HEAD" | "OPTIONS";
+
+  /** URL path, can be absolute or relative to base_url */
   url: string;
+
+  /** HTTP headers to include with the request */
   headers?: Record<string, string>;
+
+  /** Request body payload for POST/PUT/PATCH methods */
   body?: any;
+
+  /** Query string parameters */
   params?: Record<string, any>;
+
+  /** Request timeout in milliseconds */
   timeout?: number;
 }
 
 /**
- * Regras de validação estendidas para um campo específico
+ * Advanced validation rules for response field checking.
  *
- * Versão aprimorada das regras de assertion incluindo validações de tipo,
- * existência, comprimento e outras verificações avançadas.
+ * @remarks
+ * Comprehensive assertion checks supporting type validation, existence checks,
+ * pattern matching, numerical comparisons, and length validations for arrays and strings.
  *
- * @example
- * ```yaml
- * assert:
- *   body:
- *     user_id:
- *       type: number
- *       greater_than: 0
- *     email:
- *       exists: true
- *       regex: "^[\\w-\\.]+@([\\w-]+\\.)+[\\w-]{2,4}$"
- *     items:
- *       length:
- *         greater_than: 0
- *         less_than: 100
+ * @example Basic field validation
+ * ```typescript
+ * const userIdCheck: AssertionChecks = {
+ *   type: "number",
+ *   greater_than: 0,
+ *   exists: true
+ * };
  * ```
+ *
+ * @example Email validation with regex
+ * ```typescript
+ * const emailCheck: AssertionChecks = {
+ *   type: "string",
+ *   regex: "^[\\w-\\.]+@([\\w-]+\\.)+[\\w-]{2,4}$",
+ *   exists: true
+ * };
+ * ```
+ *
+ * @example Array length validation
+ * ```typescript
+ * const itemsCheck: AssertionChecks = {
+ *   type: "array",
+ *   length: {
+ *     greater_than: 0,
+ *     less_than: 100
+ *   }
+ * };
+ * ```
+ *
+ * @public
  */
 export interface AssertionChecks {
+  /** Exact value equality check */
   equals?: any;
+
+  /** Check if field contains the specified value */
   contains?: any;
+
+  /** Check if field does not equal the specified value */
   not_equals?: any;
+
+  /** Numerical greater than comparison */
   greater_than?: number;
+
+  /** Numerical less than comparison */
   less_than?: number;
+
+  /** Regular expression pattern matching */
   regex?: string;
+
+  /** Check if field exists in the response */
   exists?: boolean;
+
+  /** Type validation */
   type?: "string" | "number" | "boolean" | "object" | "array";
+
+  /** Length validation for arrays and strings */
   length?: {
+    /** Exact length match */
     equals?: number;
+    /** Minimum length */
     greater_than?: number;
+    /** Maximum length */
     less_than?: number;
   };
 }
 
 /**
- * Conjunto completo de validações para uma resposta HTTP
+ * Comprehensive assertion configuration for HTTP response validation.
  *
- * Define todas as validações que podem ser aplicadas a uma resposta,
- * incluindo assertions customizadas e validações de tempo de resposta
- * com limites superior e inferior.
+ * @remarks
+ * Defines all possible validations that can be applied to an HTTP response,
+ * including status code checks, body field validation, header verification,
+ * response time constraints, and custom assertion scripts.
  *
- * @example
+ * @example Complete response validation
  * ```yaml
  * assert:
  *   status_code: 200
@@ -78,6 +148,12 @@ export interface AssertionChecks {
  *     data:
  *       type: object
  *       exists: true
+ *     user:
+ *       id:
+ *         type: number
+ *         greater_than: 0
+ *       email:
+ *         regex: "^[\\w-\\.]+@([\\w-]+\\.)+[\\w-]{2,4}$"
  *   headers:
  *     content-type:
  *       contains: "application/json"
@@ -86,35 +162,58 @@ export interface AssertionChecks {
  *     greater_than: 10
  *   custom:
  *     - name: "Valid user ID format"
- *       condition: "body.user.id && type(body.user.id) == 'number'"
+ *       condition: "body.user.id && typeof body.user.id === 'number'"
  *       message: "User ID must be a number"
  * ```
+ *
+ * @public
  */
 export interface Assertions {
+  /** Expected HTTP status code or status code validation rules */
   status_code?: number | AssertionChecks;
+
+  /** Body field validations using nested assertion checks */
   body?: Record<string, AssertionChecks>;
+
+  /** HTTP header validations */
   headers?: Record<string, AssertionChecks>;
+
+  /** Response time performance constraints */
   response_time_ms?: {
+    /** Maximum acceptable response time in milliseconds */
     less_than?: number;
+    /** Minimum expected response time in milliseconds */
     greater_than?: number;
   };
+  /** Custom assertion scripts for advanced validation */
   custom?: Array<{
+    /** Name of the custom assertion */
     name: string;
-    condition: string; // JMESPath expression
+    /** JMESPath expression or JavaScript condition to evaluate */
+    condition: string;
+    /** Optional error message when assertion fails */
     message?: string;
   }>;
 }
 
 /**
- * Conditional scenarios for happy/sad path testing
+ * Conditional scenario configuration for dynamic test behavior.
  *
- * @example
+ * @remarks
+ * Enables conditional execution of assertions, captures, and variable assignments
+ * based on JMESPath expressions evaluated against the response data.
+ * Supports both positive (`then`) and negative (`else`) conditions.
+ *
+ * @example Role-based conditional testing
  * ```typescript
  * const scenario: ConditionalScenario = {
- *   name: "Check user role",
+ *   name: "Admin vs User permissions",
  *   condition: "body.user.role == 'admin'",
  *   then: {
- *     assert: { status_code: 200 },
+ *     assert: {
+ *       status_code: 200,
+ *       body: { permissions: { contains: "admin_access" } }
+ *     },
  *     capture: { admin_id: "body.user.id" }
  *   },
  *   else: {
@@ -123,171 +222,270 @@ export interface Assertions {
  *   }
  * };
  * ```
+ *
+ * @public
  */
 export interface ConditionalScenario {
-  /** Optional name for the scenario */
+  /** Optional descriptive name for the scenario */
   name?: string;
-  /** JMESPath expression to evaluate condition */
+
+  /** JMESPath expression to evaluate the condition against response data */
   condition: string;
-  /** Actions to execute if condition is true */
+
+  /** Actions to execute when condition evaluates to true */
   then?: {
+    /** Additional assertions to perform */
     assert?: Assertions;
+    /** Variables to capture from the response */
     capture?: Record<string, string>;
+    /** Static variables to set */
     variables?: Record<string, any>;
   };
-  /** Actions to execute if condition is false */
+
+  /** Actions to execute when condition evaluates to false */
   else?: {
+    /** Additional assertions to perform */
     assert?: Assertions;
+    /** Variables to capture from the response */
     capture?: Record<string, string>;
+    /** Static variables to set */
     variables?: Record<string, any>;
   };
 }
 
 /**
- * Configuration for array iteration in test steps
+ * Configuration for iterating over arrays in test steps.
  *
- * @example
+ * @remarks
+ * Enables data-driven testing by executing a test step multiple times,
+ * once for each item in the specified array. The current item is available
+ * as a variable within each iteration.
+ *
+ * @example Testing multiple user scenarios
  * ```yaml
  * iterate:
- *   over: "{{test_cases}}"
- *   as: "item"
+ *   over: "{{test_users}}"
+ *   as: "current_user"
+ * request:
+ *   url: "/users/{{current_user.id}}"
  * ```
+ *
+ * @public
  */
 export interface ArrayIterationConfig {
   /** JMESPath expression or variable name pointing to the array to iterate over */
   over: string;
+
   /** Variable name to use for the current item in each iteration */
   as: string;
 }
 
 /**
- * Configuration for range iteration in test steps
+ * Configuration for iterating over numeric ranges in test steps.
  *
- * @example
+ * @remarks
+ * Enables repeated execution of test steps across a numeric range,
+ * useful for pagination testing, batch operations, or stress testing.
+ *
+ * @example Testing pagination across multiple pages
  * ```yaml
  * iterate:
- *   range: "1..5"
- *   as: "index"
+ *   range: "1..10"
+ *   as: "page_number"
+ * request:
+ *   url: "/api/items?page={{page_number}}"
  * ```
+ *
+ * @public
  */
 export interface RangeIterationConfig {
   /** Range specification in format "start..end" (inclusive) */
   range: string;
+
   /** Variable name to use for the current index in each iteration */
   as: string;
 }
 
 /**
- * Unified iteration configuration
+ * Unified iteration configuration supporting both array and range iteration.
  *
- * Supports both array iteration and range iteration patterns.
+ * @remarks
+ * Use array iteration for data-driven testing with predefined datasets,
+ * or range iteration for numeric sequence testing like pagination or batch processing.
+ *
+ * @public
  */
 export type IterationConfig = ArrayIterationConfig | RangeIterationConfig;
 
 /**
- * Context for a single iteration execution
+ * Runtime context for a single iteration execution.
+ *
+ * @remarks
+ * Provides metadata and state information during iteration execution,
+ * including the current index, value, and position within the iteration sequence.
+ *
+ * @example Iteration context usage
+ * ```typescript
+ * const context: IterationContext = {
+ *   index: 2,
+ *   value: { name: "Alice", id: 123 },
+ *   variableName: "current_user",
+ *   isFirst: false,
+ *   isLast: false
+ * };
+ * ```
+ *
+ * @public
  */
 export interface IterationContext {
   /** Current iteration index (0-based) */
   index: number;
+
   /** Current item (for array iteration) or current value (for range iteration) */
   value: any;
-  /** Variable name to bind the value to */
+
+  /** Variable name to bind the current value to */
   variableName: string;
+
   /** Whether this is the first iteration */
   isFirst: boolean;
+
   /** Whether this is the last iteration */
   isLast: boolean;
 }
 
 /**
- * Metadata for test step configuration and behavior
+ * Metadata configuration for test step execution and behavior.
  *
- * @example
+ * @remarks
+ * Provides fine-grained control over test step execution including
+ * priority levels, tagging for organization, timeout configurations,
+ * retry mechanisms, and dependency management.
+ *
+ * @example Comprehensive step metadata
  * ```typescript
  * const metadata: TestStepMetadata = {
- *   priority: "high",
- *   tags: ["auth", "smoke"],
- *   timeout: 5000,
+ *   priority: "critical",
+ *   tags: ["auth", "security", "smoke"],
+ *   timeout: 10000,
  *   retry: {
  *     max_attempts: 3,
  *     delay_ms: 1000
  *   },
- *   depends_on: ["login_step"],
- *   description: "Validates user authentication token"
+ *   depends_on: ["setup_auth_token"],
+ *   description: "Validates authentication token and user permissions"
  * };
  * ```
+ *
+ * @public
  */
 export interface TestStepMetadata {
-  /** Execution priority (high, medium, low) */
+  /** Execution priority level (critical, high, medium, low) */
   priority?: string;
-  /** Tags for categorization and filtering */
+
+  /** Tags for categorization, filtering, and organization */
   tags?: string[];
-  /** Maximum execution time in milliseconds */
+
+  /** Maximum execution time in milliseconds before timeout */
   timeout?: number;
-  /** Retry configuration for failed steps */
+
+  /** Retry configuration for handling transient failures */
   retry?: {
+    /** Maximum number of retry attempts */
     max_attempts: number;
+    /** Delay between retry attempts in milliseconds */
     delay_ms: number;
   };
-  /** Array of step names this step depends on */
+
+  /** Names of steps that must complete successfully before this step executes */
   depends_on?: string[];
-  /** Human-readable description of the step */
+
+  /** Human-readable description of what this step accomplishes */
   description?: string;
 }
 
 /**
- * Complete test step definition with extended metadata
+ * Complete test step definition with comprehensive configuration options.
  *
- * @example
+ * @remarks
+ * Represents a single test step within a test suite, containing the HTTP request
+ * specification, response validation rules, data extraction patterns, conditional
+ * scenarios, iteration configuration, and execution metadata.
+ *
+ * @example Complete test step with all features
  * ```typescript
  * const step: TestStep = {
  *   name: "Create new user account",
  *   request: {
  *     method: "POST",
  *     url: "/api/users",
- *     headers: { "Content-Type": "application/json" },
+ *     headers: {
+ *       "Content-Type": "application/json",
+ *       "Authorization": "Bearer {{auth_token}}"
+ *     },
  *     body: {
  *       username: "{{test_username}}",
- *       email: "{{test_email}}"
- *     }
+ *       email: "{{test_email}}",
+ *       role: "user"
+ *     },
+ *     timeout: 30000
  *   },
  *   assert: {
  *     status_code: 201,
  *     body: {
- *       "id": { exists: true },
- *       "username": { equals: "{{test_username}}" }
- *     }
+ *       "id": { exists: true, type: "number" },
+ *       "username": { equals: "{{test_username}}" },
+ *       "email": { regex: "^[\\w-\\.]+@([\\w-]+\\.)+[\\w-]{2,4}$" }
+ *     },
+ *     response_time_ms: { less_than: 2000 }
  *   },
  *   capture: {
  *     user_id: "body.id",
- *     created_at: "body.created_at"
+ *     created_at: "body.created_at",
+ *     user_email: "body.email"
  *   },
+ *   scenarios: [{
+ *     name: "Check if admin user",
+ *     condition: "body.role == 'admin'",
+ *     then: {
+ *       capture: { admin_permissions: "body.permissions" }
+ *     }
+ *   }],
  *   continue_on_failure: false,
  *   metadata: {
  *     priority: "high",
  *     tags: ["user-management", "regression"],
- *     timeout: 10000
+ *     timeout: 10000,
+ *     description: "Creates a new user account and validates the response"
  *   }
  * };
  * ```
+ *
+ * @public
  */
 export interface TestStep {
-  /** Descriptive name for the test step */
+  /** Descriptive name identifying the purpose of this test step */
   name: string;
-  /** HTTP request configuration */
+
+  /** HTTP request configuration including method, URL, headers, and body */
   request: RequestDetails;
-  /** Response assertions to validate */
+
+  /** Response validation rules and assertions */
   assert?: Assertions;
-  /** Data extraction from response */
+
+  /** Data extraction patterns using JMESPath expressions */
   capture?: Record<string, string>;
-  /** Conditional scenarios for complex flows */
+
+  /** Conditional scenarios for dynamic test behavior based on response data */
   scenarios?: ConditionalScenario[];
-  /** Iteration configuration for repeating the step multiple times */
+
+  /** Iteration configuration for data-driven testing */
   iterate?: IterationConfig;
-  /** Whether to continue execution if this step fails */
+
+  /** Whether to continue test suite execution if this step fails */
   continue_on_failure?: boolean;
-  /** Additional metadata for step configuration */
+
+  /** Additional metadata for execution control and organization */
   metadata?: TestStepMetadata;
 }
 

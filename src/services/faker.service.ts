@@ -1,24 +1,126 @@
+/**
+ * @fileoverview Secure fake data generation service using Faker.js with method allowlisting.
+ *
+ * @remarks
+ * This module provides the FakerService class which offers secure fake data generation
+ * capabilities for testing purposes. It includes security controls through method allowlisting
+ * to prevent code injection while supporting comprehensive data generation scenarios.
+ *
+ * @packageDocumentation
+ */
+
 import { faker } from "@faker-js/faker";
 
 /**
- * Configuration options for Faker service
+ * Configuration options for the Faker service initialization.
+ *
+ * @remarks
+ * FakerConfig allows customization of the Faker.js behavior including
+ * locale-specific data generation and deterministic output through seeding.
+ *
+ * @example Basic configuration
+ * ```typescript
+ * const config: FakerConfig = {
+ *   locale: 'en_US',
+ *   seed: 12345
+ * };
+ *
+ * const fakerService = FakerService.getInstance();
+ * fakerService.configure(config);
+ * ```
+ *
+ * @public
+ * @since 1.0.0
  */
 export interface FakerConfig {
+  /** Locale for generating region-specific data (e.g., 'en_US', 'pt_BR', 'es_ES') */
   locale?: string;
+
+  /** Seed value for deterministic fake data generation across test runs */
   seed?: number;
 }
 
 /**
- * Allowlisted Faker methods for security
+ * Represents an allowlisted Faker method for secure execution.
+ *
+ * @remarks
+ * FakerMethod defines the structure for validating and executing Faker.js
+ * method calls safely. Only methods included in the allowlist can be executed
+ * to prevent security vulnerabilities.
+ *
+ * @internal
  */
 interface FakerMethod {
+  /** The Faker.js category (e.g., 'person', 'internet', 'location') */
   category: string;
+
+  /** The specific method within the category (e.g., 'firstName', 'email') */
   method: string;
+
+  /** Optional arguments to pass to the Faker method */
   args?: any[];
 }
 
 /**
- * Service for generating fake data using Faker.js with security controls
+ * Secure fake data generation service using Faker.js with comprehensive security controls.
+ *
+ * @remarks
+ * The FakerService provides a secure interface for generating fake data in test scenarios.
+ * It implements security measures through method allowlisting to prevent code injection
+ * while offering extensive fake data generation capabilities for realistic test data.
+ *
+ * **Security Features:**
+ * - **Method Allowlisting**: Only pre-approved Faker.js methods can be executed
+ * - **Input Validation**: All method calls are validated before execution
+ * - **Error Handling**: Safe fallback values for failed generation attempts
+ * - **Singleton Pattern**: Consistent configuration across the application
+ *
+ * **Supported Data Categories:**
+ * - **Person Data**: Names, job titles, demographics
+ * - **Internet Data**: Emails, URLs, IP addresses, user agents
+ * - **Location Data**: Addresses, cities, countries, coordinates
+ * - **Communication**: Phone numbers, social media handles
+ * - **Commerce**: Product names, prices, departments
+ * - **Date/Time**: Past and future dates, recent timestamps
+ * - **Identification**: UUIDs, random numbers, boolean values
+ * - **Text Generation**: Lorem ipsum, words, sentences
+ *
+ * @example Basic usage with variable interpolation
+ * ```typescript
+ * const fakerService = FakerService.getInstance();
+ *
+ * // These can be used in YAML test files as {{$faker.person.firstName}}
+ * const firstName = fakerService.generate('person.firstName');
+ * const email = fakerService.generate('internet.email');
+ * const address = fakerService.generate('location.streetAddress');
+ *
+ * console.log(`User: ${firstName}, Email: ${email}, Address: ${address}`);
+ * ```
+ *
+ * @example Deterministic data generation with seeding
+ * ```typescript
+ * const fakerService = FakerService.getInstance();
+ * fakerService.configure({ seed: 12345, locale: 'en_US' });
+ *
+ * // These will generate the same values across test runs
+ * const name1 = fakerService.generate('person.fullName');
+ * const name2 = fakerService.generate('person.fullName');
+ * ```
+ *
+ * @example Batch data generation
+ * ```typescript
+ * const testUsers = fakerService.generateBatch([
+ *   'person.firstName',
+ *   'person.lastName',
+ *   'internet.email',
+ *   'person.jobTitle'
+ * ], 10);
+ *
+ * // Returns array of 10 user objects with generated data
+ * ```
+ *
+ * @public
+ * @since 1.0.0
  */
 export class FakerService {
   private static instance: FakerService;
@@ -179,13 +281,6 @@ export class FakerService {
    * @returns Generated fake data
    */
   public executeMethod(methodPath: string, args: any[] = []): any {
-    // Security check: only allow allowlisted methods
-    if (!this.allowlistedMethods.has(methodPath)) {
-      throw new Error(
-        `Faker method '${methodPath}' is not allowlisted for security reasons`
-      );
-    }
-
     try {
       const pathParts = methodPath.split(".");
 
@@ -207,6 +302,13 @@ export class FakerService {
       if (typeof methodFunction !== "function") {
         throw new Error(
           `Faker method '${method}' not found in category '${category}'`
+        );
+      }
+
+      // Security check: only allow allowlisted methods
+      if (!this.allowlistedMethods.has(methodPath)) {
+        throw new Error(
+          `Faker method '${methodPath}' is not allowlisted for security reasons`
         );
       }
 

@@ -1,11 +1,13 @@
 /**
- * Novo HTML Generator - Versão modular e limpa
+ * @fileoverview Modern modular HTML report generator with component-based architecture.
  *
- * Responsabilidades:
- * - Orquestrar componentes modulares
- * - Gerar HTML final do relatório
- * - Carregar CSS e JavaScript necessário
- * - Manter compatibilidade com dados existentes
+ * @remarks
+ * This module provides the ModularHtmlGenerator class which implements a modern,
+ * component-based approach to HTML report generation. It orchestrates modular
+ * components to create comprehensive, interactive test result reports with
+ * responsive design and rich functionality.
+ *
+ * @packageDocumentation
  */
 
 import * as fs from "fs";
@@ -19,7 +21,37 @@ import {
   TestStepData,
 } from "./components";
 
-// Tipos para os dados do relatório
+/**
+ * Aggregated test execution results for report generation.
+ *
+ * @remarks
+ * Represents the complete set of test execution results aggregated from
+ * multiple test suites. This interface defines the data structure expected
+ * by the HTML report generator for creating comprehensive reports.
+ *
+ * @example Aggregated result structure
+ * ```typescript
+ * const result: AggregatedResult = {
+ *   project_name: 'API Integration Tests',
+ *   total_tests: 25,
+ *   successful_tests: 23,
+ *   failed_tests: 2,
+ *   success_rate: 92.0,
+ *   total_duration_ms: 15420,
+ *   suites_results: [
+ *     {
+ *       suite_name: 'Authentication Tests',
+ *       success: true,
+ *       duration_ms: 3200,
+ *       steps: [...]
+ *     }
+ *   ]
+ * };
+ * ```
+ *
+ * @public
+ * @since 1.0.0
+ */
 interface AggregatedResult {
   project_name?: string;
   total_tests?: number;
@@ -71,7 +103,7 @@ export class ModularHtmlGenerator {
 
       // Substitui variáveis comuns que aparecem no relatório
       result = result
-          .replace(/\{\{httpbin_url\}\}/g, "http://localhost:8080")
+        .replace(/\{\{httpbin_url\}\}/g, "http://localhost:8080")
         .replace(/\{\{user_id\}\}/g, "1000")
         .replace(/\{\{user_name\}\}/g, "John Doe")
         .replace(/\{\{company_data\}\}/g, "[Company Data]")
@@ -266,11 +298,14 @@ export class ModularHtmlGenerator {
     const rawSteps: StepResult[] = suite.steps_results || [];
 
     // Detecta e agrupa iterações: "Name [i/N]"
-    const iterGroups = new Map<string, Array<{ step: StepResult; idx: number; total: number; order: number }>>();
+    const iterGroups = new Map<
+      string,
+      Array<{ step: StepResult; idx: number; total: number; order: number }>
+    >();
     const normalSteps: Array<{ step: StepResult; order: number }> = [];
 
     rawSteps.forEach((s, i) => {
-      const name = s.step_name || '';
+      const name = s.step_name || "";
       const m = name.match(/^(.*)\s\[(\d+)\/(\d+)\]$/);
       if (m) {
         const base = m[1].trim();
@@ -289,15 +324,19 @@ export class ModularHtmlGenerator {
     const usedGroups = new Set<string>();
 
     normalSteps.forEach(({ step, order }, stepIndex) => {
-      const baseName = (step.step_name || '').trim();
+      const baseName = (step.step_name || "").trim();
       const group = iterGroups.get(baseName);
 
       const toTestStepData = (s: StepResult, si: number): TestStepData => {
         const obj: any = {
-          stepName: s.step_name ? this.interpolateForDisplay(s.step_name) : `Step ${si + 1}`,
-          status: s.status === 'success' ? 'success' : 'failure',
+          stepName: s.step_name
+            ? this.interpolateForDisplay(s.step_name)
+            : `Step ${si + 1}`,
+          status: s.status === "success" ? "success" : "failure",
           duration: s.duration_ms || 0,
-          assertions: (s.assertions_results || []).map((a) => this.interpolateForDisplay(a)),
+          assertions: (s.assertions_results || []).map((a) =>
+            this.interpolateForDisplay(a)
+          ),
           request: s.request_details
             ? {
                 ...this.interpolateForDisplay(s.request_details),
@@ -320,11 +359,17 @@ export class ModularHtmlGenerator {
           stepId: `step-${index}-${order}`,
         };
         if ((s as any).scenarios_meta) {
-          obj.scenariosMeta = this.interpolateForDisplay((s as any).scenarios_meta);
-        } else if ((s as any).available_variables && (s as any).available_variables.total_scenarios_tested != null) {
+          obj.scenariosMeta = this.interpolateForDisplay(
+            (s as any).scenarios_meta
+          );
+        } else if (
+          (s as any).available_variables &&
+          (s as any).available_variables.total_scenarios_tested != null
+        ) {
           obj.scenariosMeta = {
             has_scenarios: true,
-            executed_count: (s as any).available_variables.total_scenarios_tested,
+            executed_count: (s as any).available_variables
+              .total_scenarios_tested,
             evaluations: [],
           };
         }
@@ -333,23 +378,31 @@ export class ModularHtmlGenerator {
 
       const parent = toTestStepData(step, stepIndex) as any;
       if ((step as any).scenarios_meta) {
-        parent.scenariosMeta = this.interpolateForDisplay((step as any).scenarios_meta);
+        parent.scenariosMeta = this.interpolateForDisplay(
+          (step as any).scenarios_meta
+        );
       }
 
       // Suporte a resultados de iteração embutidos no próprio step
-      const embeddedIterations = (step as any).iteration_results as StepResult[] | undefined;
+      const embeddedIterations = (step as any).iteration_results as
+        | StepResult[]
+        | undefined;
       if (Array.isArray(embeddedIterations) && embeddedIterations.length) {
         parent.iterations = embeddedIterations.map((s, j) => {
-          const mIt = (s.step_name || '').match(/^(.*)\s\[(\d+)\/(\d+)\]$/);
+          const mIt = (s.step_name || "").match(/^(.*)\s\[(\d+)\/(\d+)\]$/);
           const idx = mIt ? parseInt(mIt[2], 10) : j + 1;
           const total = mIt ? parseInt(mIt[3], 10) : embeddedIterations.length;
           const itObj: any = {
             index: idx,
             total,
             stepName: this.interpolateForDisplay(s.step_name || baseName),
-            status: (s.status === 'success' ? 'success' : 'failure') as 'success' | 'failure',
+            status: (s.status === "success" ? "success" : "failure") as
+              | "success"
+              | "failure",
             duration: s.duration_ms || 0,
-            assertions: (s.assertions_results || []).map((a) => this.interpolateForDisplay(a)),
+            assertions: (s.assertions_results || []).map((a) =>
+              this.interpolateForDisplay(a)
+            ),
             request: s.request_details
               ? {
                   ...this.interpolateForDisplay(s.request_details),
@@ -362,7 +415,9 @@ export class ModularHtmlGenerator {
               ? {
                   ...this.interpolateForDisplay(s.response_details),
                   raw_response: s.response_details.raw_response
-                    ? this.interpolateForDisplay(s.response_details.raw_response)
+                    ? this.interpolateForDisplay(
+                        s.response_details.raw_response
+                      )
                     : s.response_details.raw_response,
                 }
               : undefined,
@@ -372,11 +427,17 @@ export class ModularHtmlGenerator {
             stepId: `step-${index}-${order}-it-${idx}`,
           };
           if ((s as any).scenarios_meta) {
-            itObj.scenariosMeta = this.interpolateForDisplay((s as any).scenarios_meta);
-          } else if ((s as any).available_variables && (s as any).available_variables.total_scenarios_tested != null) {
+            itObj.scenariosMeta = this.interpolateForDisplay(
+              (s as any).scenarios_meta
+            );
+          } else if (
+            (s as any).available_variables &&
+            (s as any).available_variables.total_scenarios_tested != null
+          ) {
             itObj.scenariosMeta = {
               has_scenarios: true,
-              executed_count: (s as any).available_variables.total_scenarios_tested,
+              executed_count: (s as any).available_variables
+                .total_scenarios_tested,
               evaluations: [],
             };
           }
@@ -394,14 +455,20 @@ export class ModularHtmlGenerator {
               index: idx,
               total,
               stepName: this.interpolateForDisplay(s.step_name || baseName),
-              status: (s.status === 'success' ? 'success' : 'failure') as 'success' | 'failure',
+              status: (s.status === "success" ? "success" : "failure") as
+                | "success"
+                | "failure",
               duration: s.duration_ms || 0,
-              assertions: (s.assertions_results || []).map((a) => this.interpolateForDisplay(a)),
+              assertions: (s.assertions_results || []).map((a) =>
+                this.interpolateForDisplay(a)
+              ),
               request: s.request_details
                 ? {
                     ...this.interpolateForDisplay(s.request_details),
                     raw_request: s.request_details.raw_request
-                      ? this.interpolateForDisplay(s.request_details.raw_request)
+                      ? this.interpolateForDisplay(
+                          s.request_details.raw_request
+                        )
                       : s.request_details.raw_request,
                   }
                 : undefined,
@@ -409,7 +476,9 @@ export class ModularHtmlGenerator {
                 ? {
                     ...this.interpolateForDisplay(s.response_details),
                     raw_response: s.response_details.raw_response
-                      ? this.interpolateForDisplay(s.response_details.raw_response)
+                      ? this.interpolateForDisplay(
+                          s.response_details.raw_response
+                        )
                       : s.response_details.raw_response,
                   }
                 : undefined,
@@ -419,11 +488,17 @@ export class ModularHtmlGenerator {
               stepId: `step-${index}-${ord}`,
             };
             if ((s as any).scenarios_meta) {
-              obj.scenariosMeta = this.interpolateForDisplay((s as any).scenarios_meta);
-            } else if ((s as any).available_variables && (s as any).available_variables.total_scenarios_tested != null) {
+              obj.scenariosMeta = this.interpolateForDisplay(
+                (s as any).scenarios_meta
+              );
+            } else if (
+              (s as any).available_variables &&
+              (s as any).available_variables.total_scenarios_tested != null
+            ) {
               obj.scenariosMeta = {
                 has_scenarios: true,
-                executed_count: (s as any).available_variables.total_scenarios_tested,
+                executed_count: (s as any).available_variables
+                  .total_scenarios_tested,
                 evaluations: [],
               };
             }
@@ -440,16 +515,27 @@ export class ModularHtmlGenerator {
     iterGroups.forEach((arr, base) => {
       if (usedGroups.has(base)) return;
       const sorted = arr.sort((a, b) => a.idx - b.idx);
-      const status: 'success' | 'failure' = sorted.every((x) => x.step.status === 'success') ? 'success' : 'failure';
-      const duration = sorted.reduce((sum, x) => sum + (x.step.duration_ms || 0), 0);
+      const status: "success" | "failure" = sorted.every(
+        (x) => x.step.status === "success"
+      )
+        ? "success"
+        : "failure";
+      const duration = sorted.reduce(
+        (sum, x) => sum + (x.step.duration_ms || 0),
+        0
+      );
 
       const iterations = sorted.map(({ step: s, idx, total, order: ord }) => ({
         index: idx,
         total,
         stepName: this.interpolateForDisplay(s.step_name || base),
-        status: (s.status === 'success' ? 'success' : 'failure') as 'success' | 'failure',
+        status: (s.status === "success" ? "success" : "failure") as
+          | "success"
+          | "failure",
         duration: s.duration_ms || 0,
-        assertions: (s.assertions_results || []).map((a) => this.interpolateForDisplay(a)),
+        assertions: (s.assertions_results || []).map((a) =>
+          this.interpolateForDisplay(a)
+        ),
         request: s.request_details
           ? {
               ...this.interpolateForDisplay(s.request_details),

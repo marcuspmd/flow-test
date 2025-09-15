@@ -1,3 +1,14 @@
+/**
+ * @fileoverview Test discovery and filtering service for the Flow Test Engine.
+ *
+ * @remarks
+ * This module provides the TestDiscovery class which handles automatic discovery
+ * of test files, validation of test suite structures, dependency resolution,
+ * and advanced filtering capabilities for test execution planning.
+ *
+ * @packageDocumentation
+ */
+
 import fs from "fs";
 import path from "path";
 import fg from "fast-glob";
@@ -10,28 +21,127 @@ import {
 } from "../types/engine.types";
 
 /**
- * Test discovery service responsible for finding and loading test files
+ * Test discovery service for finding, loading, and filtering test files.
  *
- * This service scans directories for YAML test files, validates their structure,
- * and resolves dependencies between different test suites. It supports filtering
- * by priority, tags, and file patterns.
+ * @remarks
+ * The TestDiscovery service provides comprehensive test file discovery capabilities
+ * with support for directory scanning, YAML validation, dependency resolution,
+ * and advanced filtering options. It serves as the foundation for test execution
+ * planning and orchestration.
  *
- * @example
+ * **Key Features:**
+ * - **Automatic Discovery**: Recursive scanning of directories for YAML test files
+ * - **Structure Validation**: Comprehensive validation of test suite YAML structure
+ * - **Dependency Resolution**: Analysis and resolution of inter-suite dependencies
+ * - **Advanced Filtering**: Multi-criteria filtering by priority, tags, and patterns
+ * - **Error Handling**: Detailed error reporting for invalid test files
+ * - **Performance Optimized**: Efficient file scanning with configurable patterns
+ *
+ * **Supported File Patterns:**
+ * - `**\/*.yaml` and `**\/*.yml` (all YAML files)
+ * - Configurable inclusion/exclusion patterns
+ * - Support for nested directory structures
+ * - Automatic exclusion of common non-test directories
+ *
+ * @example Basic test discovery
  * ```typescript
  * const configManager = new ConfigManager();
  * const discovery = new TestDiscovery(configManager);
  *
  * // Discover all tests in directory
  * const tests = await discovery.discoverTests();
+ * console.log(`Found ${tests.length} test suites`);
+ *
+ * // Get execution order with dependency resolution
+ * const executionOrder = discovery.getExecutionOrder(tests);
+ * ```
+ *
+ * @example Advanced filtering and dependency analysis
+ * ```typescript
+ * // Discover with specific directory
+ * const tests = await discovery.discoverTests('./integration-tests');
  *
  * // Filter by priority and tags
  * const filtered = discovery.filterTests(tests, {
  *   priorities: ['critical', 'high'],
- *   tags: ['smoke', 'api']
+ *   tags: ['smoke', 'api'],
+ *   excludeTags: ['experimental']
  * });
+ *
+ * // Analyze dependencies
+ * const dependencies = discovery.analyzeDependencies(filtered);
+ * console.log('Dependency graph:', dependencies);
+ * ```
+ *
+ * @example Custom file patterns and validation
+ * ```typescript
+ * const discovery = new TestDiscovery(configManager);
+ *
+ * // Override default patterns
+ * const customTests = await discovery.discoverTests('./tests', {
+ *   patterns: ['**\/*-test.yaml', '**\/*-spec.yml'],
+ *   exclude: ['**\/drafts\/**', '**\/templates\/**']
+ * });
+ *
+ * // Validate specific files
+ * const validationResults = await discovery.validateTestFiles(customTests);
+ * const invalidTests = validationResults.filter(r => !r.valid);
+ * ```
+/**
+ * Test discovery service for finding, loading, and filtering test files.
+ *
+ * @remarks
+ * The TestDiscovery service provides comprehensive test file discovery capabilities
+ * with support for directory scanning, YAML validation, dependency resolution,
+ * and advanced filtering options. It serves as the foundation for test execution
+ * planning and orchestration.
+ *
+ * **Key Features:**
+ * - **Automatic Discovery**: Recursive scanning of directories for YAML test files
+ * - **Structure Validation**: Comprehensive validation of test suite YAML structure
+ * - **Dependency Resolution**: Analysis and resolution of inter-suite dependencies
+ * - **Advanced Filtering**: Multi-criteria filtering by priority, tags, and patterns
+ * - **Error Handling**: Detailed error reporting for invalid test files
+ * - **Performance Optimized**: Efficient file scanning with configurable patterns
+ *
+ * **Supported File Patterns:**
+ * - All YAML files with .yaml and .yml extensions
+ * - Configurable inclusion/exclusion patterns
+ * - Support for nested directory structures
+ * - Automatic exclusion of common non-test directories
+ *
+ * @example Basic test discovery
+ * ```typescript
+ * const configManager = new ConfigManager();
+ * const discovery = new TestDiscovery(configManager);
+ *
+ * // Discover all tests in directory
+ * const tests = await discovery.discoverTests();
+ * console.log(`Found ${tests.length} test suites`);
+ *
+ * // Get execution order with dependency resolution
+ * const executionOrder = discovery.getExecutionOrder(tests);
+ * ```
+ *
+ * @example Advanced filtering and dependency analysis
+ * ```typescript
+ * // Discover with specific directory
+ * const tests = await discovery.discoverTests('./integration-tests');
+ *
+ * // Filter by priority and tags
+ * const filtered = discovery.filterTests(tests, {
+ *   priorities: ['critical', 'high'],
+ *   tags: ['smoke', 'api'],
+ *   excludeTags: ['experimental']
+ * });
+ *
+ * // Analyze dependencies
+ * const dependencies = discovery.analyzeDependencies(filtered);
+ * console.log('Dependency graph:', dependencies);
  * ```
  *
  * @public
+ * @since 1.0.0
  */
 export class TestDiscovery {
   private configManager: ConfigManager;

@@ -4,6 +4,8 @@
 
 ```ts
 
+// Warning: (ae-missing-release-tag) "AggregatedResult" is part of the package's API, but it is missing a release tag (@alpha, @beta, @public, or @internal)
+//
 // @public
 export interface AggregatedResult {
     // (undocumented)
@@ -32,12 +34,16 @@ export interface AggregatedResult {
     total_tests: number;
 }
 
+// Warning: (ae-missing-release-tag) "ArrayIterationConfig" is part of the package's API, but it is missing a release tag (@alpha, @beta, @public, or @internal)
+//
 // @public
 export interface ArrayIterationConfig {
     as: string;
     over: string;
 }
 
+// Warning: (ae-missing-release-tag) "AssertionChecks" is part of the package's API, but it is missing a release tag (@alpha, @beta, @public, or @internal)
+//
 // @public
 export interface AssertionChecks {
     // (undocumented)
@@ -64,6 +70,8 @@ export interface AssertionChecks {
     type?: "string" | "number" | "boolean" | "object" | "array";
 }
 
+// Warning: (ae-missing-release-tag) "AssertionResult" is part of the package's API, but it is missing a release tag (@alpha, @beta, @public, or @internal)
+//
 // @public
 export interface AssertionResult {
     // (undocumented)
@@ -78,6 +86,8 @@ export interface AssertionResult {
     passed: boolean;
 }
 
+// Warning: (ae-missing-release-tag) "Assertions" is part of the package's API, but it is missing a release tag (@alpha, @beta, @public, or @internal)
+//
 // @public
 export interface Assertions {
     // (undocumented)
@@ -104,6 +114,8 @@ export class AssertionService {
     validateAssertions(assertions: Assertions, result: StepExecutionResult): AssertionResult[];
 }
 
+// Warning: (ae-missing-release-tag) "CacheConfig" is part of the package's API, but it is missing a release tag (@alpha, @beta, @public, or @internal)
+//
 // @public
 export interface CacheConfig {
     // (undocumented)
@@ -118,6 +130,8 @@ export interface CacheConfig {
     variable_interpolation: boolean;
 }
 
+// Warning: (ae-missing-release-tag) "CaptureService" is part of the package's API, but it is missing a release tag (@alpha, @beta, @public, or @internal)
+//
 // @public
 export class CaptureService {
     captureVariables(captureConfig: Record<string, string>, result: StepExecutionResult, variableContext?: Record<string, any>): Record<string, any>;
@@ -126,6 +140,8 @@ export class CaptureService {
     validateCapturePaths(capturePaths: Record<string, string>): string[];
 }
 
+// Warning: (ae-missing-release-tag) "ConditionalScenario" is part of the package's API, but it is missing a release tag (@alpha, @beta, @public, or @internal)
+//
 // @public
 export interface ConditionalScenario {
     condition: string;
@@ -155,6 +171,8 @@ export class ConfigManager {
 // @public
 export function createEngine(configPath?: string): any;
 
+// Warning: (ae-missing-release-tag) "DependencyResult" is part of the package's API, but it is missing a release tag (@alpha, @beta, @public, or @internal)
+//
 // @public
 export interface DependencyResult {
     cached: boolean;
@@ -167,6 +185,8 @@ export interface DependencyResult {
     suiteName: string;
 }
 
+// Warning: (ae-missing-release-tag) "DiscoveredTest" is part of the package's API, but it is missing a release tag (@alpha, @beta, @public, or @internal)
+//
 // @public
 export interface DiscoveredTest {
     // (undocumented)
@@ -187,6 +207,8 @@ export interface DiscoveredTest {
     suite_name: string;
 }
 
+// Warning: (ae-missing-release-tag) "DiscoveryConfig" is part of the package's API, but it is missing a release tag (@alpha, @beta, @public, or @internal)
+//
 // @public
 export interface DiscoveryConfig {
     // (undocumented)
@@ -197,6 +219,8 @@ export interface DiscoveryConfig {
     recursive?: boolean;
 }
 
+// Warning: (ae-missing-release-tag) "EngineConfig" is part of the package's API, but it is missing a release tag (@alpha, @beta, @public, or @internal)
+//
 // @public
 export interface EngineConfig {
     // (undocumented)
@@ -215,6 +239,8 @@ export interface EngineConfig {
     test_directory: string;
 }
 
+// Warning: (ae-missing-release-tag) "EngineExecutionOptions" is part of the package's API, but it is missing a release tag (@alpha, @beta, @public, or @internal)
+//
 // @public
 export interface EngineExecutionOptions {
     // (undocumented)
@@ -240,6 +266,8 @@ export interface EngineExecutionOptions {
     verbosity?: "silent" | "simple" | "detailed" | "verbose";
 }
 
+// Warning: (ae-missing-release-tag) "EngineHooks" is part of the package's API, but it is missing a release tag (@alpha, @beta, @public, or @internal)
+//
 // @public
 export interface EngineHooks {
     onError?: (error: Error, context?: any) => void | Promise<void>;
@@ -252,6 +280,8 @@ export interface EngineHooks {
     onTestDiscovered?: (test: any) => void | Promise<void>;
 }
 
+// Warning: (ae-missing-release-tag) "ExecutionConfig" is part of the package's API, but it is missing a release tag (@alpha, @beta, @public, or @internal)
+//
 // @public
 export interface ExecutionConfig {
     // (undocumented)
@@ -270,6 +300,8 @@ export interface ExecutionConfig {
     timeout?: number;
 }
 
+// Warning: (ae-missing-release-tag) "ExecutionContext" is part of the package's API, but it is missing a release tag (@alpha, @beta, @public, or @internal)
+//
 // @public
 export interface ExecutionContext {
     execution_id: string;
@@ -281,6 +313,8 @@ export interface ExecutionContext {
     total_steps: number;
 }
 
+// Warning: (ae-missing-release-tag) "ExecutionFilters" is part of the package's API, but it is missing a release tag (@alpha, @beta, @public, or @internal)
+//
 // @public
 export interface ExecutionFilters {
     // (undocumented)
@@ -299,6 +333,8 @@ export interface ExecutionFilters {
     tags?: string[];
 }
 
+// Warning: (ae-missing-release-tag) "ExecutionService" is part of the package's API, but it is missing a release tag (@alpha, @beta, @public, or @internal)
+//
 // @public
 export class ExecutionService {
     // Warning: (ae-forgotten-export) The symbol "DependencyService" needs to be exported by the entry point index.d.ts
@@ -308,6 +344,8 @@ export class ExecutionService {
     getPerformanceSummary(): PerformanceSummary | undefined;
 }
 
+// Warning: (ae-missing-release-tag) "ExecutionStats" is part of the package's API, but it is missing a release tag (@alpha, @beta, @public, or @internal)
+//
 // @public
 export interface ExecutionStats {
     current_test?: string;
@@ -321,6 +359,8 @@ export interface ExecutionStats {
     total_response_time_ms: number;
 }
 
+// Warning: (ae-missing-release-tag) "FlowDependency" is part of the package's API, but it is missing a release tag (@alpha, @beta, @public, or @internal)
+//
 // @public
 export interface FlowDependency {
     cache?: boolean | number;
@@ -344,6 +384,8 @@ export class FlowTestEngine {
     run(): Promise<AggregatedResult>;
 }
 
+// Warning: (ae-missing-release-tag) "GlobalConfig" is part of the package's API, but it is missing a release tag (@alpha, @beta, @public, or @internal)
+//
 // @public
 export interface GlobalConfig {
     // (undocumented)
@@ -357,6 +399,8 @@ export interface GlobalConfig {
     variables?: Record<string, any>;
 }
 
+// Warning: (ae-missing-release-tag) "GlobalVariableContext" is part of the package's API, but it is missing a release tag (@alpha, @beta, @public, or @internal)
+//
 // @public
 export interface GlobalVariableContext {
     // (undocumented)
@@ -417,9 +461,13 @@ export class HttpService {
     setTimeout(timeout: number): void;
 }
 
+// Warning: (ae-missing-release-tag) "IterationConfig" is part of the package's API, but it is missing a release tag (@alpha, @beta, @public, or @internal)
+//
 // @public
 export type IterationConfig = ArrayIterationConfig | RangeIterationConfig;
 
+// Warning: (ae-missing-release-tag) "IterationContext" is part of the package's API, but it is missing a release tag (@alpha, @beta, @public, or @internal)
+//
 // @public
 export interface IterationContext {
     index: number;
@@ -436,6 +484,8 @@ export const PACKAGE_INFO: {
     readonly description: "A comprehensive API testing engine with directory-based execution, global variables, and priority-driven test management.";
 };
 
+// Warning: (ae-missing-release-tag) "PerformanceSummary" is part of the package's API, but it is missing a release tag (@alpha, @beta, @public, or @internal)
+//
 // @public
 export interface PerformanceSummary {
     // (undocumented)
@@ -459,6 +509,8 @@ export interface PerformanceSummary {
 // @public
 export function planTests(configPath?: string): Promise<any>;
 
+// Warning: (ae-missing-release-tag) "PriorityConfig" is part of the package's API, but it is missing a release tag (@alpha, @beta, @public, or @internal)
+//
 // @public
 export interface PriorityConfig {
     // (undocumented)
@@ -469,6 +521,8 @@ export interface PriorityConfig {
     required?: string[];
 }
 
+// Warning: (ae-missing-release-tag) "PriorityService" is part of the package's API, but it is missing a release tag (@alpha, @beta, @public, or @internal)
+//
 // @public
 export class PriorityService {
     constructor(configManager: ConfigManager);
@@ -501,15 +555,21 @@ export class PriorityService {
     suggestOptimizations(tests: DiscoveredTest[]): string[];
 }
 
+// Warning: (ae-missing-release-tag) "RangeIterationConfig" is part of the package's API, but it is missing a release tag (@alpha, @beta, @public, or @internal)
+//
 // @public
 export interface RangeIterationConfig {
     as: string;
     range: string;
 }
 
+// Warning: (ae-missing-release-tag) "ReportFormat" is part of the package's API, but it is missing a release tag (@alpha, @beta, @public, or @internal)
+//
 // @public (undocumented)
 export type ReportFormat = "json" | "junit" | "html" | "console";
 
+// Warning: (ae-missing-release-tag) "ReportingConfig" is part of the package's API, but it is missing a release tag (@alpha, @beta, @public, or @internal)
+//
 // @public
 export interface ReportingConfig {
     // (undocumented)
@@ -524,12 +584,16 @@ export interface ReportingConfig {
     output_dir: string;
 }
 
+// Warning: (ae-missing-release-tag) "ReportingService" is part of the package's API, but it is missing a release tag (@alpha, @beta, @public, or @internal)
+//
 // @public
 export class ReportingService {
     constructor(configManager: ConfigManager);
     generateReports(result: AggregatedResult): Promise<void>;
 }
 
+// Warning: (ae-missing-release-tag) "RequestDetails" is part of the package's API, but it is missing a release tag (@alpha, @beta, @public, or @internal)
+//
 // @public
 export interface RequestDetails {
     // (undocumented)
@@ -546,6 +610,8 @@ export interface RequestDetails {
     url: string;
 }
 
+// Warning: (ae-missing-release-tag) "ReusableFlow" is part of the package's API, but it is missing a release tag (@alpha, @beta, @public, or @internal)
+//
 // @public
 export interface ReusableFlow {
     depends?: FlowDependency[];
@@ -564,6 +630,8 @@ export interface ReusableFlow {
 // @public
 export function runTests(configPath?: string): Promise<any>;
 
+// Warning: (ae-missing-release-tag) "ScenarioEvaluation" is part of the package's API, but it is missing a release tag (@alpha, @beta, @public, or @internal)
+//
 // @public (undocumented)
 export interface ScenarioEvaluation {
     // (undocumented)
@@ -582,6 +650,8 @@ export interface ScenarioEvaluation {
     matched: boolean;
 }
 
+// Warning: (ae-missing-release-tag) "ScenarioMeta" is part of the package's API, but it is missing a release tag (@alpha, @beta, @public, or @internal)
+//
 // @public (undocumented)
 export interface ScenarioMeta {
     // (undocumented)
@@ -592,6 +662,8 @@ export interface ScenarioMeta {
     has_scenarios: boolean;
 }
 
+// Warning: (ae-missing-release-tag) "StepExecutionResult" is part of the package's API, but it is missing a release tag (@alpha, @beta, @public, or @internal)
+//
 // @public
 export interface StepExecutionResult {
     // (undocumented)
@@ -632,6 +704,8 @@ export interface StepExecutionResult {
     step_name: string;
 }
 
+// Warning: (ae-missing-release-tag) "SuiteExecutionResult" is part of the package's API, but it is missing a release tag (@alpha, @beta, @public, or @internal)
+//
 // @public
 export interface SuiteExecutionResult {
     // (undocumented)
@@ -684,6 +758,8 @@ export class TestDiscovery {
     isValidTestFile(filePath: string): Promise<boolean>;
 }
 
+// Warning: (ae-missing-release-tag) "TestStep" is part of the package's API, but it is missing a release tag (@alpha, @beta, @public, or @internal)
+//
 // @public
 export interface TestStep {
     assert?: Assertions;
@@ -696,6 +772,8 @@ export interface TestStep {
     scenarios?: ConditionalScenario[];
 }
 
+// Warning: (ae-missing-release-tag) "TestStepMetadata" is part of the package's API, but it is missing a release tag (@alpha, @beta, @public, or @internal)
+//
 // @public
 export interface TestStepMetadata {
     depends_on?: string[];
@@ -709,6 +787,8 @@ export interface TestStepMetadata {
     timeout?: number;
 }
 
+// Warning: (ae-missing-release-tag) "TestSuite" is part of the package's API, but it is missing a release tag (@alpha, @beta, @public, or @internal)
+//
 // @public
 export interface TestSuite {
     base_url?: string;

@@ -1,26 +1,91 @@
+/**
+ * @fileoverview Configuration management system for the Flow Test Engine.
+ *
+ * @remarks
+ * This module provides the ConfigManager class which handles all configuration
+ * aspects of the Flow Test Engine including file loading, environment variable
+ * integration, validation, and runtime overrides with comprehensive error handling.
+ *
+ * @packageDocumentation
+ */
+
 import fs from "fs";
 import path from "path";
 import yaml from "js-yaml";
 import { EngineConfig, EngineExecutionOptions } from "../types/engine.types";
 
 /**
- * Gerenciador de configuração do Flow Test Engine
+ * Configuration manager for the Flow Test Engine with comprehensive loading and validation.
  *
- * Responsável por carregar, validar e gerenciar todas as configurações
- * do engine, incluindo variáveis globais, configurações de ambiente
- * e opções de execução. Suporta sobrescrita via parâmetros de runtime.
+ * @remarks
+ * The ConfigManager is responsible for loading, validating, and managing all engine
+ * configurations including global variables, environment settings, execution options,
+ * and runtime overrides. It provides a centralized configuration system with support
+ * for multiple file formats, environment-specific settings, and runtime parameter overrides.
  *
- * @example
+ * **Key Features:**
+ * - **Automatic Discovery**: Searches for configuration files using multiple naming conventions
+ * - **Environment Integration**: Supports environment variables with `FLOW_TEST_` prefix
+ * - **Runtime Overrides**: Allows execution options to override file-based configurations
+ * - **Format Support**: Handles YAML and JSON configuration formats seamlessly
+ * - **Validation**: Comprehensive configuration validation with detailed error messages
+ * - **Environment Resolution**: Context-aware variable resolution based on execution environment
+ *
+ * **Configuration Priority Order (highest to lowest):**
+ * 1. Runtime execution options passed to constructor
+ * 2. Environment variables with `FLOW_TEST_` prefix
+ * 3. Configuration file settings
+ * 4. Built-in default values
+ *
+ * **Supported Configuration Files:**
+ * - `flow-test.config.yml` (primary)
+ * - `flow-test.config.yaml`
+ * - `flow-test.config.json`
+ * - `.flow-test.yml` (hidden file)
+ * - Custom paths via constructor parameter
+ *
+ * @example Basic configuration management
  * ```typescript
- * const configManager = new ConfigManager({
- *   config_file: './flow-test.config.yml',
- *   environment: 'staging',
- *   verbosity: 'verbose'
- * });
+ * import { ConfigManager } from 'flow-test-engine';
  *
- * const config = configManager.getConfig();
- * const globalVars = configManager.getGlobalVariables();
+ * // Load configuration from default locations
+ * const configManager = new ConfigManager();
+ * const config = configManager.loadConfig();
+ *
+ * console.log(`Base URL: ${config.base_url}`);
+ * console.log(`Environment: ${config.environment}`);
+ * console.log(`Verbosity: ${config.verbosity}`);
  * ```
+ *
+ * @example Configuration with runtime overrides
+ * ```typescript
+ * const options: EngineExecutionOptions = {
+ *   verbosity: 'verbose',
+ *   priority: ['critical', 'high'],
+ *   baseUrl: 'https://staging.api.example.com'
+ * };
+ *
+ * const configManager = new ConfigManager('./custom-config.yml', options);
+ * const config = configManager.loadConfig();
+ *
+ * // Runtime options will override file settings
+ * ```
+ *
+ * @example Environment variable integration
+ * ```typescript
+ * // Set environment variables
+ * process.env.FLOW_TEST_BASE_URL = 'https://production.api.example.com';
+ * process.env.FLOW_TEST_API_KEY = 'secret-key-123';
+ *
+ * const configManager = new ConfigManager();
+ * const config = configManager.loadConfig();
+ *
+ * // Environment variables override file settings
+ * console.log(config.base_url); // 'https://production.api.example.com'
+ * ```
+ *
+ * @public
+ * @since 1.0.0
  */
 export class ConfigManager {
   /** Configuração completa carregada e processada */
@@ -30,23 +95,52 @@ export class ConfigManager {
   private configFilePath: string;
 
   /**
-   * Construtor do ConfigManager
+   * Creates a new ConfigManager instance
    *
-   * Carrega configuração de arquivo e aplica sobrescritas das opções de execução.
+   * Initializes the configuration system by loading settings from various sources
+   * in priority order, applying validation, and preparing the final configuration
+   * object for use by the Flow Test Engine.
    *
-   * @param options - Opções de execução que podem sobrescrever configurações do arquivo
+   * **Initialization Process:**
+   * 1. Resolve configuration file path (explicit or automatic discovery)
+   * 2. Load and parse YAML/JSON configuration file
+   * 3. Apply default values for missing configuration sections
+   * 4. Merge environment variables with `FLOW_TEST_` prefix
+   * 5. Apply runtime execution option overrides
+   * 6. Validate final configuration for consistency and requirements
    *
-   * @example
+   * @param options - Optional execution options that override file-based configuration
+   *
+   * @example Constructor with default file discovery
    * ```typescript
-   * // Com arquivo específico
-   * const manager = new ConfigManager({ config_file: './custom.yml' });
+   * // Automatically searches for flow-test.config.yml, flow-test.config.yaml, etc.
+   * const configManager = new ConfigManager();
+   * ```
    *
-   * // Com sobrescritas
-   * const manager = new ConfigManager({
-   *   test_directory: './tests',
-   *   environment: 'production'
+   * @example Constructor with specific configuration file
+   * ```typescript
+   * const configManager = new ConfigManager({
+   *   config_file: './configs/staging.yml'
    * });
    * ```
+   *
+   * @example Constructor with comprehensive runtime overrides
+   * ```typescript
+   * const configManager = new ConfigManager({
+   *   config_file: './base-config.yml',
+   *   test_directory: './e2e-tests',
+   *   verbosity: 'verbose',
+   *   filters: {
+   *     priorities: ['critical', 'high'],
+   *     tags: ['smoke', 'regression'],
+   *     exclude_tags: ['slow']
+   *   }
+   * });
+   * ```
+   *
+   * @throws {Error} When configuration file is not found or contains invalid YAML/JSON
+   * @throws {Error} When required configuration properties are missing
+   * @throws {Error} When configuration validation fails
    */
   constructor(options: EngineExecutionOptions = {}) {
     this.configFilePath = this.resolveConfigFile(options.config_file);
@@ -55,32 +149,76 @@ export class ConfigManager {
   }
 
   /**
-   * Obtém a configuração completa processada
+   * Gets the complete processed configuration
    *
-   * Retorna a configuração final após aplicar todas as sobrescritas
-   * e resoluções de variáveis de ambiente.
+   * Returns the final configuration object after applying all overrides,
+   * environment variable resolution, default value assignment, and validation.
+   * This configuration object is used throughout the Flow Test Engine execution.
    *
-   * @returns Configuração completa do engine
+   * @returns Complete engine configuration with all settings resolved
+   *
+   * @example Accessing configuration properties
+   * ```typescript
+   * const config = configManager.getConfig();
+   *
+   * console.log(`Project: ${config.project_name}`);
+   * console.log(`Test Directory: ${config.test_directory}`);
+   * console.log(`Execution Mode: ${config.execution.mode}`);
+   * console.log(`Max Parallel: ${config.execution.max_parallel}`);
+   * console.log(`Output Directory: ${config.reporting.output_dir}`);
+   * ```
+   *
+   * @public
    */
   getConfig(): EngineConfig {
     return this.config;
   }
 
   /**
-   * Obtém variáveis globais combinadas de configuração e ambiente
+   * Gets combined global variables from configuration and environment
    *
-   * Combina variáveis definidas no arquivo de configuração com
-   * variáveis específicas do ambiente ativo, dando precedência
-   * às variáveis de ambiente.
+   * Merges variables defined in the configuration file with environment-specific
+   * variables, giving precedence to environment variables. This provides a flexible
+   * way to override configuration values for different deployment environments.
    *
-   * @returns Objeto com todas as variáveis globais disponíveis
+   * **Variable Resolution Priority (highest to lowest):**
+   * 1. Environment variables with `FLOW_TEST_` prefix
+   * 2. Configuration file global variables
    *
-   * @example
+   * @returns Object containing all available global variables
+   *
+   * @example Configuration file and environment variable combination
    * ```typescript
-   * // Se config tem: { api_url: 'http://localhost' }
-   * // E ambiente 'prod' tem: { api_url: 'https://api.prod.com' }
-   * // O resultado será: { api_url: 'https://api.prod.com' }
+   * // config.yml contains:
+   * // globals:
+   * //   variables:
+   * //     api_url: 'http://localhost:3000'
+   * //     timeout: 30000
+   *
+   * // Environment variables:
+   * process.env.FLOW_TEST_API_URL = 'https://staging-api.example.com';
+   * process.env.FLOW_TEST_AUTH_TOKEN = 'staging-token-123';
+   *
+   * const globalVars = configManager.getGlobalVariables();
+   * // Result: {
+   * //   api_url: 'https://staging-api.example.com', // overridden by env var
+   * //   timeout: 30000,                             // from config file
+   * //   auth_token: 'staging-token-123'             // from env var only
+   * // }
    * ```
+   *
+   * @example Using global variables in test execution
+   * ```typescript
+   * const globalVars = configManager.getGlobalVariables();
+   *
+   * // These variables can be used in YAML test files as {{api_url}}, {{timeout}}, etc.
+   * console.log('Available template variables:');
+   * Object.keys(globalVars).forEach(key => {
+   *   console.log(`  {{${key}}} = ${globalVars[key]}`);
+   * });
+   * ```
+   *
+   * @public
    */
   getGlobalVariables(): Record<string, any> {
     const envVars = this.getEnvironmentVariables();
@@ -320,21 +458,112 @@ export class ConfigManager {
   }
 
   /**
-   * Obtém filtros de runtime aplicados
+   * Gets runtime filters applied during execution
+   *
+   * Returns filters that were specified through execution options and stored
+   * for later use during test discovery and filtering phases. These filters
+   * override any default filtering configuration.
+   *
+   * @returns Runtime filter configuration object
+   *
+   * @example Accessing applied runtime filters
+   * ```typescript
+   * const configManager = new ConfigManager({
+   *   filters: {
+   *     priorities: ['high', 'critical'],
+   *     tags: ['smoke'],
+   *     exclude_tags: ['slow']
+   *   }
+   * });
+   *
+   * const filters = configManager.getRuntimeFilters();
+   * console.log('Runtime filters:', filters);
+   * // Output: {
+   * //   priorities: ['high', 'critical'],
+   * //   tags: ['smoke'],
+   * //   exclude_tags: ['slow']
+   * // }
+   * ```
+   *
+   * @public
    */
   getRuntimeFilters(): any {
     return (this.config as any)._runtime_filters || {};
   }
 
   /**
-   * Recarrega a configuração do arquivo
+   * Reloads configuration from the file system
+   *
+   * Re-reads and re-processes the configuration file, applying validation
+   * and normalization. Useful for picking up configuration changes during
+   * long-running processes or development scenarios.
+   *
+   * @throws {Error} When configuration file cannot be read or contains invalid data
+   *
+   * @example Reloading configuration during development
+   * ```typescript
+   * const configManager = new ConfigManager('./config.yml');
+   *
+   * // Initial configuration
+   * console.log('Initial timeout:', configManager.getConfig().execution.timeout);
+   *
+   * // ... modify config.yml file externally ...
+   *
+   * // Reload to pick up changes
+   * configManager.reload();
+   * console.log('Updated timeout:', configManager.getConfig().execution.timeout);
+   * ```
+   *
+   * @public
    */
   reload(): void {
     this.config = this.loadConfig();
   }
 
   /**
-   * Salva a configuração atual (útil para debugging)
+   * Saves current configuration with debug information
+   *
+   * Exports the complete resolved configuration along with debugging metadata
+   * to a YAML file. Useful for troubleshooting configuration issues, verifying
+   * variable resolution, and understanding the final computed configuration state.
+   *
+   * The saved file includes:
+   * - Complete resolved configuration
+   * - Source file path used for loading
+   * - Timestamp of configuration loading
+   * - Environment variables that were applied
+   *
+   * @param outputPath - File path where debug configuration should be saved
+   *
+   * @throws {Error} When output file cannot be written
+   *
+   * @example Saving debug configuration for troubleshooting
+   * ```typescript
+   * const configManager = new ConfigManager('./config.yml');
+   *
+   * // Save complete configuration state for debugging
+   * configManager.saveDebugConfig('./debug-config.yml');
+   *
+   * // The saved file will contain:
+   * // - All resolved configuration values
+   * // - _loaded_from: '/absolute/path/to/config.yml'
+   * // - _loaded_at: '2024-01-15T10:30:00.000Z'
+   * // - _environment_variables: { api_url: '...', timeout: '...' }
+   * ```
+   *
+   * @example Using debug config in CI/CD for troubleshooting
+   * ```typescript
+   * // In CI/CD pipeline
+   * const configManager = new ConfigManager();
+   *
+   * // Save debug info for build artifacts
+   * configManager.saveDebugConfig('./artifacts/resolved-config.yml');
+   *
+   * // Continue with test execution
+   * const result = await engine.run();
+   * ```
+   *
+   * @public
    */
   saveDebugConfig(outputPath: string): void {
     const debugConfig = {
@@ -344,6 +573,7 @@ export class ConfigManager {
       _environment_variables: this.getEnvironmentVariables(),
     };
 
+    const yaml = require("js-yaml");
     fs.writeFileSync(outputPath, yaml.dump(debugConfig, { indent: 2 }), "utf8");
   }
 }

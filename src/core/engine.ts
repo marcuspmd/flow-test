@@ -1,3 +1,14 @@
+/**
+ * @fileoverview Main Flow Test Engine orchestrator and execution coordinator.
+ *
+ * @remarks
+ * This module contains the FlowTestEngine class, which serves as the primary orchestrator
+ * for the Flow Test framework. It manages the complete test execution lifecycle including
+ * discovery, filtering, dependency resolution, execution, and reporting.
+ *
+ * @packageDocumentation
+ */
+
 import fs from "fs";
 import yaml from "js-yaml";
 import { ConfigManager } from "./config";
@@ -17,36 +28,94 @@ import {
 } from "../types/engine.types";
 
 /**
- * Main Flow Test Engine orchestrator
+ * Primary orchestrator for the Flow Test Engine framework.
  *
- * This class is responsible for orchestrating the entire test execution process,
- * from discovery to report generation. It coordinates all the necessary services
- * to execute test suites defined in YAML files.
+ * @remarks
+ * The FlowTestEngine is the central class responsible for coordinating the entire test execution
+ * lifecycle in the Flow Test framework. It manages complex test workflows including multi-directory
+ * test discovery, priority-based execution ordering, dependency resolution between flows,
+ * global variable management, parallel execution, and comprehensive reporting.
  *
- * @example
+ * **Core Capabilities:**
+ * - **Test Discovery**: Scans directories for YAML test files using configurable patterns
+ * - **Dependency Management**: Resolves and executes inter-test dependencies
+ * - **Priority Execution**: Orders tests by priority levels (critical, high, medium, low)
+ * - **Global Variables**: Manages variable sharing between test suites
+ * - **Parallel Execution**: Supports concurrent test execution with configurable workers
+ * - **Comprehensive Reporting**: Generates HTML and JSON reports with detailed metrics
+ * - **Lifecycle Hooks**: Provides monitoring and extension points throughout execution
+ *
+ * @example Basic test execution
  * ```typescript
- * const engine = new FlowTestEngine('./config.yaml');
+ * import { FlowTestEngine } from 'flow-test-engine';
  *
- * // Configure hooks for monitoring
- * const hooks = {
- *   onSuiteStart: (suite) => console.log(`▶️ Starting ${suite.suite_name}`),
- *   onSuiteEnd: (suite, result) => console.log(`✅ Completed ${suite.suite_name}`)
- * };
+ * const engine = new FlowTestEngine('./flow-test.config.yml');
+ * const result = await engine.run();
  *
- * // Execute tests with filters
- * const result = await engine.run({
- *   filters: {
- *     tags: ["smoke", "regression"],
- *     priority: "high"
- *   },
- *   hooks,
- *   parallel: true
- * });
- *
- * console.log(`Executed ${result.total_suites} test suites`);
- * console.log(`Success rate: ${result.success_rate}%`);
+ * if (result.success_rate >= 95) {
+ *   console.log('✅ All tests passed successfully!');
+ *   process.exit(0);
+ * } else {
+ *   console.log(`❌ ${result.failed_tests} tests failed`);
+ *   process.exit(1);
+ * }
  * ```
  *
+ * @example Advanced execution with monitoring hooks
+ * ```typescript
+ * const engine = new FlowTestEngine('./config.yml', {
+ *   onExecutionStart: (stats) => {
+ *     console.log(`🚀 Starting ${stats.tests_discovered} test suites`);
+ *   },
+ *   onSuiteStart: (suite) => {
+ *     console.log(`▶️ Executing: ${suite.suite_name}`);
+ *   },
+ *   onSuiteEnd: (suite, result) => {
+ *     const status = result.status === 'success' ? '✅' : '❌';
+ *     console.log(`${status} ${suite.suite_name} (${result.duration_ms}ms)`);
+ *   },
+ *   onExecutionEnd: (result) => {
+ *     console.log(`🏁 Completed: ${result.success_rate.toFixed(1)}% success rate`);
+ *   }
+ * });
+ *
+ * const result = await engine.run();
+ * ```
+ *
+ * @example Programmatic configuration
+ * ```typescript
+ * const engine = new FlowTestEngine({
+ *   project_name: 'My API Tests',
+ *   test_directory: './api-tests',
+ *   verbosity: 'verbose',
+ *   execution: {
+ *     mode: 'parallel',
+ *     max_workers: 4,
+ *     fail_fast: true
+ *   },
+ *   filters: {
+ *     priorities: ['high', 'critical'],
+ *     tags: ['smoke']
+ *   }
+ * });
+ * ```
+ *
+ * @example Dry run for validation and planning
+ * ```typescript
+ * const engine = new FlowTestEngine('./config.yml');
+ * const discoveredTests = await engine.dryRun();
+ *
+ * console.log('📋 Execution Plan:');
+ * discoveredTests.forEach((test, index) => {
+ *   console.log(`${index + 1}. ${test.suite_name} (${test.priority})`);
+ *   console.log(`   📁 ${test.file_path}`);
+ *   if (test.dependencies?.length) {
+ *     console.log(`   🔗 Dependencies: ${test.dependencies.join(', ')}`);
+ *   }
+ * });
+ * ```
+ *
+ * @public
  * @since 1.0.0
  */
 export class FlowTestEngine {
@@ -81,43 +150,88 @@ export class FlowTestEngine {
   private stats: ExecutionStats;
 
   /**
-   * Flow Test Engine constructor
+   * Creates a new FlowTestEngine instance
    *
-   * Initializes all necessary services for test execution in the correct
-   * dependency order. Services are initialized according to their interdependencies.
+   * Initializes all necessary services for test execution in the correct dependency order.
+   * The constructor sets up the complete testing infrastructure including configuration
+   * management, test discovery, variable handling, dependency resolution, and reporting.
    *
-   * @param configFileOrOptions - Path to config file or direct options object
+   * Services are initialized in dependency order to ensure proper functionality:
+   * 1. ConfigManager - loads and validates configuration
+   * 2. TestDiscovery - handles test file discovery
+   * 3. DependencyService - manages inter-test dependencies
+   * 4. GlobalRegistryService - handles global state management
+   * 5. GlobalVariablesService - manages variable interpolation
+   * 6. PriorityService - handles test ordering
+   * 7. ReportingService - generates execution reports
+   * 8. ExecutionService - orchestrates test execution
+   *
+   * @param configFileOrOptions - Path to YAML configuration file or direct options object
    * @param hooks - Optional lifecycle event hooks for monitoring and extending functionality
    *
-   * @example
+   * @example Constructor with configuration file
    * ```typescript
-   * // With configuration file
+   * // Basic usage with config file
    * const engine = new FlowTestEngine('./flow-test.config.yml');
    *
-   * // With direct options
-   * const engine = new FlowTestEngine({
-   *   test_directory: './tests',
-   *   verbosity: 'verbose',
-   *   parallel_execution: true,
-   *   max_workers: 4
-   * });
+   * // Alternative config file locations
+   * const engine2 = new FlowTestEngine('./configs/production.yml');
+   * const engine3 = new FlowTestEngine('~/my-project/test-config.yaml');
+   * ```
    *
-   * // With lifecycle hooks for monitoring
-   * const engine = new FlowTestEngine('./config.yml', {
-   *   onExecutionStart: (stats) => {
-   *     console.log(`🚀 Starting execution of ${stats.tests_discovered} test suites`);
-   *     startTimer();
+   * @example Constructor with direct configuration object
+   * ```typescript
+   * const engine = new FlowTestEngine({
+   *   project_name: 'E-commerce API Tests',
+   *   test_directory: './tests/api',
+   *   verbosity: 'verbose',
+   *   execution: {
+   *     mode: 'parallel',
+   *     max_workers: 4,
+   *     fail_fast: true,
+   *     timeout_ms: 30000
    *   },
-   *   onSuiteStart: (suite) => {
-   *     logger.info(`▶️ Executing: ${suite.suite_name}`);
+   *   reporting: {
+   *     formats: ['html', 'json'],
+   *     output_directory: './test-reports'
    *   },
-   *   onExecutionEnd: (result) => {
-   *     const duration = stopTimer();
-   *     console.log(`✨ Execution completed in ${duration}ms`);
-   *     console.log(`Success rate: ${result.success_rate.toFixed(1)}%`);
+   *   filters: {
+   *     priorities: ['high', 'critical'],
+   *     tags: ['smoke', 'regression']
    *   }
    * });
    * ```
+   *
+   * @example Constructor with comprehensive lifecycle hooks
+   * ```typescript
+   * const engine = new FlowTestEngine('./config.yml', {
+   *   onExecutionStart: (stats) => {
+   *     console.log(`🚀 Starting execution of ${stats.tests_discovered} test suites`);
+   *     // Initialize monitoring, start timers, etc.
+   *   },
+   *   onTestDiscovered: (test) => {
+   *     console.log(`🔍 Discovered: ${test.suite_name} (${test.file_path})`);
+   *   },
+   *   onSuiteStart: (suite) => {
+   *     console.log(`▶️ Starting suite: ${suite.suite_name}`);
+   *     // Log to external monitoring system
+   *   },
+   *   onSuiteEnd: (suite, result) => {
+   *     const emoji = result.status === 'success' ? '✅' : '❌';
+   *     console.log(`${emoji} ${suite.suite_name}: ${result.success_rate.toFixed(1)}%`);
+   *   },
+   *   onExecutionEnd: (result) => {
+   *     console.log(`🏁 Execution completed: ${result.success_rate.toFixed(1)}% success`);
+   *     // Send results to monitoring/notification systems
+   *   },
+   *   onError: (error) => {
+   *     console.error('💥 Execution failed:', error.message);
+   *     // Send error notifications
+   *   }
+   * });
+   * ```
+   *
+   * @throws {Error} When configuration file is invalid or required services fail to initialize
    */
   constructor(
     configFileOrOptions?: string | EngineExecutionOptions,
@@ -156,33 +270,89 @@ export class FlowTestEngine {
   /**
    * Executes all discovered tests in the configured directory
    *
-   * This method is the main entry point for test execution. It performs the complete
-   * lifecycle: discovery, filtering, sorting, execution, and report generation.
-   * The execution follows these phases:
-   * 1. Test Discovery - Scans for YAML test files
-   * 2. Filtering - Applies configured filters (tags, priority, etc.)
-   * 3. Dependency Resolution - Resolves inter-test dependencies
-   * 4. Execution - Runs tests with configured parallelism
-   * 5. Reporting - Generates HTML and JSON reports
+   * This is the primary method for running test suites. It orchestrates the complete
+   * test execution lifecycle through well-defined phases, ensuring proper dependency
+   * resolution, parallel execution, and comprehensive reporting.
    *
-   * @returns Promise that resolves to aggregated results of all executed tests
-   * @throws Error if there's a critical failure during execution
+   * **Execution Phases:**
+   * 1. **Discovery Phase** - Recursively scans configured directories for YAML test files
+   * 2. **Filtering Phase** - Applies runtime filters based on tags, priority, and patterns
+   * 3. **Dependency Resolution** - Analyzes and resolves inter-test dependencies
+   * 4. **Ordering Phase** - Sorts tests by priority and dependency requirements
+   * 5. **Execution Phase** - Runs tests with configured parallelism and worker management
+   * 6. **Reporting Phase** - Generates HTML reports and JSON artifacts
    *
-   * @example
+   * The method provides comprehensive error handling, real-time progress monitoring through
+   * lifecycle hooks, and detailed performance metrics collection.
+   *
+   * @returns Promise that resolves to aggregated execution results with comprehensive metrics
+   * @throws {Error} When critical failures occur during configuration, discovery, or execution
+   *
+   * @example Basic execution with result handling
    * ```typescript
-   * // Basic execution
+   * const engine = new FlowTestEngine('./config.yml');
    * const result = await engine.run();
-   * if (result.overall_status === 'success') {
-   *   console.log('All tests passed!');
-   *   console.log(`Success rate: ${result.success_rate}%`);
-   * }
    *
-   * // Check detailed results
-   * console.log(`Total suites: ${result.total_suites}`);
-   * console.log(`Passed: ${result.passed_suites}`);
-   * console.log(`Failed: ${result.failed_suites}`);
-   * console.log(`Skipped: ${result.skipped_suites}`);
-   * console.log(`Execution time: ${result.total_execution_time}ms`);
+   * console.log(`📊 Execution Summary:`);
+   * console.log(`   Duration: ${result.total_duration_ms}ms`);
+   * console.log(`   Success Rate: ${result.success_rate.toFixed(1)}%`);
+   * console.log(`   Total Tests: ${result.total_tests}`);
+   * console.log(`   Successful: ${result.successful_tests}`);
+   * console.log(`   Failed: ${result.failed_tests}`);
+   *
+   * // Exit with appropriate code for CI/CD
+   * process.exit(result.failed_tests > 0 ? 1 : 0);
+   * ```
+   *
+   * @example Advanced execution with error handling and monitoring
+   * ```typescript
+   * const engine = new FlowTestEngine('./config.yml');
+   *
+   * try {
+   *   const result = await engine.run();
+   *
+   *   // Analyze performance metrics
+   *   if (result.performance_summary) {
+   *     const perf = result.performance_summary;
+   *     console.log(`🚀 Performance Metrics:`);
+   *     console.log(`   Total Requests: ${perf.total_requests}`);
+   *     console.log(`   Average Response Time: ${perf.average_response_time_ms.toFixed(0)}ms`);
+   *     console.log(`   Requests Per Second: ${perf.requests_per_second.toFixed(1)}`);
+   *   }
+   *
+   *   // Check specific suite failures
+   *   const failedSuites = result.suites_results.filter(s => s.status === 'failure');
+   *   if (failedSuites.length > 0) {
+   *     console.log('\n💥 Failed Test Suites:');
+   *     failedSuites.forEach(suite => {
+   *       console.log(`   • ${suite.suite_name}: ${suite.error_message}`);
+   *     });
+   *   }
+   *
+   *   // Access global variables final state
+   *   console.log('🔗 Global Variables:', result.global_variables_final_state);
+   *
+   * } catch (error) {
+   *   console.error('❌ Execution failed:', error.message);
+   *   process.exit(1);
+   * }
+   * ```
+   *
+   * @example Conditional execution based on results
+   * ```typescript
+   * const engine = new FlowTestEngine('./config.yml');
+   * const result = await engine.run();
+   *
+   * if (result.success_rate >= 95) {
+   *   console.log('✅ All tests passed - proceeding with deployment');
+   *   await deployApplication();
+   * } else if (result.success_rate >= 80) {
+   *   console.log('⚠️ Some tests failed - requires review');
+   *   await notifyTeam(result);
+   * } else {
+   *   console.log('❌ Critical test failures - blocking deployment');
+   *   throw new Error(`Test success rate too low: ${result.success_rate}%`);
+   * }
    * ```
    */
   async run(): Promise<AggregatedResult> {
@@ -339,7 +509,10 @@ export class FlowTestEngine {
       // Filtro por tags (precisa ler o arquivo YAML para obter as tags dos metadados)
       if (filters.tags && filters.tags.length > 0) {
         const testTags = this.getTestTags(test.file_path);
-        if (!testTags || !filters.tags.some((tag: string) => testTags.includes(tag))) {
+        if (
+          !testTags ||
+          !filters.tags.some((tag: string) => testTags.includes(tag))
+        ) {
           return false;
         }
       }
@@ -353,7 +526,7 @@ export class FlowTestEngine {
    */
   private getTestTags(filePath: string): string[] {
     try {
-      const fileContent = fs.readFileSync(filePath, 'utf8');
+      const fileContent = fs.readFileSync(filePath, "utf8");
       const suite = yaml.load(fileContent) as any;
 
       return suite?.metadata?.tags || [];
@@ -504,21 +677,110 @@ export class FlowTestEngine {
   }
 
   /**
-   * Obtém configuração atual
+   * Gets the current engine configuration
+   *
+   * Returns the complete configuration object including all loaded settings,
+   * defaults, and runtime overrides. Useful for debugging and conditional logic.
+   *
+   * @returns The complete configuration object currently in use
+   *
+   * @example Inspecting current configuration
+   * ```typescript
+   * const engine = new FlowTestEngine('./config.yml');
+   * const config = engine.getConfig();
+   *
+   * console.log(`Project: ${config.project_name}`);
+   * console.log(`Test Directory: ${config.test_directory}`);
+   * console.log(`Execution Mode: ${config.execution?.mode}`);
+   * console.log(`Max Workers: ${config.execution?.max_workers}`);
+   * ```
+   *
+   * @public
    */
   getConfig() {
     return this.configManager.getConfig();
   }
 
   /**
-   * Obtém estatísticas atuais
+   * Gets current execution statistics
+   *
+   * Returns real-time statistics about the current or completed test execution,
+   * including discovery, completion, success/failure counts, and performance metrics.
+   *
+   * @returns Copy of current execution statistics
+   *
+   * @example Monitoring execution progress
+   * ```typescript
+   * const engine = new FlowTestEngine('./config.yml');
+   *
+   * // Start execution (non-blocking example)
+   * const executionPromise = engine.run();
+   *
+   * // Monitor progress in separate interval
+   * const monitor = setInterval(() => {
+   *   const stats = engine.getStats();
+   *   console.log(`Progress: ${stats.tests_completed}/${stats.tests_discovered}`);
+   *   console.log(`Success Rate: ${(stats.tests_successful/stats.tests_completed * 100).toFixed(1)}%`);
+   * }, 1000);
+   *
+   * await executionPromise;
+   * clearInterval(monitor);
+   * ```
+   *
+   * @public
    */
   getStats(): ExecutionStats {
     return { ...this.stats };
   }
 
   /**
-   * Execução em modo dry-run (apenas descoberta e ordenação)
+   * Performs a dry run execution (discovery and planning only)
+   *
+   * Executes only the discovery, filtering, dependency resolution, and ordering phases
+   * without actually running HTTP requests. Useful for validating test configuration,
+   * checking dependency chains, and previewing execution order.
+   *
+   * @returns Promise that resolves to array of discovered and ordered tests
+   * @throws {Error} When configuration is invalid or test discovery fails
+   *
+   * @example Validating test configuration
+   * ```typescript
+   * const engine = new FlowTestEngine('./config.yml');
+   * const tests = await engine.dryRun();
+   *
+   * console.log(`📋 Execution Plan (${tests.length} tests):`);
+   * tests.forEach((test, index) => {
+   *   console.log(`${index + 1}. ${test.suite_name} (${test.priority || 'medium'})`);
+   *   console.log(`   📁 ${test.file_path}`);
+   *
+   *   if (test.dependencies?.length) {
+   *     console.log(`   🔗 Dependencies: ${test.dependencies.join(', ')}`);
+   *   }
+   *
+   *   if (test.tags?.length) {
+   *     console.log(`   🏷️  Tags: ${test.tags.join(', ')}`);
+   *   }
+   * });
+   * ```
+   *
+   * @example Checking dependency chains
+   * ```typescript
+   * const tests = await engine.dryRun();
+   * const dependencyMap = new Map();
+   *
+   * tests.forEach(test => {
+   *   if (test.dependencies?.length) {
+   *     dependencyMap.set(test.suite_name, test.dependencies);
+   *   }
+   * });
+   *
+   * console.log('🔗 Dependency Analysis:');
+   * for (const [suite, deps] of dependencyMap) {
+   *   console.log(`${suite} depends on: ${deps.join(', ')}`);
+   * }
+   * ```
+   *
+   * @public
    */
   async dryRun(): Promise<DiscoveredTest[]> {
     console.log(`\n🧪 Dry Run Mode - Flow Test Engine v1.0`);

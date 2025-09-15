@@ -1,27 +1,84 @@
+/**
+ * @fileoverview Comprehensive assertion validation service for HTTP response testing.
+ *
+ * @remarks
+ * This module provides the AssertionService class which handles all response validation logic
+ * for the Flow Test Engine. It supports multiple assertion types, operators, and syntaxes
+ * with JMESPath integration for complex data extraction and validation.
+ *
+ * @packageDocumentation
+ */
+
 import * as jmespath from "jmespath";
 import { Assertions, AssertionChecks } from "../types/engine.types";
 import { AssertionResult, StepExecutionResult } from "../types/config.types";
 import { getLogger } from "./logger.service";
 
 /**
- * Service responsible for validating assertions in HTTP responses
+ * Comprehensive assertion validation service for HTTP response testing.
  *
- * This service processes and validates all assertions defined in tests,
- * including status code, headers, body and response time validations.
- * Supports flat syntax (body.status) and structured syntax (body: {status}).
+ * @remarks
+ * The AssertionService provides robust validation capabilities for HTTP responses including
+ * status codes, headers, response bodies, timing validations, and custom assertions.
+ * It supports multiple assertion syntaxes, JMESPath expressions for complex data extraction,
+ * and comprehensive error reporting with detailed failure messages.
  *
- * @example
+ * **Supported Assertion Types:**
+ * - **Status Code Validation**: Direct value comparison or complex validation rules
+ * - **Header Validation**: Key-value validation with multiple comparison operators
+ * - **Response Body Validation**: Deep object validation using JMESPath expressions
+ * - **Response Time Validation**: Performance constraint validation
+ * - **Custom Assertions**: Extensible validation system for specialized requirements
+ *
+ * **Available Assertion Operators:**
+ * - `equals`: Exact value equality comparison
+ * - `not_equals`: Value inequality verification
+ * - `contains`: String/array containment validation
+ * - `greater_than`: Numeric greater than comparison (>)
+ * - `less_than`: Numeric less than comparison (<)
+ * - `regex`: Regular expression pattern matching
+ * - `not_null`: Null/undefined existence validation
+ * - `type`: Data type validation (string, number, boolean, object, array)
+ * - `length`: Array/string length validation with nested operators
+ *
+ * **Supported Assertion Syntaxes:**
+ * - **Flat Syntax**: `'body.user.id': { not_null: true, type: 'number' }`
+ * - **Structured Syntax**: `body: { user: { id: { not_null: true, type: 'number' } } }`
+ * - **Direct Value**: `status_code: 200`
+ * - **JMESPath Expressions**: `'body.items[0].name': { equals: 'Product 1' }`
+ *
+ * @example Basic response validation
  * ```typescript
+ * import { AssertionService } from 'flow-test-engine';
+ *
  * const assertionService = new AssertionService();
+ * const responseData = {
+ *   status: 200,
+ *   headers: { 'content-type': 'application/json' },
+ *   body: { user: { id: 123, name: 'John Doe' } }
+ * };
+ *
  * const results = assertionService.validateAssertions({
  *   status_code: 200,
- *   'body.message': { equals: 'success' }
- * }, executionResult);
+ *   'headers.content-type': { contains: 'application/json' },
+ *   'body.user.id': { type: 'number', greater_than: 0 },
+ *   'body.user.name': { not_null: true, type: 'string' }
+ * }, responseData);
  *
- * results.forEach(result => {
- *   console.log(`${result.field}: ${result.passed ? 'PASS' : 'FAIL'}`);
- * });
+ * console.log(`Assertions passed: ${results.filter(r => r.passed).length}`);
  * ```
+ *
+ * @example Complex validation with JMESPath
+ * ```typescript
+ * const results = assertionService.validateAssertions({
+ *   'body.items[0].price': { greater_than: 0, less_than: 1000 },
+ *   'body.items[?category==`electronics`].length(@)': { greater_than: 0 },
+ *   'body.pagination.total': { type: 'number' }
+ * }, responseData);
+ * ```
+ *
+ * @public
+ * @since 1.0.0
  */
 export class AssertionService {
   private logger = getLogger();

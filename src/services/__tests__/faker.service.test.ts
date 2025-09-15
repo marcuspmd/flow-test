@@ -215,8 +215,8 @@ describe("FakerService", () => {
   describe("Tratamento de erros", () => {
     test("deve lançar erro para método não allowlistado", () => {
       expect(() => {
-        fakerService.executeMethod("hacker.password");
-      }).toThrow("Faker method 'hacker.password' is not allowlisted for security reasons");
+        fakerService.executeMethod("internet.userAgent");
+      }).toThrow("Faker method 'internet.userAgent' is not allowlisted for security reasons");
     });
 
     test("deve lançar erro para path inválido", () => {

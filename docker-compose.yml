@@ -1,5 +1,4 @@
 # docker-compose.yml
-version: '3.8'
 
 services:
   flow-test:
@@ -10,13 +9,12 @@ services:
       - /app/node_modules
     working_dir: /app
     # Instala deps, builda, executa testes (com args opcionais) e gera relatório
-    command: sh -lc "npm ci && npm run build && node dist/cli.js ${FLOW_TEST_ARGS:---simple} && node dist/report-generator/cli.js results/latest.json"
+    command: sh -lc "sleep 10 && npm ci && npm run build && node dist/cli.js ${FLOW_TEST_ARGS:---simple} && node dist/report-generator/cli.js results/latest.json"
     environment:
       - NODE_ENV=test
       - FLOW_TEST_HTTPBIN_URL=http://httpbin
     depends_on:
-      httpbin:
-        condition: service_healthy
+      - httpbin
     networks:
       - flow-test-network
 
@@ -24,15 +22,10 @@ services:
 
   httpbin:
     image: kennethreitz/httpbin
+    platform: linux/amd64
     container_name: flow-test-httpbin
     ports:
       - "8080:80"
-    healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost/status/200')"]
-      interval: 2s
-      timeout: 2s
-      retries: 30
-      start_period: 2s
     networks:
       - flow-test-network
 

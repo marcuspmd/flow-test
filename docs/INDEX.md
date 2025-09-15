@@ -7,12 +7,12 @@ Welcome to the comprehensive Flow Test Engine documentation suite. This index pr
 ## 🚀 Quick Start (For New Users)
 
 ### Getting Started
-- **[README.md](../README.md)** - Main project documentation with installation, features, and quick examples
+- **[README.md](https://github.com/marcuspmd/flow-test/blob/main/README.md)** - Main project documentation with installation, features, and quick examples
 - **[YAML Examples](./YAML_EXAMPLES.md)** - Complete examples for all major testing patterns
 - **[Configuration Guide](./CONFIGURATION.md)** - Environment setup and configuration options
 
 ### Basic Usage
-1. **Installation**: Follow the [README](../README.md#install) for setup instructions
+1. **Installation**: Follow the [README](https://github.com/marcuspmd/flow-test/blob/main/README.md#install) for setup instructions
 2. **First Test**: Try the [Basic API Test](./YAML_EXAMPLES.md#simple-api-test) example
 3. **Configuration**: Set up your environment using the [Configuration Guide](./CONFIGURATION.md)
 
@@ -164,4 +164,4 @@ Welcome to the comprehensive Flow Test Engine documentation suite. This index pr
 
 ---
 
-*This documentation index is automatically updated with each release. For the latest information, check the [Changelog](../CHANGELOG.md).*
+*This documentation index is automatically updated with each release. For the latest information, check the [Changelog](https://github.com/marcuspmd/flow-test/blob/main/CHANGELOG.md).* 

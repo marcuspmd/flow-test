@@ -1,3 +1,15 @@
+/**
+ * @fileoverview Dependency management service for test suite orchestration.
+ *
+ * @remarks
+ * This module provides the DependencyService class which handles dependency resolution,
+ * execution ordering, and circular dependency detection for test suite execution.
+ * It ensures that test suites are executed in the correct order based on their
+ * declared dependencies.
+ *
+ * @packageDocumentation
+ */
+
 import path from "path";
 import {
   DiscoveredTest,
@@ -6,18 +18,126 @@ import {
 } from "../types/engine.types";
 
 /**
- * Node of the dependency graph
+ * Node in the dependency graph with execution state tracking.
+ *
+ * @remarks
+ * Represents a single test in the dependency graph with information about
+ * its dependencies, dependents, and current execution state. Used internally
+ * by the dependency resolution algorithm.
+ *
+ * @example Dependency node structure
+ * ```typescript
+ * const node: DependencyNode = {
+ *   test: discoveredTest,
+ *   dependencies: new Set(['auth-setup', 'data-preparation']),
+ *   dependents: new Set(['cleanup-tests']),
+ *   resolved: false,
+ *   executing: false
+ * };
+ * ```
+ *
+ * @internal
  */
 interface DependencyNode {
+  /** The discovered test associated with this node */
   test: DiscoveredTest;
-  dependencies: Set<string>; // nodeIds das dependências
-  dependents: Set<string>; // nodeIds que dependem deste
+
+  /** Set of node IDs that this test depends on */
+  dependencies: Set<string>;
+
+  /** Set of node IDs that depend on this test */
+  dependents: Set<string>;
+
+  /** Whether all dependencies have been resolved */
   resolved: boolean;
+
+  /** Whether this test is currently executing */
   executing: boolean;
 }
 
 /**
- * Service for managing dependencies
+ * Comprehensive dependency management service for test suite orchestration.
+ *
+ * @remarks
+ * The DependencyService manages the complex task of dependency resolution and
+ * execution ordering for test suites. It builds dependency graphs, detects
+ * circular dependencies, and determines optimal execution order while providing
+ * caching and performance optimizations for large test suites.
+ *
+ * **Key Features:**
+ * - **Dependency Graph Construction**: Builds comprehensive dependency graphs from test declarations
+ * - **Circular Dependency Detection**: Identifies and reports circular dependency issues
+ * - **Execution Order Resolution**: Determines optimal execution order respecting all dependencies
+ * - **Parallel Execution Support**: Identifies tests that can be executed in parallel
+ * - **Caching System**: Caches dependency resolution results for performance optimization
+ * - **Error Handling**: Comprehensive error reporting for dependency conflicts
+ * - **Graph Analysis**: Provides detailed analysis of dependency relationships
+ *
+ * **Dependency Types Supported:**
+ * - **Node Dependencies**: Direct dependencies on specific test node IDs
+ * - **File Dependencies**: Dependencies on tests from specific files
+ * - **Tag Dependencies**: Dependencies on tests with specific tags
+ * - **Conditional Dependencies**: Dependencies that apply only under certain conditions
+ *
+ * **Graph Operations:**
+ * - Topological sorting for execution order
+ * - Strongly connected component detection
+ * - Critical path analysis for optimization
+ * - Dependency depth calculation
+ *
+ * @example Basic dependency resolution
+ * ```typescript
+ * const dependencyService = new DependencyService();
+ *
+ * // Build dependency graph from discovered tests
+ * const result = dependencyService.resolveDependencies(discoveredTests);
+ *
+ * if (result.success) {
+ *   console.log('Execution order:', result.execution_order.map(t => t.suite.node_id));
+ *   console.log('Parallel batches:', result.parallel_batches.length);
+ * } else {
+ *   console.error('Dependency resolution failed:', result.errors);
+ * }
+ * ```
+ *
+ * @example Advanced dependency analysis
+ * ```typescript
+ * const dependencyService = new DependencyService();
+ * const result = dependencyService.resolveDependencies(tests);
+ *
+ * // Analyze dependency relationships
+ * const analysis = dependencyService.analyzeDependencies(tests);
+ * console.log(`Tests with no dependencies: ${analysis.roots.length}`);
+ * console.log(`Maximum dependency depth: ${analysis.max_depth}`);
+ * console.log(`Critical path length: ${analysis.critical_path.length}`);
+ *
+ * // Get execution statistics
+ * const stats = dependencyService.getExecutionStatistics(result);
+ * console.log(`Estimated execution time: ${stats.estimated_duration}ms`);
+ * console.log(`Parallelization efficiency: ${stats.parallelization_factor}%`);
+ * ```
+ *
+ * @example Handling dependency errors
+ * ```typescript
+ * const result = dependencyService.resolveDependencies(tests);
+ *
+ * if (!result.success) {
+ *   // Handle different types of dependency errors
+ *   const circularDeps = result.errors.filter(e => e.includes('circular'));
+ *   const missingDeps = result.errors.filter(e => e.includes('not found'));
+ *
+ *   if (circularDeps.length > 0) {
+ *     console.error('Circular dependencies detected:', circularDeps);
+ *   }
+ *
+ *   if (missingDeps.length > 0) {
+ *     console.error('Missing dependencies:', missingDeps);
+ *   }
+ * }
+ * ```
+ *
+ * @public
+ * @since 1.0.0
  */
 export class DependencyService {
   private graph: Map<string, DependencyNode> = new Map();

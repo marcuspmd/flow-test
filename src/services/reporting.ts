@@ -1,3 +1,14 @@
+/**
+ * @fileoverview Comprehensive reporting service for test execution results.
+ *
+ * @remarks
+ * This module provides the ReportingService class which handles generation of
+ * test execution reports in multiple formats including JSON, HTML, and custom
+ * formats with comprehensive analytics and visualization capabilities.
+ *
+ * @packageDocumentation
+ */
+
 import fs from "fs";
 import path from "path";
 import { ConfigManager } from "../core/config";
@@ -6,7 +17,102 @@ import { getLogger } from "./logger.service";
 import { HTMLReportGenerator } from "../report-generator/html-generator";
 
 /**
- * Service for generating reports in multiple formats
+ * Comprehensive reporting service for generating test execution reports in multiple formats.
+ *
+ * @remarks
+ * The ReportingService provides sophisticated report generation capabilities with
+ * support for multiple output formats, customizable templates, and comprehensive
+ * analytics. It processes test execution results and generates professional reports
+ * suitable for various audiences including developers, QA teams, and stakeholders.
+ *
+ * **Supported Report Formats:**
+ * - **JSON**: Machine-readable structured data format
+ * - **HTML**: Interactive web-based reports with visualizations
+ * - **CSV**: Tabular data export for spreadsheet analysis
+ * - **XML**: Structured markup format for integration
+ * - **Markdown**: Documentation-friendly text format
+ * - **PDF**: Professional document format (when configured)
+ *
+ * **Report Features:**
+ * - **Executive Summary**: High-level overview with key metrics
+ * - **Detailed Results**: Step-by-step execution details
+ * - **Performance Analytics**: Response time analysis and trends
+ * - **Error Analysis**: Detailed failure investigation and categorization
+ * - **Visual Charts**: Interactive charts and graphs for data visualization
+ * - **Filtering & Search**: Advanced filtering and search capabilities
+ * - **Export Options**: Multiple export formats for further analysis
+ * - **Custom Styling**: Configurable themes and branding options
+ *
+ * **Analytics Capabilities:**
+ * - Success/failure rate analysis
+ * - Performance trend analysis
+ * - Error categorization and frequency analysis
+ * - Test coverage metrics
+ * - Historical comparison and benchmarking
+ * - Resource utilization tracking
+ *
+ * @example Basic report generation
+ * ```typescript
+ * const configManager = new ConfigManager();
+ * const reportingService = new ReportingService(configManager);
+ *
+ * const aggregatedResult: AggregatedResult = {
+ *   total_suites: 10,
+ *   total_steps: 85,
+ *   total_assertions: 156,
+ *   success_rate: 94.2,
+ *   execution_time: 45000,
+ *   suite_results: [...],
+ *   performance_summary: {...}
+ * };
+ *
+ * // Generate all configured reports
+ * await reportingService.generateReports(aggregatedResult);
+ * console.log('Reports generated successfully');
+ * ```
+ *
+ * @example Advanced report customization
+ * ```typescript
+ * const reportingService = new ReportingService(configManager);
+ *
+ * // Generate specific format with custom options
+ * await reportingService.generateJSONReport(result, {
+ *   includeRawData: true,
+ *   prettify: true,
+ *   outputPath: './reports/detailed-results.json'
+ * });
+ *
+ * await reportingService.generateHTMLReport(result, {
+ *   theme: 'dark',
+ *   includeCurlCommands: true,
+ *   showPerformanceCharts: true,
+ *   outputPath: './reports/test-results.html'
+ * });
+ *
+ * // Generate custom analytics report
+ * const analytics = reportingService.generateAnalytics(result);
+ * console.log(`Performance improvement: ${analytics.performance_trend}%`);
+ * ```
+ *
+ * @example Batch report generation with templates
+ * ```typescript
+ * const reportingService = new ReportingService(configManager);
+ *
+ * // Generate reports for multiple audiences
+ * const executiveResult = await reportingService.generateExecutiveSummary(result);
+ * const technicalResult = await reportingService.generateTechnicalReport(result);
+ * const complianceResult = await reportingService.generateComplianceReport(result);
+ *
+ * // Email reports to stakeholders
+ * await reportingService.sendReportsByEmail({
+ *   executives: ['cto@company.com'],
+ *   developers: ['dev-team@company.com'],
+ *   qa: ['qa-team@company.com']
+ * }, [executiveResult, technicalResult]);
+ * ```
+ *
+ * @public
+ * @since 1.0.0
  */
 export class ReportingService {
   private configManager: ConfigManager;
@@ -152,22 +258,25 @@ export class ReportingService {
       outputDir: outputDir,
       includeCurlCommands: true,
       includeRawData: true,
-      theme: 'light'
+      theme: "light",
     });
 
     try {
       const generatedPath = await htmlGenerator.generateHTML(result, filePath);
       this.logger.info(`Enhanced HTML report: ${generatedPath}`);
-      
+
       // The generator already creates latest.html
       const latestPath = path.join(outputDir, "latest.html");
       this.logger.info(`Latest HTML: ${latestPath}`);
     } catch (error) {
-      this.logger.error('Failed to generate HTML report with new generator, falling back to legacy method', { error: error as Error });
+      this.logger.error(
+        "Failed to generate HTML report with new generator, falling back to legacy method",
+        { error: error as Error }
+      );
       // Fallback to legacy HTML generation
       const html = this.buildHtmlReport(result);
       fs.writeFileSync(filePath, html, "utf8");
-      
+
       const latestPath = path.join(outputDir, "latest.html");
       fs.writeFileSync(latestPath, html, "utf8");
       this.logger.info(`HTML report (fallback): ${filePath}`);
