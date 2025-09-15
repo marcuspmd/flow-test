@@ -70,9 +70,9 @@ steps:
     assert:
       status_code: 200
       body:
-        json.headers.Authorization:
+        headers.Authorization:
           contains: "Bearer"
-        json.headers."X-Api-Key":
+        headers."X-Api-Key":
           equals: "client_secret_xyz789"
     capture:
       api_key_test_response: "json"
@@ -125,7 +125,7 @@ steps:
           current_password: "{{test_credentials.password}}"  # Should be masked
           new_password: "new_super_secret_password_456"      # Should be masked
           confirm_password: "new_super_secret_password_456"  # Should be masked
-          change_timestamp: "{{$js.return Date.now()}}"
+          change_timestamp: 1234567890000
         security_validation:
           password_strength: "strong"
           requires_2fa: true
