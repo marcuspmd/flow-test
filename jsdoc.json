@@ -1,0 +1,69 @@
+{
+  "plugins": [
+    "node_modules/better-docs/typescript",
+    "node_modules/better-docs/category"
+  ],
+  "tags": {
+    "allowUnknownTags": true,
+    "dictionaries": [
+      "jsdoc",
+      "closure"
+    ]
+  },
+  "source": {
+    "include": [
+      "src"
+    ],
+    "exclude": [
+      "src/cli.ts",
+      "src/services/global-variables.ts",
+      "src/__tests__",
+      "src/report-generator/__tests__",
+      "dist"
+    ],
+    "includePattern": ".+\\.(ts|tsx)$",
+    "excludePattern": ".+\\.(test|spec)\\.(ts|tsx)$"
+  },
+  "typescript": {
+    "moduleRoot": "src"
+  },
+  "opts": {
+    "encoding": "utf8",
+    "destination": "docs",
+    "recurse": true,
+    "verbose": false,
+    "template": "node_modules/better-docs",
+    "tutorials": "guides",
+    "readme": "README.md"
+  },
+  "templates": {
+    "search": true,
+    "better-docs": {
+      "name": "Flow Test Engine API",
+      "logo": "public/assets/flow.png",
+      "css": [
+        "public/assets/custom.css"
+      ],
+      "navLinks": [
+        {
+          "label": "Github",
+          "href": "https://github.com/SoftwareBrothers/admin-bro"
+        },
+        {
+          "label": "Example Application",
+          "href": "https://admin-bro-example-app-staging.herokuapp.com/admin"
+        }
+      ],
+      "navigation": [
+        {
+          "label": "Como usar",
+          "href": "tutorial-como-usar-o-sistema.html"
+        },
+        {
+          "label": "GitHub",
+          "href": "https://github.com/"
+        }
+      ]
+    }
+  }
+}

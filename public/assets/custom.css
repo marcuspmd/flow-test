@@ -1,0 +1,32 @@
+.logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 5px;
+}
+
+.logo .image {
+  max-height: 50px;
+  max-width: 50px;
+}
+
+/* Scale Markdown/tutorial images to a reasonable size */
+.readme img,
+.container-overview img,
+.tutorial-contents img,
+.content img {
+  max-width: 800px;
+  width: 100%;
+  height: auto;
+  display: block;
+  margin: 16px auto;
+}
+
+.top-nav .logo .image img {
+  max-height: 100%;
+  max-width: 100%;
+}
+
+#main > .sidebar {
+  width: auto;
+}

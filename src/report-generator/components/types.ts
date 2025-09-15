@@ -49,7 +49,7 @@ export interface SummaryCardsProps extends ComponentProps {
 /**
  * Represents the possible execution statuses of a test suite, step, or assertion.
  */
-export type Status = "success" | "failure" | "failed" | "error" | "unknown";
+export type Status = "success" | "failure" | "failed" | "error" | "unknown" | "skipped";
 
 /**
  * Properties for a test suite component, representing a single YAML test file.

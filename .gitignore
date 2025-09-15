@@ -140,7 +140,4 @@ vite.config.ts.timestamp-*
 
 results/*
 flows/*
-docs/markdown/*
-docs/typedoc-site/*
-docs-website/api/
-docs-website/api-input/
+docs/

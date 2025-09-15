@@ -42,10 +42,11 @@ export class TestStepComponent extends BaseComponent {
   /**
    * Gets a simple visual icon for a given status.
    * @param status - The status of the item.
-   * @returns A checkmark ("✓") for success, or a cross ("✗") for failure/other.
+   * @returns A checkmark ("✓") for success, dash ("−") for skipped, or cross ("✗") for failure/other.
    */
   private getStatusIcon(status: Status): string {
     if (status === "success") return "✓";
+    if (status === "skipped") return "−";
     return "✗";
   }
 
@@ -230,15 +231,15 @@ export class TestStepComponent extends BaseComponent {
                 <div>
                   <span class="font-medium text-primary">
                     ${this.escapeHtml(
-                      this.formatAssertionField(assertion.type).name
+                      this.formatAssertionField((assertion as any).field).name
                     )}
                   </span>
                   ${
-                    this.formatAssertionField(assertion.type).operator
+                    this.formatAssertionField((assertion as any).field).operator
                       ? this.html`
                     <span class="text-secondary text-sm ml-2">
                       (${this.escapeHtml(
-                        this.formatAssertionField(assertion.type).operator
+                        this.formatAssertionField((assertion as any).field).operator
                       )})
                     </span>
                   `

@@ -33,7 +33,10 @@
     "report:html": "node dist/report-generator/cli.js",
     "report:generate": "node dist/report-generator/cli.js results/latest.json",
     "report:regenerate": "ts-node regenerate-html.ts",
-    "copy:assets": "node scripts/copy-assets.js"
+    "copy:assets": "node scripts/copy-assets.js",
+    "docs": "jsdoc -c jsdoc.json && mkdir -p docs/public/assets docs/build && cp -R public/assets/* docs/public/assets/ 2>/dev/null || true",
+    "docs:clean": "rm -rf docs",
+    "docs:serve": "npm run docs && http-server docs -p 4000 -o"
   },
   "keywords": [
     "api",
@@ -78,7 +81,10 @@
     "ts-jest": "^29.4.1",
     "ts-node": "^10.9.2",
     "tsdoc-markdown": "^1.4.1",
-    "typescript": "^5.4.5"
+    "typescript": "^5.4.5",
+    "better-docs": "^2.7.3",
+    "http-server": "^14.1.1",
+    "jsdoc": "^4.0.4"
   },
   "engines": {
     "node": ">=16.0.0"
