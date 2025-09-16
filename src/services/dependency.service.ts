@@ -173,17 +173,15 @@ export class DependencyService {
       // Process new format dependencies
       if (test.depends) {
         for (const dependency of test.depends) {
+          if (!dependency) {
+            continue;
+          }
+
           let dependencyNodeId: string | null = null;
 
-          // Handle different dependency formats
-          if (typeof dependency === "string") {
-            // Simple string format: "auth"
-            dependencyNodeId = dependency;
-          } else if (typeof dependency === "object" && dependency.node_id) {
-            // Object format with node_id: { node_id: "auth" }
+          if (dependency.node_id) {
             dependencyNodeId = dependency.node_id;
-          } else if (typeof dependency === "object" && dependency.path) {
-            // Legacy path format: { path: "./auth-flow.yaml" }
+          } else if (dependency.path) {
             dependencyNodeId = this.extractNodeIdFromPath(dependency.path);
           }
 
@@ -195,20 +193,6 @@ export class DependencyService {
               `⚠️  Dependency '${JSON.stringify(
                 dependency
               )}' not found for test '${test.node_id}' (${test.suite_name})`
-            );
-          }
-        }
-      }
-
-      // Process legacy format dependencies (now expecting nodeIds)
-      if (test.dependencies) {
-        for (const depNodeId of test.dependencies) {
-          if (this.graph.has(depNodeId)) {
-            node.dependencies.add(depNodeId);
-            this.graph.get(depNodeId)!.dependents.add(test.node_id);
-          } else {
-            console.warn(
-              `⚠️  Legacy dependency '${depNodeId}' not found for test '${test.node_id}' (${test.suite_name})`
             );
           }
         }

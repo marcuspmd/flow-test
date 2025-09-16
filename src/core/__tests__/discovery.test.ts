@@ -4,7 +4,11 @@ import fg from "fast-glob";
 import yaml from "js-yaml";
 import { TestDiscovery } from "../discovery";
 import { ConfigManager } from "../config";
-import type { TestSuite, DiscoveredTest } from "../../types/engine.types";
+import type {
+  TestSuite,
+  DiscoveredTest,
+  FlowDependency,
+} from "../../types/engine.types";
 
 // Mock dependencies
 jest.mock("fs");
@@ -94,10 +98,29 @@ describe("TestDiscovery", () => {
 
   describe("discoverTests", () => {
     it("should discover tests from configured directory", async () => {
+      const setupSuite: TestSuite = {
+        node_id: "setup-001",
+        suite_name: "Setup Flow",
+        steps: [],
+      };
+
+      mockFg.mockResolvedValue([
+        "/tests/setup/setup.test.yml",
+        "/tests/auth/login.test.yml",
+      ]);
+
+      mockYaml.load
+        .mockReturnValueOnce(setupSuite)
+        .mockReturnValueOnce(validTestSuite);
+
       const tests = await testDiscovery.discoverTests();
 
-      expect(tests).toHaveLength(1);
-      expect(tests[0]).toEqual(
+      expect(tests).toHaveLength(2);
+
+      const loginTest = tests.find((test) => test.node_id === "test-001");
+      expect(loginTest).toBeDefined();
+
+      expect(loginTest).toEqual(
         expect.objectContaining({
           file_path: "/tests/auth/login.test.yml",
           node_id: "test-001",
@@ -113,7 +136,7 @@ describe("TestDiscovery", () => {
 
       // Test dependencies separately since the mock setup seems to have issues
       // The important thing is that depends is correctly populated
-      expect(tests[0].depends).toEqual([
+      expect(loginTest?.depends).toEqual([
         { node_id: "setup-001", required: true },
       ]);
     });
@@ -218,7 +241,11 @@ describe("TestDiscovery", () => {
       const tests = await testDiscovery.discoverTests();
 
       const authTest = tests.find((t) => t.node_id === "test-001");
-      expect(authTest?.dependencies).toEqual(["setup-001"]);
+      expect(
+        authTest?.depends?.map((dep: FlowDependency) => dep.node_id)
+      ).toEqual([
+        "setup-001",
+      ]);
     });
   });
 
@@ -362,7 +389,14 @@ describe("TestDiscovery", () => {
       suite_name: `Test ${nodeId}`,
       priority,
       estimated_duration: 1000,
-      dependencies: priority === "high" ? ["setup"] : [],
+      depends:
+        priority === "high"
+          ? [
+              {
+                node_id: "setup",
+              },
+            ]
+          : [],
       exports: [],
     });
 
@@ -396,7 +430,7 @@ describe("TestDiscovery", () => {
           file_path: "/test.yml",
           node_id: "test-1",
           suite_name: "Test",
-          dependencies: [],
+          depends: [],
           exports: [],
         } as DiscoveredTest,
       ];
@@ -488,21 +522,21 @@ describe("TestDiscovery", () => {
           file_path: "/orphan.yml",
           node_id: "orphan-1",
           suite_name: "Orphan Test",
-          dependencies: [],
+          depends: [],
           exports: [],
         },
         {
           file_path: "/depender.yml",
           node_id: "depender-1",
           suite_name: "Depender Test",
-          dependencies: ["setup-1"],
+          depends: [{ node_id: "setup-1" }],
           exports: [],
         },
         {
           file_path: "/setup.yml",
           node_id: "setup-1",
           suite_name: "Setup Test",
-          dependencies: [],
+          depends: [],
           exports: ["token"],
         },
       ];
@@ -519,7 +553,7 @@ describe("TestDiscovery", () => {
           file_path: "/test.yml",
           node_id: "test-1",
           suite_name: "Test",
-          dependencies: ["setup-1"],
+          depends: [{ node_id: "setup-1" }],
           exports: [],
         },
       ];
@@ -535,14 +569,14 @@ describe("TestDiscovery", () => {
           file_path: "/setup.yml",
           node_id: "setup-1",
           suite_name: "Setup",
-          dependencies: [],
+          depends: [],
           exports: ["token"],
         },
         {
           file_path: "/test.yml",
           node_id: "test-1",
           suite_name: "Test",
-          dependencies: ["setup-1"],
+          depends: [{ node_id: "setup-1" }],
           exports: [],
         },
       ];
@@ -590,7 +624,12 @@ describe("TestDiscovery", () => {
         "/tests/test.yaml"
       );
 
-      expect(result.dependencies).toEqual(["dep-1", "dep-2"]);
+      expect(
+        result?.depends?.map((dep: FlowDependency) => dep.node_id)
+      ).toEqual([
+        "dep-1",
+        "dep-2",
+      ]);
     });
 
     it("should handle depends with missing node_id", async () => {
@@ -612,12 +651,24 @@ describe("TestDiscovery", () => {
       mockFs.readFileSync.mockReturnValue("yaml content");
       mockYaml.load.mockReturnValue(suiteWithInvalidDeps);
 
+      const warnSpy = jest.spyOn(console, "warn").mockImplementation();
+
       // Test parseTestFile directly
       const result = await (testDiscovery as any).parseTestFile(
         "/tests/test.yaml"
       );
 
-      expect(result.dependencies).toEqual(["valid-dep"]);
+      expect(
+        result?.depends?.map((dep: FlowDependency) => dep.node_id)
+      ).toEqual([
+        "valid-dep",
+      ]);
+
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining("Dependency without node_id")
+      );
+
+      warnSpy.mockRestore();
     });
 
     it("should remove duplicate dependencies", async () => {
@@ -645,7 +696,12 @@ describe("TestDiscovery", () => {
         "/tests/test.yaml"
       );
 
-      expect(result.dependencies).toEqual(["dep-1", "dep-2"]);
+      expect(
+        result?.depends?.map((dep: FlowDependency) => dep.node_id)
+      ).toEqual([
+        "dep-1",
+        "dep-2",
+      ]);
     });
 
     it("should handle suites without depends field", async () => {
@@ -659,7 +715,7 @@ describe("TestDiscovery", () => {
 
       const tests = await testDiscovery.discoverTests();
 
-      expect(tests[0].dependencies).toEqual([]);
+      expect(tests[0].depends).toEqual([]);
     });
   });
 

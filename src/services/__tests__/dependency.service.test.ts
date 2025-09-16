@@ -99,28 +99,6 @@ describe("DependencyService", () => {
       expect(service.getDirectDependencies("user")[0].node_id).toBe("auth");
     });
 
-    it("should handle legacy dependencies array", () => {
-      const tests: DiscoveredTest[] = [
-        {
-          node_id: "auth",
-          suite_name: "Auth Flow",
-          file_path: "/auth.yaml",
-          dependencies: [],
-        },
-        {
-          node_id: "user",
-          suite_name: "User Flow",
-          file_path: "/user.yaml",
-          dependencies: ["auth"],
-        },
-      ];
-
-      service.buildDependencyGraph(tests);
-
-      expect(service.getDirectDependencies("user")).toHaveLength(1);
-      expect(service.getDirectDependencies("user")[0].node_id).toBe("auth");
-    });
-
     it("should warn about missing dependencies", () => {
       const consoleSpy = jest.spyOn(console, "warn").mockImplementation();
 
@@ -137,27 +115,6 @@ describe("DependencyService", () => {
 
       expect(consoleSpy).toHaveBeenCalledWith(
         expect.stringContaining("Dependency")
-      );
-
-      consoleSpy.mockRestore();
-    });
-
-    it("should warn about missing legacy dependencies", () => {
-      const consoleSpy = jest.spyOn(console, "warn").mockImplementation();
-
-      const tests: DiscoveredTest[] = [
-        {
-          node_id: "user",
-          suite_name: "User Flow",
-          file_path: "/user.yaml",
-          dependencies: ["nonexistent"],
-        },
-      ];
-
-      service.buildDependencyGraph(tests);
-
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining("Legacy dependency 'nonexistent' not found")
       );
 
       consoleSpy.mockRestore();
@@ -1039,7 +996,7 @@ describe("DependencyService", () => {
           node_id: "self-ref",
           suite_name: "Self Reference",
           file_path: "self.yaml",
-          dependencies: ["self-ref"],
+          depends: [{ node_id: "self-ref" }],
         },
       ];
 

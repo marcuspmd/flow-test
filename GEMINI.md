@@ -85,7 +85,7 @@ The compiled CLI is available as `dist/cli.js` and can be invoked via `flow-test
 
 - **Import a Swagger/OpenAPI file**:
   ```bash
-  flow-test --import-swagger path/to/api.json --swagger-output ./tests/imported
+  flow-test --swagger-import path/to/api.json --swagger-output ./tests/imported
   ```
 
 - **Dry Run**: Display the execution plan without making any HTTP requests.

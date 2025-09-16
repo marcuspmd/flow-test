@@ -235,8 +235,7 @@ export class TestDiscovery {
         priority:
           suite.metadata?.priority ||
           this.inferPriorityFromName(suite.suite_name),
-        dependencies: this.extractDependencies(suite),
-        depends: this.extractFlowDependencies(suite),
+        depends: this.extractFlowDependencies(suite, filePath),
         exports: this.extractExports(suite),
         estimated_duration:
           suite.metadata?.estimated_duration_ms || this.estimateDuration(suite),
@@ -286,36 +285,37 @@ export class TestDiscovery {
   }
 
   /**
-   * Extrai dependências de uma suíte de testes (FORMATO LEGADO - REMOVIDO)
-   * Agora usa apenas o campo 'depends' com node_id
-   */
-  private extractDependencies(suite: TestSuite): string[] {
-    const dependencies: string[] = [];
-
-    // REMOVIDO: Suporte legado para 'requires'
-    // Agora extraímos dependências apenas do campo 'depends'
-    if (suite.depends) {
-      suite.depends.forEach((dep) => {
-        if (dep.node_id) {
-          dependencies.push(dep.node_id);
-        }
-      });
-    }
-
-    // Flow dependencies are now handled via 'depends' field
-
-    return [...new Set(dependencies)]; // Remove duplicatas
-  }
-
-  /**
    * Extrai dependências de fluxo no novo formato
    */
-  private extractFlowDependencies(suite: TestSuite): FlowDependency[] {
+  private extractFlowDependencies(
+    suite: TestSuite,
+    filePath: string
+  ): FlowDependency[] {
+    if (!suite.depends) {
+      return [];
+    }
+
+    const seenNodeIds = new Set<string>();
     const dependencies: FlowDependency[] = [];
 
-    // Dependências diretas especificadas na suite
-    if (suite.depends) {
-      dependencies.push(...suite.depends);
+    for (const dependency of suite.depends) {
+      if (!dependency || typeof dependency !== "object") {
+        continue;
+      }
+
+      if (!dependency.node_id) {
+        console.warn(
+          `⚠️  Warning: Dependency without node_id found in ${filePath}. Update the suite to use node_id references.`
+        );
+        continue;
+      }
+
+      if (seenNodeIds.has(dependency.node_id)) {
+        continue;
+      }
+
+      seenNodeIds.add(dependency.node_id);
+      dependencies.push({ ...dependency });
     }
 
     return dependencies;
@@ -358,32 +358,32 @@ export class TestDiscovery {
    * Resolve dependências entre testes
    */
   private resolveDependencies(tests: DiscoveredTest[]): DiscoveredTest[] {
-    // Cria mapa de nodeId -> teste para lookup rápido
-    const testMap = new Map<string, DiscoveredTest>();
-    tests.forEach((test) => {
-      testMap.set(test.node_id, test);
-    });
+    const knownNodeIds = new Set(tests.map((test) => test.node_id));
 
-    // Valida dependências e atualiza lista
     return tests.map((test) => {
-      if (test.dependencies && test.dependencies.length > 0) {
-        // Filtra dependências que realmente existem
-        const validDependencies = test.dependencies.filter((dep) => {
-          const exists = testMap.has(dep);
-          if (!exists) {
-            console.warn(
-              `⚠️  Warning: Dependency '${dep}' not found for test '${test.node_id}' (${test.suite_name})`
-            );
-          }
-          return exists;
-        });
-
-        return {
-          ...test,
-          dependencies: validDependencies,
-        };
+      if (!test.depends || test.depends.length === 0) {
+        return test;
       }
-      return test;
+
+      const validDependencies = test.depends.filter((dependency) => {
+        if (!dependency.node_id) {
+          return false;
+        }
+
+        const exists = knownNodeIds.has(dependency.node_id);
+        if (!exists) {
+          console.warn(
+            `⚠️  Warning: Dependency '${dependency.node_id}' not found for test '${test.node_id}' (${test.suite_name})`
+          );
+        }
+
+        return exists;
+      });
+
+      return {
+        ...test,
+        depends: validDependencies,
+      };
     });
   }
 
@@ -400,15 +400,12 @@ export class TestDiscovery {
     };
 
     tests.forEach((test) => {
-      // Contagem por prioridade
       const priority = test.priority || "medium";
       stats.by_priority[priority] = (stats.by_priority[priority] || 0) + 1;
 
-      // Duração total estimada
       stats.total_estimated_duration += test.estimated_duration || 0;
 
-      // Testes com dependências
-      if (test.dependencies && test.dependencies.length > 0) {
+      if (test.depends && test.depends.length > 0) {
         stats.with_dependencies++;
       }
     });
@@ -460,15 +457,15 @@ export class TestDiscovery {
 
     // Coleta todas as dependências
     tests.forEach((test) => {
-      if (test.dependencies) {
-        test.dependencies.forEach((dep) => allDependencies.add(dep));
-      }
+      test.depends?.forEach((dep) => {
+        if (dep.node_id) {
+          allDependencies.add(dep.node_id);
+        }
+      });
     });
 
-    // Encontra testes que não têm dependências E ninguém depende deles
     return tests.filter((test) => {
-      const hasNoDependencies =
-        !test.dependencies || test.dependencies.length === 0;
+      const hasNoDependencies = !test.depends || test.depends.length === 0;
       const nobodyDependsOnIt = !allDependencies.has(test.node_id);
 
       return hasNoDependencies && nobodyDependsOnIt;

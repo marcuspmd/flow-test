@@ -38,7 +38,6 @@ describe("FlowTestEngine", () => {
     suite_name: "Test Suite",
     file_path: "/tests/test.yaml",
     priority: "medium",
-    dependencies: [],
     depends: [],
     exports: [],
     estimated_duration: 1000,

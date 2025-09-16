@@ -109,9 +109,13 @@ import {
  * discoveredTests.forEach((test, index) => {
  *   console.log(`${index + 1}. ${test.suite_name} (${test.priority})`);
  *   console.log(`   📁 ${test.file_path}`);
- *   if (test.dependencies?.length) {
- *     console.log(`   🔗 Dependencies: ${test.dependencies.join(', ')}`);
- *   }
+ *   if (test.depends?.length) {
+ *     const dependencyNodeIds = test.depends
+ *       .map((dependency) => dependency.node_id)
+ *       .filter(Boolean)
+ *       .join(', ');
+ *     console.log(`   🔗 Dependencies: ${dependencyNodeIds}`);
+*   }
  * });
  * ```
  *
@@ -439,7 +443,12 @@ export class FlowTestEngine {
    *   priority: "high",
    *   tags: ["auth", "smoke"],
    *   estimated_duration: 5000,
-   *   dependencies: ["setup-flow.yaml"]
+   *   depends: [
+   *     {
+   *       node_id: "setup-flow",
+   *       required: true
+   *     }
+   *   ]
    * };
    * ```
    */
@@ -753,8 +762,12 @@ export class FlowTestEngine {
    *   console.log(`${index + 1}. ${test.suite_name} (${test.priority || 'medium'})`);
    *   console.log(`   📁 ${test.file_path}`);
    *
-   *   if (test.dependencies?.length) {
-   *     console.log(`   🔗 Dependencies: ${test.dependencies.join(', ')}`);
+   *   const dependencyNodeIds = test.depends
+   *     ?.map((dependency) => dependency.node_id)
+   *     .filter(Boolean);
+   *
+   *   if (dependencyNodeIds?.length) {
+   *     console.log(`   🔗 Dependencies: ${dependencyNodeIds.join(', ')}`);
    *   }
    *
    *   if (test.tags?.length) {
@@ -769,8 +782,12 @@ export class FlowTestEngine {
    * const dependencyMap = new Map();
    *
    * tests.forEach(test => {
-   *   if (test.dependencies?.length) {
-   *     dependencyMap.set(test.suite_name, test.dependencies);
+   *   const dependencyNodeIds = test.depends
+   *     ?.map((dependency) => dependency.node_id)
+   *     .filter(Boolean);
+   *
+   *   if (dependencyNodeIds?.length) {
+   *     dependencyMap.set(test.suite_name, dependencyNodeIds);
    *   }
    * });
    *

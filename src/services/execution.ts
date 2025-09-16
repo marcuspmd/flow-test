@@ -528,8 +528,8 @@ export class ExecutionService {
       // Configures dependencies for variable resolution
       if (discoveredTest.depends && discoveredTest.depends.length > 0) {
         const dependencyNodeIds = discoveredTest.depends
-          .map((dep) => (typeof dep === "string" ? dep : dep.node_id))
-          .filter((nodeId): nodeId is string => nodeId !== undefined);
+          .map((dep) => dep.node_id)
+          .filter((nodeId): nodeId is string => Boolean(nodeId));
         this.globalVariables.setDependencies(dependencyNodeIds);
       }
 

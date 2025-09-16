@@ -228,13 +228,13 @@ export async function runTests(configPath?: string) {
  * const tests = await planTests('./config.yml');
  *
  * // Analyze dependencies
- * const testsWithDeps = tests.filter(t => t.dependencies?.length > 0);
+ * const testsWithDeps = tests.filter(t => t.depends?.length);
  * console.log(`\n🔗 Dependency Analysis (${testsWithDeps.length} tests have dependencies):`);
  *
  * testsWithDeps.forEach(test => {
  *   console.log(`${test.suite_name}:`);
- *   test.dependencies.forEach(dep => {
- *     const depTest = tests.find(t => t.node_id === dep);
+ *   test.depends?.forEach(dep => {
+ *     const depTest = tests.find(t => t.node_id === dep.node_id);
  *     if (depTest) {
  *       console.log(`  ↳ depends on: ${depTest.suite_name}`);
  *     } else {
@@ -272,16 +272,7 @@ export async function planTests(configPath?: string) {
 }
 
 /**
- * Package version
- *
- * Current version of the Flow Test Engine, following semantic versioning.
- *
- * @public
- */
-export const VERSION = "1.0.0";
-
-/**
- * Package information and metadata
+ * Package information and metadata sourced from package.json
  *
  * Metadata about the Flow Test Engine including name, version, and description.
  * Useful for integration with tools that need to identify the version or
@@ -306,9 +297,10 @@ export const VERSION = "1.0.0";
  *
  * @public
  */
+const packageMetadata = require("../package.json");
+
 export const PACKAGE_INFO = {
-  name: "flow-test-engine",
-  version: VERSION,
-  description:
-    "A comprehensive API testing engine with directory-based execution, global variables, and priority-driven test management.",
+  name: packageMetadata.name,
+  version: packageMetadata.version,
+  description: packageMetadata.description,
 } as const;

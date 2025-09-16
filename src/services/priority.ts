@@ -116,6 +116,16 @@ export class PriorityService {
     });
   }
 
+  private getDependencyNodeIds(test: DiscoveredTest): string[] {
+    if (!test.depends) {
+      return [];
+    }
+
+    return test.depends
+      .map((dependency) => dependency.node_id)
+      .filter((nodeId): nodeId is string => Boolean(nodeId));
+  }
+
   /**
    * Orders tests by priority and dependencies
    */
@@ -177,11 +187,9 @@ export class PriorityService {
     while (remaining.size > 0) {
       const readyTests = Array.from(remaining).filter((test) => {
         // Test is ready if all its dependencies have been completed
-        return (
-          !test.dependencies ||
-          test.dependencies.every(
-            (dep) => completed.has(dep) || !testMap.has(dep)
-          )
+        const dependencyNodeIds = this.getDependencyNodeIds(test);
+        return dependencyNodeIds.every(
+          (dep) => completed.has(dep) || !testMap.has(dep)
         );
       });
 
@@ -368,8 +376,7 @@ export class PriorityService {
     // Checks if there are high-priority orphan tests
     const highPriorityOrphans = tests.filter((test) => {
       const isHighPriority = this.getPriorityWeight(test.priority) >= 3;
-      const hasNoDependencies =
-        !test.dependencies || test.dependencies.length === 0;
+      const hasNoDependencies = this.getDependencyNodeIds(test).length === 0;
       return isHighPriority && hasNoDependencies;
     });
 
@@ -463,11 +470,10 @@ export class PriorityService {
 
     // Counts how many times each test is a dependency
     tests.forEach((test) => {
-      if (test.dependencies) {
-        test.dependencies.forEach((dep) => {
-          dependencyCount.set(dep, (dependencyCount.get(dep) || 0) + 1);
-        });
-      }
+      const dependencyNodeIds = this.getDependencyNodeIds(test);
+      dependencyNodeIds.forEach((dep) => {
+        dependencyCount.set(dep, (dependencyCount.get(dep) || 0) + 1);
+      });
     });
 
     // Sorts by number of dependents (descending)

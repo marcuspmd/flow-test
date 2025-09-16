@@ -333,9 +333,6 @@ export interface DiscoveredTest {
   /** Priority level for execution ordering */
   priority?: string;
 
-  /** @deprecated Legacy dependency format - use `depends` instead */
-  dependencies?: string[];
-
   /** New dependency format with execution types */
   depends?: FlowDependency[];
 

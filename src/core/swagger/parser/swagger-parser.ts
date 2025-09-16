@@ -195,15 +195,6 @@ export class SwaggerParser {
   }
 
   /**
-   * Valida a estrutura da especificação OpenAPI/Swagger
-   * @deprecated Use OpenAPIValidator.validateSpec() instead
-   */
-  private validateSpec(spec: OpenAPISpec) {
-    // Este método foi substituído pelo OpenAPIValidator
-    return OpenAPIValidator.validateSpec(spec);
-  }
-
-  /**
    * Extrai todos os endpoints da especificação
    */
   private extractEndpoints(spec: OpenAPISpec): ParsedEndpoint[] {

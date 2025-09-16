@@ -152,7 +152,7 @@ async function main() {
         dryRun = true;
         break;
 
-      case "--import-swagger":
+      case "--swagger-import":
         if (i + 1 < args.length) {
           swaggerImport = args[++i];
         }
@@ -331,7 +331,7 @@ EXECUTION:
   --no-log               Disable automatic log file generation
 
 SWAGGER IMPORT:
-  --import-swagger <file>    Import OpenAPI/Swagger spec and generate test files
+  --swagger-import <file>    Import OpenAPI/Swagger spec and generate test files
   --swagger-output <dir>     Output directory for generated tests (default: ./tests/imported)
 
 OTHER:
@@ -345,8 +345,8 @@ EXAMPLES:
   flow-test --dry-run                         # Show what would be executed
   flow-test --directory ./api-tests --verbose # Run from specific directory with verbose output
   flow-test --environment staging --silent    # Run in staging environment silently
-  flow-test --import-swagger api.json         # Import OpenAPI spec and generate tests
-  flow-test --import-swagger api.yaml --swagger-output ./tests/api # Import with custom output
+  flow-test --swagger-import api.json         # Import OpenAPI spec and generate tests
+  flow-test --swagger-import api.yaml --swagger-output ./tests/api # Import with custom output
 
 CONFIGURATION:
   The engine looks for configuration files in this order:

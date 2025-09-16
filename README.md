@@ -71,13 +71,13 @@ Generate suites from an OpenAPI/Swagger spec.
 
 ```bash
 # Import OpenAPI 3.0 or Swagger 2.0
-node dist/cli.js --import-swagger tests/__swagger_example.json
+node dist/cli.js --swagger-import tests/__swagger_example.json
 
 # Custom output directory
-node dist/cli.js --import-swagger api.yaml --swagger-output ./tests/imported-api
+node dist/cli.js --swagger-import api.yaml --swagger-output ./tests/imported-api
 
 # Import and run
-node dist/cli.js --import-swagger api.json && node dist/cli.js --directory ./tests/imported-api --verbose
+node dist/cli.js --swagger-import api.json && node dist/cli.js --directory ./tests/imported-api --verbose
 ```
 
 To perform the end-to-end import → run → cleanup in one command, use:
@@ -394,7 +394,7 @@ Configuration:
   -e, --environment <env>   Environment name for variable resolution
 
 Import/Export:
-  --import-swagger <file>   Import OpenAPI/Swagger spec and generate test files
+  --swagger-import <file>   Import OpenAPI/Swagger spec and generate test files
   --swagger-output <dir>    Output directory for imported Swagger tests (default: ./tests/imported)
 
 Verbosity:
