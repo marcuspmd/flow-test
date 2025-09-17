@@ -32,6 +32,10 @@ npm test
 # Run a specific test suite (ts-node)
 npm run dev tests/start-flow.yaml
 
+# Use the flow-test command directly (after npm install -g or npx)
+npm run test:flow
+npx flow-test -c flow-test.config.yml
+
 # Verbose or silent presets
 npm run test:verbose
 npm run test:silent
@@ -39,7 +43,7 @@ npm run test:silent
 # Priority filters via helper scripts
 npm run test:critical   # only critical
 npm run test:high       # critical + high
- 
+
 # Direct Compose command (equivalent)
 docker compose up --build --abort-on-container-exit --exit-code-from flow-test flow-test
 # Results available in ./results (on host)
@@ -383,7 +387,96 @@ headers:
   X-User-ID: "{{auth_flows_test.user_id}}"
 ```
 
-## 🛠️ CLI Options
+## Using Flow Test in Your Project
+
+### Installation
+
+Add flow-test as a dev dependency to your project:
+
+```bash
+npm install --save-dev flow-test-engine
+```
+
+### Configuration
+
+Create a `flow-test.config.yml` file in your project root:
+
+```yaml
+project_name: "My API Tests"
+test_directory: "./tests"
+
+# Add your test configuration here
+```
+
+### Package.json Script
+
+Add the test script to your `package.json`:
+
+```json
+{
+  "scripts": {
+    "test:flow": "flow-test -c flow-test.config.yml"
+  }
+}
+```
+
+### Usage
+
+Run your tests with:
+
+```bash
+# Using npm script (recommended)
+npm run test:flow
+
+# Or directly with npx (when installed globally or as dependency)
+npx flow-test -c flow-test.config.yml
+
+# With additional options
+npm run test:flow -- --verbose
+npx flow-test -c flow-test.config.yml --tag smoke
+```
+
+**Note:** When using `npm run test:flow` within this project, it uses the local compiled binary. When using flow-test in other projects, install it as a dependency first.
+
+This provides a consistent way to run your API tests across different environments and CI/CD pipelines.
+
+### Example Project Setup
+
+For using flow-test in **other projects** (not this repository):
+
+```bash
+# 1. Install flow-test as dev dependency
+npm install --save-dev flow-test-engine
+
+# 2. Create test directory and config
+mkdir tests
+touch flow-test.config.yml
+
+# 3. Add to package.json scripts
+# (add "test:flow": "flow-test -c flow-test.config.yml" to scripts)
+
+# 4. Create a simple test
+cat > tests/my-api-test.yaml << 'EOF'
+suite_name: "My API Test"
+base_url: "https://jsonplaceholder.typicode.com"
+
+steps:
+  - name: "Get users"
+    request:
+      method: "GET"
+      url: "/users"
+    assert:
+      status_code: 200
+      body:
+        length:
+          greater_than: 0
+EOF
+
+# 5. Run the test
+npm run test:flow
+```
+
+For using within **this repository** (development), the `test:flow` script uses the local compiled binary.
 
 ```bash
 flow-test [options]

@@ -1,0 +1,356 @@
+# CLI Reference Guide
+
+This guide covers all command-line options and usage patterns for the Flow Test Engine CLI.
+
+## Basic Usage
+
+```bash
+# Run tests with default configuration
+flow-test
+
+# Run tests with specific configuration file
+flow-test my-config.yml
+flow-test --config my-config.yml
+```
+
+## Command Line Options
+
+### Configuration
+
+| Option | Short | Description | Example |
+|--------|-------|-------------|---------|
+| `--config <file>` | `-c` | Specify configuration file path | `--config ./config/prod.yml` |
+| `--directory <dir>` | `-d` | Override test directory | `--directory ./api-tests` |
+| `--environment <env>` | `-e` | Set environment for variable resolution | `--environment staging` |
+
+### Verbosity Levels
+
+Control the amount of output during execution:
+
+| Option | Description |
+|--------|-------------|
+| `--verbose` | Show detailed output including full request/response data |
+| `--detailed` | Show detailed progress without full request/response bodies |
+| `--simple` | Show basic progress (default) |
+| `--silent` | Silent execution, show only errors |
+
+### Filtering Options
+
+Run only specific subsets of tests:
+
+| Option | Description | Example |
+|--------|-------------|---------|
+| `--priority <levels>` | Run only tests with specified priorities | `--priority critical,high` |
+| `--suite <names>` | Run only specified test suites | `--suite "login,checkout"` |
+| `--node <ids>` | Run only specified test nodes | `--node auth-tests,payment-tests` |
+| `--tag <tags>` | Run only tests with specified tags | `--tag smoke,regression` |
+
+### Execution Control
+
+| Option | Description |
+|--------|-------------|
+| `--dry-run` | Show execution plan without running tests |
+| `--no-log` | Disable automatic log file generation |
+
+### Swagger/OpenAPI Import
+
+Generate test files from API specifications:
+
+| Option | Description | Example |
+|--------|-------------|---------|
+| `--swagger-import <file>` | Import OpenAPI/Swagger spec | `--swagger-import api.json` |
+| `--swagger-output <dir>` | Output directory for generated tests | `--swagger-output ./tests/api` |
+
+### Other Options
+
+| Option | Short | Description |
+|--------|-------|-------------|
+| `--help` | `-h` | Show help message |
+| `--version` | `-v` | Show version information |
+
+## Common Usage Patterns
+
+### Development and Testing
+
+```bash
+# Quick development run with verbose output
+npm run dev tests/my-test.yaml -- --verbose
+
+# Run specific test suite
+flow-test --suite "authentication"
+
+# Run only critical tests
+flow-test --priority critical
+
+# Test specific functionality
+flow-test --tag "payment,checkout"
+
+# Dry run to see what would execute
+flow-test --dry-run --detailed
+```
+
+### CI/CD Integration
+
+```bash
+# Silent execution for CI pipelines
+flow-test --silent --priority critical,high
+
+# Run tests for specific environment
+flow-test --environment production --config config/prod.yml
+
+# Generate reports without verbose output
+flow-test --simple --no-log
+```
+
+### Debugging and Troubleshooting
+
+```bash
+# Maximum verbosity for debugging
+flow-test --verbose --suite "failing-test"
+
+# Run single test file
+flow-test --directory ./tests --suite "single-test"
+
+# Check configuration without execution
+flow-test --dry-run --config debug-config.yml
+```
+
+### Import and Generation
+
+```bash
+# Import OpenAPI spec and generate tests
+flow-test --swagger-import openapi.json
+
+# Import with custom output directory
+flow-test --swagger-import swagger.yaml --swagger-output ./tests/generated
+
+# Import and run generated tests
+flow-test --swagger-import api.json && flow-test --directory ./tests/imported
+```
+
+## Configuration File Resolution
+
+The CLI looks for configuration files in this order:
+
+1. File specified via `--config` or as argument
+2. `flow-test.config.yml`
+3. `flow-test.config.yaml`
+4. `flow-test.yml`
+5. `flow-test.yaml`
+
+If no configuration file is found, default settings are used.
+
+## Exit Codes
+
+The CLI returns different exit codes based on execution results:
+
+- `0`: All tests passed (100% success rate)
+- `1`: Some tests failed (less than 100% success rate)
+- `130`: Process interrupted (SIGINT/Ctrl+C)
+- `143`: Process terminated (SIGTERM)
+
+## Environment Variables
+
+The CLI respects these environment variables:
+
+- `FLOW_TEST_CONFIG`: Default configuration file path
+- `FLOW_TEST_ENV`: Default environment name
+- `FLOW_TEST_VERBOSE`: Set default verbosity (true/false)
+
+## Examples by Use Case
+
+### API Testing Workflow
+
+```bash
+# 1. Import API specification
+flow-test --swagger-import api-docs.json --swagger-output ./tests/api
+
+# 2. Review generated tests
+ls -la ./tests/api/
+
+# 3. Run generated tests
+flow-test --directory ./tests/api --verbose
+
+# 4. Run only smoke tests
+flow-test --tag smoke --simple
+```
+
+### Multi-Environment Testing
+
+```bash
+# Development environment
+flow-test --environment dev --config config/dev.yml --verbose
+
+# Staging environment
+flow-test --environment staging --config config/staging.yml --detailed
+
+# Production environment (silent)
+flow-test --environment prod --config config/prod.yml --silent
+```
+
+### Priority-Based Execution
+
+```bash
+# Pre-deployment checks
+flow-test --priority critical --silent
+
+# Full regression suite
+flow-test --priority critical,high,medium --detailed
+
+# Quick smoke test
+flow-test --tag smoke --simple
+```
+
+### Debugging Failed Tests
+
+```bash
+# Run failing test with maximum verbosity
+flow-test --suite "failing-suite" --verbose
+
+# Check execution plan
+flow-test --dry-run --detailed --suite "problematic-test"
+
+# Run with custom config for debugging
+flow-test --config debug.yml --verbose --no-log
+```
+
+## Advanced Filtering
+
+### Complex Filtering Examples
+
+```bash
+# Multiple priorities
+flow-test --priority critical,high
+
+# Multiple suites
+flow-test --suite "auth,user-mgmt,payment"
+
+# Multiple tags
+flow-test --tag "smoke,api,integration"
+
+# Combine filters (AND logic)
+flow-test --priority high --tag api --suite "checkout"
+```
+
+### Node-based Filtering
+
+```bash
+# Run tests by node ID
+flow-test --node auth-tests,payment-tests
+
+# Combine with other filters
+flow-test --node api-tests --environment staging
+```
+
+## Output and Logging
+
+### Log Files
+
+By default, the engine generates log files in the `results/` directory. Disable with:
+
+```bash
+flow-test --no-log
+```
+
+### Report Generation
+
+After execution, HTML and JSON reports are generated in `results/latest.json` and `results/latest.html`.
+
+```bash
+# Generate custom report
+npm run report:html
+```
+
+### Custom Output Directory
+
+Reports are saved to the directory specified in configuration under `reporting.output_dir`.
+
+## Troubleshooting
+
+### Common Issues
+
+1. **Configuration not found**
+   ```bash
+   # Specify config explicitly
+   flow-test --config ./flow-test.config.yml
+   ```
+
+2. **Tests not discovered**
+   ```bash
+   # Check discovery patterns
+   flow-test --dry-run --detailed --directory ./tests
+   ```
+
+3. **Environment variables not resolved**
+   ```bash
+   # Export variables before running
+   export API_KEY="your-key"
+   flow-test
+   ```
+
+4. **Permission errors**
+   ```bash
+   # Check file permissions
+   ls -la flow-test.config.yml
+   ```
+
+### Debug Commands
+
+```bash
+# Show execution plan
+flow-test --dry-run --detailed
+
+# Show discovered tests
+flow-test --dry-run --verbose
+
+# Validate configuration
+flow-test --config your-config.yml --dry-run
+```
+
+## Integration Examples
+
+### npm Scripts
+
+Add to `package.json`:
+
+```json
+{
+  "scripts": {
+    "test": "flow-test",
+    "test:smoke": "flow-test --tag smoke --silent",
+    "test:critical": "flow-test --priority critical",
+    "test:verbose": "flow-test --verbose",
+    "test:staging": "flow-test --environment staging --config config/staging.yml",
+    "test:import": "flow-test --swagger-import api.json"
+  }
+}
+```
+
+### GitHub Actions
+
+```yaml
+name: API Tests
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      - run: npm install
+      - run: npm run test:smoke
+      - run: npm run test:critical
+```
+
+### Docker Integration
+
+```bash
+# Run in Docker
+docker run --rm -v $(pwd):/app flow-test --config /app/config.yml
+
+# With environment variables
+docker run --rm -v $(pwd):/app -e API_KEY=$API_KEY flow-test
+```

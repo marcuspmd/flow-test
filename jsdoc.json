@@ -47,21 +47,41 @@
       "navLinks": [
         {
           "label": "Github",
-          "href": "https://github.com/SoftwareBrothers/admin-bro"
+          "href": "https://github.com/marcuspmd/flow-test"
         },
         {
-          "label": "Example Application",
-          "href": "https://admin-bro-example-app-staging.herokuapp.com/admin"
+          "label": "Example Result",
+          "href": "https://marcuspmd.github.io/flow-test/public/report/index.html"
         }
       ],
       "navigation": [
         {
-          "label": "Como usar",
-          "href": "tutorial-como-usar-o-sistema.html"
+          "label": "Getting Started",
+          "href": "tutorial-getting-started.html"
         },
         {
-          "label": "GitHub",
-          "href": "https://github.com/"
+          "label": "Configuration Guide",
+          "href": "tutorial-configuration-guide.html"
+        },
+        {
+          "label": "YAML Syntax Reference",
+          "href": "tutorial-yaml-syntax-reference.html"
+        },
+        {
+          "label": "CLI Reference",
+          "href": "tutorial-cli-reference.html"
+        },
+        {
+          "label": "Advanced Features",
+          "href": "tutorial-advanced-features.html"
+        },
+        {
+          "label": "Reporting Guide",
+          "href": "tutorial-reporting-guide.html"
+        },
+        {
+          "label": "Best Practices",
+          "href": "tutorial-best-practices.html"
         }
       ]
     }

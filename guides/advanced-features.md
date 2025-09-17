@@ -1,0 +1,585 @@
+# Advanced Features Guide
+
+This guide covers advanced Flow Test Engine features including dependencies, iterations, conditional execution, mocking, and complex scenarios.
+
+## Test Dependencies
+
+Dependencies allow you to create relationships between test suites, ensuring prerequisite tests run before dependent ones.
+
+### Basic Dependencies
+
+```yaml
+# Suite A (dependency)
+node_id: "auth-setup"
+suite_name: "Authentication Setup"
+exports: ["auth_token", "user_id"]
+
+steps:
+  - name: "Login user"
+    request:
+      method: "POST"
+      url: "/auth/login"
+      body:
+        email: "admin@example.com"
+        password: "password"
+    capture:
+      auth_token: "body.token"
+      user_id: "body.user.id"
+
+---
+# Suite B (dependent)
+node_id: "user-operations"
+suite_name: "User Operations"
+depends:
+  - node_id: "auth-setup"
+    required: true
+
+steps:
+  - name: "Get user profile"
+    request:
+      method: "GET"
+      url: "/users/{{user_id}}"
+      headers:
+        Authorization: "Bearer {{auth_token}}"
+```
+
+### Advanced Dependency Configuration
+
+```yaml
+depends:
+  - node_id: "database-seed"
+    required: true          # Fail if dependency fails
+    cache: true            # Cache results for multiple dependents
+    variables:             # Override variables in dependency
+      environment: "test"
+      data_set: "minimal"
+
+  - node_id: "optional-setup"
+    required: false        # Continue even if dependency fails
+    cache: false
+```
+
+### Dependency Variable Scoping
+
+Variables exported by dependencies are available globally using the pattern `{dependency-node-id}.{variable-name}`:
+
+```yaml
+# In dependent suite
+steps:
+  - name: "Use dependency variables"
+    request:
+      method: "GET"
+      url: "/api/data"
+      headers:
+        # Access variables from 'auth-setup' dependency
+        Authorization: "Bearer {{auth-setup.auth_token}}"
+        User-ID: "{{auth-setup.user_id}}"
+```
+
+## Iterations
+
+Execute the same step multiple times with different data using iterations.
+
+### Array Iteration
+
+```yaml
+variables:
+  test_users:
+    - id: 1
+      name: "Alice"
+      email: "alice@example.com"
+    - id: 2
+      name: "Bob"
+      email: "bob@example.com"
+
+steps:
+  - name: "Create user {{item.name}}"
+    iterate:
+      over: "{{test_users}}"
+      as: "item"
+    request:
+      method: "POST"
+      url: "/api/users"
+      body:
+        name: "{{item.name}}"
+        email: "{{item.email}}"
+    assert:
+      status_code: 201
+      body:
+        id: { exists: true }
+        name: { equals: "{{item.name}}" }
+```
+
+### Range Iteration
+
+```yaml
+steps:
+  - name: "Test pagination page {{index}}"
+    iterate:
+      range:
+        start: 1
+        end: 10
+        step: 1
+      as: "index"
+    request:
+      method: "GET"
+      url: "/api/items?page={{index}}&limit=20"
+    assert:
+      status_code: 200
+      body:
+        page: { equals: "{{index}}" }
+        items: { length: { max: 20 } }
+```
+
+### Dynamic Iteration
+
+```yaml
+steps:
+  - name: "Get all users"
+    request:
+      method: "GET"
+      url: "/api/users"
+    capture:
+      users_list: "body.users"
+
+  - name: "Process each user"
+    iterate:
+      over: "{{users_list}}"
+      as: "user"
+    request:
+      method: "GET"
+      url: "/api/users/{{user.id}}/profile"
+    assert:
+      status_code: 200
+```
+
+## Conditional Execution
+
+Control test execution based on conditions, variables, or previous results.
+
+### Step-Level Conditions
+
+```yaml
+variables:
+  environment: "production"
+  feature_enabled: true
+
+steps:
+  - name: "Conditional database cleanup"
+    metadata:
+      skip: "{{environment}} !== 'test'"  # Skip in production
+    request:
+      method: "POST"
+      url: "/api/cleanup"
+
+  - name: "Feature-specific test"
+    metadata:
+      skip: "{{feature_enabled}} === false"
+    request:
+      method: "GET"
+      url: "/api/new-feature"
+```
+
+### Dynamic Conditions
+
+```yaml
+steps:
+  - name: "Check feature availability"
+    request:
+      method: "GET"
+      url: "/api/features"
+    capture:
+      feature_x_enabled: "body.features.feature_x"
+
+  - name: "Test feature X"
+    metadata:
+      skip: "{{feature_x_enabled}} === false"
+    request:
+      method: "POST"
+      url: "/api/feature-x"
+```
+
+## Advanced Assertions
+
+Complex validation rules beyond basic equality checks.
+
+### Complex Body Assertions
+
+```yaml
+assert:
+  body:
+    # Nested object validation
+    user:
+      id: { type: "number", min: 1 }
+      name: { type: "string", min_length: 2, max_length: 100 }
+      email: { matches: "^[^@]+@[^@]+\\.[^@]+$" }
+      roles: { length: { min: 1 } }
+
+    # Array validations
+    permissions:
+      - { equals: "read" }
+      - { one_of: ["write", "admin"] }
+
+    # Conditional assertions
+    metadata:
+      created_at: { exists: true }
+      updated_at: { exists: "{{user.id}} > 100" }  # Exists only for certain users
+```
+
+### Response Time Assertions
+
+```yaml
+assert:
+  response_time_ms:
+    max: 1000    # Fail if response takes longer than 1 second
+    min: 10      # Fail if response is suspiciously fast
+```
+
+### Header Assertions
+
+```yaml
+assert:
+  headers:
+    "content-type": { contains: "application/json" }
+    "x-api-version": { equals: "2.1" }
+    "cache-control": { exists: true }
+    "x-request-id": { matches: "^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$" }
+```
+
+## Mocking and Data Generation
+
+### Faker.js Integration
+
+Generate realistic test data using Faker.js:
+
+```yaml
+variables:
+  test_user:
+    name: "{{$faker.name.fullName}}"
+    email: "{{$faker.internet.email}}"
+    phone: "{{$faker.phone.number}}"
+    address:
+      street: "{{$faker.address.streetAddress}}"
+      city: "{{$faker.address.city}}"
+      zipcode: "{{$faker.address.zipCode}}"
+    company: "{{$faker.company.name}}"
+    job_title: "{{$faker.name.jobTitle}}"
+
+steps:
+  - name: "Create test user"
+    request:
+      method: "POST"
+      url: "/api/users"
+      body: "{{test_user}}"
+```
+
+### Dynamic Data Generation
+
+```yaml
+steps:
+  - name: "Create multiple test records"
+    iterate:
+      range:
+        start: 1
+        end: 5
+      as: "i"
+    request:
+      method: "POST"
+      url: "/api/records"
+      body:
+        name: "Test Record {{i}}"
+        email: "{{$faker.internet.email}}"
+        created_at: "{{$faker.date.recent}}"
+        metadata:
+          batch_id: "{{i}}"
+          random_value: "{{$faker.random.number}}"
+```
+
+## Retry Logic and Error Handling
+
+### Automatic Retries
+
+```yaml
+steps:
+  - name: "Unstable API call"
+    request:
+      method: "GET"
+      url: "/api/unstable"
+    metadata:
+      retry:
+        max_attempts: 3
+        delay_ms: 1000
+        backoff: "exponential"  # linear, exponential, or fixed
+    assert:
+      status_code: 200
+```
+
+### Conditional Retries
+
+```yaml
+steps:
+  - name: "Retry on specific errors"
+    request:
+      method: "POST"
+      url: "/api/process"
+    metadata:
+      retry:
+        max_attempts: 5
+        delay_ms: 2000
+        retry_on:
+          - status_code: 429  # Too Many Requests
+          - status_code: 502  # Bad Gateway
+          - status_code: 503  # Service Unavailable
+    assert:
+      status_code: 201
+```
+
+## Complex Scenarios
+
+### Multi-Step Workflows
+
+```yaml
+suite_name: "E-commerce Purchase Flow"
+variables:
+  product_id: null
+  cart_id: null
+  order_id: null
+
+steps:
+  - name: "Browse products"
+    request:
+      method: "GET"
+      url: "/api/products"
+    assert:
+      status_code: 200
+      body:
+        products: { length: { min: 1 } }
+    capture:
+      product_id: "body.products[0].id"
+
+  - name: "Add to cart"
+    request:
+      method: "POST"
+      url: "/api/cart"
+      body:
+        product_id: "{{product_id}}"
+        quantity: 1
+    assert:
+      status_code: 201
+    capture:
+      cart_id: "body.cart_id"
+
+  - name: "Checkout"
+    request:
+      method: "POST"
+      url: "/api/checkout"
+      body:
+        cart_id: "{{cart_id}}"
+        payment_method: "credit_card"
+        shipping_address: "{{$faker.address.streetAddress}}"
+    assert:
+      status_code: 201
+    capture:
+      order_id: "body.order_id"
+
+  - name: "Verify order"
+    request:
+      method: "GET"
+      url: "/api/orders/{{order_id}}"
+    assert:
+      status_code: 200
+      body:
+        id: { equals: "{{order_id}}" }
+        status: { equals: "confirmed" }
+```
+
+### Load Testing Patterns
+
+```yaml
+suite_name: "Load Testing Scenario"
+metadata:
+  priority: "medium"
+  tags: ["load", "performance"]
+
+steps:
+  - name: "Concurrent user simulation"
+    iterate:
+      range:
+        start: 1
+        end: 50  # Simulate 50 concurrent users
+      as: "user_id"
+    request:
+      method: "GET"
+      url: "/api/dashboard"
+      headers:
+        Authorization: "Bearer user_{{user_id}}_token"
+    assert:
+      status_code: 200
+      response_time_ms: { max: 500 }  # Max 500ms response time
+```
+
+### API Contract Testing
+
+```yaml
+suite_name: "API Contract Validation"
+variables:
+  api_spec_version: "2.1"
+
+steps:
+  - name: "Validate response schema"
+    request:
+      method: "GET"
+      url: "/api/users"
+    assert:
+      status_code: 200
+      headers:
+        "content-type": { equals: "application/json" }
+        "x-api-version": { equals: "{{api_spec_version}}" }
+      body:
+        # Strict schema validation
+        type: "object"
+        properties:
+          users: { type: "array" }
+          pagination: { type: "object" }
+        required: ["users", "pagination"]
+
+  - name: "Validate error responses"
+    request:
+      method: "GET"
+      url: "/api/users/99999"
+    assert:
+      status_code: 404
+      body:
+        error: { exists: true }
+        message: { type: "string" }
+        code: { equals: "USER_NOT_FOUND" }
+```
+
+## Performance Monitoring
+
+### Response Time Tracking
+
+```yaml
+steps:
+  - name: "Performance-critical endpoint"
+    request:
+      method: "GET"
+      url: "/api/dashboard"
+    assert:
+      status_code: 200
+      response_time_ms:
+        max: 200
+        warning_threshold: 100  # Log warning if over 100ms
+    metadata:
+      performance_critical: true
+```
+
+### Throughput Testing
+
+```yaml
+suite_name: "API Throughput Test"
+metadata:
+  tags: ["performance", "throughput"]
+
+steps:
+  - name: "High-frequency requests"
+    iterate:
+      range:
+        start: 1
+        end: 100
+      as: "request_id"
+    request:
+      method: "GET"
+      url: "/api/status?request={{request_id}}"
+    assert:
+      status_code: 200
+      response_time_ms: { max: 50 }
+    metadata:
+      parallel: true  # Execute in parallel for throughput testing
+```
+
+## Environment-Specific Testing
+
+### Configuration-Based Execution
+
+```yaml
+variables:
+  environment: "{{$env.NODE_ENV}}"
+  base_urls:
+    development: "http://localhost:3000"
+    staging: "https://api-staging.example.com"
+    production: "https://api.example.com"
+
+base_url: "{{base_urls[environment]}}"
+
+steps:
+  - name: "Environment-specific test"
+    metadata:
+      skip: "{{environment}} === 'production'"  # Skip destructive tests in prod
+    request:
+      method: "DELETE"
+      url: "/api/test-data"
+```
+
+### Feature Flags
+
+```yaml
+variables:
+  features:
+    new_api: "{{$env.FEATURE_NEW_API}}"
+    beta_feature: "{{$env.FEATURE_BETA}}"
+
+steps:
+  - name: "Test new API"
+    metadata:
+      skip: "{{features.new_api}} !== 'true'"
+    request:
+      method: "GET"
+      url: "/api/v2/endpoint"
+
+  - name: "Test beta feature"
+    metadata:
+      skip: "{{features.beta_feature}} !== 'enabled'"
+    request:
+      method: "POST"
+      url: "/api/beta/feature"
+```
+
+## Debugging Advanced Scenarios
+
+### Verbose Logging
+
+```yaml
+steps:
+  - name: "Debug complex request"
+    request:
+      method: "POST"
+      url: "/api/complex"
+      headers:
+        "X-Debug": "true"
+      body:
+        complex_data: "..."
+    metadata:
+      log_request: true
+      log_response: true
+    assert:
+      status_code: 200
+```
+
+### Conditional Debugging
+
+```yaml
+variables:
+  debug_mode: "{{$env.DEBUG_MODE}}"
+
+steps:
+  - name: "Conditional debug logging"
+    metadata:
+      log_request: "{{debug_mode}} === 'true'"
+      log_response: "{{debug_mode}} === 'true'"
+    request:
+      method: "GET"
+      url: "/api/debug"
+```
+
+This covers the most advanced features of the Flow Test Engine. For more examples, check the `tests/` directory for comprehensive test suites demonstrating these patterns.

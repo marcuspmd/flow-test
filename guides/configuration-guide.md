@@ -1,0 +1,273 @@
+# Configuration Guide
+
+The Flow Test Engine uses a YAML configuration file (`flow-test.config.yml` by default) to customize behavior, set global variables, and control execution settings.
+
+## Configuration File Location
+
+By default, the engine looks for `flow-test.config.yml` in the current directory. You can specify a different configuration file using the `--config` flag:
+
+```bash
+flow-test --config ./config/my-custom-config.yml
+```
+
+## Basic Configuration Structure
+
+```yaml
+# Flow Test Engine Configuration
+project_name: "My API Test Project"
+test_directory: "./tests"
+
+# Global variables available in all test suites
+globals:
+  variables:
+    api_base_url: "https://api.example.com"
+    auth_token: "your-token-here"
+    default_timeout: 30000
+
+  # Timeout settings for different test types
+  timeouts:
+    default: 60000
+    slow_tests: 120000
+
+# Test discovery configuration
+discovery:
+  patterns:
+    - "**/*.yaml"
+    - "**/tests/**/*.yaml"
+  exclude:
+    - "**/temp/**"
+    - "**/node_modules/**"
+
+# Priority system settings
+priorities:
+  levels: ["critical", "high", "medium", "low"]
+  required: ["critical", "high"]
+  fail_fast_on_required: false
+
+# Execution behavior
+execution:
+  mode: "sequential"
+  max_parallel: 3
+  timeout: 60000
+  continue_on_failure: true
+  retry_failed:
+    enabled: true
+    max_attempts: 2
+    delay_ms: 2000
+
+# Reporting settings
+reporting:
+  formats: ["html", "json"]
+  output_dir: "./results"
+  aggregate: true
+  include_performance_metrics: true
+  include_variables_state: true
+```
+
+## Configuration Sections
+
+### Project Settings
+
+```yaml
+project_name: "My API Test Project"  # Display name for reports
+test_directory: "./tests"            # Root directory for test discovery
+```
+
+### Global Variables
+
+Define variables that are available in all test suites:
+
+```yaml
+globals:
+  variables:
+    api_base_url: "https://api.example.com"
+    environment: "staging"
+    auth_token: "{{$env.API_TOKEN}}"  # Environment variable
+    random_email: "{{$faker.internet.email}}"
+```
+
+### Timeouts
+
+Configure timeouts for different scenarios:
+
+```yaml
+timeouts:
+  default: 60000      # Default timeout for all requests (60s)
+  slow_tests: 120000  # Extended timeout for slow operations (2min)
+```
+
+### Test Discovery
+
+Control which files are discovered as test suites:
+
+```yaml
+discovery:
+  patterns:
+    - "**/*.yaml"           # All YAML files
+    - "**/tests/**/*.yaml"  # Files in tests/ subdirectories
+    - "**/integration/**/*.yaml"  # Integration tests
+  exclude:
+    - "**/temp/**"          # Exclude temporary files
+    - "**/node_modules/**"  # Exclude dependencies
+    - "**/backup/**"        # Exclude backup files
+```
+
+### Priority System
+
+Configure test prioritization and failure handling:
+
+```yaml
+priorities:
+  levels: ["critical", "high", "medium", "low"]  # Available priority levels
+  required: ["critical", "high"]                 # Levels that must pass
+  fail_fast_on_required: false                   # Stop execution if required tests fail
+```
+
+### Execution Settings
+
+Control how tests are executed:
+
+```yaml
+execution:
+  mode: "sequential"        # "sequential" or "parallel"
+  max_parallel: 3           # Maximum parallel executions
+  timeout: 60000            # Global execution timeout
+  continue_on_failure: true # Continue running other tests if one fails
+  retry_failed:
+    enabled: true           # Retry failed tests
+    max_attempts: 2         # Maximum retry attempts
+    delay_ms: 2000          # Delay between retries
+```
+
+### Reporting Configuration
+
+Customize report generation:
+
+```yaml
+reporting:
+  formats: ["html", "json"]        # Output formats
+  output_dir: "./results"          # Output directory
+  aggregate: true                  # Create aggregated results
+  include_performance_metrics: true # Include timing data
+  include_variables_state: true    # Include variable values in reports
+```
+
+## Environment Variables
+
+You can use environment variables in your configuration:
+
+```yaml
+globals:
+  variables:
+    api_url: "{{$env.API_BASE_URL}}"
+    database_url: "{{$env.DATABASE_URL}}"
+    secret_key: "{{$env.SECRET_KEY}}"
+```
+
+Set environment variables before running tests:
+
+```bash
+export API_BASE_URL="https://api.example.com"
+export SECRET_KEY="your-secret-key"
+flow-test
+```
+
+## Faker.js Integration
+
+Generate fake data using Faker.js:
+
+```yaml
+globals:
+  variables:
+    test_user:
+      name: "{{$faker.name.fullName}}"
+      email: "{{$faker.internet.email}}"
+      phone: "{{$faker.phone.number}}"
+      address: "{{$faker.address.streetAddress}}"
+```
+
+## Configuration Validation
+
+The engine validates your configuration file on startup. Common validation errors:
+
+- **Invalid YAML syntax**: Check for proper indentation and quoting
+- **Missing required fields**: Ensure all required configuration sections are present
+- **Invalid priority levels**: Priority levels must be strings
+- **Invalid timeouts**: Timeouts must be positive numbers
+
+## Advanced Configuration Examples
+
+### Multi-Environment Setup
+
+```yaml
+# config/staging.yml
+project_name: "API Tests - Staging"
+globals:
+  variables:
+    api_base_url: "https://staging-api.example.com"
+    environment: "staging"
+
+# config/production.yml
+project_name: "API Tests - Production"
+globals:
+  variables:
+    api_base_url: "https://api.example.com"
+    environment: "production"
+```
+
+Run with different configurations:
+
+```bash
+flow-test --config config/staging.yml
+flow-test --config config/production.yml
+```
+
+### CI/CD Pipeline Configuration
+
+```yaml
+execution:
+  mode: "parallel"
+  max_parallel: 5
+  continue_on_failure: false  # Fail fast in CI
+
+reporting:
+  formats: ["html", "json", "junit"]  # Include JUnit for CI tools
+  output_dir: "./test-results"
+```
+
+### Performance Testing Setup
+
+```yaml
+execution:
+  mode: "parallel"
+  max_parallel: 10
+  retry_failed:
+    enabled: false  # Don't retry in performance tests
+
+reporting:
+  include_performance_metrics: true
+  aggregate: true
+```
+
+## Troubleshooting Configuration Issues
+
+### Common Problems
+
+1. **Configuration not found**: Ensure the file exists and path is correct
+2. **YAML parsing errors**: Validate YAML syntax with an online validator
+3. **Environment variables not resolved**: Check that variables are properly exported
+4. **Discovery not finding tests**: Verify patterns and exclude rules
+
+### Debug Configuration
+
+Use the `--dry-run` flag to validate configuration without executing tests:
+
+```bash
+flow-test --dry-run --detailed
+```
+
+This will show:
+- Which configuration file is being used
+- All discovered test files
+- Configuration validation results
+- Execution plan
