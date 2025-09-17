@@ -1,0 +1,567 @@
+suite_name: "Complex Workflows - E-commerce and API Contracts Testing"
+node_id: "complex-workflows-test"
+description: "Comprehensive testing of complex business workflows including complete e-commerce flows, API contract validation, microservices communication, and end-to-end scenarios"
+base_url: "{{httpbin_url}}"
+
+metadata:
+  priority: "critical"
+  tags: ["workflows", "e-commerce", "api-contracts", "end-to-end", "business-logic", "microservices"]
+  estimated_duration_ms: 35000
+
+variables:
+  workflow_test_id: "workflow-{{$faker.string.uuid}}"
+  customer_id: "{{$faker.random.number({min: 1000, max: 9999})}}"
+  session_id: "session-{{$faker.string.uuid}}"
+
+  # E-commerce test data
+  customer_data:
+    id: "{{customer_id}}"
+    name: "{{$faker.person.fullName}}"
+    email: "{{$faker.internet.email}}"
+    phone: "{{$faker.phone.number}}"
+    address:
+      street: "{{$faker.location.streetAddress}}"
+      city: "{{$faker.location.city}}"
+      state: "{{$faker.location.state}}"
+      zip: "{{$faker.location.zipCode}}"
+      country: "{{$faker.location.country}}"
+
+  product_catalog:
+    - id: "PROD-001"
+      name: "Premium Widget"
+      price: 299.99
+      category: "electronics"
+      stock: 50
+    - id: "PROD-002"
+      name: "Basic Tool"
+      price: 49.99
+      category: "tools"
+      stock: 100
+    - id: "PROD-003"
+      name: "Advanced Kit"
+      price: 599.99
+      category: "kits"
+      stock: 25
+
+  payment_methods:
+    - type: "credit_card"
+      provider: "visa"
+      last_four: "1234"
+    - type: "paypal"
+      email: "{{customer_data.email}}"
+    - type: "bank_transfer"
+      routing: "123456789"
+
+exports: ["workflow_results", "ecommerce_data", "contract_validation_results"]
+
+steps:
+  # 1. E-COMMERCE WORKFLOW - Customer Registration
+  - name: "Customer registration workflow"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Workflow: "customer_registration"
+        X-Service: "user_service"
+        X-API-Version: "v1"
+      body:
+        operation: "register_customer"
+        customer_data: "{{customer_data}}"
+        registration_source: "web"
+        marketing_consent: true
+        terms_accepted: true
+        privacy_policy_accepted: true
+        registration_timestamp: "{{$faker.date.recent}}"
+    assert:
+      status_code: 200
+      body:
+        json:
+          operation: { equals: "register_customer" }
+          customer_data:
+            id: { equals: "{{customer_id}}" }
+            email: { matches: "^[^@]+@[^@]+\\.[^@]+$" }
+    capture:
+      customer_registration_result: "success"
+      registered_customer_id: "{{customer_id}}"
+
+  # 2. E-COMMERCE WORKFLOW - Product Catalog Browsing
+  - name: "Browse product catalog"
+    request:
+      method: "GET"
+      url: "/get"
+      headers:
+        X-Workflow: "product_browsing"
+        X-Service: "catalog_service"
+        X-Customer-ID: "{{registered_customer_id}}"
+        X-Session-ID: "{{session_id}}"
+      params:
+        category: "electronics"
+        sort_by: "price"
+        limit: "10"
+        customer_id: "{{registered_customer_id}}"
+    assert:
+      status_code: 200
+      body:
+        args:
+          category: { equals: "electronics" }
+          customer_id: { equals: "{{registered_customer_id}}" }
+    capture:
+      catalog_browsing_result: "success"
+      viewed_products: "electronics_category"
+
+  # 3. E-COMMERCE WORKFLOW - Product Details and Reviews
+  - name: "Get product details with reviews"
+    request:
+      method: "GET"
+      url: "/get"
+      headers:
+        X-Workflow: "product_details"
+        X-Service: "product_service"
+        X-Product-ID: "PROD-001"
+      params:
+        product_id: "PROD-001"
+        include_reviews: "true"
+        include_recommendations: "true"
+        customer_id: "{{registered_customer_id}}"
+    assert:
+      status_code: 200
+      body:
+        args:
+          product_id: { equals: "PROD-001" }
+          include_reviews: { equals: "true" }
+    capture:
+      product_details_result: "success"
+      selected_product_id: "args.product_id"
+
+  # 4. E-COMMERCE WORKFLOW - Add to Cart
+  - name: "Add products to shopping cart"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Workflow: "add_to_cart"
+        X-Service: "cart_service"
+        X-Customer-ID: "{{registered_customer_id}}"
+      body:
+        operation: "add_to_cart"
+        customer_id: "{{registered_customer_id}}"
+        session_id: "{{session_id}}"
+        items:
+          - product_id: "PROD-001"
+            quantity: 2
+            unit_price: 299.99
+          - product_id: "PROD-002"
+            quantity: 1
+            unit_price: 49.99
+        cart_timestamp: "{{$faker.date.recent}}"
+    assert:
+      status_code: 200
+      body:
+        json:
+          operation: { equals: "add_to_cart" }
+          customer_id: { equals: "{{registered_customer_id}}" }
+          items: { length: 2 }
+    capture:
+      cart_total_items: 3
+      cart_total_amount: 649.97
+      cart_id: "json.session_id"
+
+  # 5. E-COMMERCE WORKFLOW - Apply Promotions and Discounts
+  - name: "Apply promotional codes and discounts"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Workflow: "apply_promotions"
+        X-Service: "promotion_service"
+        X-Cart-ID: "{{cart_id}}"
+      body:
+        operation: "apply_promotions"
+        cart_id: "{{cart_id}}"
+        customer_id: "{{registered_customer_id}}"
+        promotion_codes: ["WELCOME10", "BULK5"]
+        customer_tier: "regular"
+        loyalty_points: 250
+    assert:
+      status_code: 200
+      body:
+        json:
+          operation: { equals: "apply_promotions" }
+          cart_id: { equals: "{{cart_id}}" }
+    capture:
+      promotion_result: "applied"
+      discounted_total: 584.97
+      savings_amount: 64.99
+
+  # 6. E-COMMERCE WORKFLOW - Shipping Options
+  - name: "Calculate shipping options"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Workflow: "shipping_calculation"
+        X-Service: "shipping_service"
+      body:
+        operation: "calculate_shipping"
+        cart_id: "{{cart_id}}"
+        shipping_address: "{{customer_data.address}}"
+        cart_weight: 2.5
+        cart_dimensions:
+          length: 12
+          width: 8
+          height: 6
+        shipping_preferences:
+          - type: "standard"
+            cost: 9.99
+            delivery_days: "5-7"
+          - type: "express"
+            cost: 19.99
+            delivery_days: "2-3"
+          - type: "overnight"
+            cost: 39.99
+            delivery_days: "1"
+    assert:
+      status_code: 200
+      body:
+        json:
+          operation: { equals: "calculate_shipping" }
+          cart_id: { equals: "{{cart_id}}" }
+    capture:
+      shipping_options_result: "calculated"
+      selected_shipping_cost: 9.99
+      total_with_shipping: 594.96
+
+  # 7. E-COMMERCE WORKFLOW - Payment Processing
+  - name: "Process payment transaction"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Workflow: "payment_processing"
+        X-Service: "payment_service"
+        X-Transaction-Type: "purchase"
+      body:
+        operation: "process_payment"
+        customer_id: "{{registered_customer_id}}"
+        cart_id: "{{cart_id}}"
+        payment_method: "{{payment_methods[0]}}"
+        payment_amount: "{{total_with_shipping}}"
+        currency: "USD"
+        billing_address: "{{customer_data.address}}"
+        transaction_metadata:
+          session_id: "{{session_id}}"
+          fraud_check: "passed"
+          risk_score: "low"
+    assert:
+      status_code: 200
+      body:
+        json:
+          operation: { equals: "process_payment" }
+          customer_id: { equals: "{{registered_customer_id}}" }
+          payment_amount: { equals: "{{total_with_shipping}}" }
+    capture:
+      payment_result: "success"
+      transaction_id: "json.customer_id"
+      payment_confirmation: "confirmed"
+
+  # 8. E-COMMERCE WORKFLOW - Order Creation and Confirmation
+  - name: "Create order and send confirmation"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Workflow: "order_creation"
+        X-Service: "order_service"
+        X-Transaction-ID: "{{transaction_id}}"
+      body:
+        operation: "create_order"
+        customer_id: "{{registered_customer_id}}"
+        cart_id: "{{cart_id}}"
+        transaction_id: "{{transaction_id}}"
+        order_details:
+          items_total: "{{cart_total_amount}}"
+          discount_amount: "{{savings_amount}}"
+          shipping_cost: "{{selected_shipping_cost}}"
+          total_amount: "{{total_with_shipping}}"
+          estimated_delivery: "{{$faker.date.future}}"
+        fulfillment_center: "warehouse_1"
+        order_timestamp: "{{$faker.date.recent}}"
+    assert:
+      status_code: 200
+      body:
+        json:
+          operation: { equals: "create_order" }
+          customer_id: { equals: "{{registered_customer_id}}" }
+          transaction_id: { equals: "{{transaction_id}}" }
+    capture:
+      order_creation_result: "success"
+      order_id: "json.customer_id"
+      order_status: "confirmed"
+
+  # 9. API CONTRACT VALIDATION - Service Integration Testing
+  - name: "Validate user service API contract"
+    request:
+      method: "GET"
+      url: "/get"
+      headers:
+        X-Contract-Test: "user_service"
+        X-API-Version: "v1"
+        Accept: "application/json"
+      params:
+        user_id: "{{registered_customer_id}}"
+        include_profile: "true"
+        api_contract_validation: "true"
+    assert:
+      status_code: 200
+      headers:
+        "content-type": { contains: "application/json" }
+      body:
+        args:
+          user_id: { equals: "{{registered_customer_id}}" }
+          include_profile: { equals: "true" }
+    capture:
+      user_service_contract: "validated"
+
+  - name: "Validate order service API contract"
+    request:
+      method: "GET"
+      url: "/get"
+      headers:
+        X-Contract-Test: "order_service"
+        X-API-Version: "v1"
+        Accept: "application/json"
+      params:
+        order_id: "{{order_id}}"
+        customer_id: "{{registered_customer_id}}"
+        include_items: "true"
+        api_contract_validation: "true"
+    assert:
+      status_code: 200
+      body:
+        args:
+          order_id: { equals: "{{order_id}}" }
+          customer_id: { equals: "{{registered_customer_id}}" }
+    capture:
+      order_service_contract: "validated"
+
+  - name: "Validate payment service API contract"
+    request:
+      method: "GET"
+      url: "/get"
+      headers:
+        X-Contract-Test: "payment_service"
+        X-API-Version: "v1"
+        Accept: "application/json"
+      params:
+        transaction_id: "{{transaction_id}}"
+        customer_id: "{{registered_customer_id}}"
+        api_contract_validation: "true"
+    assert:
+      status_code: 200
+      body:
+        args:
+          transaction_id: { equals: "{{transaction_id}}" }
+    capture:
+      payment_service_contract: "validated"
+
+  # 10. MICROSERVICES COMMUNICATION - Service-to-Service Integration
+  - name: "Test inventory service communication"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Service-Communication: "inventory_check"
+        X-Source-Service: "order_service"
+        X-Target-Service: "inventory_service"
+      body:
+        service_request: "inventory_check"
+        products:
+          - product_id: "PROD-001"
+            requested_quantity: 2
+          - product_id: "PROD-002"
+            requested_quantity: 1
+        order_id: "{{order_id}}"
+        reservation_timeout: 300
+    assert:
+      status_code: 200
+      body:
+        json:
+          service_request: { equals: "inventory_check" }
+          order_id: { equals: "{{order_id}}" }
+    capture:
+      inventory_service_result: "stock_available"
+
+  - name: "Test notification service communication"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Service-Communication: "send_notifications"
+        X-Source-Service: "order_service"
+        X-Target-Service: "notification_service"
+      body:
+        service_request: "send_notifications"
+        customer_id: "{{registered_customer_id}}"
+        order_id: "{{order_id}}"
+        notification_types:
+          - email: "order_confirmation"
+          - sms: "order_status"
+          - push: "delivery_update"
+        notification_preferences: "{{customer_data}}"
+    assert:
+      status_code: 200
+      body:
+        json:
+          service_request: { equals: "send_notifications" }
+          customer_id: { equals: "{{registered_customer_id}}" }
+    capture:
+      notification_service_result: "notifications_sent"
+
+  # 11. END-TO-END WORKFLOW - Order Fulfillment
+  - name: "Initiate order fulfillment process"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Workflow: "order_fulfillment"
+        X-Service: "fulfillment_service"
+        X-Order-ID: "{{order_id}}"
+      body:
+        operation: "initiate_fulfillment"
+        order_id: "{{order_id}}"
+        customer_id: "{{registered_customer_id}}"
+        fulfillment_steps:
+          - step: "inventory_allocation"
+            status: "pending"
+          - step: "picking"
+            status: "pending"
+          - step: "packing"
+            status: "pending"
+          - step: "shipping_label"
+            status: "pending"
+          - step: "dispatch"
+            status: "pending"
+        priority: "standard"
+        fulfillment_center: "warehouse_1"
+    assert:
+      status_code: 200
+      body:
+        json:
+          operation: { equals: "initiate_fulfillment" }
+          order_id: { equals: "{{order_id}}" }
+    capture:
+      fulfillment_result: "initiated"
+      fulfillment_id: "json.order_id"
+
+  # 12. WORKFLOW MONITORING AND ANALYTICS
+  - name: "Track workflow analytics and metrics"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Analytics: "workflow_tracking"
+        X-Service: "analytics_service"
+      body:
+        analytics_event: "complete_purchase_workflow"
+        workflow_id: "{{workflow_test_id}}"
+        customer_id: "{{registered_customer_id}}"
+        session_id: "{{session_id}}"
+        workflow_stages:
+          registration: "{{customer_registration_result}}"
+          browsing: "{{catalog_browsing_result}}"
+          product_details: "{{product_details_result}}"
+          cart_management: "{{cart_total_items}}"
+          promotions: "{{promotion_result}}"
+          shipping: "{{shipping_options_result}}"
+          payment: "{{payment_result}}"
+          order_creation: "{{order_creation_result}}"
+          fulfillment: "{{fulfillment_result}}"
+        workflow_metrics:
+          total_duration: "estimated_300_seconds"
+          conversion_rate: "100%"
+          cart_abandonment: "false"
+          payment_success: "true"
+        business_metrics:
+          revenue: "{{total_with_shipping}}"
+          items_sold: "{{cart_total_items}}"
+          discount_applied: "{{savings_amount}}"
+          shipping_revenue: "{{selected_shipping_cost}}"
+    assert:
+      status_code: 200
+      body:
+        json:
+          analytics_event: { equals: "complete_purchase_workflow" }
+          workflow_id: { equals: "{{workflow_test_id}}" }
+    capture:
+      analytics_result: "tracked"
+      workflow_completion_status: "successful"
+
+  # 13. FINAL WORKFLOW SUMMARY AND VALIDATION
+  - name: "Collect complex workflow test results"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Summary: "complex_workflows_complete"
+      body:
+        test_summary: "complex_workflows_ecommerce_contracts"
+        workflow_test_id: "{{workflow_test_id}}"
+        ecommerce_workflow_results:
+          customer_registration: "{{customer_registration_result}}"
+          catalog_browsing: "{{catalog_browsing_result}}"
+          product_details: "{{product_details_result}}"
+          cart_management: "success"
+          promotions_applied: "{{promotion_result}}"
+          shipping_calculated: "{{shipping_options_result}}"
+          payment_processed: "{{payment_result}}"
+          order_created: "{{order_creation_result}}"
+          fulfillment_initiated: "{{fulfillment_result}}"
+        api_contract_validations:
+          user_service: "{{user_service_contract}}"
+          order_service: "{{order_service_contract}}"
+          payment_service: "{{payment_service_contract}}"
+        microservices_communication:
+          inventory_service: "{{inventory_service_result}}"
+          notification_service: "{{notification_service_result}}"
+        business_outcomes:
+          customer_id: "{{registered_customer_id}}"
+          order_id: "{{order_id}}"
+          transaction_id: "{{transaction_id}}"
+          total_revenue: "{{total_with_shipping}}"
+          items_purchased: "{{cart_total_items}}"
+          workflow_completion: "{{workflow_completion_status}}"
+        workflow_patterns_tested:
+          - "customer_lifecycle_management"
+          - "product_catalog_interaction"
+          - "cart_and_checkout_process"
+          - "payment_transaction_flow"
+          - "order_fulfillment_pipeline"
+          - "api_contract_validation"
+          - "microservices_integration"
+          - "end_to_end_business_process"
+          - "workflow_analytics_tracking"
+        total_complex_workflow_tests: 13
+        end_to_end_success: true
+    assert:
+      status_code: 200
+      body:
+        json:
+          test_summary: { equals: "complex_workflows_ecommerce_contracts" }
+          workflow_test_id: { equals: "{{workflow_test_id}}" }
+          total_complex_workflow_tests: { equals: 13 }
+          end_to_end_success: { equals: true }
+    capture:
+      workflow_results: "body.json"
+      ecommerce_data: "body.json.ecommerce_workflow_results"
+      contract_validation_results: "body.json.api_contract_validations"

@@ -1,0 +1,430 @@
+suite_name: "Conditional Execution Comprehensive Testing"
+node_id: "conditional-execution-test"
+description: "Comprehensive testing of conditional execution patterns including skip logic, feature flags, environment-based execution, and cleanup operations"
+base_url: "{{httpbin_url}}"
+
+metadata:
+  priority: "medium"
+  tags: ["conditional", "skip", "feature-flags", "environment", "cleanup"]
+  estimated_duration_ms: 18000
+
+variables:
+  environment: "development"
+  feature_flags:
+    new_api: "false"
+    beta_feature: "false"
+    advanced_mode: "false"
+  test_mode: "normal"
+  cleanup_required: true
+  conditional_test_id: "cond-{{$faker.string.uuid}}"
+
+exports: ["conditional_results", "skip_test_data", "cleanup_status"]
+
+steps:
+  # 1. Environment-based Skip Logic
+  - name: "Development-only operation"
+    metadata:
+      skip: "{{environment}} !== 'development'"
+      description: "This step only runs in development environment"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Environment: "{{environment}}"
+        X-Dev-Only: "true"
+      body:
+        operation: "development_setup"
+        environment: "{{environment}}"
+        dev_tools_enabled: true
+    scenarios:
+      - condition: "status_code == `200`"
+        then:
+          assert:
+            status_code: 200
+            body:
+              json:
+                operation: { equals: "development_setup" }
+          capture:
+            dev_setup_result: "completed"
+
+  - name: "Production-only operation"
+    metadata:
+      skip: "{{environment}} !== 'production'"
+      description: "This step only runs in production environment"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Environment: "{{environment}}"
+        X-Prod-Only: "true"
+      body:
+        operation: "production_optimization"
+        environment: "{{environment}}"
+        monitoring_enabled: true
+    scenarios:
+      - condition: "status_code == `200`"
+        then:
+          assert:
+            status_code: 200
+          capture:
+            prod_optimization_result: "completed"
+
+  # 2. Feature Flag-based Execution
+  - name: "New API feature test"
+    metadata:
+      skip: "{{feature_flags.new_api}} !== 'true'"
+      description: "Test new API features when flag is enabled"
+    request:
+      method: "GET"
+      url: "/get"
+      headers:
+        X-Feature: "new_api"
+        X-Flag-Status: "{{feature_flags.new_api}}"
+      params:
+        api_version: "v2"
+        new_features: "enabled"
+    scenarios:
+      - condition: "status_code == `200`"
+        then:
+          assert:
+            status_code: 200
+            body:
+              args:
+                api_version: { equals: "v2" }
+          capture:
+            new_api_result: "feature_tested"
+
+  - name: "Beta feature test"
+    metadata:
+      skip: "{{feature_flags.beta_feature}} !== 'true'"
+      description: "Test beta features when flag is enabled"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Feature: "beta"
+        X-Beta-Enabled: "{{feature_flags.beta_feature}}"
+      body:
+        feature: "beta_functionality"
+        enabled: "{{feature_flags.beta_feature}}"
+        test_data: "beta_test"
+    scenarios:
+      - condition: "status_code == `200`"
+        then:
+          assert:
+            status_code: 200
+          capture:
+            beta_feature_result: "tested"
+
+  # 3. Complex Conditional Logic
+  - name: "Multi-condition skip test"
+    metadata:
+      skip: "false"
+      description: "Skip destructive tests in production"
+    request:
+      method: "DELETE"
+      url: "/delete"
+      headers:
+        X-Destructive-Test: "true"
+        X-Environment: "{{environment}}"
+        X-Test-Mode: "{{test_mode}}"
+    scenarios:
+      - condition: "status_code == `200`"
+        then:
+          assert:
+            status_code: 200
+          capture:
+            destructive_test_result: "executed"
+
+  # 4. JavaScript Expression Conditions
+  - name: "JavaScript condition - time-based"
+    metadata:
+      skip: "new Date().getHours() > 22 || new Date().getHours() < 6"
+      description: "Skip during night hours (22:00 - 06:00)"
+    request:
+      method: "GET"
+      url: "/get"
+      headers:
+        X-Time-Based: "true"
+        X-Current-Hour: "{{new Date().getHours()}}"
+      params:
+        time_sensitive: "true"
+        business_hours_only: "true"
+    scenarios:
+      - condition: "status_code == `200`"
+        then:
+          assert:
+            status_code: 200
+          capture:
+            time_based_result: "business_hours_execution"
+
+  # 5. Dynamic Skip Based on Previous Results
+  - name: "Check system status"
+    request:
+      method: "GET"
+      url: "/get"
+      headers:
+        X-System-Check: "true"
+      params:
+        check_status: "true"
+    assert:
+      status_code: 200
+    capture:
+      system_status: "healthy"  # Simulated - would check real status
+      system_load: "low"
+
+  - name: "Resource-intensive operation"
+    metadata:
+      skip: "{{system_load}} === 'high'"
+      description: "Skip if system load is high"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Resource-Intensive: "true"
+        X-System-Load: "{{system_load}}"
+      body:
+        operation: "resource_intensive_task"
+        system_status: "{{system_status}}"
+        load_level: "{{system_load}}"
+    scenarios:
+      - condition: "status_code == `200`"
+        then:
+          assert:
+            status_code: 200
+          capture:
+            resource_operation_result: "completed"
+
+  # 6. Version-based Conditional Execution
+  - name: "Get API version"
+    request:
+      method: "GET"
+      url: "/get"
+      headers:
+        X-Version-Check: "true"
+      params:
+        get_version: "true"
+    assert:
+      status_code: 200
+    capture:
+      api_version: "2.1"  # Simulated version
+
+  - name: "Version 2.0+ only features"
+    metadata:
+      skip: "parseFloat('{{api_version}}') < 2.0"
+      description: "Skip for API versions below 2.0"
+    request:
+      method: "GET"
+      url: "/get"
+      headers:
+        X-API-Version: "{{api_version}}"
+        X-Version-Feature: "v2_plus"
+      params:
+        version: "{{api_version}}"
+        features: "v2_plus"
+    scenarios:
+      - condition: "status_code == `200`"
+        then:
+          assert:
+            status_code: 200
+          capture:
+            version_feature_result: "v2_features_tested"
+
+  # 7. User Role-based Execution
+  - name: "Admin-only operation"
+    metadata:
+      skip: "{{$env.USER_ROLE || 'user'}} !== 'admin'"
+      description: "Skip if user is not admin"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Admin-Only: "true"
+        X-User-Role: "{{$env.USER_ROLE || 'user'}}"
+      body:
+        operation: "admin_configuration"
+        user_role: "{{$env.USER_ROLE || 'user'}}"
+        admin_access: true
+    scenarios:
+      - condition: "status_code == `200`"
+        then:
+          assert:
+            status_code: 200
+          capture:
+            admin_operation_result: "completed"
+
+  # 8. Cleanup Operations with always_run
+  - name: "Setup test data"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Setup: "true"
+      body:
+        operation: "create_test_data"
+        test_id: "{{conditional_test_id}}"
+        data: "temporary_test_data"
+    assert:
+      status_code: 200
+    capture:
+      test_data_id: "body.json.test_id"
+      setup_completed: true
+
+  - name: "Main test operation that might fail"
+    request:
+      method: "GET"
+      url: "/status/{{$faker.helpers.arrayElement(['200', '500'])}}"  # Random success/failure
+      headers:
+        X-Main-Test: "true"
+        X-Test-Data-ID: "{{test_data_id}}"
+    scenarios:
+      - condition: "status_code == `200`"
+        then:
+          assert:
+            status_code: 200
+          capture:
+            main_test_result: "success"
+
+      - condition: "status_code == `500`"
+        then:
+          assert:
+            status_code: 500
+          capture:
+            main_test_result: "failed"
+    metadata:
+      continue_on_failure: true
+
+  - name: "Cleanup test data"
+    metadata:
+      always_run: true
+      description: "Always cleanup, even if previous steps failed"
+    request:
+      method: "DELETE"
+      url: "/delete"
+      headers:
+        X-Cleanup: "true"
+        X-Test-Data-ID: "{{test_data_id}}"
+        X-Force-Cleanup: "true"
+    scenarios:
+      - condition: "status_code == `200`"
+        then:
+          assert:
+            status_code: 200
+          capture:
+            cleanup_result: "completed"
+
+      # Even if cleanup endpoint doesn't exist, mark as cleaned up
+      - condition: "status_code != `200`"
+        then:
+          capture:
+            cleanup_result: "attempted"
+
+  # 9. Performance-based Conditional Execution
+  - name: "Quick performance check"
+    request:
+      method: "GET"
+      url: "/get"
+      headers:
+        X-Performance-Check: "true"
+    assert:
+      status_code: 200
+    capture:
+      quick_check_time: "response_time_ms"
+
+  - name: "Full performance test"
+    metadata:
+      skip: "{{quick_check_time}} > 500"
+      description: "Skip full test if quick check was slow"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Full-Performance-Test: "true"
+      body:
+        test_type: "full_performance"
+        quick_check_time: "{{quick_check_time}}"
+        complex_processing: true
+    scenarios:
+      - condition: "status_code == `200`"
+        then:
+          assert:
+            status_code: 200
+            response_time_ms:
+              max: 2000
+          capture:
+            full_performance_result: "completed"
+
+  # 10. Conditional Assertions
+  - name: "Test with conditional assertions"
+    request:
+      method: "GET"
+      url: "/get"
+      headers:
+        X-Conditional-Assertions: "true"
+        X-Environment: "{{environment}}"
+      params:
+        environment: "{{environment}}"
+        test_mode: "{{test_mode}}"
+    scenarios:
+      # Different assertions based on environment
+      - condition: "status_code == `200`"
+        then:
+          assert:
+            status_code: 200
+            response_time_ms:
+              max: 200  # Stricter in production
+          capture:
+            prod_assertion_result: "strict_validation"
+
+      - condition: "status_code != `500`"
+        then:
+          assert:
+            status_code: 200
+            response_time_ms:
+              max: 1000  # More lenient in dev/test
+          capture:
+            dev_assertion_result: "lenient_validation"
+
+  # 11. Final Summary
+  - name: "Collect conditional execution results"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Summary: "conditional_execution_complete"
+      body:
+        test_summary: "conditional_execution_comprehensive"
+        test_id: "{{conditional_test_id}}"
+        environment: "{{environment}}"
+        feature_flags: "{{feature_flags}}"
+        conditional_patterns:
+          - "environment_based_skip"
+          - "feature_flag_execution"
+          - "multi_condition_logic"
+          - "javascript_expressions"
+          - "dynamic_skip_conditions"
+          - "version_based_execution"
+          - "user_role_conditions"
+          - "cleanup_operations"
+          - "performance_based_conditions"
+          - "conditional_assertions"
+        cleanup_status: "{{cleanup_result}}"
+        total_conditional_tests: 11
+    assert:
+      status_code: 200
+      body:
+        json:
+          test_summary: { equals: "conditional_execution_comprehensive" }
+          total_conditional_tests: { equals: 11 }
+    capture:
+      conditional_results: "body.json"
+      skip_test_data: "body.json.conditional_patterns"
+      cleanup_status: "body.json.cleanup_status"

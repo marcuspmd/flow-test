@@ -1,0 +1,526 @@
+suite_name: "Advanced Assertions Comprehensive Testing"
+node_id: "advanced-assertions-test"
+description: "Comprehensive testing of all assertion operators including regex matching, length validation, oneOf assertions, type checking, and complex nested validations"
+base_url: "{{httpbin_url}}"
+
+metadata:
+  priority: "high"
+  tags: ["assertions", "validation", "regex", "types", "length", "oneOf"]
+  estimated_duration_ms: 20000
+
+variables:
+  test_email: "{{$faker.internet.email}}"
+  test_phone: "{{$faker.phone.number}}"
+  test_uuid: "{{$faker.string.uuid}}"
+  test_url: "{{$faker.internet.url}}"
+  assertion_test_id: "assert-{{$faker.string.uuid}}"
+
+exports: ["assertion_results", "validation_data", "regex_test_results"]
+
+steps:
+  # 1. Regex Matching Assertions
+  - name: "Email format validation with regex"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Validation-Test: "email_regex"
+      body:
+        email: "{{test_email}}"
+        contact_type: "email"
+        validation_required: true
+    assert:
+      status_code: 200
+      body:
+        json:
+          email: { matches: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$" }
+    capture:
+      email_validation_result: "regex_passed"
+
+  - name: "Phone number regex validation"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Validation-Test: "phone_regex"
+      body:
+        phone: "{{test_phone}}"
+        contact_type: "phone"
+    assert:
+      status_code: 200
+      body:
+        json:
+          phone: { matches: "^[\\+]?[1-9]?[0-9]{7,15}$" }
+    capture:
+      phone_validation_result: "regex_matched"
+
+  - name: "UUID format validation"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Validation-Test: "uuid_regex"
+      body:
+        id: "{{test_uuid}}"
+        format: "uuid"
+    assert:
+      status_code: 200
+      body:
+        json:
+          id: { matches: "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$" }
+    capture:
+      uuid_validation_result: "uuid_format_valid"
+
+  - name: "URL format validation"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Validation-Test: "url_regex"
+      body:
+        website: "{{test_url}}"
+        link_type: "external"
+    assert:
+      status_code: 200
+      body:
+        json:
+          website: { matches: "^https?:\\/\\/(www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&//=]*)$" }
+    capture:
+      url_validation_result: "url_format_valid"
+
+  # 2. Length Assertions
+  - name: "String length validation - exact"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Validation-Test: "string_length_exact"
+      body:
+        code: "ABC123"  # Exactly 6 characters
+        description: "{{$faker.lorem.sentence}}"
+    assert:
+      status_code: 200
+      body:
+        json:
+          code: { length: 6 }  # Exact length
+          description: { length: { min: 10, max: 100 } }  # Range
+    capture:
+      length_exact_result: "exact_length_validated"
+
+  - name: "Array length validation"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Validation-Test: "array_length"
+      body:
+        items: ["item1", "item2", "item3", "item4", "item5"]
+        tags: ["tag1", "tag2"]
+        categories: []
+    assert:
+      status_code: 200
+      body:
+        json:
+          items: { length: { min: 3, max: 10 } }
+          tags: { length: 2 }  # Exact length
+          categories: { length: { min: 0, max: 5 } }  # Allow empty
+    capture:
+      array_length_result: "array_lengths_validated"
+
+  - name: "String length edge cases"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Validation-Test: "length_edge_cases"
+      body:
+        empty_string: ""
+        single_char: "A"
+        long_text: "{{$faker.lorem.paragraphs(5)}}"
+        medium_text: "{{$faker.lorem.paragraph}}"
+    assert:
+      status_code: 200
+      body:
+        json:
+          empty_string: { length: 0 }
+          single_char: { length: 1 }
+          long_text: { length: { min: 500 } }  # Very long
+          medium_text: { length: { min: 50, max: 500 } }
+    capture:
+      length_edge_cases_result: "edge_cases_validated"
+
+  # 3. Type Validation Assertions
+  - name: "Data type validation"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Validation-Test: "data_types"
+      body:
+        user_id: 12345
+        name: "John Doe"
+        active: true
+        balance: 99.99
+        metadata: null
+        created_at: "2024-01-01T12:00:00Z"
+    assert:
+      status_code: 200
+      body:
+        json:
+          user_id: { type: "number" }
+          name: { type: "string" }
+          active: { type: "boolean" }
+          balance: { type: "number" }
+          metadata: { type: "null" }
+          created_at: { type: "string" }
+    capture:
+      type_validation_result: "all_types_validated"
+
+  - name: "Nested object type validation"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Validation-Test: "nested_types"
+      body:
+        user:
+          id: 123
+          profile:
+            name: "Jane Smith"
+            settings:
+              theme: "dark"
+              notifications: true
+        orders: [1, 2, 3]
+    assert:
+      status_code: 200
+      body:
+        json:
+          user: { type: "object" }
+          user.id: { type: "number" }
+          user.profile: { type: "object" }
+          user.profile.name: { type: "string" }
+          user.profile.settings: { type: "object" }
+          user.profile.settings.theme: { type: "string" }
+          user.profile.settings.notifications: { type: "boolean" }
+          orders: { type: "array" }
+    capture:
+      nested_type_result: "nested_objects_validated"
+
+  # 4. OneOf Assertions
+  - name: "OneOf string values"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Validation-Test: "oneof_strings"
+      body:
+        status: "active"
+        priority: "high"
+        category: "premium"
+        role: "admin"
+    assert:
+      status_code: 200
+      body:
+        json:
+          status: { oneOf: ["active", "inactive", "pending"] }
+          priority: { oneOf: ["low", "medium", "high", "critical"] }
+          category: { oneOf: ["basic", "premium", "enterprise"] }
+          role: { oneOf: ["user", "admin", "moderator"] }
+    capture:
+      oneof_strings_result: "string_values_validated"
+
+  - name: "OneOf number values"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Validation-Test: "oneof_numbers"
+      body:
+        http_status: 200
+        port: 80
+        version: 2
+        rating: 5
+    assert:
+      status_code: 200
+      body:
+        json:
+          http_status: { oneOf: [200, 201, 204, 301, 302] }
+          port: { oneOf: [80, 443, 8080, 3000, 8000] }
+          version: { oneOf: [1, 2, 3] }
+          rating: { oneOf: [1, 2, 3, 4, 5] }
+    capture:
+      oneof_numbers_result: "number_values_validated"
+
+  - name: "OneOf mixed types"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Validation-Test: "oneof_mixed"
+      body:
+        value: "auto"
+        limit: null
+        enabled: true
+    assert:
+      status_code: 200
+      body:
+        json:
+          value: { oneOf: ["auto", "manual", 100, 200] }
+          limit: { oneOf: [null, 10, 50, 100] }
+          enabled: { oneOf: [true, false, "auto"] }
+    capture:
+      oneof_mixed_result: "mixed_types_validated"
+
+  # 5. Numeric Range Assertions
+  - name: "Numeric range validation"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Validation-Test: "numeric_ranges"
+      body:
+        age: 25
+        score: 85.5
+        count: 42
+        percentage: 73.2
+    assert:
+      status_code: 200
+      body:
+        json:
+          age: { min: 18, max: 120 }
+          score: { min: 0, max: 100 }
+          count: { min: 1 }  # No maximum
+          percentage: { min: 0.0, max: 100.0 }
+    capture:
+      numeric_range_result: "ranges_validated"
+
+  # 6. Complex Nested Assertions
+  - name: "Complex nested object validation"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Validation-Test: "complex_nested"
+      body:
+        order:
+          id: "ORD-12345"
+          status: "confirmed"
+          items:
+            - id: 1
+              name: "Product A"
+              price: 29.99
+              quantity: 2
+            - id: 2
+              name: "Product B"
+              price: 15.50
+              quantity: 1
+          customer:
+            id: 1001
+            name: "Alice Johnson"
+            email: "alice@example.com"
+            preferences:
+              newsletter: true
+              sms: false
+          metadata:
+            created_at: "2024-01-15T10:30:00Z"
+            source: "web"
+            campaign: null
+    assert:
+      status_code: 200
+      body:
+        json:
+          order:
+            id: { matches: "^ORD-[0-9]+$" }
+            status: { oneOf: ["pending", "confirmed", "shipped", "delivered"] }
+            items: { length: { min: 1, max: 10 } }
+            items[0]:
+              id: { type: "number", min: 1 }
+              name: { type: "string", length: { min: 1 } }
+              price: { type: "number", min: 0 }
+              quantity: { type: "number", min: 1 }
+            customer:
+              id: { type: "number" }
+              name: { type: "string", length: { min: 2 } }
+              email: { matches: "^[^@]+@[^@]+\\.[^@]+$" }
+              preferences:
+                newsletter: { type: "boolean" }
+                sms: { type: "boolean" }
+            metadata:
+              created_at: { matches: "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$" }
+              source: { oneOf: ["web", "mobile", "api"] }
+              campaign: { oneOf: [null, "summer", "winter", "black_friday"] }
+    capture:
+      complex_nested_result: "complex_validation_passed"
+
+  # 7. Array Element Validation
+  - name: "Array element validation"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Validation-Test: "array_elements"
+      body:
+        numbers: [1, 2, 3, 4, 5]
+        statuses: ["active", "pending", "inactive"]
+        mixed_array: ["string", 42, true, null]
+        user_ids: [100, 200, 300]
+    assert:
+      status_code: 200
+      body:
+        json:
+          numbers: { length: 5 }
+          numbers[0]: { type: "number", min: 1 }
+          numbers[4]: { type: "number", max: 10 }
+          statuses: { length: { min: 1 } }
+          statuses[0]: { oneOf: ["active", "pending", "inactive", "suspended"] }
+          statuses[1]: { oneOf: ["active", "pending", "inactive", "suspended"] }
+          mixed_array: { length: 4 }
+          mixed_array[0]: { type: "string" }
+          mixed_array[1]: { type: "number" }
+          mixed_array[2]: { type: "boolean" }
+          mixed_array[3]: { type: "null" }
+          user_ids: { length: { min: 1 } }
+          user_ids[0]: { type: "number", min: 1 }
+    capture:
+      array_elements_result: "array_validation_passed"
+
+  # 8. Conditional Assertions with Exists
+  - name: "Conditional exists validation"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Validation-Test: "conditional_exists"
+      body:
+        user:
+          id: 123
+          name: "Test User"
+          email: "test@example.com"
+          premium_features:
+            advanced_analytics: true
+            priority_support: true
+        plan: "premium"
+    assert:
+      status_code: 200
+      body:
+        json:
+          user:
+            id: { exists: true }
+            name: { exists: true }
+            email: { exists: true }
+            # Premium features should exist for premium users
+            premium_features: { exists: true }
+            premium_features.advanced_analytics: { exists: true }
+          plan: { exists: true }
+    capture:
+      conditional_exists_result: "exists_validation_passed"
+
+  # 9. Error Response Validation
+  - name: "Error response structure validation"
+    request:
+      method: "GET"
+      url: "/status/400"  # Bad Request
+      headers:
+        X-Validation-Test: "error_structure"
+        X-Expected: "error_response"
+    assert:
+      status_code: 400
+      # Note: httpbin may not return structured errors, but testing the pattern
+      headers:
+        "content-type": { exists: true }
+    scenarios:
+      - condition: "status_code == `400`"
+        then:
+          capture:
+            error_validation_result: "error_structure_validated"
+
+  # 10. Performance Assertions Combined with Data Validation
+  - name: "Performance with data validation"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Validation-Test: "performance_data"
+      body:
+        operation: "complex_validation"
+        data:
+          records: 1000
+          processing_time: "fast"
+          validation_level: "strict"
+    assert:
+      status_code: 200
+      response_time_ms:
+        max: 1000
+        warning_threshold: 500
+      body:
+        json:
+          operation: { equals: "complex_validation" }
+          data:
+            records: { type: "number", min: 1 }
+            processing_time: { oneOf: ["fast", "medium", "slow"] }
+            validation_level: { oneOf: ["basic", "strict", "comprehensive"] }
+    capture:
+      performance_data_result: "performance_validation_combined"
+
+  # 11. Final Summary
+  - name: "Collect assertion test results"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Summary: "assertions_complete"
+      body:
+        test_summary: "advanced_assertions_comprehensive"
+        test_id: "{{assertion_test_id}}"
+        assertion_types_tested:
+          - "regex_matching"
+          - "length_validation"
+          - "type_checking"
+          - "oneof_validation"
+          - "numeric_ranges"
+          - "complex_nested"
+          - "array_elements"
+          - "conditional_exists"
+          - "error_structure"
+          - "performance_combined"
+        total_assertion_tests: 11
+        test_patterns:
+          email_regex: "{{email_validation_result}}"
+          phone_regex: "{{phone_validation_result}}"
+          uuid_regex: "{{uuid_validation_result}}"
+          url_regex: "{{url_validation_result}}"
+          length_exact: "{{length_exact_result}}"
+          array_length: "{{array_length_result}}"
+          type_validation: "{{type_validation_result}}"
+          oneof_strings: "{{oneof_strings_result}}"
+          complex_nested: "{{complex_nested_result}}"
+    assert:
+      status_code: 200
+      body:
+        json:
+          test_summary: { equals: "advanced_assertions_comprehensive" }
+          total_assertion_tests: { equals: 11 }
+          assertion_types_tested: { length: 10 }
+          test_patterns: { type: "object" }
+    capture:
+      assertion_results: "body.json"
+      validation_data: "body.json.test_patterns"
+      regex_test_results: "body.json.assertion_types_tested"

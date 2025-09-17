@@ -1,0 +1,340 @@
+suite_name: "Advanced Iteration Testing Comprehensive"
+node_id: "advanced-iteration-test"
+description: "Comprehensive testing of all iteration patterns including range, dynamic data, error handling, and complex scenarios"
+base_url: "{{httpbin_url}}"
+
+metadata:
+  priority: "medium"
+  tags: ["iteration", "loops", "range", "dynamic", "advanced"]
+  estimated_duration_ms: 15000
+
+variables:
+  test_data_array:
+    - id: 1
+      name: "Alice"
+      department: "Engineering"
+      active: true
+    - id: 2
+      name: "Bob"
+      department: "Sales"
+      active: true
+    - id: 3
+      name: "Charlie"
+      department: "Marketing"
+      active: false
+    - id: 4
+      name: "Diana"
+      department: "HR"
+      active: true
+  dynamic_items_array:
+    - id: 101
+      type: "premium"
+      value: 250
+    - id: 102
+      type: "standard"
+      value: 100
+    - id: 103
+      type: "basic"
+      value: 50
+    - id: 104
+      type: "trial"
+      value: 25
+  range_array_1_5: [1, 2, 3, 4, 5]
+  range_array_10_18: [10, 12, 14, 16, 18]
+  range_array_1_4: [1, 2, 3, 4]
+  range_array_1_10: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+  range_array_1_3: [1, 2, 3]
+  batch_size: 10
+  pagination_limit: 5
+  accumulated_data: "initial"
+
+exports: ["iteration_results"]
+
+steps:
+  # 1. Basic Range Iteration
+  - name: "Range iteration with step increment"
+    iterate:
+      over: "{{range_array_1_5}}"
+      as: "page_number"
+    request:
+      method: "GET"
+      url: "/get"
+      params:
+        page: "{{page_number}}"
+        limit: "{{pagination_limit}}"
+        test_type: "range_iteration"
+    assert:
+      status_code: 200
+      body:
+        args:
+          page: { equals: "{{page_number}}" }
+          limit: { equals: "{{pagination_limit}}" }
+    capture:
+      current_page_data: "body.args"
+    metadata:
+      iteration_step: "{{page_number}}"
+
+  # 2. Range Iteration with Large Numbers
+  - name: "Large range iteration for load testing"
+    iterate:
+      over: "{{range_array_10_18}}"
+      as: "batch_id"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Batch-ID: "batch-{{batch_id}}"
+      body:
+        batch_number: "{{batch_id}}"
+        batch_size: "{{batch_size}}"
+        processing_order: "{{batch_id}}"
+        metadata:
+          iteration_type: "large_range"
+          expected_batches: 5
+    assert:
+      status_code: 200
+      body:
+        json:
+          batch_number: { equals: "{{batch_id}}" }
+          batch_size: { equals: "{{batch_size}}" }
+    capture:
+      batch_response: "body.json.batch_number"
+
+  # 3. Array Iteration with Complex Data
+  - name: "Array iteration with user data"
+    iterate:
+      over: "{{test_data_array}}"
+      as: "user"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-User-ID: "{{user.id}}"
+        X-Department: "{{user.department}}"
+      body:
+        user_id: "{{user.id}}"
+        name: "{{user.name}}"
+        department: "{{user.department}}"
+        active: "{{user.active}}"
+        operation: "process_user"
+    assert:
+      status_code: 200
+      body:
+        json:
+          user_id: { equals: "{{user.id}}" }
+          name: { equals: "{{user.name}}" }
+          department: { equals: "{{user.department}}" }
+          active: { equals: "{{user.active}}" }
+    capture:
+      processed_user: "body.json"
+
+  # 4. Dynamic Iteration - Get data first, then iterate
+  - name: "Get dynamic data for iteration"
+    request:
+      method: "GET"
+      url: "/get"
+      params:
+        generate_list: "true"
+        count: "3"
+    assert:
+      status_code: 200
+    capture:
+      # Simulate dynamic data - in real scenario would come from API
+      dynamic_items: "body.args"
+
+  - name: "Dynamic iteration over captured data"
+    iterate:
+      over: "{{dynamic_items_array}}"
+      as: "item"
+    request:
+      method: "PUT"
+      url: "/put"
+      headers:
+        Content-Type: "application/json"
+        X-Item-Type: "{{item.type}}"
+      body:
+        item_id: "{{item.id}}"
+        type: "{{item.type}}"
+        value: "{{item.value}}"
+        processed_at: "{{$faker.date.recent}}"
+        iteration_context: "dynamic_processing"
+    assert:
+      status_code: 200
+    capture:
+      processed_item: "body.json"
+
+  # 5. Nested Iteration Scenario
+  - name: "Outer iteration for departments"
+    iterate:
+      over: "{{test_data_array}}"
+      as: "department"
+    request:
+      method: "GET"
+      url: "/get"
+      params:
+        department: "{{department}}"
+        get_users: "true"
+    assert:
+      status_code: 200
+    capture:
+      department_users: "body.args"
+
+  - name: "Inner iteration for each department's users"
+    iterate:
+      over: "{{test_data_array}}"
+      as: "dept_user"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        user_id: "{{dept_user.id}}"
+        user_name: "{{dept_user.name}}"
+        department: "Engineering"  # Would use outer iteration variable in real scenario
+        action: "nested_processing"
+    assert:
+      status_code: 200
+    capture:
+      nested_result: "body.json.user_id"
+
+  # 6. Iteration with Error Handling
+  - name: "Iteration with potential failures"
+    iterate:
+      over: "{{range_array_1_4}}"
+      as: "test_case"
+    request:
+      method: "GET"
+      url: "/status/{{test_case == 2 ? '500' : '200'}}"  # Force error on case 2
+      headers:
+        X-Test-Case: "{{test_case}}"
+        X-Expected-Behavior: "{{test_case == 2 ? 'error' : 'success'}}"
+    # Use scenarios to handle different responses
+    scenarios:
+      - condition: "status_code == `200`"
+        then:
+          assert:
+            status_code: 200
+          capture:
+            success_case: "{{test_case}}"
+
+      - condition: "status_code == `500`"
+        then:
+          assert:
+            status_code: 500
+          capture:
+            error_case: "{{test_case}}"
+    metadata:
+      continue_on_failure: true
+
+  # 7. Performance Testing with Iteration
+  - name: "High-volume iteration for performance testing"
+    iterate:
+      over: "{{range_array_1_10}}"
+      as: "perf_test_id"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Performance-Test: "true"
+        X-Iteration: "{{perf_test_id}}"
+      body:
+        test_id: "{{perf_test_id}}"
+        payload_size: "medium"
+        timestamp: "{{$faker.date.recent}}"
+        random_data: "{{$faker.lorem.paragraph}}"
+    assert:
+      status_code: 200
+      response_time_ms:
+        max: 1000  # Should respond within 1 second
+    capture:
+      perf_response_time: "response_time_ms"
+    metadata:
+      performance_critical: true
+
+  # 8. Iteration with Variable Capture Between Steps
+  - name: "Iteration building accumulated data"
+    iterate:
+      over: "{{range_array_1_3}}"
+      as: "accumulator_step"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        step: "{{accumulator_step}}"
+        previous_data: "{{accumulated_data}}"
+        new_value: "step_{{accumulator_step}}_data"
+    assert:
+      status_code: 200
+    capture:
+      accumulated_data: "body.json.new_value"
+      step_result: "body.json"
+
+  # 9. Iteration with Complex Faker Data
+  - name: "Iteration with complex fake data generation"
+    iterate:
+      over: "{{range_array_1_4}}"
+      as: "user_index"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-User-Index: "{{user_index}}"
+      body:
+        user_profile:
+          id: "{{user_index}}"
+          name: "{{$faker.person.fullName}}"
+          email: "user{{user_index}}.{{$faker.internet.email}}"
+          phone: "{{$faker.phone.number}}"
+          address:
+            street: "{{$faker.location.streetAddress}}"
+            city: "{{$faker.location.city}}"
+            zip: "{{$faker.location.zipCode}}"
+          job:
+            title: "{{$faker.person.jobTitle}}"
+            company: "{{$faker.company.name}}"
+          metadata:
+            created_at: "{{$faker.date.recent}}"
+            user_index: "{{user_index}}"
+    assert:
+      status_code: 200
+      body:
+        json:
+          user_profile:
+            id: { equals: "{{user_index}}" }
+            metadata:
+              user_index: { equals: "{{user_index}}" }
+    capture:
+      fake_user_data: "body.json.user_profile"
+
+  # 10. Final Summary Step
+  - name: "Collect iteration test results"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        test_summary: "advanced_iteration_testing"
+        total_iterations_completed: "estimated_27"
+        test_types:
+          - "range_iteration"
+          - "array_iteration"
+          - "dynamic_iteration"
+          - "nested_iteration"
+          - "error_handling_iteration"
+          - "performance_iteration"
+          - "accumulator_iteration"
+          - "faker_iteration"
+        metadata:
+          suite_completion: true
+    assert:
+      status_code: 200
+    capture:
+      iteration_results: "body.json"

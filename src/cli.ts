@@ -40,6 +40,7 @@ import {
   SwaggerImportService,
   ImportOptions,
 } from "./services/swagger-import.service";
+import { handleInitCommand } from "./commands/init";
 
 /**
  * Main CLI entry point function.
@@ -62,6 +63,12 @@ import {
  */
 async function main() {
   const args = process.argv.slice(2);
+
+  // Handle init command first
+  if (args[0] === 'init') {
+    await handleInitCommand(args.slice(1));
+    return;
+  }
 
   // Parsing dos argumentos
   const options: EngineExecutionOptions = {
@@ -300,7 +307,12 @@ function printHelp() {
 🚀 Flow Test Engine v1.0.0
 
 USAGE:
-  flow-test [CONFIG_FILE] [OPTIONS]
+  flow-test [COMMAND] [CONFIG_FILE] [OPTIONS]
+
+COMMANDS:
+  init                       Initialize configuration file interactively
+
+  (no command)               Run tests with specified options
 
 ARGUMENTS:
   CONFIG_FILE              Path to configuration file (default: flow-test.config.yml)
@@ -339,6 +351,13 @@ OTHER:
   -v, --version          Show version information
 
 EXAMPLES:
+  # Configuration
+  flow-test init                               # Interactive configuration setup
+  flow-test init --template basic             # Use basic template
+  flow-test init --template performance       # Use performance template
+  flow-test init --help                       # Show init command help
+
+  # Running Tests
   flow-test                                    # Run with default config
   flow-test my-config.yml                      # Run with specific config
   flow-test --priority critical,high          # Run only critical and high priority tests

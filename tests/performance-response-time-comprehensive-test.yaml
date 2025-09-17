@@ -1,0 +1,421 @@
+suite_name: "Performance and Response Time Comprehensive Testing"
+node_id: "performance-response-time-test"
+description: "Comprehensive testing of response time assertions, performance thresholds, load testing patterns, and performance monitoring"
+base_url: "{{httpbin_url}}"
+
+metadata:
+  priority: "medium"
+  tags: ["performance", "response-time", "load-testing", "thresholds", "monitoring"]
+  estimated_duration_ms: 25000
+
+variables:
+  performance_test_id: "perf-{{$faker.string.uuid}}"
+  fast_threshold: 200
+  normal_threshold: 500
+  slow_threshold: 1000
+  warning_threshold: 750
+  load_test_users: 20
+  load_test_range_10: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+  load_test_range_15: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+
+exports: ["performance_metrics", "response_time_data", "load_test_results"]
+
+steps:
+  # 1. Basic Response Time Assertion - Fast Endpoint
+  - name: "Fast endpoint response time test"
+    request:
+      method: "GET"
+      url: "/get"
+      headers:
+        X-Performance-Test: "fast_endpoint"
+        X-Expected-Speed: "fast"
+      params:
+        test_type: "fast_response"
+    assert:
+      status_code: 200
+      response_time_ms:
+        max: "{{fast_threshold}}"  # Must be under 200ms
+        min: 10  # Sanity check - shouldn't be instant
+    capture:
+      fast_response_time: "response_time_ms"
+    metadata:
+      performance_critical: true
+
+  # 2. Response Time with Warning Threshold
+  - name: "Normal endpoint with warning threshold"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Performance-Test: "normal_endpoint"
+      body:
+        test_type: "normal_response"
+        payload_size: "medium"
+        data: "{{$faker.lorem.paragraph}}"
+    assert:
+      status_code: 200
+      response_time_ms:
+        max: "{{normal_threshold}}"  # Hard limit 500ms
+        warning_threshold: "{{warning_threshold}}"  # Warn if over 750ms
+    capture:
+      normal_response_time: "response_time_ms"
+    metadata:
+      performance_monitoring: true
+
+  # 3. Slow Endpoint Testing
+  - name: "Slow endpoint tolerance test"
+    request:
+      method: "GET"
+      url: "/delay/1"  # httpbin 1-second delay
+      headers:
+        X-Performance-Test: "slow_endpoint"
+        X-Delay: "1_second"
+    assert:
+      status_code: 200
+      response_time_ms:
+        min: 900  # Should be at least 900ms due to delay
+        max: 2000  # Allow up to 2 seconds including network
+        warning_threshold: 1500
+    capture:
+      slow_response_time: "response_time_ms"
+    metadata:
+      slow_test: true
+
+  # 4. Load Testing Pattern - Concurrent Requests
+  - name: "Load test simulation - concurrent requests"
+    iterate:
+      over: "{{load_test_range_10}}"
+      as: "load_test_user"
+    request:
+      method: "GET"
+      url: "/get"
+      headers:
+        X-Load-Test: "concurrent_users"
+        X-User-ID: "user-{{load_test_user}}"
+        X-Performance-Test: "load_testing"
+      params:
+        user_id: "{{load_test_user}}"
+        concurrent_test: "true"
+    assert:
+      status_code: 200
+      response_time_ms:
+        max: 1000  # Should handle load under 1s
+        warning_threshold: 600
+    capture:
+      load_test_response_time: "response_time_ms"
+      load_test_user_id: "{{load_test_user}}"
+    metadata:
+      can_run_parallel: true
+      performance_critical: true
+
+  # 5. Throughput Testing Pattern
+  - name: "High-throughput API testing"
+    iterate:
+      over: "{{load_test_range_15}}"
+      as: "throughput_request"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Throughput-Test: "true"
+        X-Request-Number: "{{throughput_request}}"
+      body:
+        request_id: "{{throughput_request}}"
+        timestamp: "{{$faker.date.recent}}"
+        payload: "minimal"
+    assert:
+      status_code: 200
+      response_time_ms:
+        max: 500  # High throughput should be fast
+        warning_threshold: 300
+    capture:
+      throughput_response_time: "response_time_ms"
+    metadata:
+      parallel: true
+      throughput_test: true
+
+  # 6. Performance Under Different Payload Sizes
+  - name: "Small payload performance"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Payload-Size: "small"
+      body:
+        size: "small"
+        data: "test"
+    assert:
+      status_code: 200
+      response_time_ms:
+        max: 200
+    capture:
+      small_payload_time: "response_time_ms"
+
+  - name: "Medium payload performance"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Payload-Size: "medium"
+      body:
+        size: "medium"
+        data: "{{$faker.lorem.paragraphs(3)}}"
+        metadata: "{{$faker.lorem.paragraph}}"
+    assert:
+      status_code: 200
+      response_time_ms:
+        max: 400
+        warning_threshold: 300
+    capture:
+      medium_payload_time: "response_time_ms"
+
+  - name: "Large payload performance"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Payload-Size: "large"
+      body:
+        size: "large"
+        data: "{{$faker.lorem.paragraphs(10)}}"
+        additional_data: "{{$faker.lorem.paragraphs(5)}}"
+        metadata:
+          description: "{{$faker.lorem.paragraph}}"
+          tags: ["{{$faker.word}}", "{{$faker.word}}", "{{$faker.word}}"]
+    assert:
+      status_code: 200
+      response_time_ms:
+        max: 800
+        warning_threshold: 600
+    capture:
+      large_payload_time: "response_time_ms"
+
+  # 7. Database Simulation Performance
+  - name: "Simulate database read operation"
+    request:
+      method: "GET"
+      url: "/get"
+      headers:
+        X-Operation: "database_read"
+        X-Simulate: "db_query"
+      params:
+        operation: "select"
+        table: "users"
+        limit: "100"
+    assert:
+      status_code: 200
+      response_time_ms:
+        max: 300  # Database reads should be fast
+        warning_threshold: 200
+    capture:
+      db_read_time: "response_time_ms"
+
+  - name: "Simulate database write operation"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Operation: "database_write"
+        X-Simulate: "db_insert"
+      body:
+        operation: "insert"
+        table: "users"
+        data:
+          name: "{{$faker.person.fullName}}"
+          email: "{{$faker.internet.email}}"
+          created_at: "{{$faker.date.recent}}"
+    assert:
+      status_code: 200
+      response_time_ms:
+        max: 500  # Database writes can be slower
+        warning_threshold: 350
+    capture:
+      db_write_time: "response_time_ms"
+
+  # 8. API Chain Performance Testing
+  - name: "First API in performance chain"
+    request:
+      method: "GET"
+      url: "/get"
+      headers:
+        X-Chain: "step_1"
+        X-Performance-Chain: "true"
+      params:
+        step: "1"
+        prepare_data: "true"
+    assert:
+      status_code: 200
+      response_time_ms:
+        max: 200
+    capture:
+      chain_step_1_time: "response_time_ms"
+      chain_data: "body.args.step"
+
+  - name: "Second API in performance chain"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Chain: "step_2"
+        X-Previous-Step: "{{chain_data}}"
+      body:
+        step: "2"
+        depends_on: "{{chain_data}}"
+        process_data: "true"
+    assert:
+      status_code: 200
+      response_time_ms:
+        max: 300
+    capture:
+      chain_step_2_time: "response_time_ms"
+
+  - name: "Third API in performance chain"
+    request:
+      method: "PUT"
+      url: "/put"
+      headers:
+        Content-Type: "application/json"
+        X-Chain: "step_3"
+        X-Final-Step: "true"
+      body:
+        step: "3"
+        finalize: "true"
+        total_chain_steps: "3"
+    assert:
+      status_code: 200
+      response_time_ms:
+        max: 250
+    capture:
+      chain_step_3_time: "response_time_ms"
+      total_chain_time: "{{chain_step_1_time + chain_step_2_time + response_time_ms}}"
+
+  # 9. Performance Under Error Conditions
+  - name: "Performance during error handling"
+    request:
+      method: "GET"
+      url: "/status/500"
+      headers:
+        X-Error-Performance: "true"
+        X-Expected: "server_error"
+    assert:
+      status_code: 500
+      response_time_ms:
+        max: 300  # Errors should still be fast
+        warning_threshold: 200
+    capture:
+      error_response_time: "response_time_ms"
+
+  # 10. Timeout Edge Case Testing
+  - name: "Near-timeout performance test"
+    request:
+      method: "GET"
+      url: "/delay/2"  # 2-second delay
+      headers:
+        X-Timeout-Test: "near_limit"
+    metadata:
+      timeout: 3000  # 3-second timeout
+    assert:
+      status_code: 200
+      response_time_ms:
+        min: 1900  # Should be close to 2 seconds
+        max: 2500  # Allow some variance
+        warning_threshold: 2200
+    capture:
+      near_timeout_time: "response_time_ms"
+
+  # 11. Performance Comparison Test
+  - name: "Performance baseline measurement"
+    request:
+      method: "GET"
+      url: "/get"
+      headers:
+        X-Baseline: "true"
+        X-Measurement: "baseline"
+      params:
+        baseline_test: "true"
+    assert:
+      status_code: 200
+      response_time_ms:
+        max: 300
+    capture:
+      baseline_time: "response_time_ms"
+
+  - name: "Performance with additional processing"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Baseline: "false"
+        X-Measurement: "with_processing"
+      body:
+        baseline_test: "false"
+        additional_processing: "true"
+        complex_data:
+          items: ["{{$faker.word}}", "{{$faker.word}}", "{{$faker.word}}"]
+          metadata: "{{$faker.lorem.paragraph}}"
+    assert:
+      status_code: 200
+      response_time_ms:
+        max: 600  # Allow more time for processing
+        warning_threshold: 400
+    capture:
+      processing_time: "response_time_ms"
+      time_difference: "{{response_time_ms - baseline_time}}"
+
+  # 12. Performance Summary and Analysis
+  - name: "Collect performance test results"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Summary: "performance_analysis"
+      body:
+        test_summary: "performance_response_time_comprehensive"
+        test_id: "{{performance_test_id}}"
+        measured_times:
+          fast_endpoint: "{{fast_response_time}}"
+          normal_endpoint: "{{normal_response_time}}"
+          slow_endpoint: "{{slow_response_time}}"
+          small_payload: "{{small_payload_time}}"
+          medium_payload: "{{medium_payload_time}}"
+          large_payload: "{{large_payload_time}}"
+          db_read: "{{db_read_time}}"
+          db_write: "{{db_write_time}}"
+          error_handling: "{{error_response_time}}"
+          near_timeout: "{{near_timeout_time}}"
+          baseline: "{{baseline_time}}"
+          with_processing: "{{processing_time}}"
+        performance_thresholds:
+          fast_max: "{{fast_threshold}}"
+          normal_max: "{{normal_threshold}}"
+          slow_max: "{{slow_threshold}}"
+          warning: "{{warning_threshold}}"
+        test_patterns:
+          - "response_time_assertions"
+          - "load_testing"
+          - "throughput_testing"
+          - "payload_size_impact"
+          - "database_operations"
+          - "api_chain_performance"
+          - "error_performance"
+          - "timeout_edge_cases"
+          - "performance_comparison"
+        total_performance_tests: 12
+    assert:
+      status_code: 200
+      body:
+        json:
+          test_summary: { equals: "performance_response_time_comprehensive" }
+          total_performance_tests: { equals: 12 }
+    capture:
+      performance_metrics: "body.json"
+      response_time_data: "body.json.measured_times"

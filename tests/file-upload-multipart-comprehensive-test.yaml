@@ -1,0 +1,399 @@
+suite_name: "File Upload and Multipart Forms Comprehensive Testing"
+node_id: "file-upload-multipart-test"
+description: "Comprehensive testing of file upload capabilities, multipart form data, different content types, and file handling scenarios"
+base_url: "{{httpbin_url}}"
+
+metadata:
+  priority: "high"
+  tags: ["file-upload", "multipart", "forms", "content-types", "binary"]
+  estimated_duration_ms: 15000
+
+variables:
+  upload_test_id: "upload-{{$faker.string.uuid}}"
+  test_filename: "test-document.txt"
+  test_file_content: "This is test file content for upload testing"
+
+exports: ["upload_results", "multipart_data", "file_handling_status"]
+
+steps:
+  # 1. Basic Text File Upload Simulation
+  - name: "Simulate text file upload"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "multipart/form-data"
+        X-Upload-Test: "text_file"
+        X-File-Type: "text/plain"
+      body:
+        # Note: httpbin doesn't actually handle file uploads, but we're testing the pattern
+        file_content: "{{test_file_content}}"
+        filename: "{{test_filename}}"
+        file_type: "text/plain"
+        upload_type: "text_file"
+    assert:
+      status_code: 200
+      body:
+        json:
+          filename: { equals: "{{test_filename}}" }
+          upload_type: { equals: "text_file" }
+    capture:
+      text_upload_result: "success"
+
+  # 2. JSON File Upload Simulation
+  - name: "Simulate JSON file upload"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "multipart/form-data"
+        X-Upload-Test: "json_file"
+        X-File-Type: "application/json"
+      body:
+        file_content: '{"name": "test", "id": 123, "active": true}'
+        filename: "data.json"
+        file_type: "application/json"
+        upload_type: "json_file"
+        metadata:
+          uploader: "{{$faker.person.fullName}}"
+          upload_timestamp: "{{$faker.date.recent}}"
+    assert:
+      status_code: 200
+      body:
+        json:
+          filename: { equals: "data.json" }
+          file_type: { equals: "application/json" }
+    capture:
+      json_upload_result: "success"
+
+  # 3. Binary File Upload Simulation
+  - name: "Simulate binary file upload"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "multipart/form-data"
+        X-Upload-Test: "binary_file"
+        X-File-Type: "application/octet-stream"
+      body:
+        file_content: "{{$faker.string.hexadecimal({ length: 100 })}}"  # Simulate binary data
+        filename: "binary_data.bin"
+        file_type: "application/octet-stream"
+        upload_type: "binary_file"
+        file_size: 1024
+    assert:
+      status_code: 200
+      body:
+        json:
+          upload_type: { equals: "binary_file" }
+          file_size: { equals: 1024 }
+    capture:
+      binary_upload_result: "success"
+
+  # 4. Image File Upload Simulation
+  - name: "Simulate image file upload"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "multipart/form-data"
+        X-Upload-Test: "image_file"
+        X-File-Type: "image/jpeg"
+      body:
+        # Simulate image file metadata
+        filename: "profile_picture.jpg"
+        file_type: "image/jpeg"
+        upload_type: "image_file"
+        image_metadata:
+          width: 800
+          height: 600
+          quality: "high"
+          format: "JPEG"
+        alt_text: "Profile picture for user"
+    assert:
+      status_code: 200
+      body:
+        json:
+          file_type: { equals: "image/jpeg" }
+          image_metadata:
+            width: { equals: 800 }
+            height: { equals: 600 }
+    capture:
+      image_upload_result: "success"
+
+  # 5. Multiple Files Upload
+  - name: "Simulate multiple files upload"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "multipart/form-data"
+        X-Upload-Test: "multiple_files"
+        X-Batch-Upload: "true"
+      body:
+        files:
+          - filename: "document1.pdf"
+            file_type: "application/pdf"
+            file_size: 2048
+          - filename: "image1.png"
+            file_type: "image/png"
+            file_size: 1024
+          - filename: "data.csv"
+            file_type: "text/csv"
+            file_size: 512
+        upload_type: "multiple_files"
+        batch_id: "{{upload_test_id}}"
+        total_files: 3
+    assert:
+      status_code: 200
+      body:
+        json:
+          upload_type: { equals: "multiple_files" }
+          total_files: { equals: 3 }
+          files: { length: 3 }
+    capture:
+      multiple_upload_result: "success"
+
+  # 6. Form Data with Mixed Content
+  - name: "Mixed form data with file and text fields"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "multipart/form-data"
+        X-Upload-Test: "mixed_form"
+      body:
+        # Text fields
+        user_id: "12345"
+        username: "{{$faker.internet.userName}}"
+        email: "{{$faker.internet.email}}"
+        description: "{{$faker.lorem.paragraph}}"
+
+        # File field
+        attachment:
+          filename: "report.xlsx"
+          file_type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+          file_size: 4096
+
+        # Additional metadata
+        form_type: "mixed_content"
+        submission_time: "{{$faker.date.recent}}"
+        priority: "high"
+    assert:
+      status_code: 200
+      body:
+        json:
+          user_id: { equals: "12345" }
+          form_type: { equals: "mixed_content" }
+          attachment:
+            filename: { equals: "report.xlsx" }
+    capture:
+      mixed_form_result: "success"
+
+  # 7. Large File Upload Simulation
+  - name: "Simulate large file upload"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "multipart/form-data"
+        X-Upload-Test: "large_file"
+        X-File-Size: "large"
+      body:
+        filename: "large_video.mp4"
+        file_type: "video/mp4"
+        file_size: 104857600  # 100MB
+        upload_type: "large_file"
+        chunk_upload: false
+        compression: "none"
+        video_metadata:
+          duration: "00:05:30"
+          resolution: "1920x1080"
+          codec: "H.264"
+    assert:
+      status_code: 200
+      body:
+        json:
+          upload_type: { equals: "large_file" }
+          file_size: { min: 100000000 }  # At least 100MB
+    capture:
+      large_file_result: "success"
+
+  # 8. Chunked Upload Simulation
+  - name: "Simulate chunked upload process"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "multipart/form-data"
+        X-Upload-Test: "chunked_upload"
+        X-Chunk-Number: "1"
+        X-Total-Chunks: "3"
+      body:
+        filename: "large_document.pdf"
+        chunk_number: 1
+        total_chunks: 3
+        chunk_size: 1048576  # 1MB chunks
+        upload_id: "{{upload_test_id}}"
+        chunk_data: "{{$faker.string.hexadecimal({ length: 200 })}}"
+        upload_type: "chunked"
+    assert:
+      status_code: 200
+      body:
+        json:
+          chunk_number: { equals: 1 }
+          total_chunks: { equals: 3 }
+    capture:
+      chunked_upload_result: "chunk_1_success"
+
+  # 9. File Upload with Validation
+  - name: "File upload with validation rules"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "multipart/form-data"
+        X-Upload-Test: "validated_upload"
+        X-Validation-Required: "true"
+      body:
+        filename: "validated_document.docx"
+        file_type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        file_size: 2048
+        upload_type: "validated"
+        validation_rules:
+          max_size: 5242880  # 5MB
+          allowed_types: ["docx", "pdf", "txt"]
+          virus_scan: true
+          content_check: true
+        uploader_info:
+          user_id: "user_123"
+          permissions: ["upload", "modify"]
+    assert:
+      status_code: 200
+      body:
+        json:
+          upload_type: { equals: "validated" }
+          validation_rules:
+            max_size: { equals: 5242880 }
+            virus_scan: { equals: true }
+    capture:
+      validated_upload_result: "validation_passed"
+
+  # 10. File Upload Error Scenarios
+  - name: "Test file upload error handling"
+    request:
+      method: "POST"
+      url: "/status/413"  # Payload Too Large
+      headers:
+        Content-Type: "multipart/form-data"
+        X-Upload-Test: "error_scenario"
+        X-Expected-Error: "file_too_large"
+      body:
+        filename: "oversized_file.zip"
+        file_size: 999999999  # Very large file
+        upload_type: "error_test"
+        error_scenario: "file_too_large"
+    scenarios:
+      - condition: "status_code == `413`"
+        then:
+          assert:
+            status_code: 413
+          capture:
+            error_upload_result: "file_too_large_error"
+
+      - condition: "status_code == `200`"
+        then:
+          assert:
+            status_code: 200
+          capture:
+            error_upload_result: "unexpected_success"
+
+  # 11. Resume Upload Functionality
+  - name: "Test upload resume functionality"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "multipart/form-data"
+        X-Upload-Test: "resume_upload"
+        X-Resume: "true"
+        X-Offset: "1048576"  # Resume from 1MB
+      body:
+        filename: "resumed_file.mov"
+        file_type: "video/quicktime"
+        upload_id: "{{upload_test_id}}"
+        resume_offset: 1048576
+        remaining_size: 5242880
+        upload_type: "resumable"
+        session_id: "session_{{$faker.string.uuid}}"
+    assert:
+      status_code: 200
+      body:
+        json:
+          upload_type: { equals: "resumable" }
+          resume_offset: { equals: 1048576 }
+    capture:
+      resume_upload_result: "resume_successful"
+
+  # 12. Final Upload Summary
+  - name: "Collect file upload test results"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Summary: "upload_testing_complete"
+      body:
+        test_summary: "file_upload_multipart_comprehensive"
+        test_id: "{{upload_test_id}}"
+        upload_scenarios_tested:
+          - "text_file_upload"
+          - "json_file_upload"
+          - "binary_file_upload"
+          - "image_file_upload"
+          - "multiple_files_upload"
+          - "mixed_form_data"
+          - "large_file_upload"
+          - "chunked_upload"
+          - "validated_upload"
+          - "error_scenarios"
+          - "resume_upload"
+        upload_results:
+          text_upload: "{{text_upload_result}}"
+          json_upload: "{{json_upload_result}}"
+          binary_upload: "{{binary_upload_result}}"
+          image_upload: "{{image_upload_result}}"
+          multiple_upload: "{{multiple_upload_result}}"
+          mixed_form: "{{mixed_form_result}}"
+          large_file: "{{large_file_result}}"
+          chunked_upload: "{{chunked_upload_result}}"
+          validated_upload: "{{validated_upload_result}}"
+          resume_upload: "{{resume_upload_result}}"
+        content_types_tested:
+          - "text/plain"
+          - "application/json"
+          - "application/octet-stream"
+          - "image/jpeg"
+          - "application/pdf"
+          - "video/mp4"
+          - "multipart/form-data"
+        total_upload_tests: 12
+        test_patterns:
+          - "single_file_upload"
+          - "multiple_file_upload"
+          - "large_file_handling"
+          - "chunked_upload_process"
+          - "upload_validation"
+          - "error_handling"
+          - "resume_functionality"
+    assert:
+      status_code: 200
+      body:
+        json:
+          test_summary: { equals: "file_upload_multipart_comprehensive" }
+          total_upload_tests: { equals: 12 }
+          upload_scenarios_tested: { length: 11 }
+    capture:
+      upload_results: "body.json"
+      multipart_data: "body.json.upload_results"
+      file_handling_status: "body.json.upload_scenarios_tested"

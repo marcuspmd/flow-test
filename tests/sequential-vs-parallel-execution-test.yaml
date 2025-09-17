@@ -1,0 +1,301 @@
+suite_name: "Sequential vs Parallel Execution Comparison"
+node_id: "sequential-parallel-comparison"
+description: "Test suite designed to demonstrate differences between sequential and parallel execution modes"
+base_url: "{{httpbin_url}}"
+
+metadata:
+  priority: "medium"
+  tags: ["execution-mode", "sequential", "parallel", "comparison", "timing"]
+  estimated_duration_ms: 12000
+  execution_mode: "{{execution_mode || 'sequential'}}"
+
+variables:
+  execution_test_id: "exec-{{$faker.string.uuid}}"
+  test_delay: 1  # 1 second delay per request
+  concurrent_requests: 5
+  load_test_range: [1, 2, 3, 4, 5]
+
+exports: ["execution_results", "timing_data", "mode_comparison"]
+
+steps:
+  # 1. Sequential Test Pattern - These should run one after another
+  - name: "Sequential request 1"
+    request:
+      method: "GET"
+      url: "/delay/{{test_delay}}"
+      headers:
+        X-Execution-Mode: "{{execution_mode}}"
+        X-Request-Number: "1"
+        X-Sequential-Test: "true"
+    assert:
+      status_code: 200
+      response_time_ms:
+        min: 900  # Should take at least 1 second due to delay
+        max: 2000
+    capture:
+      seq_request_1_time: "response_time_ms"
+      seq_request_1_start: "{{$faker.date.recent}}"
+
+  - name: "Sequential request 2"
+    request:
+      method: "GET"
+      url: "/delay/{{test_delay}}"
+      headers:
+        X-Execution-Mode: "{{execution_mode}}"
+        X-Request-Number: "2"
+        X-Sequential-Test: "true"
+    assert:
+      status_code: 200
+      response_time_ms:
+        min: 900
+        max: 2000
+    capture:
+      seq_request_2_time: "response_time_ms"
+
+  - name: "Sequential request 3"
+    request:
+      method: "GET"
+      url: "/delay/{{test_delay}}"
+      headers:
+        X-Execution-Mode: "{{execution_mode}}"
+        X-Request-Number: "3"
+        X-Sequential-Test: "true"
+    assert:
+      status_code: 200
+      response_time_ms:
+        min: 900
+        max: 2000
+    capture:
+      seq_request_3_time: "response_time_ms"
+
+  # 2. Parallel-Ready Test Pattern - These can run concurrently
+  - name: "Parallel-ready request 1"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Execution-Mode: "{{execution_mode}}"
+        X-Request-Number: "1"
+        X-Parallel-Test: "true"
+      body:
+        request_id: 1
+        execution_mode: "{{execution_mode}}"
+        can_run_parallel: true
+        test_data: "parallel_request_1"
+    assert:
+      status_code: 200
+      body:
+        json:
+          request_id: { equals: 1 }
+    capture:
+      par_request_1_time: "response_time_ms"
+    metadata:
+      can_run_parallel: true
+
+  - name: "Parallel-ready request 2"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Execution-Mode: "{{execution_mode}}"
+        X-Request-Number: "2"
+        X-Parallel-Test: "true"
+      body:
+        request_id: 2
+        execution_mode: "{{execution_mode}}"
+        can_run_parallel: true
+        test_data: "parallel_request_2"
+    assert:
+      status_code: 200
+      body:
+        json:
+          request_id: { equals: 2 }
+    capture:
+      par_request_2_time: "response_time_ms"
+    metadata:
+      can_run_parallel: true
+
+  - name: "Parallel-ready request 3"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Execution-Mode: "{{execution_mode}}"
+        X-Request-Number: "3"
+        X-Parallel-Test: "true"
+      body:
+        request_id: 3
+        execution_mode: "{{execution_mode}}"
+        can_run_parallel: true
+        test_data: "parallel_request_3"
+    assert:
+      status_code: 200
+      body:
+        json:
+          request_id: { equals: 3 }
+    capture:
+      par_request_3_time: "response_time_ms"
+    metadata:
+      can_run_parallel: true
+
+  # 3. Mixed Execution Pattern
+  - name: "Fast operation for timing comparison"
+    request:
+      method: "GET"
+      url: "/get"
+      headers:
+        X-Execution-Mode: "{{execution_mode}}"
+        X-Fast-Operation: "true"
+      params:
+        timing_test: "true"
+        fast_request: "true"
+    assert:
+      status_code: 200
+      response_time_ms:
+        max: 500  # Should be fast
+    capture:
+      fast_operation_time: "response_time_ms"
+
+  # 4. Load Testing Pattern for Parallel Execution
+  - name: "Load test request batch"
+    iterate:
+      over: "{{load_test_range}}"
+      as: "load_request_id"
+    request:
+      method: "GET"
+      url: "/get"
+      headers:
+        X-Execution-Mode: "{{execution_mode}}"
+        X-Load-Test: "true"
+        X-Batch-Request-ID: "{{load_request_id}}"
+      params:
+        load_test: "true"
+        request_id: "{{load_request_id}}"
+        execution_mode: "{{execution_mode}}"
+    assert:
+      status_code: 200
+      body:
+        args:
+          request_id: { equals: "{{load_request_id}}" }
+    capture:
+      load_request_time: "response_time_ms"
+    metadata:
+      can_run_parallel: true
+
+  # 5. Dependency Chain - Must Run Sequentially
+  - name: "Dependency step 1 - Setup"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Dependency-Chain: "step_1"
+        X-Execution-Mode: "{{execution_mode}}"
+      body:
+        operation: "setup"
+        chain_step: 1
+        prepare_data: true
+    assert:
+      status_code: 200
+    capture:
+      setup_data: "body.json.chain_step"
+      dependency_step_1_time: "response_time_ms"
+
+  - name: "Dependency step 2 - Process"
+    request:
+      method: "PUT"
+      url: "/put"
+      headers:
+        Content-Type: "application/json"
+        X-Dependency-Chain: "step_2"
+        X-Depends-On: "{{setup_data}}"
+        X-Execution-Mode: "{{execution_mode}}"
+      body:
+        operation: "process"
+        chain_step: 2
+        depends_on: "{{setup_data}}"
+        process_data: true
+    assert:
+      status_code: 200
+      body:
+        json:
+          depends_on: { equals: "{{setup_data}}" }
+    capture:
+      processed_data: "body.json.chain_step"
+      dependency_step_2_time: "response_time_ms"
+
+  - name: "Dependency step 3 - Finalize"
+    request:
+      method: "PATCH"
+      url: "/patch"
+      headers:
+        Content-Type: "application/json"
+        X-Dependency-Chain: "step_3"
+        X-Depends-On: "{{processed_data}}"
+        X-Execution-Mode: "{{execution_mode}}"
+      body:
+        operation: "finalize"
+        chain_step: 3
+        depends_on: "{{processed_data}}"
+        finalize_data: true
+    assert:
+      status_code: 200
+    capture:
+      finalized_data: "body.json"
+      dependency_step_3_time: "response_time_ms"
+
+  # 6. Execution Summary and Analysis
+  - name: "Collect execution timing analysis"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Summary: "execution_analysis"
+        X-Execution-Mode: "{{execution_mode}}"
+      body:
+        test_summary: "sequential_vs_parallel_execution"
+        test_id: "{{execution_test_id}}"
+        execution_mode: "{{execution_mode}}"
+        timing_data:
+          sequential_requests:
+            request_1: "{{seq_request_1_time}}"
+            request_2: "{{seq_request_2_time}}"
+            request_3: "{{seq_request_3_time}}"
+            total_sequential: "{{seq_request_1_time + seq_request_2_time + seq_request_3_time}}"
+          parallel_ready_requests:
+            request_1: "{{par_request_1_time}}"
+            request_2: "{{par_request_2_time}}"
+            request_3: "{{par_request_3_time}}"
+            total_parallel_ready: "{{par_request_1_time + par_request_2_time + par_request_3_time}}"
+          dependency_chain:
+            step_1: "{{dependency_step_1_time}}"
+            step_2: "{{dependency_step_2_time}}"
+            step_3: "{{dependency_step_3_time}}"
+            total_chain: "{{dependency_step_1_time + dependency_step_2_time + dependency_step_3_time}}"
+          fast_operation: "{{fast_operation_time}}"
+        execution_patterns:
+          - "sequential_delayed_requests"
+          - "parallel_ready_operations"
+          - "load_test_batch"
+          - "dependency_chain"
+          - "timing_comparison"
+        expected_behavior:
+          sequential_mode: "All requests run one after another, total time = sum of individual times"
+          parallel_mode: "Parallel-ready requests run concurrently, dependency chain still sequential"
+        performance_notes:
+          sequential_total_min: "{{(seq_request_1_time + seq_request_2_time + seq_request_3_time) / 1000}} seconds"
+          parallel_potential_savings: "In parallel mode, some operations can overlap"
+    assert:
+      status_code: 200
+      body:
+        json:
+          test_summary: { equals: "sequential_vs_parallel_execution" }
+          execution_mode: { equals: "{{execution_mode}}" }
+    capture:
+      execution_results: "body.json"
+      timing_data: "body.json.timing_data"
+      mode_comparison: "body.json.expected_behavior"

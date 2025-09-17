@@ -1,0 +1,379 @@
+suite_name: "Advanced Retry Patterns and Logic Testing"
+node_id: "advanced-retry-patterns"
+description: "Comprehensive testing of all retry mechanisms including backoff strategies, conditional retries, and timeout handling"
+base_url: "{{httpbin_url}}"
+
+metadata:
+  priority: "high"
+  tags: ["retry", "backoff", "timeout", "resilience", "error-handling"]
+  estimated_duration_ms: 20000
+
+variables:
+  retry_test_id: "retry-{{$faker.string.uuid}}"
+  max_retries: 3
+  base_delay: 1000
+
+exports: ["retry_results", "backoff_measurements", "timeout_data"]
+
+steps:
+  # 1. Exponential Backoff Retry
+  - name: "Test exponential backoff retry pattern"
+    request:
+      method: "GET"
+      url: "/status/503"  # Service Unavailable - good for retry testing
+      headers:
+        X-Retry-Test: "exponential_backoff"
+        X-Test-ID: "{{retry_test_id}}"
+    metadata:
+      retry:
+        max_attempts: 3
+        delay_ms: 1000
+        backoff: "exponential"  # 1s, 2s, 4s progression
+        retry_on:
+          - status_code: 503
+          - status_code: 502
+          - status_code: 429
+    # This will ultimately fail, but we test the retry behavior
+    scenarios:
+      - condition: "status_code == `503`"
+        then:
+          assert:
+            status_code: 503
+          capture:
+            retry_attempt_result: "exponential_backoff_failed"
+
+  # 2. Linear Backoff Retry
+  - name: "Test linear backoff retry pattern"
+    request:
+      method: "GET"
+      url: "/status/502"  # Bad Gateway
+      headers:
+        X-Retry-Test: "linear_backoff"
+        X-Test-ID: "{{retry_test_id}}"
+    metadata:
+      retry:
+        max_attempts: 4
+        delay_ms: 800
+        backoff: "linear"  # 800ms, 1600ms, 2400ms, 3200ms
+        retry_on:
+          - status_code: 502
+          - status_code: 503
+          - status_code: 504
+    scenarios:
+      - condition: "status_code == `502`"
+        then:
+          assert:
+            status_code: 502
+          capture:
+            linear_retry_result: "linear_backoff_attempted"
+
+  # 3. Fixed Delay Retry
+  - name: "Test fixed delay retry pattern"
+    request:
+      method: "GET"
+      url: "/status/429"  # Too Many Requests
+      headers:
+        X-Retry-Test: "fixed_delay"
+        X-Test-ID: "{{retry_test_id}}"
+        X-Rate-Limit: "exceeded"
+    metadata:
+      retry:
+        max_attempts: 3
+        delay_ms: 1500
+        backoff: "fixed"  # Always 1.5s between retries
+        retry_on:
+          - status_code: 429
+    scenarios:
+      - condition: "status_code == `429`"
+        then:
+          assert:
+            status_code: 429
+            headers:
+              # httpbin might not return these, but testing the pattern
+              "content-type": { exists: true }
+          capture:
+            fixed_delay_result: "rate_limit_hit"
+
+  # 4. Conditional Retry on Specific Errors Only
+  - name: "Conditional retry - only specific status codes"
+    request:
+      method: "POST"
+      url: "/status/500"  # Internal Server Error
+      headers:
+        Content-Type: "application/json"
+        X-Retry-Test: "conditional_specific"
+      body:
+        operation: "sensitive_operation"
+        retry_policy: "server_errors_only"
+    metadata:
+      retry:
+        max_attempts: 2
+        delay_ms: 1000
+        backoff: "exponential"
+        retry_on:
+          - status_code: 500  # Only retry on 500
+          - status_code: 502  # And 502
+          # Note: NOT retrying on 4xx errors
+    scenarios:
+      - condition: "status_code == `500`"
+        then:
+          assert:
+            status_code: 500
+          capture:
+            server_error_retry: "attempted"
+
+  # 5. No Retry on Client Errors (4xx)
+  - name: "Test no retry on client errors"
+    request:
+      method: "GET"
+      url: "/status/400"  # Bad Request - should NOT retry
+      headers:
+        X-Retry-Test: "no_retry_4xx"
+        X-Expected-Behavior: "fail_fast"
+    metadata:
+      retry:
+        max_attempts: 3
+        delay_ms: 500
+        retry_on:
+          - status_code: 500
+          - status_code: 502
+          - status_code: 503
+          # 400 is NOT in retry list - should fail immediately
+    assert:
+      status_code: 400  # Should get 400 immediately, no retries
+    capture:
+      client_error_result: "no_retry_performed"
+
+  # 6. Successful Retry Simulation (using 200 after retries)
+  - name: "Simulate successful operation after retries"
+    request:
+      method: "GET"
+      url: "/get"  # This will succeed immediately
+      headers:
+        X-Retry-Test: "eventual_success"
+        X-Simulation: "success_after_retries"
+      params:
+        retry_test: "true"
+        operation: "eventually_successful"
+    metadata:
+      retry:
+        max_attempts: 3
+        delay_ms: 500
+        backoff: "linear"
+        retry_on:
+          - status_code: 500
+          - status_code: 503
+    assert:
+      status_code: 200  # Should succeed on first try
+      body:
+        args:
+          retry_test: { equals: "true" }
+    capture:
+      success_without_retry: "immediate_success"
+
+  # 7. Timeout with Retry Combination
+  - name: "Test retry with timeout constraints"
+    request:
+      method: "GET"
+      url: "/delay/1"  # 1 second delay from httpbin
+      headers:
+        X-Retry-Test: "timeout_retry_combo"
+        X-Timeout: "short"
+    metadata:
+      timeout: 500  # Very short timeout - should timeout
+      retry:
+        max_attempts: 2
+        delay_ms: 200
+        backoff: "fixed"
+        retry_on:
+          - timeout: true
+          - status_code: 500
+    # This will likely timeout and retry
+    scenarios:
+      - condition: "status_code == `200`"
+        then:
+          assert:
+            status_code: 200
+          capture:
+            timeout_retry_success: "completed_within_timeout"
+
+      - condition: "status_code != `200`"
+        then:
+          capture:
+            timeout_retry_failure: "timeout_exceeded"
+
+  # 8. High-Frequency Retry Testing
+  - name: "High frequency retry testing"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Retry-Test: "high_frequency"
+      body:
+        test_type: "high_frequency_retry"
+        payload_size: "small"
+        expected_retries: "{{max_retries}}"
+    metadata:
+      retry:
+        max_attempts: 5
+        delay_ms: 100  # Very short delay for high frequency
+        backoff: "exponential"
+        retry_on:
+          - status_code: 503
+          - status_code: 502
+    assert:
+      status_code: 200
+      body:
+        json:
+          test_type: { equals: "high_frequency_retry" }
+    capture:
+      high_freq_result: "body.json"
+
+  # 9. Complex Retry Logic with Multiple Conditions
+  - name: "Complex multi-condition retry logic"
+    request:
+      method: "PUT"
+      url: "/put"
+      headers:
+        Content-Type: "application/json"
+        X-Retry-Test: "multi_condition"
+        X-Operation: "critical_update"
+      body:
+        operation: "critical_data_update"
+        retry_policy: "complex"
+        conditions:
+          - "server_errors"
+          - "rate_limits"
+          - "gateway_issues"
+    metadata:
+      retry:
+        max_attempts: 4
+        delay_ms: 750
+        backoff: "exponential"
+        retry_on:
+          - status_code: 429  # Rate limit
+          - status_code: 500  # Server error
+          - status_code: 502  # Bad gateway
+          - status_code: 503  # Service unavailable
+          - status_code: 504  # Gateway timeout
+    assert:
+      status_code: 200
+      body:
+        json:
+          operation: { equals: "critical_data_update" }
+    capture:
+      complex_retry_result: "body.json"
+
+  # 10. Retry with Performance Tracking
+  - name: "Retry with response time tracking"
+    request:
+      method: "GET"
+      url: "/get"
+      headers:
+        X-Retry-Test: "performance_tracking"
+        X-Performance: "measure_retry_impact"
+      params:
+        track_performance: "true"
+        retry_test: "timing"
+    metadata:
+      retry:
+        max_attempts: 3
+        delay_ms: 1000
+        backoff: "linear"
+        retry_on:
+          - status_code: 500
+      performance_critical: true
+    assert:
+      status_code: 200
+      response_time_ms:
+        max: 2000  # Should complete within 2 seconds
+        warning_threshold: 1000
+    capture:
+      performance_retry_data: "body.args"
+      retry_response_time: "response_time_ms"
+
+  # 11. Retry Chain Testing (Multiple Sequential Retries)
+  - name: "First operation in retry chain"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Chain-Step: "1"
+      body:
+        chain_operation: "step_1"
+        prepare_for_next: true
+    metadata:
+      retry:
+        max_attempts: 2
+        delay_ms: 500
+        retry_on:
+          - status_code: 500
+    assert:
+      status_code: 200
+    capture:
+      chain_step_1: "body.json.chain_operation"
+
+  - name: "Second operation in retry chain"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Chain-Step: "2"
+        X-Previous-Step: "{{chain_step_1}}"
+      body:
+        chain_operation: "step_2"
+        depends_on: "{{chain_step_1}}"
+        final_operation: true
+    metadata:
+      retry:
+        max_attempts: 3
+        delay_ms: 600
+        backoff: "exponential"
+        retry_on:
+          - status_code: 500
+          - status_code: 503
+    assert:
+      status_code: 200
+      body:
+        json:
+          depends_on: { equals: "{{chain_step_1}}" }
+    capture:
+      chain_step_2: "body.json"
+
+  # 12. Final Summary and Results Collection
+  - name: "Collect retry testing results"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Summary: "retry_testing_complete"
+      body:
+        test_summary: "advanced_retry_patterns"
+        test_id: "{{retry_test_id}}"
+        patterns_tested:
+          - "exponential_backoff"
+          - "linear_backoff"
+          - "fixed_delay"
+          - "conditional_retry"
+          - "no_retry_4xx"
+          - "timeout_retry_combo"
+          - "high_frequency"
+          - "multi_condition"
+          - "performance_tracking"
+          - "retry_chain"
+        total_retry_tests: 12
+        max_retries_configured: "{{max_retries}}"
+        base_delay_ms: "{{base_delay}}"
+    assert:
+      status_code: 200
+      body:
+        json:
+          test_summary: { equals: "advanced_retry_patterns" }
+          total_retry_tests: { equals: 12 }
+    capture:
+      retry_results: "body.json"
+      backoff_measurements: "body.json.patterns_tested"

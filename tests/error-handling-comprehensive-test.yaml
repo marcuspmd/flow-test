@@ -1,0 +1,513 @@
+suite_name: "Error Handling Comprehensive Testing"
+node_id: "error-handling-test"
+description: "Comprehensive testing of error handling patterns including continue_on_failure, timeout handling, network errors, and graceful degradation"
+base_url: "{{httpbin_url}}"
+
+metadata:
+  priority: "high"
+  tags: ["error-handling", "timeouts", "failures", "resilience", "graceful-degradation"]
+  estimated_duration_ms: 25000
+
+variables:
+  error_test_id: "error-{{$faker.string.uuid}}"
+  timeout_threshold: 5000
+  retry_attempts: 3
+
+exports: ["error_handling_results", "failure_scenarios", "recovery_data"]
+
+steps:
+  # 1. Continue on Failure Testing
+  - name: "Test step that will fail but should continue"
+    request:
+      method: "GET"
+      url: "/status/500"  # Internal Server Error
+      headers:
+        X-Error-Test: "continue_on_failure"
+        X-Expected-Failure: "true"
+    scenarios:
+      - condition: "status_code == `500`"
+        then:
+          assert:
+            status_code: 500
+          capture:
+            failure_step_result: "expected_failure"
+    metadata:
+      continue_on_failure: true
+      description: "This step should fail but not stop the suite"
+
+  - name: "Step after failure - should execute"
+    request:
+      method: "GET"
+      url: "/get"
+      headers:
+        X-Error-Test: "after_failure"
+        X-Previous-Failed: "true"
+      params:
+        recovery_test: "true"
+        after_failure: "true"
+    assert:
+      status_code: 200
+      body:
+        args:
+          recovery_test: { equals: "true" }
+    capture:
+      recovery_step_result: "executed_after_failure"
+
+  # 2. Timeout Error Handling
+  - name: "Test timeout handling"
+    request:
+      method: "GET"
+      url: "/delay/3"  # 3-second delay
+      headers:
+        X-Error-Test: "timeout_test"
+        X-Delay: "3_seconds"
+    metadata:
+      timeout: 2000  # 2-second timeout - should timeout
+      continue_on_failure: true
+    scenarios:
+      - condition: "response_time_ms > 2000"
+        then:
+          capture:
+            timeout_result: "timeout_occurred"
+
+      - condition: "response_time_ms <= 2000"
+        then:
+          assert:
+            status_code: 200
+          capture:
+            timeout_result: "completed_within_timeout"
+
+  # 3. HTTP Error Code Handling
+  - name: "Handle 400 Bad Request"
+    request:
+      method: "GET"
+      url: "/status/400"
+      headers:
+        X-Error-Test: "bad_request"
+        X-Client-Error: "400"
+    scenarios:
+      - condition: "status_code == `400`"
+        then:
+          assert:
+            status_code: 400
+          capture:
+            bad_request_result: "handled_400_error"
+
+  - name: "Handle 401 Unauthorized"
+    request:
+      method: "GET"
+      url: "/status/401"
+      headers:
+        X-Error-Test: "unauthorized"
+        X-Auth-Error: "401"
+    scenarios:
+      - condition: "status_code == `401`"
+        then:
+          assert:
+            status_code: 401
+          capture:
+            unauthorized_result: "handled_401_error"
+
+  - name: "Handle 403 Forbidden"
+    request:
+      method: "GET"
+      url: "/status/403"
+      headers:
+        X-Error-Test: "forbidden"
+        X-Permission-Error: "403"
+    scenarios:
+      - condition: "status_code == `403`"
+        then:
+          assert:
+            status_code: 403
+          capture:
+            forbidden_result: "handled_403_error"
+
+  - name: "Handle 404 Not Found"
+    request:
+      method: "GET"
+      url: "/status/404"
+      headers:
+        X-Error-Test: "not_found"
+        X-Resource-Error: "404"
+    scenarios:
+      - condition: "status_code == `404`"
+        then:
+          assert:
+            status_code: 404
+          capture:
+            not_found_result: "handled_404_error"
+
+  - name: "Handle 429 Too Many Requests"
+    request:
+      method: "GET"
+      url: "/status/429"
+      headers:
+        X-Error-Test: "rate_limit"
+        X-Rate-Limit-Error: "429"
+    scenarios:
+      - condition: "status_code == `429`"
+        then:
+          assert:
+            status_code: 429
+          capture:
+            rate_limit_result: "handled_429_error"
+
+  - name: "Handle 500 Internal Server Error"
+    request:
+      method: "GET"
+      url: "/status/500"
+      headers:
+        X-Error-Test: "server_error"
+        X-Server-Error: "500"
+    scenarios:
+      - condition: "status_code == `500`"
+        then:
+          assert:
+            status_code: 500
+          capture:
+            server_error_result: "handled_500_error"
+
+  - name: "Handle 502 Bad Gateway"
+    request:
+      method: "GET"
+      url: "/status/502"
+      headers:
+        X-Error-Test: "bad_gateway"
+        X-Gateway-Error: "502"
+    scenarios:
+      - condition: "status_code == `502`"
+        then:
+          assert:
+            status_code: 502
+          capture:
+            bad_gateway_result: "handled_502_error"
+
+  - name: "Handle 503 Service Unavailable"
+    request:
+      method: "GET"
+      url: "/status/503"
+      headers:
+        X-Error-Test: "service_unavailable"
+        X-Availability-Error: "503"
+    scenarios:
+      - condition: "status_code == `503`"
+        then:
+          assert:
+            status_code: 503
+          capture:
+            service_unavailable_result: "handled_503_error"
+
+  # 4. Error Recovery and Fallback
+  - name: "Primary service call (may fail)"
+    request:
+      method: "GET"
+      url: "/status/{{$faker.helpers.arrayElement(['200', '500'])}}"  # Random success/failure
+      headers:
+        X-Error-Test: "primary_service"
+        X-Fallback-Available: "true"
+    scenarios:
+      - condition: "status_code == `200`"
+        then:
+          assert:
+            status_code: 200
+          capture:
+            primary_service_result: "success"
+
+      - condition: "status_code == `500`"
+        then:
+          assert:
+            status_code: 500
+          capture:
+            primary_service_result: "failed"
+    metadata:
+      continue_on_failure: true
+
+  - name: "Fallback service call"
+    metadata:
+      skip: "{{primary_service_result}} === 'success'"
+      description: "Only run fallback if primary service failed"
+    request:
+      method: "GET"
+      url: "/get"  # Always succeeds
+      headers:
+        X-Error-Test: "fallback_service"
+        X-Primary-Failed: "true"
+      params:
+        fallback: "true"
+        primary_failed: "{{primary_service_result}}"
+    scenarios:
+      - condition: "status_code == `200`"
+        then:
+          assert:
+            status_code: 200
+          capture:
+            fallback_service_result: "fallback_success"
+
+  # 5. Graceful Degradation Testing
+  - name: "Enhanced service with degradation"
+    request:
+      method: "GET"
+      url: "/status/{{$faker.helpers.arrayElement(['200', '503'])}}"
+      headers:
+        X-Error-Test: "enhanced_service"
+        X-Degradation-Mode: "available"
+    scenarios:
+      - condition: "status_code == `200`"
+        then:
+          assert:
+            status_code: 200
+          capture:
+            service_mode: "full_features"
+
+      - condition: "status_code == `503`"
+        then:
+          assert:
+            status_code: 503
+          capture:
+            service_mode: "degraded"
+    metadata:
+      continue_on_failure: true
+
+  - name: "Basic service (degraded mode)"
+    metadata:
+      skip: "{{service_mode}} === 'full_features'"
+    request:
+      method: "GET"
+      url: "/get"
+      headers:
+        X-Error-Test: "basic_service"
+        X-Mode: "degraded"
+      params:
+        basic_mode: "true"
+        features: "limited"
+    scenarios:
+      - condition: "status_code == `200`"
+        then:
+          assert:
+            status_code: 200
+          capture:
+            degraded_result: "basic_service_available"
+
+  # 6. Chain Failure Recovery
+  - name: "Step 1 of chain"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Error-Test: "chain_step_1"
+      body:
+        step: 1
+        chain_id: "{{error_test_id}}"
+        operation: "initialize"
+    assert:
+      status_code: 200
+    capture:
+      chain_step_1_data: "body.json.step"
+
+  - name: "Step 2 of chain (may fail)"
+    request:
+      method: "GET"
+      url: "/status/{{$faker.helpers.arrayElement(['200', '500'])}}"
+      headers:
+        X-Error-Test: "chain_step_2"
+        X-Depends-On: "{{chain_step_1_data}}"
+    scenarios:
+      - condition: "status_code == `200`"
+        then:
+          assert:
+            status_code: 200
+          capture:
+            chain_step_2_result: "success"
+
+      - condition: "status_code == `500`"
+        then:
+          assert:
+            status_code: 500
+          capture:
+            chain_step_2_result: "failed"
+    metadata:
+      continue_on_failure: true
+
+  - name: "Step 3 with conditional logic"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Error-Test: "chain_step_3"
+        X-Previous-Result: "{{chain_step_2_result}}"
+      body:
+        step: 3
+        chain_id: "{{error_test_id}}"
+        previous_step_result: "{{chain_step_2_result}}"
+        operation: "{{chain_step_2_result === 'success' ? 'normal_processing' : 'error_recovery'}}"
+    assert:
+      status_code: 200
+      body:
+        json:
+          previous_step_result: { equals: "{{chain_step_2_result}}" }
+    capture:
+      chain_step_3_result: "body.json.operation"
+
+  # 7. Error Propagation and Capture
+  - name: "Service with detailed error info"
+    request:
+      method: "GET"
+      url: "/status/422"  # Unprocessable Entity
+      headers:
+        X-Error-Test: "detailed_error"
+        X-Error-Details: "validation_failed"
+    scenarios:
+      - condition: "status_code == `422`"
+        then:
+          assert:
+            status_code: 422
+          capture:
+            error_code: "422"
+            error_type: "validation_error"
+            error_message: "Unprocessable Entity"
+            error_details: "validation_failed"
+
+  # 8. Network-like Error Simulation
+  - name: "Simulate connection timeout"
+    request:
+      method: "GET"
+      url: "/delay/10"  # Very long delay
+      headers:
+        X-Error-Test: "connection_timeout"
+        X-Network-Error: "timeout"
+    metadata:
+      timeout: 3000  # 3-second timeout
+      continue_on_failure: true
+    scenarios:
+      - condition: "response_time_ms > 3000"
+        then:
+          capture:
+            network_error_type: "connection_timeout"
+
+      - condition: "response_time_ms <= 3000"
+        then:
+          capture:
+            network_error_type: "connection_success"
+
+  # 9. Cleanup After Errors
+  - name: "Setup that might fail"
+    request:
+      method: "POST"
+      url: "/status/{{$faker.helpers.arrayElement(['201', '500'])}}"
+      headers:
+        Content-Type: "application/json"
+        X-Error-Test: "setup_operation"
+      body:
+        operation: "setup"
+        resource_id: "{{error_test_id}}"
+    scenarios:
+      - condition: "status_code == `201`"
+        then:
+          assert:
+            status_code: 201
+          capture:
+            setup_result: "success"
+            cleanup_needed: true
+
+      - condition: "status_code == `500`"
+        then:
+          assert:
+            status_code: 500
+          capture:
+            setup_result: "failed"
+            cleanup_needed: false
+    metadata:
+      continue_on_failure: true
+
+  - name: "Cleanup resources"
+    metadata:
+      always_run: true
+      description: "Always cleanup, regardless of previous failures"
+    request:
+      method: "DELETE"
+      url: "/delete"
+      headers:
+        X-Error-Test: "cleanup"
+        X-Cleanup-Required: "{{cleanup_needed}}"
+        X-Resource-ID: "{{error_test_id}}"
+    scenarios:
+      - condition: "status_code == `200`"
+        then:
+          assert:
+            status_code: 200
+          capture:
+            cleanup_result: "completed"
+
+      - condition: "status_code != `200`"
+        then:
+          capture:
+            cleanup_result: "attempted"
+
+  # 10. Final Error Handling Summary
+  - name: "Collect error handling test results"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Summary: "error_handling_complete"
+      body:
+        test_summary: "error_handling_comprehensive"
+        test_id: "{{error_test_id}}"
+        error_scenarios_tested:
+          - "continue_on_failure"
+          - "timeout_handling"
+          - "http_error_codes"
+          - "error_recovery_fallback"
+          - "graceful_degradation"
+          - "chain_failure_recovery"
+          - "error_propagation"
+          - "network_errors"
+          - "cleanup_after_errors"
+        http_status_codes_handled:
+          - 400  # Bad Request
+          - 401  # Unauthorized
+          - 403  # Forbidden
+          - 404  # Not Found
+          - 422  # Unprocessable Entity
+          - 429  # Too Many Requests
+          - 500  # Internal Server Error
+          - 502  # Bad Gateway
+          - 503  # Service Unavailable
+        error_handling_results:
+          continue_after_failure: "{{recovery_step_result}}"
+          timeout_handling: "{{timeout_result}}"
+          bad_request: "{{bad_request_result}}"
+          unauthorized: "{{unauthorized_result}}"
+          forbidden: "{{forbidden_result}}"
+          not_found: "{{not_found_result}}"
+          rate_limit: "{{rate_limit_result}}"
+          server_error: "{{server_error_result}}"
+          bad_gateway: "{{bad_gateway_result}}"
+          service_unavailable: "{{service_unavailable_result}}"
+          primary_service: "{{primary_service_result}}"
+          fallback_service: "{{fallback_service_result}}"
+          degradation_mode: "{{service_mode}}"
+          chain_recovery: "{{chain_step_3_result}}"
+          cleanup_status: "{{cleanup_result}}"
+        recovery_patterns:
+          - "fallback_services"
+          - "graceful_degradation"
+          - "error_chain_recovery"
+          - "resource_cleanup"
+        total_error_tests: 10
+    assert:
+      status_code: 200
+      body:
+        json:
+          test_summary: { equals: "error_handling_comprehensive" }
+          total_error_tests: { equals: 10 }
+          error_scenarios_tested: { length: 9 }
+          http_status_codes_handled: { length: 9 }
+    capture:
+      error_handling_results: "body.json"
+      failure_scenarios: "body.json.error_scenarios_tested"
+      recovery_data: "body.json.recovery_patterns"

@@ -1,0 +1,468 @@
+suite_name: "Environment-Specific and Feature Flags Comprehensive Testing"
+node_id: "environment-feature-flags-test"
+description: "Comprehensive testing of environment-specific behaviors, feature flag integration, multi-environment configuration, and environment-based conditional execution"
+base_url: "{{httpbin_url}}"
+
+metadata:
+  priority: "high"
+  tags: ["environment", "feature-flags", "configuration", "multi-env", "conditional"]
+  estimated_duration_ms: 20000
+
+variables:
+  current_environment: "{{$env.NODE_ENV || 'development'}}"
+  test_environment: "{{$env.TEST_ENV || 'test'}}"
+  deployment_stage: "{{$env.DEPLOYMENT_STAGE || 'staging'}}"
+
+  # Feature flags from environment variables
+  feature_flags:
+    new_ui: "{{$env.FEATURE_NEW_UI || 'false'}}"
+    api_v2: "{{$env.FEATURE_API_V2 || 'false'}}"
+    advanced_analytics: "{{$env.FEATURE_ANALYTICS || 'false'}}"
+    beta_program: "{{$env.FEATURE_BETA || 'false'}}"
+    experimental_features: "{{$env.FEATURE_EXPERIMENTAL || 'false'}}"
+    debug_mode: "{{$env.FEATURE_DEBUG || 'false'}}"
+
+  # Environment-specific URLs
+  environment_urls:
+    development: "http://localhost:3000"
+    test: "http://localhost:8080"
+    staging: "https://staging-api.example.com"
+    production: "https://api.example.com"
+
+  # Environment-specific configurations
+  environment_config:
+    development:
+      timeout: 30000
+      retry_attempts: 3
+      debug_logging: true
+    test:
+      timeout: 10000
+      retry_attempts: 2
+      debug_logging: false
+    staging:
+      timeout: 15000
+      retry_attempts: 2
+      debug_logging: false
+    production:
+      timeout: 5000
+      retry_attempts: 1
+      debug_logging: false
+
+  env_test_id: "env-{{$faker.string.uuid}}"
+
+exports: ["environment_results", "feature_flag_data", "multi_env_config"]
+
+steps:
+  # 1. Environment Detection and Configuration
+  - name: "Detect current environment"
+    request:
+      method: "GET"
+      url: "/get"
+      headers:
+        X-Environment-Test: "detection"
+        X-Current-Env: "{{current_environment}}"
+        X-Test-Env: "{{test_environment}}"
+        X-Deployment-Stage: "{{deployment_stage}}"
+      params:
+        environment: "{{current_environment}}"
+        detect_env: "true"
+    assert:
+      status_code: 200
+      body:
+        args:
+          environment: { equals: "{{current_environment}}" }
+    capture:
+      detected_environment: "{{current_environment}}"
+      environment_detection_result: "success"
+
+  # 2. Development Environment Specific Tests
+  - name: "Development environment operations"
+    metadata:
+      skip: "{{current_environment}} !== 'development'"
+      description: "Only run in development environment"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Environment: "development"
+        X-Dev-Tools: "enabled"
+      body:
+        environment: "development"
+        dev_features:
+          hot_reload: true
+          debug_console: true
+          test_data_generation: true
+          mock_services: true
+        timeout: "{{environment_config.development.timeout}}"
+        retry_attempts: "{{environment_config.development.retry_attempts}}"
+    scenarios:
+      - condition: "status_code == `200`"
+        then:
+          assert:
+            status_code: 200
+            body:
+              json:
+                environment: { equals: "development" }
+          capture:
+            dev_environment_result: "development_features_enabled"
+
+  # 3. Test Environment Specific Tests
+  - name: "Test environment operations"
+    metadata:
+      skip: "{{test_environment}} !== 'test'"
+      description: "Only run in test environment"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Environment: "test"
+        X-Test-Mode: "enabled"
+      body:
+        environment: "test"
+        test_features:
+          automated_testing: true
+          data_isolation: true
+          test_fixtures: true
+          coverage_tracking: true
+        timeout: "{{environment_config.test.timeout}}"
+        retry_attempts: "{{environment_config.test.retry_attempts}}"
+    scenarios:
+      - condition: "status_code == `200`"
+        then:
+          assert:
+            status_code: 200
+          capture:
+            test_environment_result: "test_features_enabled"
+
+  # 4. Staging Environment Specific Tests
+  - name: "Staging environment operations"
+    metadata:
+      skip: "{{deployment_stage}} !== 'staging'"
+      description: "Only run in staging environment"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Environment: "staging"
+        X-Staging-Mode: "enabled"
+      body:
+        environment: "staging"
+        staging_features:
+          production_like_data: true
+          performance_monitoring: true
+          integration_testing: true
+          user_acceptance_testing: true
+        timeout: "{{environment_config.staging.timeout}}"
+        retry_attempts: "{{environment_config.staging.retry_attempts}}"
+    scenarios:
+      - condition: "status_code == `200`"
+        then:
+          assert:
+            status_code: 200
+          capture:
+            staging_environment_result: "staging_features_enabled"
+
+  # 5. Production Environment Specific Tests
+  - name: "Production environment operations"
+    metadata:
+      skip: "{{deployment_stage}} !== 'production'"
+      description: "Only run in production environment"
+    request:
+      method: "GET"  # Only safe operations in production
+      url: "/get"
+      headers:
+        X-Environment: "production"
+        X-Production-Mode: "enabled"
+        X-Read-Only: "true"
+      params:
+        environment: "production"
+        production_safety: "true"
+        read_only_operations: "true"
+    scenarios:
+      - condition: "status_code == `200`"
+        then:
+          assert:
+            status_code: 200
+            response_time_ms:
+              max: "{{environment_config.production.timeout}}"
+          capture:
+            production_environment_result: "production_safety_verified"
+
+  # 6. Feature Flag Testing
+  - name: "Test new UI feature flag"
+    metadata:
+      skip: "{{feature_flags.new_ui}} !== 'true'"
+      description: "Test new UI when feature flag is enabled"
+    request:
+      method: "GET"
+      url: "/get"
+      headers:
+        X-Feature-Flag: "new_ui"
+        X-Flag-Status: "{{feature_flags.new_ui}}"
+        X-Environment: "{{current_environment}}"
+      params:
+        feature: "new_ui"
+        enabled: "{{feature_flags.new_ui}}"
+        ui_version: "v2"
+    scenarios:
+      - condition: "status_code == `200`"
+        then:
+          assert:
+            status_code: 200
+          capture:
+            new_ui_feature_result: "new_ui_enabled"
+
+  - name: "Test API v2 feature flag"
+    metadata:
+      skip: "{{feature_flags.api_v2}} !== 'true'"
+      description: "Test API v2 when feature flag is enabled"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Feature-Flag: "api_v2"
+        X-API-Version: "v2"
+        X-Flag-Status: "{{feature_flags.api_v2}}"
+      body:
+        api_version: "v2"
+        feature: "api_v2"
+        enabled: "{{feature_flags.api_v2}}"
+        new_endpoints: true
+        enhanced_features: true
+    scenarios:
+      - condition: "status_code == `200`"
+        then:
+          assert:
+            status_code: 200
+          capture:
+            api_v2_feature_result: "api_v2_enabled"
+
+  - name: "Test advanced analytics feature flag"
+    metadata:
+      skip: "{{feature_flags.advanced_analytics}} !== 'true'"
+      description: "Test analytics when feature flag is enabled"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Feature-Flag: "advanced_analytics"
+        X-Analytics: "enabled"
+      body:
+        feature: "advanced_analytics"
+        enabled: "{{feature_flags.advanced_analytics}}"
+        analytics_level: "advanced"
+        tracking_enabled: true
+        metrics_collection: true
+    scenarios:
+      - condition: "status_code == `200`"
+        then:
+          assert:
+            status_code: 200
+          capture:
+            analytics_feature_result: "analytics_enabled"
+
+  # 7. Beta Program Feature Testing
+  - name: "Test beta program features"
+    metadata:
+      skip: "{{feature_flags.beta_program}} !== 'true'"
+      description: "Test beta features when user is in beta program"
+    request:
+      method: "GET"
+      url: "/get"
+      headers:
+        X-Beta-Program: "enabled"
+        X-User-Type: "beta_tester"
+        X-Feature-Flag: "beta_program"
+      params:
+        beta_access: "true"
+        beta_features: "enabled"
+        feature_preview: "true"
+    scenarios:
+      - condition: "status_code == `200`"
+        then:
+          assert:
+            status_code: 200
+          capture:
+            beta_program_result: "beta_access_granted"
+
+  # 8. Experimental Features Testing
+  - name: "Test experimental features"
+    metadata:
+      skip: "{{feature_flags.experimental_features}} !== 'true'"
+      description: "Test experimental features when flag is enabled"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Experimental: "true"
+        X-Feature-Flag: "experimental"
+        X-Warning: "experimental_feature"
+      body:
+        feature_type: "experimental"
+        enabled: "{{feature_flags.experimental_features}}"
+        warning: "This feature is experimental and may change"
+        stability: "unstable"
+        feedback_encouraged: true
+    scenarios:
+      - condition: "status_code == `200`"
+        then:
+          assert:
+            status_code: 200
+          capture:
+            experimental_feature_result: "experimental_enabled"
+
+  # 9. Debug Mode Feature Testing
+  - name: "Test debug mode features"
+    metadata:
+      skip: "{{feature_flags.debug_mode}} !== 'true'"
+      description: "Test debug features when debug mode is enabled"
+    request:
+      method: "GET"
+      url: "/get"
+      headers:
+        X-Debug-Mode: "enabled"
+        X-Verbose-Logging: "true"
+        X-Feature-Flag: "debug_mode"
+      params:
+        debug: "true"
+        verbose_output: "true"
+        debug_info: "enabled"
+        performance_metrics: "detailed"
+    scenarios:
+      - condition: "status_code == `200`"
+        then:
+          assert:
+            status_code: 200
+          capture:
+            debug_mode_result: "debug_features_enabled"
+
+  # 10. Multi-Environment Configuration Testing
+  - name: "Test environment-specific configuration"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Config-Test: "environment_specific"
+        X-Environment: "{{current_environment}}"
+      body:
+        environment: "{{current_environment}}"
+        config: "{{environment_config[current_environment]}}"
+        environment_url: "{{environment_urls[current_environment]}}"
+        test_id: "{{env_test_id}}"
+    assert:
+      status_code: 200
+      body:
+        json:
+          environment: { equals: "{{current_environment}}" }
+    capture:
+      environment_config_result: "config_loaded"
+
+  # 11. Environment-Based Data Handling
+  - name: "Environment-specific data operations"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Data-Operation: "environment_specific"
+        X-Environment: "{{current_environment}}"
+      body:
+        operation: "data_handling"
+        environment: "{{current_environment}}"
+        data_strategy: "{{current_environment === 'production' ? 'real_data' : 'test_data'}}"
+        data_sensitivity: "{{current_environment === 'production' ? 'high' : 'low'}}"
+        anonymization: "{{current_environment === 'production' ? 'required' : 'optional'}}"
+        backup_strategy: "{{current_environment === 'production' ? 'continuous' : 'daily'}}"
+    assert:
+      status_code: 200
+      body:
+        json:
+          environment: { equals: "{{current_environment}}" }
+    capture:
+      data_handling_result: "environment_data_strategy_applied"
+
+  # 12. Feature Flag Combination Testing
+  - name: "Test feature flag combinations"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Feature-Combination: "test"
+      body:
+        test_type: "feature_flag_combinations"
+        environment: "{{current_environment}}"
+        active_features:
+          new_ui: "{{feature_flags.new_ui}}"
+          api_v2: "{{feature_flags.api_v2}}"
+          advanced_analytics: "{{feature_flags.advanced_analytics}}"
+          beta_program: "{{feature_flags.beta_program}}"
+          experimental_features: "{{feature_flags.experimental_features}}"
+          debug_mode: "{{feature_flags.debug_mode}}"
+        feature_compatibility:
+          ui_api_combo: "{{feature_flags.new_ui === 'true' && feature_flags.api_v2 === 'true'}}"
+          analytics_beta_combo: "{{feature_flags.advanced_analytics === 'true' && feature_flags.beta_program === 'true'}}"
+        total_active_features: "{{Object.values(feature_flags).filter(flag => flag === 'true').length}}"
+    assert:
+      status_code: 200
+      body:
+        json:
+          test_type: { equals: "feature_flag_combinations" }
+    capture:
+      feature_combination_result: "combinations_tested"
+
+  # 13. Final Environment and Feature Summary
+  - name: "Collect environment and feature flag results"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Summary: "environment_feature_complete"
+      body:
+        test_summary: "environment_feature_flags_comprehensive"
+        test_id: "{{env_test_id}}"
+        current_environment: "{{current_environment}}"
+        test_environment: "{{test_environment}}"
+        deployment_stage: "{{deployment_stage}}"
+        feature_flags_tested: "{{feature_flags}}"
+        environment_specific_tests:
+          development: "{{dev_environment_result || 'skipped'}}"
+          test: "{{test_environment_result || 'skipped'}}"
+          staging: "{{staging_environment_result || 'skipped'}}"
+          production: "{{production_environment_result || 'skipped'}}"
+        feature_flag_results:
+          new_ui: "{{new_ui_feature_result || 'skipped'}}"
+          api_v2: "{{api_v2_feature_result || 'skipped'}}"
+          advanced_analytics: "{{analytics_feature_result || 'skipped'}}"
+          beta_program: "{{beta_program_result || 'skipped'}}"
+          experimental_features: "{{experimental_feature_result || 'skipped'}}"
+          debug_mode: "{{debug_mode_result || 'skipped'}}"
+        environment_configurations: "{{environment_config}}"
+        environment_urls: "{{environment_urls}}"
+        test_patterns:
+          - "environment_detection"
+          - "environment_specific_operations"
+          - "feature_flag_conditional_execution"
+          - "multi_environment_configuration"
+          - "environment_based_data_handling"
+          - "feature_flag_combinations"
+        total_environment_tests: 13
+    assert:
+      status_code: 200
+      body:
+        json:
+          test_summary: { equals: "environment_feature_flags_comprehensive" }
+          current_environment: { equals: "{{current_environment}}" }
+          total_environment_tests: { equals: 13 }
+    capture:
+      environment_results: "body.json"
+      feature_flag_data: "body.json.feature_flag_results"
+      multi_env_config: "body.json.environment_configurations"
