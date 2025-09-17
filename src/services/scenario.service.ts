@@ -1,16 +1,19 @@
 import * as jmespath from "jmespath";
-import {
-  ConditionalScenario,
-  Assertions,
-} from "../types/engine.types";
-import {
-  StepExecutionResult,
-  AssertionResult,
-} from "../types/config.types";
+import { ConditionalScenario, Assertions } from "../types/engine.types";
+import { StepExecutionResult, AssertionResult } from "../types/config.types";
 import { AssertionService } from "./assertion.service";
 import { CaptureService } from "./capture.service";
 import { getLogger } from "./logger.service";
 
+/**
+ * Scenario Service for Flow Test Engine
+ *
+ * Handles conditional scenario processing, allowing test steps to have
+ * different execution paths based on response conditions.
+ * Supports complex conditional logic with JMESPath expressions.
+ *
+ * @since 1.0.0
+ */
 export class ScenarioService {
   private readonly assertionService: AssertionService;
   private readonly captureService: CaptureService;
@@ -104,7 +107,7 @@ export class ScenarioService {
     try {
       // Pre-process condition to fix common JMESPath issues
       const processedCondition = this.preprocessJMESPathCondition(condition);
-      
+
       const conditionResult = jmespath.search(context, processedCondition);
 
       // Converts the result to boolean
@@ -124,23 +127,26 @@ export class ScenarioService {
    */
   private preprocessJMESPathCondition(condition: string): string {
     // Handle $env variables - these should be interpolated before JMESPath
-    if (condition.includes('$env.')) {
+    if (condition.includes("$env.")) {
       // For now, replace $env variables with null if they contain invalid JMESPath chars
-      condition = condition.replace(/\$env\.[A-Z_][A-Z0-9_]*/g, '`null`');
+      condition = condition.replace(/\$env\.[A-Z_][A-Z0-9_]*/g, "`null`");
     }
-    
+
     // Fix numbers without backticks: "status_code == 200" -> "status_code == `200`"
-    let processed = condition.replace(/(==|!=|>=|<=|>|<)\s*(\d+)(?![`])/g, '$1 `$2`');
-    
+    let processed = condition.replace(
+      /(==|!=|>=|<=|>|<)\s*(\d+)(?![`])/g,
+      "$1 `$2`"
+    );
+
     // Fix boolean values without backticks: "enabled == true" -> "enabled == `true`"
-    processed = processed.replace(/(==|!=)\s*(true|false)(?![`])/g, '$1 `$2`');
-    
+    processed = processed.replace(/(==|!=)\s*(true|false)(?![`])/g, "$1 `$2`");
+
     // Fix header array syntax: "headers['key']" -> "headers.\"key\""
     processed = processed.replace(/headers\['([^']+)'\]/g, 'headers."$1"');
-    
+
     // Fix null comparisons: "!= null" -> "!= `null`"
-    processed = processed.replace(/(==|!=)\s*null(?![`])/g, '$1 `null`');
-    
+    processed = processed.replace(/(==|!=)\s*null(?![`])/g, "$1 `null`");
+
     return processed;
   }
 

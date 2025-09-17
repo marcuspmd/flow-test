@@ -89,7 +89,9 @@ export class TestSuiteComponent extends BaseComponent {
       <div class="card ${statusClasses.border} mb-4 overflow-hidden">
         <!-- Suite Header -->
         <div
-          class="flex justify-between items-center p-4 cursor-pointer hover:${statusClasses.bg} transition-colors duration-200"
+          class="flex justify-between items-center p-4 cursor-pointer hover:${
+            statusClasses.bg
+          } transition-colors duration-200"
           onclick="toggleSuite('${suiteId}')"
           role="button"
           tabindex="0"
@@ -98,7 +100,9 @@ export class TestSuiteComponent extends BaseComponent {
         >
           <div class="flex items-center space-x-4">
             <!-- Status icon -->
-            <div class="flex items-center justify-center w-8 h-8 rounded-full ${statusClasses.bg}">
+            <div class="flex items-center justify-center w-8 h-8 rounded-full ${
+              statusClasses.bg
+            }">
               <span class="text-lg font-bold ${statusClasses.icon}">
                 ${statusIcon}
               </span>
@@ -114,13 +118,17 @@ export class TestSuiteComponent extends BaseComponent {
                 <span>•</span>
                 <span>${metrics.total} steps</span>
                 <span>•</span>
-                <span class="text-green-600 dark:text-green-400">${metrics.passed} passed</span>
-                ${metrics.failed > 0
-                  ? this.html`
+                <span class="text-green-600 dark:text-green-400">${
+                  metrics.passed
+                } passed</span>
+                ${
+                  metrics.failed > 0
+                    ? this.html`
                   <span>•</span>
                   <span class="text-red-600 dark:text-red-400">${metrics.failed} failed</span>
                 `
-                  : ""}
+                    : ""
+                }
               </div>
             </div>
           </div>
@@ -128,11 +136,13 @@ export class TestSuiteComponent extends BaseComponent {
           <!-- Metrics and Controls -->
           <div class="flex items-center space-x-4">
             <!-- Success rate badge -->
-            <div class="text-xs font-medium ${parseFloat(metrics.successRate) === 100
+            <div class="text-xs font-medium ${
+              parseFloat(metrics.successRate) === 100
                 ? "badge badge-green"
                 : parseFloat(metrics.successRate) >= 80
                 ? "badge badge-amber"
-                : "badge badge-gray"}">
+                : "badge badge-gray"
+            }">
               ${metrics.successRate}% success
             </div>
 
@@ -154,20 +164,22 @@ export class TestSuiteComponent extends BaseComponent {
           aria-labelledby="${suiteId}-header"
         >
           <div class="p-4 space-y-3 bg-tertiary">
-            ${steps.length > 0
-              ? this.html`
+            ${
+              steps.length > 0
+                ? this.html`
               <div class="text-sm text-secondary mb-3">
-                <strong>Suite Steps:</strong>
+                <strong>Steps da suíte:</strong>
               </div>
               ${this.renderList(steps, (step, index) =>
                 this.stepComponent.render({ step, index })
               )}
             `
-              : this.html`
+                : this.html`
               <div class="text-center p-8 text-secondary">
-                <p>No steps found in this suite</p>
+                <p>Nenhum step encontrado nesta suíte</p>
               </div>
-            `}
+            `
+            }
           </div>
         </div>
       </div>

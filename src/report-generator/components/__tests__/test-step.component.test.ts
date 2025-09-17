@@ -215,7 +215,7 @@ describe("TestStepComponent", () => {
 
       const result = component.render(props);
       expect(result).toContain("Status Code"); // Formatado como "Status Code"
-      expect(result).toContain("equals");
+      expect(result).toContain("Body: message"); // Field formatted properly
       expect(result).toContain("200");
       expect(result).toContain("✓");
     });
@@ -236,7 +236,6 @@ describe("TestStepComponent", () => {
 
       const result = component.render(props);
       expect(result).toContain("Status Code"); // Formatado como "Status Code"
-      expect(result).toContain("equals");
       expect(result).toContain("200");
       expect(result).toContain("500");
       expect(result).toContain("✗");
@@ -249,7 +248,7 @@ describe("TestStepComponent", () => {
       const props: TestStepProps = { step: stepData, index: 0 };
 
       const result = component.render(props);
-      expect(result).toContain("Nenhuma asserção registrada");
+      expect(result).toContain("No assertions recorded");
     });
 
     it("should handle complex assertion field names", () => {

@@ -55,7 +55,7 @@ steps:
     capture:
       log_test_response_url: "body.url"
       log_test_timestamp: "body.json.metadata.timestamp"
-      log_test_response_size: "headers.content-length"
+      log_test_response_size: "size_bytes"
     metadata:
       description: "Generates complex request/response data for log file verification"
 

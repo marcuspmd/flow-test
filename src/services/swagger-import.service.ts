@@ -1,22 +1,24 @@
-import * as fs from 'fs';
-import * as path from 'path';
-import * as yaml from 'js-yaml';
-import { SwaggerParser } from '../core/swagger/parser/swagger-parser';
+import * as fs from "fs";
+import * as path from "path";
+import * as yaml from "js-yaml";
+import { SwaggerParser } from "../core/swagger/parser/swagger-parser";
 import {
   OpenAPISpec,
   ParsedEndpoint,
   OpenAPIParameter,
   OpenAPISchema,
-  ImportResult
-} from '../types/swagger.types';
-import { TestSuite, TestStep } from '../types/engine.types';
-import { FakerService } from './faker.service';
+  ImportResult,
+} from "../types/swagger.types";
+import { TestSuite, TestStep } from "../types/engine.types";
+import { FakerService } from "./faker.service";
 
 /**
- * Serviço de importação de especificações Swagger/OpenAPI
+ * Swagger/OpenAPI Import Service for Flow Test Engine
  *
- * Converte especificações OpenAPI/Swagger em arquivos YAML de teste
- * compatíveis com o Flow Test Engine.
+ * Converts OpenAPI/Swagger specifications into YAML test files
+ * compatible with the Flow Test Engine.
+ *
+ * @since 1.0.0
  */
 export class SwaggerImportService {
   private parser: SwaggerParser;
@@ -28,11 +30,11 @@ export class SwaggerImportService {
   }
 
   /**
-   * Importa uma especificação Swagger/OpenAPI e gera arquivos de teste
+   * Imports a Swagger/OpenAPI specification and generates test files
    */
   async importSpec(
     specFilePath: string,
-    outputDir: string = './tests/imported',
+    outputDir: string = "./tests/imported",
     options: ImportOptions = {}
   ): Promise<ImportResult> {
     const result: ImportResult = {
@@ -41,11 +43,11 @@ export class SwaggerImportService {
       generatedDocs: 0,
       outputPath: outputDir,
       errors: [],
-      warnings: []
+      warnings: [],
     };
 
     try {
-      // 1. Parse da especificação
+      // 1. Parse the specification
       const parseResult = await this.parser.parseFile(specFilePath);
 
       if (parseResult.errors.length > 0) {
@@ -55,32 +57,39 @@ export class SwaggerImportService {
 
       result.warnings.push(...parseResult.warnings);
 
-      // 2. Criar diretório de saída
+      // 2. Create output directory
       if (!fs.existsSync(outputDir)) {
         fs.mkdirSync(outputDir, { recursive: true });
       }
 
-      // 3. Gerar suites de teste
-      const suites = this.generateTestSuites(parseResult.spec, parseResult.endpoints, options);
+      // 3. Generate test suites
+      const suites = this.generateTestSuites(
+        parseResult.spec,
+        parseResult.endpoints,
+        options
+      );
 
-      // 4. Salvar arquivos YAML
+      // 4. Save YAML files
       for (const suite of suites) {
-        const fileName = this.sanitizeFileName(suite.suite_name) + '.yaml';
+        const fileName = this.sanitizeFileName(suite.suite_name) + ".yaml";
         const filePath = path.join(outputDir, fileName);
 
         const yamlContent = yaml.dump(suite, {
           indent: 2,
           lineWidth: 120,
-          noRefs: true
+          noRefs: true,
         });
 
-        fs.writeFileSync(filePath, yamlContent, 'utf-8');
+        fs.writeFileSync(filePath, yamlContent, "utf-8");
         result.generatedSuites++;
       }
 
       // 5. Gerar documentação se solicitado
       if (options.generateDocs) {
-        const docPath = await this.generateDocumentation(parseResult.spec, outputDir);
+        const docPath = await this.generateDocumentation(
+          parseResult.spec,
+          outputDir
+        );
         if (docPath) {
           result.generatedDocs++;
         }
@@ -88,9 +97,9 @@ export class SwaggerImportService {
 
       result.success = true;
       return result;
-
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       result.errors.push(`Erro durante importação: ${errorMessage}`);
       return result;
     }
@@ -116,7 +125,9 @@ export class SwaggerImportService {
       }
     } else {
       // Criar suite única com todos os endpoints
-      const suiteName = spec.info.title.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase();
+      const suiteName = spec.info.title
+        .replace(/[^a-zA-Z0-9]/g, "-")
+        .toLowerCase();
       const suite = this.createTestSuite(spec, suiteName, endpoints, options);
       suites.push(suite);
     }
@@ -136,7 +147,7 @@ export class SwaggerImportService {
     const baseUrl = this.extractBaseUrl(spec);
     const variables = this.generateVariables(spec, endpoints, options);
 
-    const steps: TestStep[] = endpoints.map(endpoint =>
+    const steps: TestStep[] = endpoints.map((endpoint) =>
       this.createTestStep(endpoint, options)
     );
 
@@ -146,24 +157,27 @@ export class SwaggerImportService {
       description: `Testes importados de ${spec.info.title} v${spec.info.version}`,
       metadata: {
         priority: "medium",
-        tags: ["imported", "swagger", suiteName.toLowerCase()]
+        tags: ["imported", "swagger", suiteName.toLowerCase()],
       },
       base_url: baseUrl,
       variables,
-      steps
+      steps,
     };
   }
 
   /**
    * Cria um step de teste para um endpoint
    */
-  private createTestStep(endpoint: ParsedEndpoint, options: ImportOptions): TestStep {
+  private createTestStep(
+    endpoint: ParsedEndpoint,
+    options: ImportOptions
+  ): TestStep {
     const headers = this.generateHeaders(endpoint, options);
     const body = this.generateRequestBody(endpoint, options);
 
     const request: any = {
       method: endpoint.method as any,
-      url: this.convertPathParameters(endpoint.path)
+      url: this.convertPathParameters(endpoint.path),
     };
 
     if (headers && Object.keys(headers).length > 0) {
@@ -179,7 +193,7 @@ export class SwaggerImportService {
 
     const step: TestStep = {
       name: this.generateStepName(endpoint),
-      request
+      request,
     };
 
     if (assertions && Object.keys(assertions).length > 0) {
@@ -201,8 +215,10 @@ export class SwaggerImportService {
       return endpoint.operation.operationId;
     }
 
-    const pathParts = endpoint.path.split('/').filter(part => part && !part.startsWith('{'));
-    const resourceName = pathParts[pathParts.length - 1] || 'root';
+    const pathParts = endpoint.path
+      .split("/")
+      .filter((part) => part && !part.startsWith("{"));
+    const resourceName = pathParts[pathParts.length - 1] || "root";
 
     return `${endpoint.method.toLowerCase()}_${resourceName}`;
   }
@@ -210,21 +226,24 @@ export class SwaggerImportService {
   /**
    * Gera headers para o request
    */
-  private generateHeaders(endpoint: ParsedEndpoint, options: ImportOptions): Record<string, string> {
+  private generateHeaders(
+    endpoint: ParsedEndpoint,
+    options: ImportOptions
+  ): Record<string, string> {
     const headers: Record<string, string> = {};
 
     // Headers de parâmetros
-    const headerParams = endpoint.parameters.filter(p => p.in === 'header');
+    const headerParams = endpoint.parameters.filter((p) => p.in === "header");
     for (const param of headerParams) {
       const value = this.generateParameterValue(param, options);
       headers[param.name] = value;
     }
 
     // Content-Type para requests com body
-    if (endpoint.requestBody && endpoint.method !== 'GET') {
+    if (endpoint.requestBody && endpoint.method !== "GET") {
       const contentTypes = Object.keys(endpoint.requestBody.content);
       if (contentTypes.length > 0) {
-        headers['Content-Type'] = contentTypes[0];
+        headers["Content-Type"] = contentTypes[0];
       }
     }
 
@@ -234,8 +253,11 @@ export class SwaggerImportService {
   /**
    * Gera corpo da requisição
    */
-  private generateRequestBody(endpoint: ParsedEndpoint, options: ImportOptions): any {
-    if (!endpoint.requestBody || endpoint.method === 'GET') {
+  private generateRequestBody(
+    endpoint: ParsedEndpoint,
+    options: ImportOptions
+  ): any {
+    if (!endpoint.requestBody || endpoint.method === "GET") {
       return undefined;
     }
 
@@ -255,16 +277,20 @@ export class SwaggerImportService {
   /**
    * Gera assertions baseadas nas respostas
    */
-  private generateAssertions(endpoint: ParsedEndpoint, options: ImportOptions): any {
+  private generateAssertions(
+    endpoint: ParsedEndpoint,
+    options: ImportOptions
+  ): any {
     const assertions: any = {};
 
     // Assertion básica de status code para respostas de sucesso
-    const successCodes = Object.keys(endpoint.responses).filter(code =>
-      code.startsWith('2') || code === 'default'
+    const successCodes = Object.keys(endpoint.responses).filter(
+      (code) => code.startsWith("2") || code === "default"
     );
 
     if (successCodes.length > 0) {
-      const statusCode = successCodes[0] === 'default' ? '200' : successCodes[0];
+      const statusCode =
+        successCodes[0] === "default" ? "200" : successCodes[0];
       assertions.status_code = parseInt(statusCode);
     }
 
@@ -274,12 +300,15 @@ export class SwaggerImportService {
   /**
    * Gera captures baseadas nas respostas
    */
-  private generateCaptures(endpoint: ParsedEndpoint, options: ImportOptions): Record<string, string> {
+  private generateCaptures(
+    endpoint: ParsedEndpoint,
+    options: ImportOptions
+  ): Record<string, string> {
     const captures: Record<string, string> = {};
 
     // Capturar IDs de recursos criados em operações POST
-    if (endpoint.method === 'POST') {
-      captures.resource_id = 'body.id';
+    if (endpoint.method === "POST") {
+      captures.resource_id = "body.id";
     }
 
     return captures;
@@ -308,7 +337,7 @@ export class SwaggerImportService {
 
     // Gerar valores para cada parâmetro
     for (const [name, param] of allParams) {
-      if (param.in === 'path' || param.in === 'query') {
+      if (param.in === "path" || param.in === "query") {
         variables[name] = this.generateParameterValue(param, options);
       }
     }
@@ -319,7 +348,10 @@ export class SwaggerImportService {
   /**
    * Gera valor para um parâmetro
    */
-  private generateParameterValue(param: OpenAPIParameter, options: ImportOptions): string {
+  private generateParameterValue(
+    param: OpenAPIParameter,
+    options: ImportOptions
+  ): string {
     if (param.example !== undefined) {
       return String(param.example);
     }
@@ -330,8 +362,8 @@ export class SwaggerImportService {
     }
 
     // Valores padrão baseados no nome/tipo
-    if (param.name.toLowerCase().includes('id')) {
-      return '{{faker.uuid}}';
+    if (param.name.toLowerCase().includes("id")) {
+      return "{{faker.uuid}}";
     }
 
     return `{{${param.name}}}`;
@@ -340,7 +372,10 @@ export class SwaggerImportService {
   /**
    * Gera exemplo baseado em schema
    */
-  private generateSchemaExample(schema: OpenAPISchema, options: ImportOptions): any {
+  private generateSchemaExample(
+    schema: OpenAPISchema,
+    options: ImportOptions
+  ): any {
     if (schema.example !== undefined) {
       return schema.example;
     }
@@ -350,29 +385,31 @@ export class SwaggerImportService {
     }
 
     switch (schema.type) {
-      case 'string':
-        if (schema.format === 'email') return '{{faker.email}}';
-        if (schema.format === 'date') return '{{faker.date}}';
-        if (schema.format === 'uuid') return '{{faker.uuid}}';
-        return '{{faker.word}}';
+      case "string":
+        if (schema.format === "email") return "{{faker.email}}";
+        if (schema.format === "date") return "{{faker.date}}";
+        if (schema.format === "uuid") return "{{faker.uuid}}";
+        return "{{faker.word}}";
 
-      case 'integer':
-      case 'number':
-        return '{{faker.number}}';
+      case "integer":
+      case "number":
+        return "{{faker.number}}";
 
-      case 'boolean':
-        return '{{faker.boolean}}';
+      case "boolean":
+        return "{{faker.boolean}}";
 
-      case 'array':
+      case "array":
         if (schema.items) {
           return [this.generateSchemaExample(schema.items, options)];
         }
         return [];
 
-      case 'object':
+      case "object":
         const obj: any = {};
         if (schema.properties) {
-          for (const [propName, propSchema] of Object.entries(schema.properties)) {
+          for (const [propName, propSchema] of Object.entries(
+            schema.properties
+          )) {
             obj[propName] = this.generateSchemaExample(propSchema, options);
           }
         }
@@ -394,31 +431,34 @@ export class SwaggerImportService {
 
     // Swagger 2.0
     if (spec.host) {
-      const scheme = spec.schemes ? spec.schemes[0] : 'https';
-      const basePath = spec.basePath || '';
+      const scheme = spec.schemes ? spec.schemes[0] : "https";
+      const basePath = spec.basePath || "";
       return `${scheme}://${spec.host}${basePath}`;
     }
 
-    return '';
+    return "";
   }
 
   /**
    * Verifica se endpoints têm tags
    */
   private hasTaggedEndpoints(endpoints: ParsedEndpoint[]): boolean {
-    return endpoints.some(endpoint =>
-      endpoint.operation.tags && endpoint.operation.tags.length > 0
+    return endpoints.some(
+      (endpoint) =>
+        endpoint.operation.tags && endpoint.operation.tags.length > 0
     );
   }
 
   /**
    * Agrupa endpoints por tag
    */
-  private groupEndpointsByTag(endpoints: ParsedEndpoint[]): Record<string, ParsedEndpoint[]> {
+  private groupEndpointsByTag(
+    endpoints: ParsedEndpoint[]
+  ): Record<string, ParsedEndpoint[]> {
     const groups: Record<string, ParsedEndpoint[]> = {};
 
     for (const endpoint of endpoints) {
-      const tags = endpoint.operation.tags || ['default'];
+      const tags = endpoint.operation.tags || ["default"];
 
       for (const tag of tags) {
         if (!groups[tag]) {
@@ -437,20 +477,23 @@ export class SwaggerImportService {
   private sanitizeFileName(name: string): string {
     return name
       .toLowerCase()
-      .replace(/[^a-z0-9]/g, '-')
-      .replace(/-+/g, '-')
-      .replace(/^-|-$/g, '');
+      .replace(/[^a-z0-9]/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-|-$/g, "");
   }
 
   /**
    * Gera documentação adicional
    */
-  private async generateDocumentation(spec: OpenAPISpec, outputDir: string): Promise<string | null> {
+  private async generateDocumentation(
+    spec: OpenAPISpec,
+    outputDir: string
+  ): Promise<string | null> {
     try {
       const docContent = this.generateMarkdownDoc(spec);
-      const docPath = path.join(outputDir, 'README.md');
+      const docPath = path.join(outputDir, "README.md");
 
-      fs.writeFileSync(docPath, docContent, 'utf-8');
+      fs.writeFileSync(docPath, docContent, "utf-8");
       return docPath;
     } catch (error) {
       return null;
@@ -463,7 +506,7 @@ export class SwaggerImportService {
   private generateMarkdownDoc(spec: OpenAPISpec): string {
     return `# ${spec.info.title}
 
-${spec.info.description || ''}
+${spec.info.description || ""}
 
 **Versão:** ${spec.info.version}
 
@@ -501,7 +544,7 @@ Os testes utilizam variáveis para parametrização. Você pode sobrescrever os 
    * Converte parâmetros de path do formato OpenAPI {param} para Flow Test Engine {{param}}
    */
   private convertPathParameters(path: string): string {
-    return path.replace(/\{([^}]+)\}/g, '{{$1}}');
+    return path.replace(/\{([^}]+)\}/g, "{{$1}}");
   }
 }
 
@@ -513,5 +556,5 @@ export interface ImportOptions {
   generateDocs?: boolean;
   includeExamples?: boolean;
   useFakerForData?: boolean;
-  outputFormat?: 'yaml' | 'json';
+  outputFormat?: "yaml" | "json";
 }

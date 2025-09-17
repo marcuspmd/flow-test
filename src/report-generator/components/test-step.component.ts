@@ -231,15 +231,15 @@ export class TestStepComponent extends BaseComponent {
                 <div>
                   <span class="font-medium text-primary">
                     ${this.escapeHtml(
-                      this.formatAssertionField((assertion as any).field).name
+                      this.formatAssertionField(assertion.type).name
                     )}
                   </span>
                   ${
-                    this.formatAssertionField((assertion as any).field).operator
+                    this.formatAssertionField(assertion.type).operator
                       ? this.html`
                     <span class="text-secondary text-sm ml-2">
                       (${this.escapeHtml(
-                        this.formatAssertionField((assertion as any).field).operator
+                        this.formatAssertionField(assertion.type).operator
                       )})
                     </span>
                   `
@@ -800,9 +800,11 @@ export class TestStepComponent extends BaseComponent {
             tabs,
             (tab) => this.html`
             <button
-              class="tab-button px-4 py-2 text-sm font-medium border-b-2 transition-colors duration-200 whitespace-nowrap ${tab.active
-                ? "border-blue-500 text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20"
-                : "border-transparent text-secondary hover:text-primary hover:border-gray-300"}"
+              class="tab-button px-4 py-2 text-sm font-medium border-b-2 transition-colors duration-200 whitespace-nowrap ${
+                tab.active
+                  ? "border-blue-500 text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20"
+                  : "border-transparent text-secondary hover:text-primary hover:border-gray-300"
+              }"
               onclick="switchTab('${stepId}-tabs', '${tab.id}')"
               role="tab"
               aria-selected="${tab.active ? "true" : "false"}"
@@ -848,7 +850,9 @@ export class TestStepComponent extends BaseComponent {
       <div class="card ${statusClasses.border} mb-3">
         <!-- Step Header -->
         <div
-          class="flex justify-between items-center p-3 cursor-pointer hover:${statusClasses.bg} transition-colors duration-200"
+          class="flex justify-between items-center p-3 cursor-pointer hover:${
+            statusClasses.bg
+          } transition-colors duration-200"
           onclick="toggleStep('${stepId}')"
           role="button"
           tabindex="0"
@@ -858,21 +862,35 @@ export class TestStepComponent extends BaseComponent {
           <div class="flex items-center space-x-3">
             <!-- Number and Status -->
             <div class="flex items-center space-x-2">
-              <span class="font-mono text-sm text-secondary">#${index + 1}</span>
+              <span class="font-mono text-sm text-secondary">#${
+                index + 1
+              }</span>
               <span class="text-lg ${statusClasses.icon}">${statusIcon}</span>
             </div>
 
             <!-- Step Name -->
-            <h3 class="font-medium text-primary">${this.escapeHtml(step.stepName)}</h3>
-            ${step.scenariosMeta && step.scenariosMeta.has_scenarios ? this.html`<span class="ml-2 badge badge-indigo">Scenario</span>` : ''}
-            ${visualStatus === "info"
-              ? this.html`<span class="ml-2 badge badge-blue">No Assertions</span>`
-              : ""}
+            <h3 class="font-medium text-primary">${this.escapeHtml(
+              step.stepName
+            )}</h3>
+            ${
+              step.scenariosMeta && step.scenariosMeta.has_scenarios
+                ? this
+                    .html`<span class="ml-2 badge badge-indigo">Scenario</span>`
+                : ""
+            }
+            ${
+              visualStatus === "info"
+                ? this
+                    .html`<span class="ml-2 badge badge-blue">No Assertions</span>`
+                : ""
+            }
           </div>
 
           <!-- Duration and Controls -->
           <div class="flex items-center space-x-3">
-            <span class="text-sm text-secondary">${this.formatDuration(step.duration)}</span>
+            <span class="text-sm text-secondary">${this.formatDuration(
+              step.duration
+            )}</span>
             <span
               id="${stepId}-icon"
               class="transform transition-transform duration-200 text-primary"

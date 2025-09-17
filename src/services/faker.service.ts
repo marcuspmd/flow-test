@@ -155,7 +155,6 @@ export class FakerService {
     "internet.ip",
     "internet.ipv4",
     "internet.mac",
-    "internet.userAgent",
 
     // Phone
     "phone.number",
@@ -292,6 +291,13 @@ export class FakerService {
 
       const [category, method] = pathParts;
 
+      // Security check: only allow allowlisted methods (check BEFORE accessing)
+      if (!this.allowlistedMethods.has(methodPath)) {
+        throw new Error(
+          `Faker method '${methodPath}' is not allowlisted for security reasons`
+        );
+      }
+
       // Navigate to the method
       const categoryObject = (faker as any)[category];
       if (!categoryObject) {
@@ -302,13 +308,6 @@ export class FakerService {
       if (typeof methodFunction !== "function") {
         throw new Error(
           `Faker method '${method}' not found in category '${category}'`
-        );
-      }
-
-      // Security check: only allow allowlisted methods
-      if (!this.allowlistedMethods.has(methodPath)) {
-        throw new Error(
-          `Faker method '${methodPath}' is not allowlisted for security reasons`
         );
       }
 

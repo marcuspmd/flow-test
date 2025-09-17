@@ -235,11 +235,11 @@ suite_name: Test Suite
     });
 
     it("should calculate correct metrics for mixed results", async () => {
-      // Este teste verifica se o engine calcula corretamente as métricas
-      // quando há uma mistura de testes com sucesso e falha
+      // This test verifies if the engine correctly calculates metrics
+      // when there is a mixture of successful and failed tests
       const result = await engine.run();
 
-      // Verifica se o resultado é válido (pode ter 1 ou mais testes)
+      // Verify if the result is valid (can have 1 or more tests)
       expect(result.total_tests).toBeGreaterThanOrEqual(1);
       expect(result).toHaveProperty("successful_tests");
       expect(result).toHaveProperty("failed_tests");
@@ -779,16 +779,20 @@ suite_name: Test Suite
 
       ConfigManager.mockImplementation(() => ({
         getConfig: jest.fn().mockReturnValue(mockConfig),
-        getRuntimeFilters: jest.fn().mockReturnValue({ priority: ["high"] }),
+        getRuntimeFilters: jest.fn().mockReturnValue({ priorities: ["high"] }),
         debugConfig: jest.fn(),
       }));
 
-      const consoleSpy = jest.spyOn(console, "log").mockImplementation(() => {});
+      const consoleSpy = jest
+        .spyOn(console, "log")
+        .mockImplementation(() => {});
 
       engine = new FlowTestEngine();
       await engine.run();
 
-      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("Filtered to"));
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining("🔽 Filtered to")
+      );
       consoleSpy.mockRestore();
     });
 
@@ -809,6 +813,7 @@ suite_name: Test Suite
         getPerformanceSummary: jest.fn().mockReturnValue({
           total_requests: 1,
           average_response_time_ms: 500,
+          requests_per_second: 2.0,
         }),
         getExecutionStats: jest.fn().mockReturnValue({
           total_tests: 1,
@@ -851,7 +856,9 @@ suite_name: Test Suite
       const { ConfigManager } = require("../config");
       ConfigManager.mockImplementation(() => ({
         getConfig: jest.fn().mockReturnValue(mockConfig),
-        getRuntimeFilters: jest.fn().mockReturnValue({ suite_names: ["Test Suite"] }),
+        getRuntimeFilters: jest
+          .fn()
+          .mockReturnValue({ suite_names: ["Test Suite"] }),
         debugConfig: jest.fn(),
       }));
 
@@ -859,14 +866,20 @@ suite_name: Test Suite
 
       const tests = [
         { ...mockDiscoveredTest, suite_name: "Test Suite" },
-        { ...mockDiscoveredTest, node_id: "test-002", suite_name: "Other Suite" },
+        {
+          ...mockDiscoveredTest,
+          node_id: "test-002",
+          suite_name: "Other Suite",
+        },
       ];
 
       const filtered = (engine as any).applyFilters(tests);
 
       expect(filtered).toBeDefined();
       // Should only include tests with "Test Suite" name
-      expect(filtered.some((test: any) => test.suite_name === "Test Suite")).toBe(true);
+      expect(
+        filtered.some((test: any) => test.suite_name === "Test Suite")
+      ).toBe(true);
     });
 
     it("should print failed suites when there are failures", () => {
@@ -890,7 +903,9 @@ suite_name: Test Suite
         }),
       }));
 
-      const consoleSpy = jest.spyOn(console, "log").mockImplementation(() => {});
+      const consoleSpy = jest
+        .spyOn(console, "log")
+        .mockImplementation(() => {});
 
       engine = new FlowTestEngine();
 
@@ -903,7 +918,9 @@ suite_name: Test Suite
 
       (engine as any).printExecutionSummary(aggregatedResult);
 
-      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("💥 Failed Suites:"));
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining("💥 Failed Suites:")
+      );
       consoleSpy.mockRestore();
     });
   });

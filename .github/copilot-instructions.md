@@ -18,21 +18,21 @@ Objetivo: Capacitar agentes de IA a trabalhar produtivamente neste repositório 
 
 ## Arquitetura e componentes-chave## Arquitetura e arquivos-chave
 
-- **CLI**: `src/cli.ts` - Interface completa com flags (`--verbose`, `--dry-run`, `--priority`, `--tag`)- `src/main.ts`: ponto de entrada CLI.
+- **CLI**: `src/cli.ts` - Interface completa com flags (`--verbose`, `--dry-run`, `--priority`, `--tag`)
 
-- **Engine**: `src/core/engine.ts` - Orquestrador principal que coordena discovery, execution, reporting  - Usa `process.argv[2]` como caminho do YAML; default `./tests/start-flow.yaml`.
+- **Engine**: `src/core/engine.ts` - Orquestrador principal que coordena discovery, execution, reporting
 
-- **Services**: Camada modular em `src/services/` com responsabilidades específicas:  - Verifica existência do arquivo, instancia `Runner` e chama `run()`.
+- **Services**: Camada modular em `src/services/` com responsabilidades específicas:
 
-  - `http.service.ts` - Execução HTTP com axios + tratamento de erros- `src/core/runner.core.ts`: orquestrador de execução.
+  - `execution.ts` - Orquestrador principal de execução de testes
+  - `http.service.ts` - Execução HTTP com axios + tratamento de erros
+  - `assertion.service.ts` - Validação avançada (equals, contains, regex, type checks)
+  - `variable.service.ts` - Interpolação com suporte a Faker.js e env vars
+  - `capture.service.ts` - Extração de dados via JMESPath
+  - `global-registry.service.ts` - Variáveis globais entre suites
 
-  - `assertion.service.ts` - Validação avançada (equals, contains, regex, type checks)  - Carrega YAML com `js-yaml`, popula `this.suite` e `this.variables` (variáveis iniciais de `suite.variables`).
-
-  - `variable.service.ts` - Interpolação com suporte a Faker.js e env vars  - `run()` itera `suite.steps` e registra logs; TO‑DO: interpolar variáveis, chamar HTTP, validar, capturar.
-
-  - `capture.service.ts` - Extração de dados via JMESPath- `src/types/common.types.ts`: contrato entre YAML e código.
-
-  - `global-registry.service.ts` - Variáveis globais entre suites  - Principais tipos: `TestSuite`, `TestStep`, `RequestDetails`, `Assertions`, `AssertionChecks`.
+- **Tipos**: `src/types/common.types.ts` - Contrato entre YAML e código
+  - Principais tipos: `TestSuite`, `TestStep`, `RequestDetails`, `Assertions`, `AssertionChecks`
 
   - `reporting.service.ts` - Geração de relatórios JSON/HTML- Exemplo de suíte: `tests/start-flow.yaml` (usa httpbin.org; demonstra POST com captura e GET com headers interpolados).
 

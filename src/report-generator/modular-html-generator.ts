@@ -334,9 +334,11 @@ export class ModularHtmlGenerator {
             : `Step ${si + 1}`,
           status: s.status === "success" ? "success" : "failure",
           duration: s.duration_ms || 0,
-          assertions: (s.assertions_results || []).map((a) =>
-            this.interpolateForDisplay(a)
-          ),
+          assertions: (s.assertions_results || []).map((a) => {
+            const converted = { ...a, type: a.field || a.type };
+            if (converted.field) delete converted.field;
+            return this.interpolateForDisplay(converted);
+          }),
           request: s.request_details
             ? {
                 ...this.interpolateForDisplay(s.request_details),
@@ -400,9 +402,11 @@ export class ModularHtmlGenerator {
               | "success"
               | "failure",
             duration: s.duration_ms || 0,
-            assertions: (s.assertions_results || []).map((a) =>
-              this.interpolateForDisplay(a)
-            ),
+            assertions: (s.assertions_results || []).map((a) => {
+              const converted = { ...a, type: a.field || a.type };
+              if (converted.field) delete converted.field;
+              return this.interpolateForDisplay(converted);
+            }),
             request: s.request_details
               ? {
                   ...this.interpolateForDisplay(s.request_details),
@@ -459,9 +463,11 @@ export class ModularHtmlGenerator {
                 | "success"
                 | "failure",
               duration: s.duration_ms || 0,
-              assertions: (s.assertions_results || []).map((a) =>
-                this.interpolateForDisplay(a)
-              ),
+              assertions: (s.assertions_results || []).map((a) => {
+                const converted = { ...a, type: a.field || a.type };
+                if (converted.field) delete converted.field;
+                return this.interpolateForDisplay(converted);
+              }),
               request: s.request_details
                 ? {
                     ...this.interpolateForDisplay(s.request_details),
@@ -533,9 +539,11 @@ export class ModularHtmlGenerator {
           | "success"
           | "failure",
         duration: s.duration_ms || 0,
-        assertions: (s.assertions_results || []).map((a) =>
-          this.interpolateForDisplay(a)
-        ),
+        assertions: (s.assertions_results || []).map((a) => {
+          const converted = { ...a, type: a.field || a.type };
+          if (converted.field) delete converted.field;
+          return this.interpolateForDisplay(converted);
+        }),
         request: s.request_details
           ? {
               ...this.interpolateForDisplay(s.request_details),

@@ -133,14 +133,14 @@ export class ExecutionService {
   private hooks: EngineHooks;
   private logger = getLogger();
 
-  // Serviços reutilizados da versão anterior
+  // Services reused from previous version
   private httpService: HttpService;
   private assertionService: AssertionService;
   private captureService: CaptureService;
   private scenarioService: ScenarioService;
   private iterationService: IterationService;
 
-  // Estatísticas de performance
+  // Performance statistics
   private performanceData: {
     requests: Array<{
       url: string;
@@ -512,8 +512,8 @@ export class ExecutionService {
       // Fires suite start hook
       await this.hooks.onSuiteStart?.(suite);
 
-      // LIMPEZA DE VARIÁVEIS: Limpa variáveis não-globais antes de iniciar novo node
-      // Isso garante que variáveis de runtime, suite e imported do node anterior não vazem para este node
+      // VARIABLE CLEANUP: Clean non-global variables before starting new node
+      // This ensures that runtime, suite and imported variables from previous node don't leak to this node
       this.globalVariables.clearAllNonGlobalVariables();
 
       this.logger.info(

@@ -12,6 +12,8 @@ exports:
   - integration_results
   - transaction_trace
   - service_dependencies
+  - payment_approved
+  - payment_declined
 
 variables:
   # Configuração dos microserviços simulados
@@ -227,25 +229,28 @@ steps:
 
     scenarios:
       # Cenário A: Pagamento aprovado
-      - condition: "status_code == `200` && json.action == 'process_payment'"
+      - condition: "status_code == 200"
         then:
           assert:
             status_code: 200
+            json.action:
+              equals: "process_payment"
             json.payment_id:
               equals: "{{test_transaction.payment_id}}"
-          capture:
-            payment_approved: "true"
-            payment_service_response: "{{json}}"
-            payment_status: "approved"
-            payment_approval_time: "{{js: new Date().toISOString()}}"
 
       # Cenário B: Pagamento recusado
-      - condition: "status_code == `402`"
+      - condition: "status_code == 402"
         then:
           capture:
             payment_declined: "true"
             payment_status: "declined"
             payment_error: "insufficient_funds"
+
+    capture:
+      payment_approved: "{{js: status_code == 200 ? 'true' : null}}"
+      payment_service_response: "response_data"
+      payment_status: "{{js: status_code == 200 ? 'approved' : (status_code == 402 ? 'declined' : 'unknown')}}"
+      payment_approval_time: "{{js: status_code == 200 ? new Date().toISOString() : null}}"
 
   # Passo 6: Atualizar Status do Pedido
   - name: "Update Order Status"
@@ -336,6 +341,14 @@ steps:
           capture:
             reservation_released: "true"
             inventory_rollback_time: "{{js: new Date().toISOString()}}"
+
+      # Cenário C: Nenhum processamento de pagamento (fallback)
+      - condition: "payment_approved != 'true' && payment_declined != 'true'"
+        then:
+          capture:
+            inventory_skipped: "true"
+            skip_reason: "'payment_not_processed'"
+            inventory_skip_time: "{{js: new Date().toISOString()}}"
 
   # Passo 8: Enviar Notificação
   - name: "Send User Notification"

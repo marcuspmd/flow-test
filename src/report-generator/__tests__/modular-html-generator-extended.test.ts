@@ -98,7 +98,7 @@ describe("ModularHtmlGenerator - Extended Coverage", () => {
       };
       const result = generator.generate(perfectResult);
       expect(result).toContain("100.0%");
-      expect(result).toContain("text-success-600"); // success color scheme
+      expect(result).toContain("text-green-600"); // success color scheme
     });
 
     it("should handle 0% success rate correctly", () => {
@@ -110,13 +110,13 @@ describe("ModularHtmlGenerator - Extended Coverage", () => {
       };
       const result = generator.generate(failedResult);
       expect(result).toContain("0.0%");
-      expect(result).toContain("text-error-600"); // error color scheme
+      expect(result).toContain("text-red-600"); // error color scheme
     });
 
     it("should handle 80% success rate correctly (warning zone)", () => {
       const result = generator.generate(sampleResult);
       expect(result).toContain("80.0%");
-      expect(result).toContain("text-warning-600"); // warning color scheme
+      expect(result).toContain("text-amber-600"); // warning color scheme
     });
 
     it("should handle undefined/null values gracefully", () => {
@@ -335,7 +335,7 @@ describe("ModularHtmlGenerator - Extended Coverage", () => {
       };
 
       const result = generator.generate(resultWithFaker);
-      expect(result).toContain("TechCorp");
+      expect(result).toContain("Project TechCorp");
       expect(result).toContain("John");
       expect(result).toContain("550e8400-e29b-41d4-a716-446655440000");
       expect(result).toContain("a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6");
@@ -427,7 +427,9 @@ describe("ModularHtmlGenerator - Extended Coverage", () => {
 
       const result = generator.generate(resultWithEncoding);
       expect(result).toContain("{{keyword}}");
-      expect(result).toContain('{"test":"value"}');
+      expect(result).toContain(
+        "&quot;encoded data {\\&quot;test\\&quot;:\\&quot;value\\&quot;}&quot;"
+      );
     });
 
     it("should handle environment variable patterns through generate", () => {
@@ -677,7 +679,7 @@ describe("ModularHtmlGenerator - Extended Coverage", () => {
       expect(result).toContain("Bearer");
       expect(result).toContain("550e8400-e29b-41d4-a716-446655440000"); // UUID replacement
       expect(result).toContain("John"); // Faker replacement
-      expect(result).toContain("john.doe@example.com"); // Email replacement
+      expect(result).toContain("john@example.com"); // Email replacement
       expect(result).toContain("[ENV:ENVIRONMENT]"); // Env replacement
       expect(result).toContain("201");
     });

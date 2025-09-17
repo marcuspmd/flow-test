@@ -70,64 +70,64 @@ describe("VariableService", () => {
   });
 
   describe("constructor", () => {
-    it("deve criar uma instância com contexto fornecido", () => {
+    it("should create an instance with provided context", () => {
       expect(service).toBeDefined();
     });
 
-    it("deve criar sem registry global", () => {
+    it("should create without global registry", () => {
       const serviceWithoutRegistry = new VariableService(baseContext);
       expect(serviceWithoutRegistry).toBeDefined();
     });
   });
 
   describe("interpolate", () => {
-    it("deve interpolar variável de runtime", () => {
+    it("should interpolate runtime variable", () => {
       const result = service.interpolate("Token: {{auth_token}}");
       expect(result).toBe("Token: abc123");
     });
 
-    it("deve interpolar variável de suite", () => {
+    it("should interpolate suite variable", () => {
       const result = service.interpolate("User ID: {{user_id}}");
       expect(result).toBe("User ID: 123");
     });
 
-    it("deve interpolar variável global", () => {
+    it("should interpolate global variable", () => {
       const result = service.interpolate("API: {{api_url}}");
       expect(result).toBe("API: https://api.example.com");
     });
 
-    it("deve interpolar variável importada com dot notation", () => {
+    it("should interpolate imported variable with dot notation", () => {
       const result = service.interpolate("Auth: {{auth.token}}");
       expect(result).toBe("Auth: xyz789");
     });
 
-    it("deve interpolar múltiplas variáveis", () => {
+    it("should interpolate multiple variables", () => {
       const result = service.interpolate("{{api_url}}/users/{{user_id}}");
       expect(result).toBe("https://api.example.com/users/123");
     });
 
-    it("deve interpolar variáveis de ambiente", () => {
+    it("should interpolate environment variables", () => {
       process.env.TEST_VAR = "env_value";
       const result = service.interpolate("Env: {{$env.TEST_VAR}}");
       expect(result).toBe("Env: env_value");
     });
 
-    it("deve retornar null para variável de ambiente inexistente", () => {
+    it("should return null for non-existent environment variable", () => {
       const result = service.interpolate("Env: {{$env.NONEXISTENT}}");
       expect(result).toBe("Env: null");
     });
 
-    it("deve interpolar expressões faker", () => {
+    it("should interpolate faker expressions", () => {
       const result = service.interpolate("Email: {{faker.internet.email}}");
       expect(result).toBe("Email: test@example.com");
     });
 
-    it("deve interpolar expressões $faker", () => {
+    it("should interpolate $faker expressions", () => {
       const result = service.interpolate("Name: {{$faker.person.firstName}}");
       expect(result).toBe("Name: John");
     });
 
-    it("deve interpolar objetos complexos", () => {
+    it("should interpolate complex objects", () => {
       const obj = {
         url: "{{api_url}}/users/{{user_id}}",
         headers: { Authorization: "Bearer {{auth_token}}" },
@@ -142,30 +142,30 @@ describe("VariableService", () => {
       });
     });
 
-    it("deve interpolar arrays", () => {
+    it("should interpolate arrays", () => {
       const arr = ["{{user_id}}", "{{test_name}}", "{{api_url}}"];
       const result = service.interpolate(arr);
       expect(result).toEqual(["123", "integration", "https://api.example.com"]);
     });
 
-    it("deve manter placeholders para variáveis inexistentes", () => {
+    it("should keep placeholders for non-existent variables", () => {
       const result = service.interpolate("Hello {{unknown_var}}");
       expect(result).toBe("Hello {{unknown_var}}");
     });
 
-    it("deve preservar tipos não-string", () => {
+    it("should preserve non-string types", () => {
       const obj = { number: 42, boolean: true, null_val: null };
       const result = service.interpolate(obj);
       expect(result).toEqual(obj);
     });
 
-    it("deve interpolar com suppressWarnings ativo", () => {
+    it("should interpolate with suppressWarnings enabled", () => {
       const result = service.interpolate("Hello {{unknown}}", true);
       expect(result).toBe("Hello {{unknown}}");
       expect(mockLogger.warn).not.toHaveBeenCalled();
     });
 
-    it("deve log warning para variáveis inexistentes quando suppressWarnings é false", () => {
+    it("should log warning for non-existent variables when suppressWarnings is false", () => {
       service.interpolate("Hello {{unknown_variable}}", false);
       expect(mockLogger.warn).toHaveBeenCalledWith(
         "Variable 'unknown_variable' not found during interpolation"
@@ -183,7 +183,7 @@ describe("VariableService", () => {
       mockJavaScriptService.executeExpression.mockClear();
     });
 
-    it("deve processar expressões js:", () => {
+    it("should process js: expressions", () => {
       mockJavaScriptService.parseJavaScriptExpression.mockReturnValue(
         "Math.max(1,2)"
       );
@@ -196,7 +196,7 @@ describe("VariableService", () => {
       ).toHaveBeenCalledWith("js:Math.max(1,2)");
     });
 
-    it("deve processar expressões $js.", () => {
+    it("should process $js. expressions", () => {
       mockJavaScriptService.executeExpression.mockReturnValue(true);
 
       const result = service.interpolate("Status: {{$js.return true}}");
@@ -208,7 +208,7 @@ describe("VariableService", () => {
       );
     });
 
-    it("deve processar expressões com operadores lógicos", () => {
+    it("should process expressions with logical operators", () => {
       mockJavaScriptService.executeExpression.mockReturnValue(false);
 
       const result = service.interpolate("Valid: {{false || false}}");
@@ -220,7 +220,7 @@ describe("VariableService", () => {
       );
     });
 
-    it("deve lidar com erro em expressão JavaScript", () => {
+    it("should handle error in JavaScript expression", () => {
       mockJavaScriptService.executeExpression.mockImplementation(() => {
         throw new Error("Syntax error");
       });
@@ -234,7 +234,7 @@ describe("VariableService", () => {
   });
 
   describe("Faker expressions", () => {
-    it("deve processar expressões faker com erro", () => {
+    it("should process faker expressions with error", () => {
       const { fakerService } = require("../faker.service");
       fakerService.parseFakerExpression.mockImplementation(() => {
         throw new Error("Faker error");
@@ -249,7 +249,7 @@ describe("VariableService", () => {
   });
 
   describe("Global Registry integration", () => {
-    it("deve buscar variável exportada do registry global", () => {
+    it("should fetch exported variable from global registry", () => {
       mockGlobalRegistry.getExportedVariable.mockReturnValue("exported_value");
 
       const result = service.interpolate("Value: {{global.exported}}");
@@ -259,7 +259,7 @@ describe("VariableService", () => {
       );
     });
 
-    it("deve funcionar sem registry global", () => {
+    it("should work without global registry", () => {
       const serviceWithoutRegistry = new VariableService(baseContext);
       const result = serviceWithoutRegistry.interpolate(
         "Value: {{global.var}}"
@@ -269,8 +269,8 @@ describe("VariableService", () => {
   });
 
   describe("Variable hierarchy", () => {
-    it("deve priorizar runtime sobre suite", () => {
-      // Ambos têm a mesma variável, runtime deve ter prioridade
+    it("should prioritize runtime over suite", () => {
+      // Both have the same variable, runtime should have priority
       const contextWithConflict = {
         ...baseContext,
         runtime: { shared_var: "runtime_value" },
@@ -282,7 +282,7 @@ describe("VariableService", () => {
       expect(result).toBe("runtime_value");
     });
 
-    it("deve priorizar suite sobre imported", () => {
+    it("should prioritize suite over imported", () => {
       const contextWithConflict = {
         ...baseContext,
         suite: { test_var: "suite_value" },
@@ -294,7 +294,7 @@ describe("VariableService", () => {
       expect(result).toBe("suite_value");
     });
 
-    it("deve priorizar imported sobre global", () => {
+    it("should prioritize imported over global", () => {
       const contextWithConflict = {
         ...baseContext,
         global: { test_var: "global_value" },
@@ -308,7 +308,7 @@ describe("VariableService", () => {
   });
 
   describe("Special cases", () => {
-    it("deve interpolar valores falsy corretamente", () => {
+    it("should interpolate falsy values correctly", () => {
       const contextWithFalsy = {
         ...baseContext,
         runtime: { zero: 0, false_val: false, empty_string: "" },
@@ -321,7 +321,7 @@ describe("VariableService", () => {
       expect(serviceWithFalsy.interpolate("{{empty_string}}")).toBe("");
     });
 
-    it("deve lidar com caracteres especiais em variáveis", () => {
+    it("should handle special characters in variables", () => {
       const contextWithSpecial = {
         ...baseContext,
         runtime: {
@@ -340,12 +340,12 @@ describe("VariableService", () => {
       );
     });
 
-    it("deve interpolar múltiplas ocorrências da mesma variável", () => {
+    it("should interpolate multiple occurrences of the same variable", () => {
       const result = service.interpolate("{{user_id}} and {{user_id}} again");
       expect(result).toBe("123 and 123 again");
     });
 
-    it("deve preservar espaços em branco", () => {
+    it("should preserve whitespace", () => {
       const contextWithSpaces = {
         ...baseContext,
         runtime: { spaced_var: "  spaced value  " },
@@ -358,7 +358,7 @@ describe("VariableService", () => {
   });
 
   describe("Error handling", () => {
-    it("deve lidar com objetos circulares sem travamento", () => {
+    it("should handle circular objects without hanging", () => {
       const circular: any = { name: "test" };
       circular.self = circular;
 
@@ -374,7 +374,7 @@ describe("VariableService", () => {
       }).not.toThrow();
     });
 
-    it("deve processar arrays aninhados profundos", () => {
+    it("should process deeply nested arrays", () => {
       const deepArray = [["{{user_id}}", "{{test_name}}"], [["{{api_url}}"]]];
 
       const result = service.interpolate(deepArray);
@@ -384,7 +384,7 @@ describe("VariableService", () => {
       ]);
     });
 
-    it("deve processar objetos aninhados profundos", () => {
+    it("should process deeply nested objects", () => {
       const deepObject = {
         level1: {
           level2: {
@@ -409,13 +409,13 @@ describe("VariableService", () => {
   });
 
   describe("Public API methods", () => {
-    it("deve definir variável via setVariable", () => {
+    it("should set variable via setVariable", () => {
       service.setVariable("test_var", "test_value");
       const result = service.interpolate("{{test_var}}");
       expect(result).toBe("test_value");
     });
 
-    it("deve definir múltiplas variáveis via setVariables", () => {
+    it("should set multiple variables via setVariables", () => {
       service.setVariables({ var1: "value1", var2: "value2" });
 
       const result1 = service.interpolate("{{var1}}");
@@ -425,14 +425,14 @@ describe("VariableService", () => {
       expect(result2).toBe("value2");
     });
 
-    it("deve adicionar flow importado", () => {
+    it("should add imported flow", () => {
       service.addImportedFlow("newFlow", { flowVar: "flowValue" });
 
       const result = service.interpolate("{{newFlow.flowVar}}");
       expect(result).toBe("flowValue");
     });
 
-    it("deve retornar todas as variáveis", () => {
+    it("should return all variables", () => {
       service.setVariable("runtime_var", "runtime_value");
 
       const allVars = service.getAllVariables();
@@ -447,14 +447,14 @@ describe("VariableService", () => {
       );
     });
 
-    it("deve exportar variável para registry global", () => {
+    it("should export variable to global registry", () => {
       service.setVariable("export_var", "export_value");
       service.exportVariables("test-suite", "test-node", ["export_var"], {});
 
       expect(mockGlobalRegistry.setExportedVariable).toHaveBeenCalled();
     });
 
-    it("deve limpar contexto de runtime", () => {
+    it("should clear runtime context", () => {
       service.setVariable("temp_var", "temp_value");
       expect(service.interpolate("{{temp_var}}")).toBe("temp_value");
 
@@ -462,7 +462,7 @@ describe("VariableService", () => {
       expect(service.interpolate("{{temp_var}}")).toBe("{{temp_var}}");
     });
 
-    it("deve atualizar contexto de execução JavaScript", () => {
+    it("should update JavaScript execution context", () => {
       const newContext = { variables: { customVar: "customValue" } };
       service.setExecutionContext(newContext);
 
@@ -471,14 +471,14 @@ describe("VariableService", () => {
       expect(allVars).toBeDefined();
     });
 
-    it("deve verificar se tem variável", () => {
+    it("should check if has variable", () => {
       service.setVariable("test_var", "test_value");
 
       expect(service.hasVariable("test_var")).toBe(true);
       expect(service.hasVariable("nonexistent")).toBe(false);
     });
 
-    it("deve obter variáveis exportadas globais", () => {
+    it("should get exported global variables", () => {
       mockGlobalRegistry.getAllExportedVariables.mockReturnValue({
         global_export: "exported_value",
       });
@@ -487,7 +487,7 @@ describe("VariableService", () => {
       expect(globalVars).toEqual({ global_export: "exported_value" });
     });
 
-    it("deve obter todas as variáveis disponíveis incluindo globais", () => {
+    it("should get all available variables including globals", () => {
       service.setVariable("runtime_var", "runtime_value");
       mockGlobalRegistry.getAllExportedVariables.mockReturnValue({
         global_export: "exported_value",
@@ -502,7 +502,7 @@ describe("VariableService", () => {
       );
     });
 
-    it("deve definir global registry", () => {
+    it("should set global registry", () => {
       const newRegistry = {} as any;
       service.setGlobalRegistry(newRegistry);
 
@@ -510,7 +510,7 @@ describe("VariableService", () => {
       expect(service).toBeDefined();
     });
 
-    it("deve limpar variáveis de suite", () => {
+    it("should clear suite variables", () => {
       service.setVariable("runtime_var", "runtime_value");
 
       service.clearSuiteVariables();
@@ -519,7 +519,7 @@ describe("VariableService", () => {
       expect(service.interpolate("{{user_id}}")).toBe("{{user_id}}"); // suite var também limpa
     });
 
-    it("deve limpar todas as variáveis não-globais", () => {
+    it("should clear all non-global variables", () => {
       service.setVariable("runtime_var", "runtime_value");
 
       service.clearAllNonGlobalVariables();
@@ -534,7 +534,7 @@ describe("VariableService", () => {
   });
 
   describe("Advanced interpolation scenarios", () => {
-    it("deve interpolar com variáveis em imported flows usando findInImported", () => {
+    it("should interpolate with variables in imported flows using findInImported", () => {
       const contextWithMultipleImports = {
         ...baseContext,
         imported: {
@@ -547,7 +547,7 @@ describe("VariableService", () => {
         contextWithMultipleImports
       );
 
-      // Deve encontrar a primeira ocorrência
+      // Should find the first occurrence
       const result1 = serviceWithImports.interpolate("{{shared_name}}");
       expect(result1).toBe("from_flow1");
 
@@ -555,7 +555,7 @@ describe("VariableService", () => {
       expect(result2).toBe("unique_value");
     });
 
-    it("deve usar getNestedValue para dot notation", () => {
+    it("should use getNestedValue for dot notation", () => {
       const contextWithNested = {
         ...baseContext,
         imported: {
@@ -576,18 +576,18 @@ describe("VariableService", () => {
       expect(result).toBe("deep_value");
     });
 
-    it("deve lidar com getNestedValue em objetos indefinidos", () => {
+    it("should handle getNestedValue on undefined objects", () => {
       const result = service.interpolate("{{nonexistent.deep.path}}");
       expect(result).toBe("{{nonexistent.deep.path}}");
     });
 
-    it("deve verificar se é variável de runtime com isLikelyRuntimeVariable", () => {
+    it("should check if is runtime variable with isLikelyRuntimeVariable", () => {
       // Testar cenário onde uma variável não é encontrada mas é identificada como runtime
       const result = service.interpolate("{{session_token}}", false);
       expect(result).toBe("{{session_token}}");
     });
 
-    it("deve exportar variáveis com diferentes cenários", () => {
+    it("should export variables with different scenarios", () => {
       // Cenário: variável em capturedVariables
       service.setVariable("captured_var", "captured_value");
       const capturedVars = { captured_var: "captured_value" };
@@ -605,7 +605,7 @@ describe("VariableService", () => {
       );
     });
 
-    it("deve exportar variável do runtime quando não está em captured", () => {
+    it("should export runtime variable when not in captured", () => {
       service.setVariable("runtime_var", "runtime_value");
 
       service.exportVariables("test-suite", "test-node", ["runtime_var"], {});
@@ -616,7 +616,7 @@ describe("VariableService", () => {
       );
     });
 
-    it("deve logar warning quando variável de export não é encontrada", () => {
+    it("should log warning when export variable is not found", () => {
       service.exportVariables(
         "test-suite",
         "test-node",
@@ -628,13 +628,13 @@ describe("VariableService", () => {
       );
     });
 
-    it("deve retornar objeto vazio quando não há global registry", () => {
+    it("should return empty object when no global registry", () => {
       const serviceWithoutRegistry = new VariableService(baseContext);
       const result = serviceWithoutRegistry.getGlobalExportedVariables();
       expect(result).toEqual({});
     });
 
-    it("deve retornar estatísticas de contexto", () => {
+    it("should return context statistics", () => {
       service.setVariable("runtime1", "value1");
       service.setVariable("runtime2", "value2");
 

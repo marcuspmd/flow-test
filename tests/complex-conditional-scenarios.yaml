@@ -100,7 +100,7 @@ steps:
           capture:
             guest_access_granted: "true"
             guest_features: "{{api_responses.guest_response.available_features}}"
-            guest_limits: "{{api_responses.guest_response.limits}}"
+            guest_limits: "api_responses.guest_response.limits"
 
       # Cenário B: Acesso negado
       - condition: "status_code == `401`"
@@ -143,9 +143,9 @@ steps:
               equals: "registered"
           capture:
             registered_access: "true"
-            registered_features: "{{api_responses.registered_response.available_features}}"
-            registered_limits: "{{api_responses.registered_response.limits}}"
-            feature_count: "length({{api_responses.registered_response.available_features}})"
+            registered_features: "api_responses.registered_response.available_features"
+            registered_limits: "api_responses.registered_response.limits"
+            feature_count: "length(api_responses.registered_response.available_features)"
 
       # Cenário B: Token inválido ou expirado
       - condition: "status_code == `401`"
@@ -160,7 +160,7 @@ steps:
       - condition: "status_code == `200` && args.action == 'get_features'"
         then:
           capture:
-            upgrade_available: "{{api_responses.registered_response.limits.premium_upgrade_available}}"
+            upgrade_available: "api_responses.registered_response.limits.premium_upgrade_available"
             current_tier: "'registered'"
 
   # Cenário 3: Teste de Usuário Premium

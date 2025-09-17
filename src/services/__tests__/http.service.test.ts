@@ -59,7 +59,7 @@ describe("HttpService", () => {
   });
 
   describe("Constructor", () => {
-    test("deve criar instância com baseUrl e timeout padrão", () => {
+    test("should create instance with baseUrl and default timeout", () => {
       httpService = new HttpService("https://api.example.com");
 
       expect(httpService).toBeInstanceOf(HttpService);
@@ -67,7 +67,7 @@ describe("HttpService", () => {
       expect(httpService["timeout"]).toBe(60000);
     });
 
-    test("deve criar instância com timeout customizado", () => {
+    test("should create instance with custom timeout", () => {
       httpService = new HttpService("https://api.example.com", 10000);
 
       expect(httpService).toBeInstanceOf(HttpService);
@@ -75,7 +75,7 @@ describe("HttpService", () => {
       expect(httpService["timeout"]).toBe(10000);
     });
 
-    test("deve criar instância sem baseUrl", () => {
+    test("should criar instância sem baseUrl", () => {
       httpService = new HttpService();
 
       expect(httpService).toBeInstanceOf(HttpService);
@@ -89,7 +89,7 @@ describe("HttpService", () => {
       httpService = new HttpService("https://api.example.com");
     });
 
-    test("deve executar GET request com sucesso", async () => {
+    test("should executar GET request com sucesso", async () => {
       const request: RequestDetails = {
         method: "GET",
         url: "/users",
@@ -109,7 +109,7 @@ describe("HttpService", () => {
       );
     });
 
-    test("deve executar POST request com body", async () => {
+    test("should executar POST request com body", async () => {
       const request: RequestDetails = {
         method: "POST",
         url: "/users",
@@ -130,7 +130,7 @@ describe("HttpService", () => {
       );
     });
 
-    test("deve usar URL absoluta quando não há baseUrl", async () => {
+    test("should usar URL absoluta quando não há baseUrl", async () => {
       httpService = new HttpService(); // Sem baseUrl
 
       const request: RequestDetails = {
@@ -147,7 +147,7 @@ describe("HttpService", () => {
       );
     });
 
-    test("deve incluir params na requisição", async () => {
+    test("should incluir params na requisição", async () => {
       const request: RequestDetails = {
         method: "GET",
         url: "/search",
@@ -163,7 +163,7 @@ describe("HttpService", () => {
       );
     });
 
-    test("deve logar informações da requisição e resposta", async () => {
+    test("should logar informações da requisição e resposta", async () => {
       const request: RequestDetails = {
         method: "GET",
         url: "/users",
@@ -187,7 +187,7 @@ describe("HttpService", () => {
       httpService = new HttpService("https://api.example.com");
     });
 
-    test("deve tratar AxiosError com response", async () => {
+    test("should tratar AxiosError com response", async () => {
       const errorResponse: Partial<AxiosResponse> = {
         status: 404,
         statusText: "Not Found",
@@ -221,7 +221,7 @@ describe("HttpService", () => {
       // expect(result.response_details?.status_code).toBe(404);
     });
 
-    test("deve tratar AxiosError sem response (network error)", async () => {
+    test("should tratar AxiosError sem response (network error)", async () => {
       // Criamos um erro que simula network error
       const axiosError = {
         message: "Network Error",
@@ -245,7 +245,7 @@ describe("HttpService", () => {
       expect(result.error_message).toBe("Connection refused by server");
     });
 
-    test("deve tratar erro genérico", async () => {
+    test("should tratar erro genérico", async () => {
       const genericError = new Error("Something went wrong");
       mockAxios.mockRejectedValue(genericError);
       mockIsAxiosError.mockReturnValue(false);
@@ -263,7 +263,7 @@ describe("HttpService", () => {
   });
 
   describe("URL Building", () => {
-    test("deve combinar baseUrl com URL relativa", async () => {
+    test("should combinar baseUrl com URL relativa", async () => {
       httpService = new HttpService("https://api.example.com");
 
       const mockResponse: AxiosResponse = {
@@ -289,7 +289,7 @@ describe("HttpService", () => {
       );
     });
 
-    test("deve usar URL absoluta quando fornecida", async () => {
+    test("should usar URL absoluta quando fornecida", async () => {
       httpService = new HttpService("https://api.example.com");
 
       const mockResponse: AxiosResponse = {
@@ -330,7 +330,7 @@ describe("HttpService", () => {
       mockAxios.mockResolvedValue(mockResponse);
     });
 
-    test("deve remover headers undefined/null", async () => {
+    test("should remover headers undefined/null", async () => {
       const request: RequestDetails = {
         method: "GET",
         url: "/test",
@@ -359,7 +359,7 @@ describe("HttpService", () => {
       httpService = new HttpService("https://api.example.com");
     });
 
-    test("deve calcular tamanho da resposta corretamente", async () => {
+    test("should calcular tamanho da resposta corretamente", async () => {
       const mockResponse: AxiosResponse = {
         status: 200,
         statusText: "OK",
@@ -379,7 +379,7 @@ describe("HttpService", () => {
       expect(result.response_details?.size_bytes).toBe(32);
     });
 
-    test("deve normalizar headers de resposta", async () => {
+    test("should normalizar headers de resposta", async () => {
       const mockResponse: AxiosResponse = {
         status: 200,
         statusText: "OK",
@@ -422,7 +422,7 @@ describe("HttpService", () => {
       mockAxios.mockResolvedValue(mockResponse);
     });
 
-    test("deve gerar comando curl válido", async () => {
+    test("should gerar comando curl válido", async () => {
       const request: RequestDetails = {
         method: "POST",
         url: "/users",
@@ -443,7 +443,7 @@ describe("HttpService", () => {
       expect(curlCommand).toContain('-d \'{"name":"Test User"}\'');
     });
 
-    test("deve gerar raw request válido", async () => {
+    test("should gerar raw request válido", async () => {
       const request: RequestDetails = {
         method: "POST",
         url: "/users",
@@ -460,7 +460,7 @@ describe("HttpService", () => {
       expect(rawRequest).toContain('{"name":"Test User"}');
     });
 
-    test("deve gerar raw response válido", async () => {
+    test("should gerar raw response válido", async () => {
       const request: RequestDetails = {
         method: "GET",
         url: "/users",
@@ -480,21 +480,21 @@ describe("HttpService", () => {
       httpService = new HttpService("https://api.example.com");
     });
 
-    test("deve alterar timeout com setTimeout", () => {
+    test("should alterar timeout com setTimeout", () => {
       const newTimeout = 30000;
       httpService.setTimeout(newTimeout);
 
       expect(httpService["timeout"]).toBe(newTimeout);
     });
 
-    test("deve alterar baseUrl com setBaseUrl", () => {
+    test("should alterar baseUrl com setBaseUrl", () => {
       const newBaseUrl = "https://new-api.example.com";
       httpService.setBaseUrl(newBaseUrl);
 
       expect(httpService["baseUrl"]).toBe(newBaseUrl);
     });
 
-    test("deve definir baseUrl como undefined para valor inválido", () => {
+    test("should definir baseUrl como undefined para valor inválido", () => {
       httpService.setBaseUrl(null as any);
       expect(httpService["baseUrl"]).toBeUndefined();
 
@@ -511,7 +511,7 @@ describe("HttpService", () => {
       httpService = new HttpService("https://api.example.com");
     });
 
-    test("deve exercitar função validateStatus através de request", async () => {
+    test("should exercitar função validateStatus através de request", async () => {
       // Este teste força a execução da função validateStatus() => true
       // definida na linha 131 do http.service.ts
       const request: RequestDetails = {

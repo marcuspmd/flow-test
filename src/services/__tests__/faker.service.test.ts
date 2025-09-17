@@ -216,19 +216,25 @@ describe("FakerService", () => {
     test("deve lançar erro para método não allowlistado", () => {
       expect(() => {
         fakerService.executeMethod("internet.userAgent");
-      }).toThrow("Faker method 'internet.userAgent' is not allowlisted for security reasons");
+      }).toThrow(
+        "Faker method 'internet.userAgent' is not allowlisted for security reasons"
+      );
     });
 
     test("deve lançar erro para path inválido", () => {
       expect(() => {
         fakerService.executeMethod("invalid");
-      }).toThrow("Invalid Faker method path: invalid. Expected format: 'category.method'");
+      }).toThrow(
+        "Invalid Faker method path: invalid. Expected format: 'category.method'"
+      );
     });
 
     test("deve lançar erro para path com muitas partes", () => {
       expect(() => {
         fakerService.executeMethod("invalid.too.many.parts");
-      }).toThrow("Invalid Faker method path: invalid.too.many.parts. Expected format: 'category.method'");
+      }).toThrow(
+        "Invalid Faker method path: invalid.too.many.parts. Expected format: 'category.method'"
+      );
     });
 
     test("deve lançar erro para categoria inexistente", () => {
@@ -238,7 +244,9 @@ describe("FakerService", () => {
 
       expect(() => {
         fakerService.executeMethod("nonexistent.method");
-      }).toThrow("Faker category 'nonexistent' not found");
+      }).toThrow(
+        "Faker method 'nonexistent.method' is not allowlisted for security reasons"
+      );
     });
 
     test("deve lançar erro para método inexistente na categoria", () => {
@@ -247,7 +255,9 @@ describe("FakerService", () => {
 
       expect(() => {
         fakerService.executeMethod("person.nonexistent");
-      }).toThrow("Faker method 'nonexistent' not found in category 'person'");
+      }).toThrow(
+        "Faker method 'person.nonexistent' is not allowlisted for security reasons"
+      );
 
       // Restaurar mock original
       delete (mockFaker.person as any).nonexistent;
@@ -256,43 +266,59 @@ describe("FakerService", () => {
 
   describe("parseArguments - cobertura completa", () => {
     test("deve parsear argumentos JSON diretos", () => {
-      const result = fakerService.parseFakerExpression('number.int({"min": 1, "max": 10})');
+      const result = fakerService.parseFakerExpression(
+        'number.int({"min": 1, "max": 10})'
+      );
       expect(result).toBe(5);
     });
 
     test("deve parsear argumentos com aspas simples", () => {
-      const result = fakerService.parseFakerExpression("helpers.arrayElement(['x', 'y', 'z'])");
+      const result = fakerService.parseFakerExpression(
+        "helpers.arrayElement(['x', 'y', 'z'])"
+      );
       expect(result).toBe("a");
     });
 
     test("deve parsear argumentos como array", () => {
-      const result = fakerService.parseFakerExpression('helpers.arrayElement("test", "test2")');
+      const result = fakerService.parseFakerExpression(
+        'helpers.arrayElement("test", "test2")'
+      );
       expect(result).toBe("a");
     });
 
     test("deve tratar argumentos como string quando JSON falha", () => {
-      const result = fakerService.parseFakerExpression('lorem.word(invalid_json_here)');
+      const result = fakerService.parseFakerExpression(
+        "lorem.word(invalid_json_here)"
+      );
       expect(result).toBe("lorem");
     });
 
     test("deve tratar erro de parsing de argumentos", () => {
       expect(() => {
-        fakerService.parseFakerExpression('invalid.method({malformed json})');
+        fakerService.parseFakerExpression("invalid.method({malformed json})");
       }).toThrow("Error parsing Faker arguments");
     });
   });
 
   describe("Execução de métodos com argumentos", () => {
     test("deve executar método com argumentos", () => {
-      const result = fakerService.executeMethod("number.int", [{ min: 1, max: 10 }]);
+      const result = fakerService.executeMethod("number.int", [
+        { min: 1, max: 10 },
+      ]);
       expect(result).toBe(5);
       expect(mockFaker.number.int).toHaveBeenCalledWith({ min: 1, max: 10 });
     });
 
     test("deve executar método arrayElement com argumentos", () => {
-      const result = fakerService.executeMethod("helpers.arrayElement", [["a", "b", "c"]]);
+      const result = fakerService.executeMethod("helpers.arrayElement", [
+        ["a", "b", "c"],
+      ]);
       expect(result).toBe("a");
-      expect(mockFaker.helpers.arrayElement).toHaveBeenCalledWith(["a", "b", "c"]);
+      expect(mockFaker.helpers.arrayElement).toHaveBeenCalledWith([
+        "a",
+        "b",
+        "c",
+      ]);
     });
   });
 
@@ -306,7 +332,9 @@ describe("FakerService", () => {
 
       expect(() => {
         fakerService.executeMethod("person.firstName");
-      }).toThrow("Error executing Faker method 'person.firstName': Error: Simulated faker error");
+      }).toThrow(
+        "Error executing Faker method 'person.firstName': Error: Simulated faker error"
+      );
 
       // Restaurar mock original
       mockFaker.person.firstName = originalMethod;

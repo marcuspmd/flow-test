@@ -318,19 +318,19 @@ steps:
       body:
         edge_cases_summary:
           error_handling:
-            status_404: "{{error_404_handled}}"
-            status_500: "{{error_500_handled}}"
-            timeout_risk: "{{timeout_risk}}"
+            status_404: "{{js: typeof variables.error_404_handled !== 'undefined' ? variables.error_404_handled : 'not_tested'}}"
+            status_500: "{{js: typeof variables.error_500_handled !== 'undefined' ? variables.error_500_handled : 'not_tested'}}"
+            timeout_risk: "{{js: typeof variables.timeout_risk !== 'undefined' ? variables.timeout_risk : 'not_tested'}}"
           data_handling:
-            special_chars: "{{special_chars_handled}}"
-            large_payload: "{{large_payload_accepted}}"
-            headers_test: "{{headers_test_passed}}"
+            special_chars: "{{js: typeof variables.special_chars_handled !== 'undefined' ? variables.special_chars_handled : 'not_tested'}}"
+            large_payload: "{{js: typeof variables.large_payload_accepted !== 'undefined' ? variables.large_payload_accepted : 'not_tested'}}"
+            headers_test: "{{js: typeof variables.headers_test_passed !== 'undefined' ? variables.headers_test_passed : 'not_tested'}}"
           security_tests:
-            auth_validation: "{{auth_validation_working}}"
-            invalid_token: "{{invalid_token_rejected}}"
+            auth_validation: "{{js: typeof variables.auth_validation_working !== 'undefined' ? variables.auth_validation_working : 'not_tested'}}"
+            invalid_token: "{{js: typeof variables.invalid_token_rejected !== 'undefined' ? variables.invalid_token_rejected : 'not_tested'}}"
           http_features:
-            patch_method: "{{patch_method_supported}}"
-            redirects: "{{redirect_handled}}"
+            patch_method: "{{js: typeof variables.patch_method_supported !== 'undefined' ? variables.patch_method_supported : 'not_tested'}}"
+            redirects: "{{js: typeof variables.redirect_handled !== 'undefined' ? variables.redirect_handled : 'not_tested'}}"
           complex_data:
             nested_access: "{{deep_nested_value}}"
             null_handling: "{{null_value_test == null}}"
