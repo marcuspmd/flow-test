@@ -359,6 +359,7 @@ export class ModularHtmlGenerator {
             ? this.interpolateForDisplay(s.request_details.curl_command)
             : undefined,
           stepId: `step-${index}-${order}`,
+          capturedVariables: this.extractStepCapturedVariables(s),
         };
         if ((s as any).scenarios_meta) {
           obj.scenariosMeta = this.interpolateForDisplay(
@@ -588,6 +589,7 @@ export class ModularHtmlGenerator {
       duration: suite.duration_ms || 0,
       steps: finalSteps,
       suiteId: `suite-${index}`,
+      metadata: this.extractSuiteMetadata(suite),
     };
   }
 
@@ -599,6 +601,47 @@ export class ModularHtmlGenerator {
     if (successRate === 100) return "bg-green-500";
     if (successRate >= 80) return "bg-yellow-500";
     return "bg-red-500";
+  }
+
+  /**
+   * Extrai metadados da suíte
+   */
+  private extractSuiteMetadata(suite: SuiteResult): any {
+    const metadata: any = {};
+
+    // Extrai metadados do objeto da suíte
+    if ((suite as any).metadata) {
+      const suiteMetadata = (suite as any).metadata;
+      if (suiteMetadata.priority) metadata.priority = suiteMetadata.priority;
+      if (suiteMetadata.tags) metadata.tags = suiteMetadata.tags;
+      if (suiteMetadata.description)
+        metadata.description = suiteMetadata.description;
+      if (suiteMetadata.node_id) metadata.nodeId = suiteMetadata.node_id;
+    }
+
+    // Se não encontrou metadados, retorna undefined
+    return Object.keys(metadata).length > 0 ? metadata : undefined;
+  }
+
+  /**
+   * Extrai variáveis capturadas de um step específico
+   */
+  private extractStepCapturedVariables(step: StepResult): any[] {
+    const variables: any[] = [];
+
+    if ((step as any).captured_variables) {
+      Object.entries((step as any).captured_variables).forEach(
+        ([name, value]) => {
+          variables.push({
+            name,
+            value,
+            sourceStep: step.step_name || "Current Step",
+          });
+        }
+      );
+    }
+
+    return variables.length > 0 ? variables : [];
   }
 
   /**
@@ -738,6 +781,70 @@ export class ModularHtmlGenerator {
   }
 
   /**
+   * Gera resumo estilo Jest
+   */
+  private generateJestStyleSummary(data: AggregatedResult): string {
+    const totalTests = data.total_tests || 0;
+    const passedTests = data.successful_tests || 0;
+    const failedTests = data.failed_tests || 0;
+    const successRate = data.success_rate || 0;
+    const totalSuites = data.suites_results?.length || 0;
+
+    const isSuccess = successRate === 100;
+    const statusIcon = isSuccess ? "✓" : "✗";
+    const statusColor = isSuccess
+      ? "text-green-600 dark:text-green-400"
+      : "text-red-600 dark:text-red-400";
+    const bgColor = isSuccess
+      ? "bg-green-50 dark:bg-green-900/10"
+      : "bg-red-50 dark:bg-red-900/10";
+    const borderColor = isSuccess
+      ? "border-green-200 dark:border-green-800"
+      : "border-red-200 dark:border-red-800";
+
+    return `
+      <div class="mt-8 p-6 ${bgColor} rounded-xl border ${borderColor}">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-xl font-bold ${statusColor} flex items-center space-x-2">
+            <span class="text-2xl">${statusIcon}</span>
+            <span>${data.project_name || "Test Report"}</span>
+          </h3>
+          <div class="text-sm ${statusColor} font-mono">
+            ${successRate.toFixed(1)}% success rate
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+          <div class="text-center">
+            <div class="text-2xl font-bold text-blue-600 dark:text-blue-400">${totalSuites}</div>
+            <div class="text-sm text-secondary">Test Suites</div>
+          </div>
+          <div class="text-center">
+            <div class="text-2xl font-bold text-green-600 dark:text-green-400">${passedTests}</div>
+            <div class="text-sm text-secondary">Passed</div>
+          </div>
+          <div class="text-center">
+            <div class="text-2xl font-bold text-red-600 dark:text-red-400">${failedTests}</div>
+            <div class="text-sm text-secondary">Failed</div>
+          </div>
+          <div class="text-center">
+            <div class="text-2xl font-bold text-purple-600 dark:text-purple-400">${this.formatDuration(
+              data.total_duration_ms || 0
+            )}</div>
+            <div class="text-sm text-secondary">Total Time</div>
+          </div>
+        </div>
+
+        <div class="text-sm font-mono ${statusColor} text-center">
+          ${
+            isSuccess ? "PASS" : "FAIL"
+          } ${passedTests} passed, ${failedTests} failed, ${totalTests} total
+        </div>
+      </div>
+    `;
+  }
+
+  /**
    * Gera HTML completo do relatório
    */
   public generate(data: AggregatedResult): string {
@@ -786,6 +893,9 @@ export class ModularHtmlGenerator {
                     : '<div class="text-center p-8 bg-secondary rounded-xl border border-default"><p class="text-secondary">Nenhuma suíte de teste encontrada</p></div>'
                 }
             </section>
+
+            <!-- Jest-Style Summary -->
+            ${this.generateJestStyleSummary(data)}
 
             <!-- Footer -->
             <footer class="text-center mt-12 pt-8 border-t border-default text-secondary">

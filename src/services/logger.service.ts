@@ -9,6 +9,9 @@
  * @packageDocumentation
  */
 
+import chalk from "chalk";
+import boxen from "boxen";
+
 /**
  * Context information for structured logging operations.
  *
@@ -258,6 +261,209 @@ export class ConsoleLoggerAdapter implements Logger {
       console.error("  Error:", errorDetails);
     }
   }
+
+  /**
+   * Display captured variables in a formatted way
+   */
+  displayCapturedVariables(
+    variables: Record<string, any>,
+    context?: LogContext
+  ): void {
+    if (Object.keys(variables).length === 0) return;
+
+    console.log(chalk.blue("\n📥 Variables Captured:"));
+    Object.entries(variables).forEach(([key, value]) => {
+      const formattedValue = this.formatValue(value);
+      console.log(chalk.cyan(`   ${key}: ${formattedValue}`));
+    });
+  }
+
+  /**
+   * Display test metadata in a formatted way
+   */
+  displayTestMetadata(suite: any): void {
+    console.log(chalk.yellow("\n📋 Test Metadata:"));
+
+    if (suite.suite_name) {
+      console.log(chalk.white(`   Suite: ${suite.suite_name}`));
+    }
+
+    if (suite.node_id) {
+      console.log(chalk.gray(`   Node ID: ${suite.node_id}`));
+    }
+
+    if (suite.metadata?.priority) {
+      const priorityIcon = this.getPriorityIcon(suite.metadata.priority);
+      const priorityColor = this.getPriorityColor(suite.metadata.priority);
+      console.log(
+        priorityColor(`   Priority: ${priorityIcon} ${suite.metadata.priority}`)
+      );
+    }
+
+    if (suite.metadata?.tags && suite.metadata.tags.length > 0) {
+      console.log(chalk.magenta(`   Tags: ${suite.metadata.tags.join(", ")}`));
+    }
+
+    if (suite.metadata?.description) {
+      console.log(chalk.white(`   Description: ${suite.metadata.description}`));
+    }
+  }
+
+  /**
+   * Display error context with detailed information
+   */
+  displayErrorContext(
+    error: Error,
+    context: {
+      request?: any;
+      response?: any;
+      stepName?: string;
+      assertion?: any;
+    }
+  ): void {
+    console.log(chalk.red("\n❌ Error Details:"));
+
+    if (context.stepName) {
+      console.log(chalk.red(`   Step: ${context.stepName}`));
+    }
+
+    console.log(chalk.red(`   Message: ${error.message}`));
+
+    if (context.request) {
+      console.log(
+        chalk.yellow(
+          `   Request: ${context.request.method} ${context.request.url}`
+        )
+      );
+    }
+
+    if (context.response) {
+      console.log(
+        chalk.yellow(`   Response Status: ${context.response.status_code}`)
+      );
+    }
+
+    if (context.assertion) {
+      console.log(chalk.red(`   Failed Assertion: ${context.assertion.field}`));
+      console.log(chalk.red(`     Expected: ${context.assertion.expected}`));
+      console.log(chalk.red(`     Actual: ${context.assertion.actual}`));
+    }
+
+    if (error.stack) {
+      console.log(chalk.gray(`   Stack Trace: ${error.stack}`));
+    }
+  }
+
+  /**
+   * Display test results in Jest-like format
+   */
+  displayJestStyle(result: any): void {
+    const passed = result.steps_successful || 0;
+    const failed = result.steps_failed || 0;
+    const total = result.steps_executed || 0;
+
+    const status = failed === 0 ? "PASS" : "FAIL";
+    const color = failed === 0 ? chalk.green : chalk.red;
+    const icon = failed === 0 ? "✓" : "✗";
+
+    console.log(color(`\n${icon} ${result.suite_name || "Test Suite"}`));
+    console.log(
+      color(`  ${status} ${passed} passed, ${failed} failed, ${total} total`)
+    );
+
+    if (failed > 0) {
+      console.log(chalk.red("\nFailures:"));
+      // Aqui seria listado as falhas específicas se houvesse mais detalhes
+    }
+  }
+
+  /**
+   * Display scenario captures summary
+   */
+  displayScenarioSummary(
+    captures: Array<{
+      step: string;
+      variables: Record<string, any>;
+      timestamp: number;
+    }>
+  ): void {
+    if (captures.length === 0) return;
+
+    console.log(chalk.magenta("\n🎭 Scenario Captures Summary:"));
+    captures.forEach((capture, index) => {
+      console.log(chalk.magenta(`  Step ${index + 1}: ${capture.step}`));
+      Object.entries(capture.variables).forEach(([key, value]) => {
+        console.log(chalk.cyan(`    ${key}: ${this.formatValue(value)}`));
+      });
+    });
+  }
+
+  /**
+   * Format value for display
+   */
+  private formatValue(value: any): string {
+    if (value === null || value === undefined) {
+      return chalk.gray("null");
+    }
+
+    if (typeof value === "string") {
+      return chalk.green(`"${value}"`);
+    }
+
+    if (typeof value === "number") {
+      return chalk.yellow(value.toString());
+    }
+
+    if (typeof value === "boolean") {
+      return value ? chalk.green("true") : chalk.red("false");
+    }
+
+    if (Array.isArray(value)) {
+      return chalk.blue(`Array(${value.length})`);
+    }
+
+    if (typeof value === "object") {
+      return chalk.blue(`Object(${Object.keys(value).length} keys)`);
+    }
+
+    return chalk.gray(String(value));
+  }
+
+  /**
+   * Get priority icon
+   */
+  private getPriorityIcon(priority: string): string {
+    switch (priority.toLowerCase()) {
+      case "critical":
+        return "🔴";
+      case "high":
+        return "🟠";
+      case "medium":
+        return "🟡";
+      case "low":
+        return "🟢";
+      default:
+        return "⚪";
+    }
+  }
+
+  /**
+   * Get priority color
+   */
+  private getPriorityColor(priority: string): any {
+    switch (priority.toLowerCase()) {
+      case "critical":
+        return chalk.red;
+      case "high":
+        return chalk.red;
+      case "medium":
+        return chalk.yellow;
+      case "low":
+        return chalk.green;
+      default:
+        return chalk.white;
+    }
+  }
 }
 
 /**
@@ -364,6 +570,54 @@ export class LoggerService {
 
   error(message: string, context?: LogContext): void {
     this.logger.error(message, context);
+  }
+
+  // Delegate new display methods to the underlying logger if it supports them
+  displayCapturedVariables(
+    variables: Record<string, any>,
+    context?: LogContext
+  ): void {
+    if (typeof (this.logger as any).displayCapturedVariables === "function") {
+      (this.logger as any).displayCapturedVariables(variables, context);
+    }
+  }
+
+  displayTestMetadata(suite: any): void {
+    if (typeof (this.logger as any).displayTestMetadata === "function") {
+      (this.logger as any).displayTestMetadata(suite);
+    }
+  }
+
+  displayErrorContext(
+    error: Error,
+    context: {
+      request?: any;
+      response?: any;
+      stepName?: string;
+      assertion?: any;
+    }
+  ): void {
+    if (typeof (this.logger as any).displayErrorContext === "function") {
+      (this.logger as any).displayErrorContext(error, context);
+    }
+  }
+
+  displayJestStyle(result: any): void {
+    if (typeof (this.logger as any).displayJestStyle === "function") {
+      (this.logger as any).displayJestStyle(result);
+    }
+  }
+
+  displayScenarioSummary(
+    captures: Array<{
+      step: string;
+      variables: Record<string, any>;
+      timestamp: number;
+    }>
+  ): void {
+    if (typeof (this.logger as any).displayScenarioSummary === "function") {
+      (this.logger as any).displayScenarioSummary(captures);
+    }
   }
 }
 

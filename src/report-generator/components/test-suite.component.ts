@@ -9,7 +9,12 @@
  */
 
 import { BaseComponent } from "./base-component";
-import { TestSuiteProps, TestStepData } from "./types";
+import {
+  TestSuiteProps,
+  TestStepData,
+  SuiteMetadata,
+  CapturedVariables,
+} from "./types";
 import { TestStepComponent } from "./test-step.component";
 
 /**
@@ -25,6 +30,88 @@ export class TestSuiteComponent extends BaseComponent {
    */
   private getStatusIcon(status: string): string {
     return status === "success" ? "✓" : "✗";
+  }
+
+  /**
+   * Gets priority icon and color based on priority level
+   */
+  private getPriorityInfo(priority?: string): { icon: string; color: string } {
+    switch (priority) {
+      case "critical":
+        return { icon: "🔴", color: "text-red-600 dark:text-red-400" };
+      case "high":
+        return { icon: "🟠", color: "text-orange-600 dark:text-orange-400" };
+      case "medium":
+        return { icon: "🟡", color: "text-yellow-600 dark:text-yellow-400" };
+      case "low":
+        return { icon: "🟢", color: "text-green-600 dark:text-green-400" };
+      default:
+        return { icon: "⚪", color: "text-gray-600 dark:text-gray-400" };
+    }
+  }
+
+  /**
+   * Formats captured variables for display
+   */
+  private formatCapturedVariables(variables?: CapturedVariables[]): string {
+    if (!variables || variables.length === 0) {
+      return "";
+    }
+
+    const variableItems = variables
+      .map((variable) => {
+        const value = this.formatVariableValue(variable.value);
+        return this.html`
+        <div class="flex items-start space-x-2 py-1">
+          <span class="text-blue-600 dark:text-blue-400 font-mono text-sm">${this.escapeHtml(
+            variable.name
+          )}:</span>
+          <span class="text-green-600 dark:text-green-400 font-mono text-sm break-all">${this.escapeHtml(
+            value
+          )}</span>
+        </div>
+      `;
+      })
+      .join("");
+
+    return this.html`
+      <div class="mt-4 p-3 bg-blue-50 dark:bg-blue-900/10 rounded-lg border border-blue-200 dark:border-blue-800">
+        <div class="flex items-center space-x-2 mb-2">
+          <span class="text-lg">📥</span>
+          <h5 class="font-semibold text-primary text-sm">Captured Variables</h5>
+        </div>
+        <div class="space-y-1">
+          ${variableItems}
+        </div>
+      </div>
+    `;
+  }
+
+  /**
+   * Formats variable value for display
+   */
+  private formatVariableValue(value: any): string {
+    if (value === null || value === undefined) {
+      return "null";
+    }
+
+    if (typeof value === "string") {
+      // Truncate long strings
+      return value.length > 100 ? value.substring(0, 100) + "..." : value;
+    }
+
+    if (typeof value === "object") {
+      try {
+        const jsonStr = JSON.stringify(value);
+        return jsonStr.length > 100
+          ? jsonStr.substring(0, 100) + "..."
+          : jsonStr;
+      } catch {
+        return "[Object]";
+      }
+    }
+
+    return String(value);
   }
 
   /**
@@ -80,10 +167,21 @@ export class TestSuiteComponent extends BaseComponent {
    * @returns An HTML string for the complete test suite.
    */
   render(props: TestSuiteProps): string {
-    const { suiteName, status, duration, steps, suiteId } = props;
+    const {
+      suiteName,
+      status,
+      duration,
+      steps,
+      suiteId,
+      metadata,
+      capturedVariables,
+    } = props;
     const statusClasses = this.getStatusClasses(status);
     const statusIcon = this.getStatusIcon(status);
     const metrics = this.getSuiteMetrics(steps);
+    const priorityInfo = metadata?.priority
+      ? this.getPriorityInfo(metadata.priority)
+      : null;
 
     return this.html`
       <div class="card ${statusClasses.border} mb-4 overflow-hidden">
@@ -108,11 +206,79 @@ export class TestSuiteComponent extends BaseComponent {
               </span>
             </div>
 
-            <!-- Suite Name -->
-            <div>
-              <h2 class="text-lg font-semibold text-primary">
-                ${this.escapeHtml(suiteName)}
-              </h2>
+            <!-- Suite Name and Metadata -->
+            <div class="flex-1">
+              <div class="flex items-center space-x-2 mb-1">
+                <h2 class="text-lg font-semibold text-primary">
+                  ${this.escapeHtml(suiteName)}
+                </h2>
+                ${
+                  metadata?.nodeId
+                    ? this.html`
+                  <span class="text-xs text-secondary bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">
+                    ${this.escapeHtml(metadata.nodeId)}
+                  </span>
+                `
+                    : ""
+                }
+              </div>
+
+              <!-- Metadata Row -->
+              ${
+                metadata
+                  ? this.html`
+                <div class="flex items-center space-x-4 text-sm text-secondary mb-2">
+                  ${
+                    priorityInfo
+                      ? this.html`
+                    <span class="flex items-center space-x-1">
+                      <span>${priorityInfo.icon}</span>
+                      <span class="${
+                        priorityInfo.color
+                      } font-medium">${this.escapeHtml(
+                          metadata.priority!
+                        )}</span>
+                    </span>
+                  `
+                      : ""
+                  }
+
+                  ${
+                    metadata.tags && metadata.tags.length > 0
+                      ? this.html`
+                    <span class="flex items-center space-x-1">
+                      <span>🏷️</span>
+                      <span>${metadata.tags
+                        .map(
+                          (tag) =>
+                            `<span class="bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 px-2 py-0.5 rounded text-xs">${this.escapeHtml(
+                              tag
+                            )}</span>`
+                        )
+                        .join(" ")}</span>
+                    </span>
+                  `
+                      : ""
+                  }
+
+                  ${
+                    metadata.description
+                      ? this.html`
+                    <span class="flex items-center space-x-1">
+                      <span>📝</span>
+                      <span class="text-gray-600 dark:text-gray-400 italic">${this.escapeHtml(
+                        metadata.description
+                      )}</span>
+                    </span>
+                  `
+                      : ""
+                  }
+                </div>
+              `
+                  : ""
+              }
+
+              <!-- Duration and Metrics -->
               <div class="flex items-center space-x-4 text-sm text-secondary">
                 <span>${this.formatDuration(duration)}</span>
                 <span>•</span>

@@ -24,6 +24,8 @@ import {
   AssertionData,
   RequestData,
   ResponseData,
+  CapturedVariables,
+  ErrorContext,
 } from "./types";
 
 export class TestStepComponent extends BaseComponent {
@@ -196,6 +198,138 @@ export class TestStepComponent extends BaseComponent {
     }
 
     return this.formatJson(value);
+  }
+
+  /**
+   * Formats captured variables for display in step details
+   */
+  private formatCapturedVariables(variables?: CapturedVariables[]): string {
+    if (!variables || variables.length === 0) {
+      return "";
+    }
+
+    const variableItems = variables
+      .map((variable) => {
+        const value = this.formatVariableValue(variable.value);
+        return this.html`
+        <div class="flex items-start space-x-2 py-1">
+          <span class="text-blue-600 dark:text-blue-400 font-mono text-sm">${this.escapeHtml(
+            variable.name
+          )}:</span>
+          <span class="text-green-600 dark:text-green-400 font-mono text-sm break-all">${this.escapeHtml(
+            value
+          )}</span>
+        </div>
+      `;
+      })
+      .join("");
+
+    return this.html`
+      <div class="mt-3 p-3 bg-blue-50 dark:bg-blue-900/10 rounded-lg border border-blue-200 dark:border-blue-800">
+        <div class="flex items-center space-x-2 mb-2">
+          <span class="text-lg">📥</span>
+          <h5 class="font-semibold text-primary text-sm">Captured Variables</h5>
+        </div>
+        <div class="space-y-1">
+          ${variableItems}
+        </div>
+      </div>
+    `;
+  }
+
+  /**
+   * Formats variable value for display
+   */
+  private formatVariableValue(value: any): string {
+    if (value === null || value === undefined) {
+      return "null";
+    }
+
+    if (typeof value === "string") {
+      // Truncate long strings
+      return value.length > 100 ? value.substring(0, 100) + "..." : value;
+    }
+
+    if (typeof value === "object") {
+      try {
+        const jsonStr = JSON.stringify(value);
+        return jsonStr.length > 100
+          ? jsonStr.substring(0, 100) + "..."
+          : jsonStr;
+      } catch {
+        return "[Object]";
+      }
+    }
+
+    return String(value);
+  }
+
+  /**
+   * Formats error context for display
+   */
+  private formatErrorContext(errorContext?: ErrorContext): string {
+    if (!errorContext) {
+      return "";
+    }
+
+    return this.html`
+      <div class="mt-3 p-3 bg-red-50 dark:bg-red-900/10 rounded-lg border border-red-200 dark:border-red-800">
+        <div class="flex items-center space-x-2 mb-2">
+          <span class="text-lg">❌</span>
+          <h5 class="font-semibold text-primary text-sm">Error Context</h5>
+        </div>
+        <div class="space-y-2">
+          <div class="flex items-start space-x-2">
+            <span class="text-red-600 dark:text-red-400 font-medium text-sm">Type:</span>
+            <span class="text-red-800 dark:text-red-300 font-mono text-sm">${this.escapeHtml(
+              errorContext.type
+            )}</span>
+          </div>
+          <div class="flex items-start space-x-2">
+            <span class="text-red-600 dark:text-red-400 font-medium text-sm">Message:</span>
+            <span class="text-red-800 dark:text-red-300 text-sm break-words">${this.escapeHtml(
+              errorContext.message
+            )}</span>
+          </div>
+          ${
+            errorContext.expected !== undefined
+              ? this.html`
+            <div class="flex items-start space-x-2">
+              <span class="text-red-600 dark:text-red-400 font-medium text-sm">Expected:</span>
+              <span class="text-red-800 dark:text-red-300 font-mono text-sm break-all">${this.escapeHtml(
+                this.formatVariableValue(errorContext.expected)
+              )}</span>
+            </div>
+          `
+              : ""
+          }
+          ${
+            errorContext.actual !== undefined
+              ? this.html`
+            <div class="flex items-start space-x-2">
+              <span class="text-red-600 dark:text-red-400 font-medium text-sm">Actual:</span>
+              <span class="text-red-800 dark:text-red-300 font-mono text-sm break-all">${this.escapeHtml(
+                this.formatVariableValue(errorContext.actual)
+              )}</span>
+            </div>
+          `
+              : ""
+          }
+          ${
+            errorContext.details
+              ? this.html`
+            <div class="flex items-start space-x-2">
+              <span class="text-red-600 dark:text-red-400 font-medium text-sm">Details:</span>
+              <span class="text-red-800 dark:text-red-300 text-sm break-words">${this.escapeHtml(
+                errorContext.details
+              )}</span>
+            </div>
+          `
+              : ""
+          }
+        </div>
+      </div>
+    `;
   }
 
   /**
@@ -904,6 +1038,13 @@ export class TestStepComponent extends BaseComponent {
         <!-- Step Content -->
         <div id="${stepId}-content" class="hidden border-t border-default">
           <div class="p-4 bg-tertiary">
+            <!-- Error Context Section -->
+            ${this.formatErrorContext(step.errorContext)}
+
+            <!-- Captured Variables Section -->
+            ${this.formatCapturedVariables(step.capturedVariables)}
+
+            <!-- Tabs Section -->
             ${this.renderTabs(step, stepId)}
           </div>
         </div>

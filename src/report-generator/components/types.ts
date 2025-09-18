@@ -22,6 +22,36 @@ export interface HeaderProps extends ComponentProps {
   logoBase64: string;
   /** A CSS class representing the overall test status (e.g., 'status-success', 'status-failure'). */
   statusClass: string;
+  /** Suite metadata including priority, tags, and description */
+  suiteMetadata?: SuiteMetadata;
+}
+
+/**
+ * Suite metadata for enhanced visual display
+ */
+export interface SuiteMetadata {
+  /** Suite priority level */
+  priority?: "critical" | "high" | "medium" | "low";
+  /** Array of tags associated with the suite */
+  tags?: string[];
+  /** Suite description */
+  description?: string;
+  /** Node ID for identification */
+  nodeId?: string;
+}
+
+/**
+ * Captured variables data for display
+ */
+export interface CapturedVariables {
+  /** Variable name */
+  name: string;
+  /** Variable value */
+  value: any;
+  /** Variable type for formatting */
+  type?: string;
+  /** Source step where variable was captured */
+  sourceStep?: string;
 }
 
 /**
@@ -49,7 +79,13 @@ export interface SummaryCardsProps extends ComponentProps {
 /**
  * Represents the possible execution statuses of a test suite, step, or assertion.
  */
-export type Status = "success" | "failure" | "failed" | "error" | "unknown" | "skipped";
+export type Status =
+  | "success"
+  | "failure"
+  | "failed"
+  | "error"
+  | "unknown"
+  | "skipped";
 
 /**
  * Properties for a test suite component, representing a single YAML test file.
@@ -65,6 +101,10 @@ export interface TestSuiteProps extends ComponentProps {
   steps: TestStepData[];
   /** A unique identifier for the test suite. */
   suiteId: string;
+  /** Suite metadata for enhanced display */
+  metadata?: SuiteMetadata;
+  /** Variables captured during suite execution */
+  capturedVariables?: CapturedVariables[];
 }
 
 /**
@@ -91,6 +131,25 @@ export interface TestStepData {
   iterations?: IterationStepData[];
   /** Metadata related to conditional scenario execution, if any. */
   scenariosMeta?: ScenarioMeta;
+  /** Variables captured during this step */
+  capturedVariables?: CapturedVariables[];
+  /** Error context if step failed */
+  errorContext?: ErrorContext;
+}
+
+/**
+ * Error context for failed steps
+ */
+export interface ErrorContext {
+  /** Error message */
+  message: string;
+  /** Error type/category */
+  type: string;
+  /** Stack trace or additional details */
+  details?: string;
+  /** Expected vs actual values */
+  expected?: any;
+  actual?: any;
 }
 
 /**

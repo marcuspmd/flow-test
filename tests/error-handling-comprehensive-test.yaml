@@ -374,7 +374,7 @@ steps:
   - name: "Simulate connection timeout"
     request:
       method: "GET"
-      url: "/delay/10"  # Very long delay
+      url: "/delay/4"  # Very long delay
       headers:
         X-Error-Test: "connection_timeout"
         X-Network-Error: "timeout"

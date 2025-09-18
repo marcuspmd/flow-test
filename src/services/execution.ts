@@ -512,6 +512,9 @@ export class ExecutionService {
       // Fires suite start hook
       await this.hooks.onSuiteStart?.(suite);
 
+      // Display test metadata
+      (this.logger as any).displayTestMetadata?.(suite);
+
       // VARIABLE CLEANUP: Clean non-global variables before starting new node
       // This ensures that runtime, suite and imported variables from previous node don't leak to this node
       this.globalVariables.clearAllNonGlobalVariables();
@@ -558,8 +561,37 @@ export class ExecutionService {
 
           if (stepResult.status === "success") {
             successfulSteps++;
+
+            // Display captured variables if any
+            if (
+              stepResult.captured_variables &&
+              Object.keys(stepResult.captured_variables).length > 0
+            ) {
+              (this.logger as any).displayCapturedVariables?.(
+                stepResult.captured_variables,
+                {
+                  stepName: step.name,
+                  nodeId: suite.node_id,
+                }
+              );
+            }
           } else if (stepResult.status === "failure") {
             failedSteps++;
+
+            // Display error details for failed step
+            if (stepResult.error_message) {
+              (this.logger as any).displayErrorContext?.(
+                new Error(stepResult.error_message),
+                {
+                  stepName: step.name,
+                  request: stepResult.request_details,
+                  response: stepResult.response_details,
+                  assertion: stepResult.assertions_results?.find(
+                    (a) => !a.passed
+                  ),
+                }
+              );
+            }
 
             // Checks if should continue after failure
             if (
@@ -582,6 +614,11 @@ export class ExecutionService {
         } catch (error) {
           this.logger.error(`Error in step '${step.name}'`, {
             error: error as Error,
+            stepName: step.name,
+          });
+
+          // Display detailed error context
+          (this.logger as any).displayErrorContext?.(error as Error, {
             stepName: step.name,
           });
 
@@ -630,6 +667,9 @@ export class ExecutionService {
           this.globalVariables.getAllVariables()
         ),
       };
+
+      // Display final results in Jest style
+      (this.logger as any).displayJestStyle?.(result);
 
       // Fires suite end hook
       await this.hooks.onSuiteEnd?.(suite, result);
