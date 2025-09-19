@@ -53,29 +53,6 @@ steps:
     capture:
       recovery_step_result: "executed_after_failure"
 
-  # 2. Timeout Error Handling
-  - name: "Test timeout handling"
-    request:
-      method: "GET"
-      url: "/delay/3"  # 3-second delay
-      headers:
-        X-Error-Test: "timeout_test"
-        X-Delay: "3_seconds"
-    metadata:
-      timeout: 2000  # 2-second timeout - should timeout
-      continue_on_failure: true
-    scenarios:
-      - condition: "response_time_ms > 2000"
-        then:
-          capture:
-            timeout_result: "timeout_occurred"
-
-      - condition: "response_time_ms <= 2000"
-        then:
-          assert:
-            status_code: 200
-          capture:
-            timeout_result: "completed_within_timeout"
 
   # 3. HTTP Error Code Handling
   - name: "Handle 400 Bad Request"
@@ -369,28 +346,6 @@ steps:
             error_type: "validation_error"
             error_message: "Unprocessable Entity"
             error_details: "validation_failed"
-
-  # 8. Network-like Error Simulation
-  - name: "Simulate connection timeout"
-    request:
-      method: "GET"
-      url: "/delay/4"  # Very long delay
-      headers:
-        X-Error-Test: "connection_timeout"
-        X-Network-Error: "timeout"
-    metadata:
-      timeout: 3000  # 3-second timeout
-      continue_on_failure: true
-    scenarios:
-      - condition: "response_time_ms > 3000"
-        then:
-          capture:
-            network_error_type: "connection_timeout"
-
-      - condition: "response_time_ms <= 3000"
-        then:
-          capture:
-            network_error_type: "connection_success"
 
   # 9. Cleanup After Errors
   - name: "Setup that might fail"

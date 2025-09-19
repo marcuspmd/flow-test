@@ -1,15 +1,16 @@
 import { jest } from "@jest/globals";
 
-// Mock functions
-const mockConsoleLog = jest.fn();
-const mockConsoleError = jest.fn();
-const mockProcessExit = jest.fn();
+const mockGenerateReport = jest.fn();
 const mockGenerateFromJSON = jest.fn<() => Promise<string>>();
-const mockPathResolve = jest.fn();
+const mockGetConfig = jest.fn();
+const mockReadFileSync = jest.fn();
+const mockCopyFileSync = jest.fn();
+const mockExistsSync = jest.fn();
 
-// Mock dependencies before importing CLI
-jest.mock("path", () => ({
-  resolve: mockPathResolve,
+jest.mock("../v2/report-generator-v2", () => ({
+  ReportGeneratorV2: jest.fn().mockImplementation(() => ({
+    generateReport: mockGenerateReport,
+  })),
 }));
 
 jest.mock("../html-generator", () => ({
@@ -18,297 +19,101 @@ jest.mock("../html-generator", () => ({
   })),
 }));
 
-// Store originals
-const originalLog = console.log;
-const originalError = console.error;
-const originalExit = process.exit;
+jest.mock("../../core/config", () => ({
+  ConfigManager: jest.fn().mockImplementation(() => ({
+    getConfig: mockGetConfig,
+  })),
+}));
+
+jest.mock("fs", () => ({
+  readFileSync: mockReadFileSync,
+  copyFileSync: mockCopyFileSync,
+  existsSync: mockExistsSync,
+  mkdirSync: jest.fn(),
+}));
 
 describe("CLI Report Generator", () => {
-  beforeEach(() => {
-    // Clear all mocks
-    jest.clearAllMocks();
+  const originalLog = console.log;
+  const originalError = console.error;
+  const originalExit = process.exit;
 
-    // Setup console and process mocks
+  const mockConsoleLog = jest.fn();
+  const mockConsoleError = jest.fn();
+  const mockProcessExit = jest.fn();
+
+  const sampleResult = {
+    project_name: "Demo",
+    total_tests: 1,
+    successful_tests: 1,
+    failed_tests: 0,
+    success_rate: 100,
+    total_duration_ms: 1000,
+    suites_results: [],
+  };
+
+  async function runCli(): Promise<void> {
+    jest.isolateModules(() => {
+      require("../cli");
+    });
+
+    await new Promise((resolve) => setImmediate(resolve));
+  }
+
+  beforeEach(() => {
+    jest.clearAllMocks();
     console.log = mockConsoleLog;
     console.error = mockConsoleError;
     process.exit = mockProcessExit as any;
-
-    // Setup default path mock
-    mockPathResolve.mockReturnValue("/mock/path/results/latest.json");
-
-    // Clear module cache
-    jest.resetModules();
+    process.argv = ["node", "cli"];
+    mockExistsSync.mockReturnValue(true);
+    mockReadFileSync.mockReturnValue(JSON.stringify(sampleResult));
+    mockGenerateFromJSON.mockResolvedValue("/tmp/report.html");
   });
 
   afterEach(() => {
-    // Restore originals
     console.log = originalLog;
     console.error = originalError;
     process.exit = originalExit;
   });
 
-  describe("Successful Generation", () => {
-    it("should generate HTML report successfully", async () => {
-      // Arrange
-      const expectedOutput = "/path/to/report.html";
-      mockGenerateFromJSON.mockResolvedValue(expectedOutput);
-
-      // Act
-      require("../cli");
-      await new Promise((resolve) => setTimeout(resolve, 50));
-
-      // Assert
-      expect(mockConsoleLog).toHaveBeenCalledWith(
-        "Generating HTML report viewer..."
-      );
-      expect(mockPathResolve).toHaveBeenCalledWith(
-        process.cwd(),
-        "results/latest.json"
-      );
-      expect(mockGenerateFromJSON).toHaveBeenCalledWith(
-        "/mock/path/results/latest.json"
-      );
-      expect(mockConsoleLog).toHaveBeenCalledWith(
-        "✅ HTML report viewer generated successfully!"
-      );
-      expect(mockConsoleLog).toHaveBeenCalledWith(
-        `📄 Report: ${expectedOutput}`
-      );
-      expect(mockConsoleLog).toHaveBeenCalledWith(
-        `🌐 Open in browser: file://${expectedOutput}`
-      );
-      expect(mockProcessExit).not.toHaveBeenCalled();
+  it("uses ReportGeneratorV2 when configured", async () => {
+    mockGetConfig.mockReturnValue({
+      reporting: { version: "v2", output_dir: "./results" },
     });
 
-    it("should handle different output paths", async () => {
-      // Arrange
-      const customPath = "/custom/output/path.html";
-      mockGenerateFromJSON.mockResolvedValue(customPath);
+    await runCli();
 
-      // Act
-      require("../cli");
-      await new Promise((resolve) => setTimeout(resolve, 50));
-
-      // Assert
-      expect(mockConsoleLog).toHaveBeenCalledWith(`📄 Report: ${customPath}`);
-      expect(mockConsoleLog).toHaveBeenCalledWith(
-        `🌐 Open in browser: file://${customPath}`
-      );
-    });
-
-    it("should resolve path correctly", async () => {
-      // Arrange
-      const expectedResolvedPath = "/resolved/path/latest.json";
-      mockPathResolve.mockReturnValue(expectedResolvedPath);
-      mockGenerateFromJSON.mockResolvedValue("/output.html");
-
-      // Act
-      require("../cli");
-      await new Promise((resolve) => setTimeout(resolve, 50));
-
-      // Assert
-      expect(mockPathResolve).toHaveBeenCalledWith(
-        process.cwd(),
-        "results/latest.json"
-      );
-      expect(mockGenerateFromJSON).toHaveBeenCalledWith(expectedResolvedPath);
-    });
+    expect(mockGenerateReport).toHaveBeenCalled();
+    expect(mockGenerateFromJSON).not.toHaveBeenCalled();
+    expect(mockCopyFileSync).toHaveBeenCalled();
+    expect(mockConsoleError).not.toHaveBeenCalled();
+    expect(mockProcessExit).not.toHaveBeenCalled();
   });
 
-  describe("Error Handling", () => {
-    it("should handle generator errors", async () => {
-      // Arrange
-      const errorMessage = "Generator failed";
-      mockGenerateFromJSON.mockRejectedValue(new Error(errorMessage));
-
-      // Act
-      require("../cli");
-      await new Promise((resolve) => setTimeout(resolve, 50));
-
-      // Assert
-      expect(mockConsoleLog).toHaveBeenCalledWith(
-        "Generating HTML report viewer..."
-      );
-      expect(mockConsoleError).toHaveBeenCalledWith(
-        "❌ Error generating HTML report:",
-        errorMessage
-      );
-      expect(mockProcessExit).toHaveBeenCalledWith(1);
+  it("falls back to legacy generator when version is v1", async () => {
+    mockGetConfig.mockReturnValue({
+      reporting: { version: "v1", output_dir: "./results" },
     });
 
-    it("should handle non-Error exceptions", async () => {
-      // Arrange
-      const stringError = "String error message";
-      mockGenerateFromJSON.mockRejectedValue(stringError);
+    await runCli();
 
-      // Act
-      require("../cli");
-      await new Promise((resolve) => setTimeout(resolve, 50));
-
-      // Assert
-      expect(mockConsoleError).toHaveBeenCalledWith(
-        "❌ Error generating HTML report:",
-        stringError
-      );
-      expect(mockProcessExit).toHaveBeenCalledWith(1);
-    });
-
-    it("should handle path resolution errors", async () => {
-      // Arrange
-      const pathError = "Path resolution failed";
-      mockPathResolve.mockImplementation(() => {
-        throw new Error(pathError);
-      });
-
-      // Act
-      require("../cli");
-      await new Promise((resolve) => setTimeout(resolve, 50));
-
-      // Assert
-      expect(mockConsoleError).toHaveBeenCalledWith(
-        "❌ Error generating HTML report:",
-        pathError
-      );
-      expect(mockProcessExit).toHaveBeenCalledWith(1);
-    });
-
-    it("should handle synchronous generator errors", async () => {
-      // Arrange
-      const syncError = "Synchronous error";
-      mockGenerateFromJSON.mockImplementation(() => {
-        throw new Error(syncError);
-      });
-
-      // Act
-      require("../cli");
-      await new Promise((resolve) => setTimeout(resolve, 50));
-
-      // Assert
-      expect(mockConsoleError).toHaveBeenCalledWith(
-        "❌ Error generating HTML report:",
-        syncError
-      );
-      expect(mockProcessExit).toHaveBeenCalledWith(1);
-    });
+    expect(mockGenerateFromJSON).toHaveBeenCalled();
+    expect(mockGenerateReport).not.toHaveBeenCalled();
+    expect(mockProcessExit).not.toHaveBeenCalled();
   });
 
-  describe("Edge Cases", () => {
-    it("should handle empty output path", async () => {
-      // Arrange
-      mockGenerateFromJSON.mockResolvedValue("");
-
-      // Act
-      require("../cli");
-      await new Promise((resolve) => setTimeout(resolve, 50));
-
-      // Assert
-      expect(mockConsoleLog).toHaveBeenCalledWith("📄 Report: ");
-      expect(mockConsoleLog).toHaveBeenCalledWith(
-        "🌐 Open in browser: file://"
-      );
+  it("exits with error when JSON file is missing", async () => {
+    mockGetConfig.mockReturnValue({
+      reporting: { version: "v2", output_dir: "./results" },
     });
+    mockExistsSync.mockReturnValue(false);
 
-    it("should handle special characters in path", async () => {
-      // Arrange
-      const specialPath = "/path/with spaces/[special]/report.html";
-      mockGenerateFromJSON.mockResolvedValue(specialPath);
+    await runCli();
 
-      // Act
-      require("../cli");
-      await new Promise((resolve) => setTimeout(resolve, 50));
-
-      // Assert
-      expect(mockConsoleLog).toHaveBeenCalledWith(`📄 Report: ${specialPath}`);
-      expect(mockConsoleLog).toHaveBeenCalledWith(
-        `🌐 Open in browser: file://${specialPath}`
-      );
-    });
-
-    it("should handle Error without message", async () => {
-      // Arrange
-      const errorWithoutMessage = { name: "CustomError" } as Error;
-      mockGenerateFromJSON.mockRejectedValue(errorWithoutMessage);
-
-      // Act
-      require("../cli");
-      await new Promise((resolve) => setTimeout(resolve, 50));
-
-      // Assert
-      expect(mockConsoleError).toHaveBeenCalledWith(
-        "❌ Error generating HTML report:",
-        errorWithoutMessage
-      );
-      expect(mockProcessExit).toHaveBeenCalledWith(1);
-    });
-
-    it("should handle null/undefined errors", async () => {
-      // Arrange
-      mockGenerateFromJSON.mockRejectedValue(null);
-
-      // Act
-      require("../cli");
-      await new Promise((resolve) => setTimeout(resolve, 50));
-
-      // Assert
-      expect(mockConsoleError).toHaveBeenCalledWith(
-        "❌ Error generating HTML report:",
-        null
-      );
-      expect(mockProcessExit).toHaveBeenCalledWith(1);
-    });
-  });
-
-  describe("Integration Flow", () => {
-    it("should execute in correct order", async () => {
-      // Arrange
-      const outputPath = "/final/report.html";
-      mockGenerateFromJSON.mockResolvedValue(outputPath);
-
-      // Act
-      require("../cli");
-      await new Promise((resolve) => setTimeout(resolve, 50));
-
-      // Assert - Verify complete flow
-      expect(mockConsoleLog).toHaveBeenCalledTimes(4);
-      expect(mockConsoleLog).toHaveBeenNthCalledWith(
-        1,
-        "Generating HTML report viewer..."
-      );
-      expect(mockConsoleLog).toHaveBeenNthCalledWith(
-        2,
-        "✅ HTML report viewer generated successfully!"
-      );
-      expect(mockConsoleLog).toHaveBeenNthCalledWith(
-        3,
-        `📄 Report: ${outputPath}`
-      );
-      expect(mockConsoleLog).toHaveBeenNthCalledWith(
-        4,
-        `🌐 Open in browser: file://${outputPath}`
-      );
-      expect(mockProcessExit).not.toHaveBeenCalled();
-    });
-
-    it("should not show success messages on error", async () => {
-      // Arrange
-      mockGenerateFromJSON.mockRejectedValue(new Error("Test error"));
-
-      // Act
-      require("../cli");
-      await new Promise((resolve) => setTimeout(resolve, 50));
-
-      // Assert
-      expect(mockConsoleLog).toHaveBeenCalledWith(
-        "Generating HTML report viewer..."
-      );
-      expect(mockConsoleLog).not.toHaveBeenCalledWith(
-        "✅ HTML report viewer generated successfully!"
-      );
-      expect(mockConsoleError).toHaveBeenCalledWith(
-        "❌ Error generating HTML report:",
-        "Test error"
-      );
-      expect(mockProcessExit).toHaveBeenCalledWith(1);
-    });
+    expect(mockConsoleError).toHaveBeenCalledWith(
+      "❌ Error generating HTML report:",
+      expect.stringContaining("JSON report not found")
+    );
+    expect(mockProcessExit).toHaveBeenCalledWith(1);
   });
 });

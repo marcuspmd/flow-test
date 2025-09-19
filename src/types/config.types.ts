@@ -241,6 +241,9 @@ export interface ReportingConfig {
 
   /** Whether to include final variable state in reports */
   include_variables_state?: boolean;
+
+  /** Report generator version to use ("v1" or "v2") */
+  version?: "v1" | "v2";
 }
 
 /**

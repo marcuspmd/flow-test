@@ -9,8 +9,12 @@
  * @packageDocumentation
  */
 
-import { HTMLReportGenerator } from "./html-generator";
+import fs from "fs";
 import path from "path";
+import { HTMLReportGenerator } from "./html-generator";
+import { ReportGeneratorV2 } from "./v2/report-generator-v2";
+import { ConfigManager } from "../core/config";
+import { AggregatedResult } from "../types/engine.types";
 
 /**
  * Main CLI function for generating HTML reports from JSON test results.
@@ -62,13 +66,53 @@ import path from "path";
  *
  * @public
  * @since 1.0.0
- */
+  */
 async function main(): Promise<void> {
   try {
     console.log("Generating HTML report viewer...");
-    const generator = new HTMLReportGenerator();
-    const jsonPath = path.resolve(process.cwd(), "results/latest.json");
-    const outputPath = await generator.generateFromJSON(jsonPath);
+    const jsonPath = path.resolve(
+      process.cwd(),
+      process.argv[2] || "results/latest.json"
+    );
+
+    const configManager = new ConfigManager();
+    const config = configManager.getConfig();
+    const reportVersion = config.reporting?.version || "v1";
+
+    let outputPath: string;
+
+    if (reportVersion === "v2") {
+      if (!fs.existsSync(jsonPath)) {
+        throw new Error(`JSON report not found at ${jsonPath}`);
+      }
+
+      const rawData = fs.readFileSync(jsonPath, "utf8");
+      const aggregatedResult = JSON.parse(rawData) as AggregatedResult;
+
+      const outputDir = config.reporting?.output_dir
+        ? path.resolve(process.cwd(), config.reporting.output_dir)
+        : path.join(process.cwd(), "results");
+
+      const timestamp = new Date()
+        .toISOString()
+        .replace(/[:.]/g, "-")
+        .slice(0, 19);
+      const baseName = path.basename(jsonPath, path.extname(jsonPath));
+      outputPath = path.join(outputDir, `${baseName}_${timestamp}.html`);
+
+      const generator = new ReportGeneratorV2();
+      await generator.generateReport(aggregatedResult, outputPath);
+
+      // Atualiza atalho latest.html para referência rápida
+      const latestPath = path.join(outputDir, "latest.html");
+      fs.copyFileSync(outputPath, latestPath);
+    } else {
+      const generator = new HTMLReportGenerator({
+        outputDir: config.reporting?.output_dir || "./results",
+      });
+      outputPath = await generator.generateFromJSON(jsonPath);
+    }
+
     console.log(`✅ HTML report viewer generated successfully!`);
     console.log(`📄 Report: ${outputPath}`);
     console.log(`🌐 Open in browser: file://${outputPath}`);

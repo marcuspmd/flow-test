@@ -352,6 +352,7 @@ export class ConfigManager {
           config.reporting?.include_performance_metrics !== false,
         include_variables_state:
           config.reporting?.include_variables_state !== false,
+        version: config.reporting?.version || "v1",
       },
     };
 

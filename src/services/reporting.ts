@@ -15,6 +15,7 @@ import { ConfigManager } from "../core/config";
 import { AggregatedResult, ReportFormat } from "../types/engine.types";
 import { getLogger } from "./logger.service";
 import { HTMLReportGenerator } from "../report-generator/html-generator";
+import { ReportGeneratorV2 } from "../report-generator/v2/report-generator-v2";
 
 /**
  * Comprehensive reporting service for generating test execution reports in multiple formats.
@@ -243,7 +244,7 @@ export class ReportingService {
   }
 
   /**
-   * Generates HTML report using the new HTML generator
+   * Generates HTML report using the configured generator version
    */
   private async generateHtmlReport(
     result: AggregatedResult,
@@ -254,23 +255,40 @@ export class ReportingService {
     const fileName = `${baseName}_${timestamp}.html`;
     const filePath = path.join(outputDir, fileName);
 
-    const htmlGenerator = new HTMLReportGenerator({
-      outputDir: outputDir,
-      includeCurlCommands: true,
-      includeRawData: true,
-      theme: "light",
-    });
+    // Get report version from config (default to v1 for backward compatibility)
+    const reportVersion =
+      this.configManager.getConfig()?.reporting?.version || "v1";
 
     try {
-      const generatedPath = await htmlGenerator.generateHTML(result, filePath);
-      this.logger.info(`Enhanced HTML report: ${generatedPath}`);
+      if (reportVersion === "v2") {
+        // Use V2 generator
+        const v2Generator = new ReportGeneratorV2();
+        await v2Generator.generateReport(result, filePath);
+        this.logger.info(`Enhanced HTML report V2: ${filePath}`);
+      } else {
+        // Use V1 generator (legacy)
+        const htmlGenerator = new HTMLReportGenerator({
+          outputDir: outputDir,
+          includeCurlCommands: true,
+          includeRawData: true,
+          theme: "light",
+        });
 
-      // The generator already creates latest.html
+        const generatedPath = await htmlGenerator.generateHTML(
+          result,
+          filePath
+        );
+        this.logger.info(`Enhanced HTML report V1: ${generatedPath}`);
+      }
+
+      // Create latest.html symlink/copy
       const latestPath = path.join(outputDir, "latest.html");
+      const html = fs.readFileSync(filePath, "utf8");
+      fs.writeFileSync(latestPath, html, "utf8");
       this.logger.info(`Latest HTML: ${latestPath}`);
     } catch (error) {
       this.logger.error(
-        "Failed to generate HTML report with new generator, falling back to legacy method",
+        `Failed to generate HTML report with ${reportVersion} generator, falling back to legacy method`,
         { error: error as Error }
       );
       // Fallback to legacy HTML generation
