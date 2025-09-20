@@ -23,6 +23,11 @@ import {
   generateThemeCSS,
   getTheme,
 } from "./index";
+import {
+  MetricsCardComponent,
+  MetricCardProps,
+} from "./components/dashboard/metrics-card.component";
+import { FiltersPanelComponent } from "./components/dashboard/filters-panel.component";
 
 /**
  * Interface para dados de entrada do report V2
@@ -121,10 +126,10 @@ export class ReportGeneratorV2 {
    * Transforma os dados de entrada para o formato interno V2
    */
   private transformData(data: AggregatedResult): any {
-    console.log('[DEBUG] ReportGeneratorV2.transformData - Input data:', {
+    console.log("[DEBUG] ReportGeneratorV2.transformData - Input data:", {
       project_name: data.project_name,
       total_tests: data.total_tests,
-      suites_count: data.suites_results?.length || 0
+      suites_count: data.suites_results?.length || 0,
     });
 
     const transformedData = {
@@ -142,7 +147,7 @@ export class ReportGeneratorV2 {
         console.log(`[DEBUG] Processing suite ${index}:`, {
           name: suite.suite_name,
           status: suite.status,
-          steps_count: suite.steps_results?.length || 0
+          steps_count: suite.steps_results?.length || 0,
         });
 
         const transformedSuite = {
@@ -160,7 +165,7 @@ export class ReportGeneratorV2 {
               name: step.step_name,
               status: step.status,
               has_scenarios: !!(step as any).scenarios_meta,
-              has_iterations: !!((step as any).iteration_results?.length)
+              has_iterations: !!(step as any).iteration_results?.length,
             });
 
             return {
@@ -187,16 +192,19 @@ export class ReportGeneratorV2 {
           id: transformedSuite.id,
           name: transformedSuite.name,
           steps_count: transformedSuite.steps.length,
-          steps_ids: transformedSuite.steps.map(s => s.id)
+          steps_ids: transformedSuite.steps.map((s) => s.id),
         });
 
         return transformedSuite;
       }),
     };
 
-    console.log('[DEBUG] ReportGeneratorV2.transformData - Output:', {
+    console.log("[DEBUG] ReportGeneratorV2.transformData - Output:", {
       suites_count: transformedData.suites.length,
-      total_steps: transformedData.suites.reduce((acc, s) => acc + s.steps.length, 0)
+      total_steps: transformedData.suites.reduce(
+        (acc, s) => acc + s.steps.length,
+        0
+      ),
     });
 
     return transformedData;
@@ -206,20 +214,20 @@ export class ReportGeneratorV2 {
    * Constrói a árvore de navegação hierárquica
    */
   private buildNavigationTree(data: any): NavigationItem[] {
-    console.log('[DEBUG] ReportGeneratorV2.buildNavigationTree - Input data:', {
+    console.log("[DEBUG] ReportGeneratorV2.buildNavigationTree - Input data:", {
       suites_count: data.suites?.length || 0,
       suites: data.suites?.map((s: any) => ({
         id: s.id,
         name: s.name,
-        steps_count: s.steps?.length || 0
-      }))
+        steps_count: s.steps?.length || 0,
+      })),
     });
 
     const navigationItems = data.suites.map((suite: any) => {
       console.log(`[DEBUG] Building navigation for suite ${suite.id}:`, {
         name: suite.name,
         steps_count: suite.steps?.length || 0,
-        steps: suite.steps?.map((s: any) => ({ id: s.id, name: s.name }))
+        steps: suite.steps?.map((s: any) => ({ id: s.id, name: s.name })),
       });
 
       const navigationItem = {
@@ -234,7 +242,7 @@ export class ReportGeneratorV2 {
         children: suite.steps.map((step: any) => {
           console.log(`[DEBUG] Building navigation for step ${step.id}:`, {
             name: step.name,
-            status: step.status
+            status: step.status,
           });
 
           return {
@@ -250,15 +258,18 @@ export class ReportGeneratorV2 {
       console.log(`[DEBUG] Built navigation item for suite ${suite.id}:`, {
         id: navigationItem.id,
         children_count: navigationItem.children.length,
-        children_ids: navigationItem.children.map((c: any) => c.id)
+        children_ids: navigationItem.children.map((c: any) => c.id),
       });
 
       return navigationItem;
     });
 
-    console.log('[DEBUG] ReportGeneratorV2.buildNavigationTree - Output:', {
+    console.log("[DEBUG] ReportGeneratorV2.buildNavigationTree - Output:", {
       items_count: navigationItems.length,
-      total_children: navigationItems.reduce((acc: number, item: any) => acc + item.children.length, 0)
+      total_children: navigationItems.reduce(
+        (acc: number, item: any) => acc + item.children.length,
+        0
+      ),
     });
 
     return navigationItems;
@@ -345,49 +356,90 @@ export class ReportGeneratorV2 {
       return "";
     }
 
-    const summaryItems = [
+    const metricsCard = new MetricsCardComponent(this.theme);
+
+    const metrics: MetricCardProps[] = [
       {
+        icon: "📦",
         label: "Total Tests",
         value: metadata.totalTests ?? 0,
-        icon: "📦",
+        color: "blue",
+        trendValue: metadata.totalTests > 0 ? "+100%" : "",
+        trend: "up",
       },
       {
+        icon: "✅",
         label: "Sucessos",
         value: metadata.successfulTests ?? 0,
-        icon: "✅",
+        color: "green",
+        trendValue: metadata.successfulTests > 0 ? "100%" : "",
+        trend: "up",
       },
       {
+        icon: "❌",
         label: "Falhas",
         value: metadata.failedTests ?? 0,
-        icon: "❌",
+        color: "red",
+        trendValue: metadata.failedTests === 0 ? "0%" : "",
+        trend: "neutral",
       },
       {
+        icon: "📈",
         label: "Taxa de Sucesso",
         value: this.formatSuccessRate(metadata.successRate),
-        icon: "📈",
+        color:
+          metadata.successRate >= 95
+            ? "green"
+            : metadata.successRate >= 80
+            ? "yellow"
+            : "red",
+        trendValue:
+          metadata.successRate >= 95
+            ? "Excellent"
+            : metadata.successRate >= 80
+            ? "Good"
+            : "Poor",
+        trend:
+          metadata.successRate >= 95
+            ? "up"
+            : metadata.successRate >= 80
+            ? "neutral"
+            : "down",
       },
       {
+        icon: "⏱️",
         label: "Duração Total",
         value: this.formatDuration(metadata.totalDuration),
-        icon: "⏱️",
+        color: "purple",
+        trendValue:
+          metadata.totalDuration < 5000
+            ? "Fast"
+            : metadata.totalDuration < 15000
+            ? "Normal"
+            : "Slow",
+        trend:
+          metadata.totalDuration < 5000
+            ? "up"
+            : metadata.totalDuration < 15000
+            ? "neutral"
+            : "down",
+      },
+      {
+        icon: "🏷️",
+        label: "Suites",
+        value: metadata.totalSuites ?? 0,
+        color: "gray",
+        size: "md",
       },
     ];
 
     return `
-      <section class="report-summary" aria-label="Resumo geral dos testes">
-        ${summaryItems
-          .map(
-            (item) => `
-              <div class="summary-card">
-                <span class="summary-icon">${item.icon}</span>
-                <div class="summary-content">
-                  <span class="summary-value">${item.value}</span>
-                  <span class="summary-label">${item.label}</span>
-                </div>
-              </div>
-            `
-          )
-          .join("")}
+      <section class="dashboard-metrics mb-8" aria-label="Test Metrics Dashboard">
+        <div class="mb-6">
+          <h2 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">Test Results Overview</h2>
+          <p class="text-gray-600 dark:text-gray-400">Complete analysis of your test execution results</p>
+        </div>
+        ${metricsCard.renderMultipleCards(metrics)}
       </section>
     `;
   }
@@ -437,7 +489,9 @@ export class ReportGeneratorV2 {
           window.reportV2State = window.reportV2State || {
             selectedItemId: null,
             theme: '${this.theme.name}',
-            sidebarCollapsed: ${this.config.layout.showSidebar ? "false" : "true"}
+            sidebarCollapsed: ${
+              this.config.layout.showSidebar ? "false" : "true"
+            }
           };
 
           function getDetailContainer() {
@@ -654,7 +708,10 @@ export class ReportGeneratorV2 {
           }
         }
       } catch (error) {
-        console.warn(`[WARN] Failed to load Tailwind CSS from ${cssPath}:`, error);
+        console.warn(
+          `[WARN] Failed to load Tailwind CSS from ${cssPath}:`,
+          error
+        );
       }
     }
 
