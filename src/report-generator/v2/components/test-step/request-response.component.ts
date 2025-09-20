@@ -124,15 +124,48 @@ export class RequestResponseComponent extends BaseComponentV2 {
   }
 
   private renderRequestDetails(request: RequestData): string {
+    const resolvedUrl = request.full_url || request.url;
+    const hasTemplateUrl = Boolean(request.raw_url);
+    const baseUrlValue = request.base_url;
+
     return this.html`
       <div class="p-md space-y-md">
         <div class="request-summary flex items-center space-x-md">
           <span class="method-badge px-sm py-xs rounded font-mono text-sm font-bold bg-blue-100 text-blue-800">
             ${this.escapeHtml(request.method)}
           </span>
-          <code class="url text-sm font-mono break-all bg-gray-100 px-sm py-xs rounded">
-            ${this.escapeHtml(request.url)}
-          </code>
+          <div class="url-details">
+            ${
+              baseUrlValue
+                ? this.html`
+              <div class="base-url">
+                <span class="url-label">Base URL</span>
+                <code class="url text-sm font-mono break-all bg-gray-50 px-sm py-xs rounded border border-gray-200">
+                  ${this.escapeHtml(baseUrlValue)}
+                </code>
+              </div>
+            `
+                : ""
+            }
+            <div class="resolved-url">
+              <span class="url-label">Resolvida</span>
+              <code class="url text-sm font-mono break-all bg-gray-100 px-sm py-xs rounded">
+                ${this.escapeHtml(resolvedUrl)}
+              </code>
+            </div>
+            ${
+              hasTemplateUrl
+                ? this.html`
+              <div class="raw-url">
+                <span class="url-label">Template</span>
+                <code class="url text-sm font-mono break-all bg-gray-50 px-sm py-xs rounded border border-dashed border-gray-300">
+                  ${this.escapeHtml(request.raw_url || "")}
+                </code>
+              </div>
+            `
+                : ""
+            }
+          </div>
         </div>
 
         ${

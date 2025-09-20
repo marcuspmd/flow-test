@@ -401,6 +401,8 @@ export interface StepExecutionResult {
     full_url?: string;
     curl_command?: string;
     raw_request?: string;
+    raw_url?: string;
+    base_url?: string;
   };
   response_details?: {
     status_code: number;

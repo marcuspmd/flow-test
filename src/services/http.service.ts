@@ -182,6 +182,7 @@ export class HttpService {
         duration_ms: duration,
         request_details: {
           ...request,
+          base_url: this.baseUrl,
           full_url: fullUrl,
           curl_command: this.generateCurlCommand(fullUrl, request),
           raw_request: this.generateRawRequest(fullUrl, request),
@@ -214,6 +215,7 @@ export class HttpService {
         duration_ms: duration,
         request_details: {
           ...request,
+          base_url: this.baseUrl,
           full_url: fullUrl,
           curl_command: this.generateCurlCommand(fullUrl, request),
           raw_request: this.generateRawRequest(fullUrl, request),
@@ -468,5 +470,12 @@ export class HttpService {
     }
 
     return rawResponse;
+  }
+
+  /**
+   * Returns the configured base URL (if any)
+   */
+  getBaseUrl(): string | undefined {
+    return this.baseUrl;
   }
 }

@@ -463,6 +463,52 @@ export class ReportGeneratorV2 {
             return container;
           }
 
+          function getOrderedNavIds() {
+            const links = document.querySelectorAll('#navigation-container .nav-link[data-item-link]');
+            return Array.from(links)
+              .map(link => link.getAttribute('data-item-link'))
+              .filter(Boolean);
+          }
+
+          function handleKeyboardNavigation(event) {
+            if (event.defaultPrevented) return;
+            if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+
+            const target = event.target;
+            const tagName = target?.tagName?.toLowerCase();
+            if (tagName === 'input' || tagName === 'textarea' || target?.isContentEditable) {
+              return;
+            }
+
+            const navIds = getOrderedNavIds();
+            if (!navIds.length) return;
+
+            const currentId = window.reportV2State?.selectedItemId || navIds[0];
+            const currentIndex = navIds.indexOf(currentId);
+
+            let nextId = currentId;
+            if (event.key === 'ArrowRight') {
+              if (currentIndex === -1) {
+                nextId = navIds[0];
+              } else if (currentIndex < navIds.length - 1) {
+                nextId = navIds[currentIndex + 1];
+              }
+            } else if (event.key === 'ArrowLeft') {
+              if (currentIndex === -1) {
+                nextId = navIds[navIds.length - 1];
+              } else if (currentIndex > 0) {
+                nextId = navIds[currentIndex - 1];
+              }
+            }
+
+            if (nextId && nextId !== currentId) {
+              event.preventDefault();
+              if (typeof window.selectNavItem === 'function') {
+                window.selectNavItem(nextId, { behavior: 'smooth' });
+              }
+            }
+          }
+
           function updateMainContent(itemId) {
             const container = normalizeDetailSections() || getDetailContainer();
             if (!container) return;
@@ -537,6 +583,8 @@ export class ReportGeneratorV2 {
               } catch (err) {
                 console.warn('History replace failed', err);
               }
+
+              window.reportV2State.selectedItemId = startId;
             }
           });
 
@@ -547,6 +595,8 @@ export class ReportGeneratorV2 {
               ensureExpanded(stateId);
             }
           });
+
+          document.addEventListener('keydown', handleKeyboardNavigation);
         })();
       </script>
     `;

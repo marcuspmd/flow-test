@@ -838,6 +838,7 @@ export class ExecutionService {
 
             // Execute the scenario's request if it exists
             if (scenario.then.request) {
+              const rawScenarioUrl = scenario.then.request?.url;
               const interpolatedRequest = this.globalVariables.interpolate(
                 scenario.then.request
               );
@@ -845,6 +846,7 @@ export class ExecutionService {
                 step.name,
                 interpolatedRequest
               );
+              this.attachRawUrlToResult(httpResult, rawScenarioUrl);
               this.recordPerformanceData(interpolatedRequest, httpResult);
             }
 
@@ -1077,6 +1079,7 @@ export class ExecutionService {
       }
 
       // 1. Interpolates variables in request
+      const rawRequestUrl = step.request?.url;
       const interpolatedRequest = this.globalVariables.interpolate(
         step.request
       );
@@ -1086,6 +1089,8 @@ export class ExecutionService {
         step.name,
         interpolatedRequest
       );
+
+      this.attachRawUrlToResult(httpResult, rawRequestUrl);
 
       // Records performance data
       this.recordPerformanceData(interpolatedRequest, httpResult);
@@ -1202,6 +1207,17 @@ export class ExecutionService {
           this.globalVariables.getAllVariables()
         ),
       };
+
+      if (step.request?.url) {
+        errorResult.request_details = {
+          method: step.request?.method || "GET",
+          url: step.request?.url,
+          raw_url: step.request?.url,
+          base_url: this.httpService.getBaseUrl(),
+        };
+
+        this.attachRawUrlToResult(errorResult, step.request?.url);
+      }
 
       // Fires step end hook even with error
       await this.hooks.onStepEnd?.(step, errorResult, context);
@@ -1381,6 +1397,41 @@ export class ExecutionService {
         status_code: result.response_details.status_code,
       });
     }
+  }
+
+  /**
+   * Preserves the original templated URL for reporting purposes
+   */
+  private attachRawUrlToResult(
+    result: StepExecutionResult,
+    rawUrl?: string
+  ): void {
+    if (!result?.request_details) {
+      return;
+    }
+
+    const baseUrl =
+      result.request_details.base_url || this.httpService.getBaseUrl();
+
+    if (baseUrl && !result.request_details.base_url) {
+      result.request_details.base_url = baseUrl;
+    }
+
+    if (!rawUrl) {
+      return;
+    }
+
+    let templateUrl = rawUrl;
+    const isAbsolute = /^(https?:)?\/\//i.test(rawUrl);
+
+    const hasBasePlaceholder = rawUrl.includes("{{base_url}}");
+
+    if (!isAbsolute && baseUrl && !hasBasePlaceholder) {
+      const path = rawUrl.startsWith("/") ? rawUrl : `/${rawUrl}`;
+      templateUrl = `{{base_url}}${path}`;
+    }
+
+    result.request_details.raw_url = templateUrl;
   }
 
   /**

@@ -87,7 +87,7 @@ export class MainLayoutComponent extends BaseComponentV2 {
         }
 
         :root {
-          --sidebar-width: 300px;
+          --sidebar-width: 340px;
         }
 
         /* Layout principal */
@@ -238,6 +238,28 @@ export class MainLayoutComponent extends BaseComponentV2 {
           max-height: none;
           overflow-y: visible;
           padding-right: 6px;
+        }
+
+        .navigation-shortcuts {
+          font-size: 12px;
+          color: var(--color-text-secondary);
+          margin-bottom: 12px;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+
+        .navigation-shortcuts .shortcut-key {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          padding: 2px 6px;
+          border-radius: 6px;
+          border: 1px solid rgba(15, 23, 42, 0.18);
+          background-color: rgba(15, 23, 42, 0.06);
+          font-family: "SFMono-Regular", Menlo, Monaco, "Courier New", monospace;
+          font-size: 11px;
+          color: var(--color-text);
         }
 
         .filters-grid {
@@ -598,6 +620,27 @@ export class MainLayoutComponent extends BaseComponentV2 {
           border-radius: 12px;
           border: 1px solid rgba(15, 23, 42, 0.08);
           box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.04);
+        }
+
+        .url-details {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          align-items: flex-start;
+        }
+
+        .url-details .url-label {
+          display: inline-block;
+          font-size: 11px;
+          font-weight: 600;
+          letter-spacing: 0.05em;
+          text-transform: uppercase;
+          color: var(--color-text-secondary);
+          margin-bottom: 2px;
+        }
+
+        .url-details .url {
+          max-width: 520px;
         }
 
         pre.code-block {
@@ -2000,6 +2043,13 @@ export class MainLayoutComponent extends BaseComponentV2 {
               </button>
             </div>
           </div>
+
+          <p class="navigation-shortcuts" role="note" aria-label="Atalho de navegação">
+            <span>Atalho:</span>
+            <span class="shortcut-key" aria-hidden="true">←</span>
+            <span class="shortcut-key" aria-hidden="true">→</span>
+            <span>para trocar de item</span>
+          </p>
 
           <nav class="sidebar-navigation" aria-label="Suites e steps">
             <ul class="nav-tree" id="navigation-container">

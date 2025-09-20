@@ -190,6 +190,12 @@ export interface RequestData {
   method: string;
   /** The URL of the request. */
   url: string;
+  /** The fully resolved URL including base URL. */
+  full_url?: string;
+  /** The original templated URL before interpolation. */
+  raw_url?: string;
+  /** Configured base URL used during execution. */
+  base_url?: string;
   /** The raw HTTP request string. */
   raw_request?: string;
 }
