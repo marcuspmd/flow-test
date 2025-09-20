@@ -88,6 +88,85 @@ export class MainLayoutComponent extends BaseComponentV2 {
 
         :root {
           --sidebar-width: 340px;
+          --spacing-xs: 4px;
+          --spacing-sm: 8px;
+          --spacing-md: 16px;
+          --spacing-lg: 24px;
+          --spacing-xl: 32px;
+        }
+
+        .text-default {
+          color: var(--color-text);
+        }
+
+        .text-muted {
+          color: var(--color-text-secondary);
+        }
+
+        .text-primary {
+          color: var(--color-primary);
+        }
+
+        .text-success {
+          color: #16a34a;
+        }
+
+        .text-error {
+          color: #dc2626;
+        }
+
+        .text-warning {
+          color: #d97706;
+        }
+
+        .text-secondary {
+          color: var(--color-text-secondary);
+        }
+
+        .mb-xs { margin-bottom: var(--spacing-xs); }
+        .mb-sm { margin-bottom: var(--spacing-sm); }
+        .mb-md { margin-bottom: var(--spacing-md); }
+        .mb-lg { margin-bottom: var(--spacing-lg); }
+
+        .mt-xs { margin-top: var(--spacing-xs); }
+        .mt-sm { margin-top: var(--spacing-sm); }
+        .mt-md { margin-top: var(--spacing-md); }
+        .mt-lg { margin-top: var(--spacing-lg); }
+
+        .px-sm {
+          padding-left: var(--spacing-sm);
+          padding-right: var(--spacing-sm);
+        }
+
+        .px-lg {
+          padding-left: var(--spacing-lg);
+          padding-right: var(--spacing-lg);
+        }
+
+        .py-xs {
+          padding-top: var(--spacing-xs);
+          padding-bottom: var(--spacing-xs);
+        }
+
+        .py-sm {
+          padding-top: var(--spacing-sm);
+          padding-bottom: var(--spacing-sm);
+        }
+
+        .gap-sm { gap: var(--spacing-sm); }
+        .gap-md { gap: var(--spacing-md); }
+        .gap-lg { gap: var(--spacing-lg); }
+
+        .space-x-sm > :not([hidden]) ~ :not([hidden]) {
+          --tw-space-x-reverse: 0;
+          margin-right: calc(var(--spacing-sm) * var(--tw-space-x-reverse));
+          margin-left: calc(var(--spacing-sm) * (1 - var(--tw-space-x-reverse)));
+        }
+
+        .space-x-md > :not([hidden]) ~ :not([hidden]) {
+          --tw-space-x-reverse: 0;
+          margin-right: calc(var(--spacing-md) * var(--tw-space-x-reverse));
+          margin-left: calc(var(--spacing-md) * (1 - var(--tw-space-x-reverse)));
         }
 
         /* Layout principal */
@@ -221,31 +300,6 @@ export class MainLayoutComponent extends BaseComponentV2 {
           gap: 14px;
         }
 
-        .sidebar-actions {
-          display: inline-flex;
-          gap: 8px;
-        }
-
-        .sidebar-action {
-          padding: 6px 12px;
-          border-radius: 8px;
-          border: 1px solid rgba(15, 23, 42, 0.12);
-          background: rgba(15, 23, 42, 0.04);
-          color: var(--color-text-secondary);
-          font-size: 11px;
-          font-weight: 600;
-          text-transform: uppercase;
-          letter-spacing: 0.06em;
-          cursor: pointer;
-          transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
-        }
-
-        .sidebar-action:hover {
-          background-color: rgba(59, 130, 246, 0.12);
-          border-color: rgba(59, 130, 246, 0.4);
-          color: var(--color-primary);
-        }
-
         .sidebar-navigation {
           max-height: none;
           overflow-y: visible;
@@ -275,15 +329,9 @@ export class MainLayoutComponent extends BaseComponentV2 {
         }
 
         .filters-grid {
-          display: grid;
-          grid-template-columns: 1fr;
-          gap: 14px;
-        }
-
-        @media (min-width: 1200px) {
-          .filters-grid {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-          }
+          display: flex;
+          flex-direction: column;
+          gap: var(--spacing-sm);
         }
 
         .filter-control {
@@ -300,23 +348,42 @@ export class MainLayoutComponent extends BaseComponentV2 {
           color: var(--color-text-secondary);
         }
 
-        .filter-input,
-        .filter-select {
-          width: 100%;
-          padding: 10px 12px;
+        .filter-input-wrapper {
+          position: relative;
+          display: flex;
+          align-items: center;
           border-radius: 10px;
           border: 1px solid rgba(15, 23, 42, 0.12);
           background-color: rgba(255, 255, 255, 0.92);
-          color: var(--color-text);
-          font-size: 13px;
+          padding: 0 12px;
           transition: border-color 0.2s ease, box-shadow 0.2s ease;
         }
 
-        .filter-input:focus,
-        .filter-select:focus {
+        .filter-input {
+          width: 100%;
+          border: none;
+          background: transparent;
+          color: var(--color-text);
+          font-size: 13px;
+          padding: 10px 0 10px 24px;
+        }
+
+        .filter-input:focus {
           outline: none;
           border-color: rgba(59, 130, 246, 0.7);
+          box-shadow: none;
+        }
+
+        .filter-input-wrapper:focus-within {
+          border-color: rgba(59, 130, 246, 0.7);
           box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.14);
+        }
+
+        .filter-input-icon {
+          position: absolute;
+          left: 12px;
+          font-size: 14px;
+          color: var(--color-text-secondary);
         }
 
         .nav-empty-state {
@@ -380,6 +447,8 @@ export class MainLayoutComponent extends BaseComponentV2 {
           font-size: 13px;
           font-weight: 600;
           color: var(--color-text-secondary);
+          width: 24px;
+          text-align: center;
         }
 
         .nav-label {
@@ -474,6 +543,20 @@ export class MainLayoutComponent extends BaseComponentV2 {
           width: 100%;
         }
 
+        .breadcrumb {
+          margin-bottom: var(--spacing-sm);
+          font-size: 13px;
+          color: var(--color-text-secondary);
+        }
+
+        .breadcrumb a {
+          color: var(--color-primary);
+        }
+
+        .breadcrumb a:hover {
+          text-decoration: underline;
+        }
+
         .detail-card {
           background-color: var(--color-surface);
           border: 1px solid rgba(15, 23, 42, 0.08);
@@ -487,9 +570,28 @@ export class MainLayoutComponent extends BaseComponentV2 {
 
         .detail-card-header {
           display: flex;
+          justify-content: space-between;
           align-items: center;
-          gap: 20px;
+          gap: 16px;
           flex-wrap: wrap;
+        }
+
+        .detail-card-heading {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+          min-width: 0;
+        }
+
+        .detail-card-title-group {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+
+        .detail-card-status {
+          display: inline-flex;
+          align-items: center;
         }
 
         .detail-card-icon {
@@ -527,8 +629,8 @@ export class MainLayoutComponent extends BaseComponentV2 {
         .step-summary,
         .group-summary {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-          gap: 18px;
+          grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+          gap: var(--spacing-md);
         }
 
         .stat-card {
@@ -580,6 +682,23 @@ export class MainLayoutComponent extends BaseComponentV2 {
         .detail-execution-grid {
           display: grid;
           gap: 24px;
+        }
+
+        .request-summary,
+        .response-summary {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: var(--spacing-md);
+          flex-wrap: wrap;
+          width: 100%;
+        }
+
+        .request-summary > *,
+        .response-summary > * {
+          display: flex;
+          align-items: center;
+          gap: var(--spacing-sm);
         }
 
         .tabs-container {
@@ -780,24 +899,6 @@ export class MainLayoutComponent extends BaseComponentV2 {
 
         .content-section h3 {
           font-size: 20px;
-        }
-
-        /* Form elements */
-        .filter-input,
-        .filter-select {
-          width: 100%;
-          padding: 8px 12px;
-          border: 1px solid #ddd;
-          border-radius: 4px;
-          font-size: 14px;
-          margin-bottom: 10px;
-        }
-
-        .filter-input:focus,
-        .filter-select:focus {
-          outline: none;
-          border-color: var(--color-primary);
-          box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
         }
 
         /* Status indicators */
@@ -2028,35 +2129,22 @@ export class MainLayoutComponent extends BaseComponentV2 {
 
           function applyFilters() {
             const searchTerm = getFilterValue('search-input');
-            const statusFilter = getFilterValue('status-filter');
-            const priorityFilter = getFilterValue('priority-filter');
 
             document.querySelectorAll('[data-filterable]').forEach(item => {
               const text = (item.dataset.searchable || item.textContent || '').toLowerCase();
-              const itemStatus = (item.getAttribute('data-status') || '').toLowerCase();
-              const itemPriority = (item.getAttribute('data-priority') || '').toLowerCase();
 
               const matchesSearch = !searchTerm || text.includes(searchTerm);
-              const matchesStatus = !statusFilter || itemStatus === statusFilter;
-              const matchesPriority = !priorityFilter || itemPriority === priorityFilter;
 
-              const isVisible = matchesSearch && matchesStatus && matchesPriority;
+              const isVisible = matchesSearch;
               item.style.display = isVisible ? '' : 'none';
             });
           }
 
           function registerFilters() {
-            const filterElements = [
-              document.getElementById('search-input'),
-              document.getElementById('status-filter'),
-              document.getElementById('priority-filter')
-            ];
-
-            filterElements.forEach(element => {
-              if (!element) return;
-              const eventName = element.tagName === 'SELECT' ? 'change' : 'input';
-              element.addEventListener(eventName, applyFilters);
-            });
+            const searchInput = document.getElementById('search-input');
+            if (searchInput) {
+              searchInput.addEventListener('input', applyFilters);
+            }
           }
 
           function applySidebarState(collapsed) {
@@ -2074,6 +2162,14 @@ export class MainLayoutComponent extends BaseComponentV2 {
             toggleButtons.forEach(button => {
               button.setAttribute('aria-expanded', String(!collapsed));
               button.classList.toggle('is-active', !collapsed);
+              const label = button.querySelector('.toggle-label');
+              if (label) {
+                label.textContent = collapsed ? 'Menu' : 'Fechar';
+              }
+              const icon = button.querySelector('.toggle-icon');
+              if (icon) {
+                icon.textContent = collapsed ? '☰' : '✕';
+              }
             });
           }
 
@@ -2173,14 +2269,6 @@ export class MainLayoutComponent extends BaseComponentV2 {
         <div class="sidebar-section sidebar-section--navigation">
           <div class="sidebar-section-header">
             <h3>Suites & Steps</h3>
-            <div class="sidebar-actions" role="group" aria-label="Ações da navegação">
-              <button type="button" class="sidebar-action" onclick="expandAllNavItems()">
-                Expandir
-              </button>
-              <button type="button" class="sidebar-action" onclick="collapseAllNavItems()">
-                Recolher
-              </button>
-            </div>
           </div>
 
           <p class="navigation-shortcuts" role="note" aria-label="Atalho de navegação">
@@ -2205,43 +2293,16 @@ export class MainLayoutComponent extends BaseComponentV2 {
       <div class="filters-grid">
         <label class="filter-control">
           <span class="filter-label">Buscar</span>
-          <input
-            type="text"
-            id="search-input"
-            placeholder="Buscar por nome ou descrição"
-            class="filter-input"
-            aria-label="Buscar suites ou steps"
-          />
-        </label>
-
-        <label class="filter-control">
-          <span class="filter-label">Status</span>
-          <select
-            id="status-filter"
-            class="filter-select"
-            aria-label="Filtrar por status"
-          >
-            <option value="">Todos</option>
-            <option value="success">Sucesso</option>
-            <option value="failed">Falhou</option>
-            <option value="error">Erro</option>
-            <option value="skipped">Ignorado</option>
-          </select>
-        </label>
-
-        <label class="filter-control">
-          <span class="filter-label">Prioridade</span>
-          <select
-            id="priority-filter"
-            class="filter-select"
-            aria-label="Filtrar por prioridade"
-          >
-            <option value="">Todas</option>
-            <option value="critical">Crítica</option>
-            <option value="high">Alta</option>
-            <option value="medium">Média</option>
-            <option value="low">Baixa</option>
-          </select>
+          <div class="filter-input-wrapper">
+            <span aria-hidden="true" class="filter-input-icon">🔍</span>
+            <input
+              type="text"
+              id="search-input"
+              placeholder="Digite para filtrar suites ou steps"
+              class="filter-input"
+              aria-label="Buscar suites ou steps"
+            />
+          </div>
         </label>
       </div>
     `;

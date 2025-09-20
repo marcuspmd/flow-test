@@ -199,12 +199,16 @@ export class DetailsPanelComponent extends BaseComponentV2 {
 
         <section class="detail-card">
           <div class="detail-card-header">
-            <span class="detail-card-icon">📋</span>
-            <div>
-              <h1 class="detail-card-title">${this.escapeHtml(item.name)}</h1>
-              <p class="detail-card-subtitle">Test Suite</p>
+            <div class="detail-card-heading">
+              <span class="detail-card-icon">📋</span>
+              <div class="detail-card-title-group">
+                <h1 class="detail-card-title">${this.escapeHtml(item.name)}</h1>
+                <p class="detail-card-subtitle">Test Suite</p>
+              </div>
             </div>
-            ${this.renderStatusBadge(item.status, "text-lg px-lg py-sm")}
+            <div class="detail-card-status">
+              ${this.renderStatusBadge(item.status, "text-lg px-lg py-sm")}
+            </div>
           </div>
           ${this.renderSuiteSummary(item, suiteData)}
         </section>
@@ -247,12 +251,16 @@ export class DetailsPanelComponent extends BaseComponentV2 {
 
         <section class="detail-card">
           <div class="detail-card-header">
-            <span class="detail-card-icon">🔧</span>
-            <div>
-              <h1 class="detail-card-title">${this.escapeHtml(item.name)}</h1>
-              <p class="detail-card-subtitle">Test Step</p>
+            <div class="detail-card-heading">
+              <span class="detail-card-icon">🔧</span>
+              <div class="detail-card-title-group">
+                <h1 class="detail-card-title">${this.escapeHtml(item.name)}</h1>
+                <p class="detail-card-subtitle">Test Step</p>
+              </div>
             </div>
-            ${this.renderStatusBadge(item.status, "text-lg px-lg py-sm")}
+            <div class="detail-card-status">
+              ${this.renderStatusBadge(item.status, "text-lg px-lg py-sm")}
+            </div>
           </div>
           ${this.renderStepSummary(item, step)}
         </section>
@@ -293,10 +301,12 @@ export class DetailsPanelComponent extends BaseComponentV2 {
 
         <section class="detail-card">
           <div class="detail-card-header">
-            <span class="detail-card-icon">📁</span>
-            <div>
-              <h1 class="detail-card-title">${this.escapeHtml(item.name)}</h1>
-              <p class="detail-card-subtitle">Test Group</p>
+            <div class="detail-card-heading">
+              <span class="detail-card-icon">📁</span>
+              <div class="detail-card-title-group">
+                <h1 class="detail-card-title">${this.escapeHtml(item.name)}</h1>
+                <p class="detail-card-subtitle">Test Group</p>
+              </div>
             </div>
           </div>
         </section>
@@ -341,7 +351,7 @@ export class DetailsPanelComponent extends BaseComponentV2 {
     });
 
     return this.html`
-      <nav class="breadcrumb mb-lg" ${this.getA11yAttributes({
+      <nav class="breadcrumb" ${this.getA11yAttributes({
         label: "Breadcrumb",
       })}>
         <div class="flex items-center space-x-sm text-sm">
