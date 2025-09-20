@@ -34,6 +34,8 @@ module.exports = {
     './src/report-generator/client/components/*.js',
     './src/report-generator/client/ReportApp.js',
     './src/report-generator/client/utils/*.js',
+    // Report Generator V2 (TypeScript)
+    './src/report-generator/v2/**/*.ts',
     // Legacy paths (deprecated)
     './src/report-generator/components/Layout.ts',
     './src/report-generator/components/Header.ts',
