@@ -47,7 +47,9 @@ export class MainLayoutComponent extends BaseComponentV2 {
 
         <div id="container">
           ${sidebarHtml}
-          <div id="main" class="${layout.showSidebar ? "" : "sidebar-collapsed"}">
+          <div id="main" class="${
+            layout.showSidebar ? "" : "sidebar-collapsed"
+          }">
             ${children}
           </div>
         </div>
@@ -177,7 +179,7 @@ export class MainLayoutComponent extends BaseComponentV2 {
           right: 0;
           height: 60px;
           background-color: var(--color-surface);
-          border-bottom: 1px solid #ddd;
+          border-bottom: 1px solid rgba(15, 23, 42, 0.08);
           z-index: 100;
         }
 
@@ -266,7 +268,7 @@ export class MainLayoutComponent extends BaseComponentV2 {
         #footer {
           clear: both;
           background-color: var(--color-surface);
-          border-top: 1px solid #ddd;
+          border-top: 1px solid rgba(15, 23, 42, 0.08);
           padding: 10px 20px;
           text-align: center;
           color: var(--color-text-secondary);
@@ -884,7 +886,7 @@ export class MainLayoutComponent extends BaseComponentV2 {
         .content-section h3 {
           color: var(--color-text);
           margin-bottom: 20px;
-          border-bottom: 1px solid #eee;
+          border-bottom: 1px solid rgba(15, 23, 42, 0.08);
           padding-bottom: 10px;
         }
 
@@ -1007,25 +1009,29 @@ export class MainLayoutComponent extends BaseComponentV2 {
           align-items: center;
           gap: 8px;
           padding: 8px 12px;
-          border-radius: 10px;
-          border: 1px solid rgba(15, 23, 42, 0.12);
-          background-color: rgba(15, 23, 42, 0.04);
+          border-radius: 8px;
+          border: 1px solid rgba(15, 23, 42, 0.08);
+          background-color: var(--color-surface);
           color: var(--color-text);
           cursor: pointer;
-          transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+          transition: all 0.2s ease;
+          font-size: 13px;
+          font-weight: 500;
+          box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
         }
 
         .sidebar-toggle:hover {
-          background-color: rgba(59, 130, 246, 0.12);
-          border-color: rgba(59, 130, 246, 0.4);
+          background-color: rgba(59, 130, 246, 0.08);
+          border-color: rgba(59, 130, 246, 0.2);
           color: var(--color-primary);
+          box-shadow: 0 2px 6px rgba(15, 23, 42, 0.1);
         }
 
         .sidebar-toggle.is-active {
           background-color: var(--color-primary);
           border-color: var(--color-primary);
           color: #ffffff;
-          box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
+          box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
         }
 
         .sidebar-toggle .toggle-icon {
@@ -1207,7 +1213,7 @@ export class MainLayoutComponent extends BaseComponentV2 {
           margin-top: 16px;
         }
 
-        .detail-card {
+        .iteration-detail-card {
           background-color: rgba(15, 23, 42, 0.02);
           border: 1px solid rgba(15, 23, 42, 0.08);
           border-radius: 12px;
@@ -1215,7 +1221,7 @@ export class MainLayoutComponent extends BaseComponentV2 {
           transition: all 0.2s ease;
         }
 
-        .detail-card:hover {
+        .iteration-detail-card:hover {
           border-color: rgba(59, 130, 246, 0.2);
           box-shadow: 0 4px 12px rgba(15, 23, 42, 0.1);
         }
@@ -1566,11 +1572,12 @@ export class MainLayoutComponent extends BaseComponentV2 {
         }
 
         .scenario-card {
-          background-color: rgba(15, 23, 42, 0.02);
+          background-color: var(--color-surface);
           border: 1px solid rgba(15, 23, 42, 0.08);
           border-radius: 12px;
           overflow: hidden;
           transition: all 0.2s ease;
+          box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
         }
 
         .scenario-card:hover {
@@ -2164,7 +2171,7 @@ export class MainLayoutComponent extends BaseComponentV2 {
               button.classList.toggle('is-active', !collapsed);
               const label = button.querySelector('.toggle-label');
               if (label) {
-                label.textContent = collapsed ? 'Menu' : 'Fechar';
+                label.textContent = collapsed ? 'Abrir Menu' : 'Fechar Menu';
               }
               const icon = button.querySelector('.toggle-icon');
               if (icon) {
@@ -2258,9 +2265,6 @@ export class MainLayoutComponent extends BaseComponentV2 {
         aria-label="Navegação de suites e steps"
       >
         <div class="sidebar-section sidebar-section--filters">
-          <div class="sidebar-section-header">
-            <h3>Filtros rápidos</h3>
-          </div>
           <div class="sidebar-section-content">
             ${filtersHtml}
           </div>
@@ -2341,8 +2345,10 @@ export class MainLayoutComponent extends BaseComponentV2 {
             aria-label="Alternar navegação"
             aria-expanded="${isSidebarVisible ? "true" : "false"}"
           >
-            <span class="toggle-icon">☰</span>
-            <span class="toggle-label">Menu</span>
+            <span class="toggle-icon">${isSidebarVisible ? "✕" : "☰"}</span>
+            <span class="toggle-label">${
+              isSidebarVisible ? "Fechar Menu" : "Abrir Menu"
+            }</span>
           </button>
           <h1>${this.escapeHtml(projectName)}</h1>
           <div class="breadcrumbs">
@@ -2355,9 +2361,12 @@ export class MainLayoutComponent extends BaseComponentV2 {
         <div class="header-right">
           <div class="header-meta">
             <span class="timestamp" aria-label="Gerado em">Gerado: ${generatedAt}</span>
-            ${successRate !== null
-              ? this.html`<span class="success-chip">Taxa de sucesso: ${successRate}%</span>`
-              : ""}
+            ${
+              successRate !== null
+                ? this
+                    .html`<span class="success-chip">Taxa de sucesso: ${successRate}%</span>`
+                : ""
+            }
           </div>
         </div>
       </div>
