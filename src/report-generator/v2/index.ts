@@ -21,7 +21,7 @@ export {
 
 // Componentes de layout
 export { MainLayoutComponent } from "./components/layout/main-layout.component";
-export { DetailsPanelComponent } from "./components/layout/details-panel.component";
+export { DetailsPanelComponent } from "./components/details/details-panel.component";
 
 // Componentes de navegação
 export { NavigationComponent } from "./components/navigation/navigation.component";
@@ -34,7 +34,7 @@ export { ScenariosComponent } from "./components/test-step/scenarios.component";
 
 // Imports para a factory
 import { MainLayoutComponent } from "./components/layout/main-layout.component";
-import { DetailsPanelComponent } from "./components/layout/details-panel.component";
+import { DetailsPanelComponent } from "./components/details/details-panel.component";
 import { NavigationComponent } from "./components/navigation/navigation.component";
 import { AssertionsComponent } from "./components/test-step/assertions.component";
 import { RequestResponseComponent } from "./components/test-step/request-response.component";
