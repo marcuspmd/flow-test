@@ -437,7 +437,7 @@ export class ReportGeneratorV2 {
           window.reportV2State = window.reportV2State || {
             selectedItemId: null,
             theme: '${this.theme.name}',
-            sidebarCollapsed: false
+            sidebarCollapsed: ${this.config.layout.showSidebar ? "false" : "true"}
           };
 
           function getDetailContainer() {
@@ -552,6 +552,10 @@ export class ReportGeneratorV2 {
             window.reportV2State.selectedItemId = itemId;
             updateMainContent(itemId);
             ensureExpanded(itemId);
+
+            if (window.innerWidth <= 768 && typeof window.toggleSidebar === 'function') {
+              window.toggleSidebar(true);
+            }
           });
 
           document.addEventListener('DOMContentLoaded', function() {

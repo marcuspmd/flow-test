@@ -54,10 +54,6 @@ export class NavigationComponent extends BaseComponentV2 {
     const selectedClass = isSelected ? "active" : "";
 
     const statusIndicator = this.renderStatusIndicator(item);
-    const priorityIcon =
-      config.showPriorityIcons && item.priority
-        ? this.renderPriorityIcon(item.priority)
-        : "";
     const counterMarkup = config.showCounters
       ? this.renderCounter(item)
       : "";
@@ -107,7 +103,6 @@ export class NavigationComponent extends BaseComponentV2 {
             onclick="selectNavItem('${item.id}'); return false;"
           >
             ${statusIndicator}
-            ${priorityIcon}
             <span class="nav-label">${this.escapeHtml(item.name)}</span>
           </a>
           <div class="nav-item-tools">
@@ -124,8 +119,8 @@ export class NavigationComponent extends BaseComponentV2 {
       success: { icon: "✓", className: "status-success", label: "Success" },
       failed: { icon: "✗", className: "status-failed", label: "Failed" },
       failure: { icon: "✗", className: "status-failed", label: "Failed" },
-      error: { icon: "⚠", className: "status-error", label: "Error" },
-      skipped: { icon: "○", className: "status-skipped", label: "Skipped" },
+      error: { icon: "!", className: "status-error", label: "Error" },
+      skipped: { icon: "·", className: "status-skipped", label: "Skipped" },
     };
 
     const statusKey = (
@@ -138,29 +133,7 @@ export class NavigationComponent extends BaseComponentV2 {
     }
 
     return this.html`
-      <span class="nav-status ${config.className}" aria-label="${config.label}">
-        ${config.icon}
-      </span>
-    `;
-  }
-
-  private renderPriorityIcon(priority: string): string {
-    const priorityConfig = {
-      critical: { icon: "🔴", color: "text-red-600" },
-      high: { icon: "🟠", color: "text-orange-600" },
-      medium: { icon: "🟡", color: "text-yellow-600" },
-      low: { icon: "🟢", color: "text-green-600" },
-    };
-
-    const config = priorityConfig[priority as keyof typeof priorityConfig] || {
-      icon: "⚪",
-      color: "text-gray-600",
-    };
-
-    return this.html`
-      <span class="priority-icon text-xs ${config.color}" title="Priority: ${priority}">
-        ${config.icon}
-      </span>
+      <span class="nav-status ${config.className}" aria-label="${config.label}">${config.icon}</span>
     `;
   }
 

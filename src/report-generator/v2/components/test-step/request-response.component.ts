@@ -130,50 +130,38 @@ export class RequestResponseComponent extends BaseComponentV2 {
 
     return this.html`
       <div class="p-md space-y-md">
-        <div class="request-summary flex items-center space-x-md">
-          <span class="method-badge px-sm py-xs rounded font-mono text-sm font-bold bg-blue-100 text-blue-800">
-            ${this.escapeHtml(request.method)}
-          </span>
-          <div class="url-details">
-            ${
-              baseUrlValue
-                ? this.html`
-              <div class="base-url">
-                <span class="url-label">Base URL</span>
-                <code class="url text-sm font-mono break-all bg-gray-50 px-sm py-xs rounded border border-gray-200">
-                  ${this.escapeHtml(baseUrlValue)}
-                </code>
-              </div>
-            `
-                : ""
-            }
-            <div class="resolved-url">
-              <span class="url-label">Resolvida</span>
-              <code class="url text-sm font-mono break-all bg-gray-100 px-sm py-xs rounded">
-                ${this.escapeHtml(resolvedUrl)}
-              </code>
-            </div>
+        <div class="request-summary w-full flex items-center space-x-md">
+          <div class="flex-row w-full justify-between">
+            <div class="url-details">
             ${
               hasTemplateUrl
                 ? this.html`
-              <div class="raw-url">
-                <span class="url-label">Template</span>
-                <code class="url text-sm font-mono break-all bg-gray-50 px-sm py-xs rounded border border-dashed border-gray-300">
-                  ${this.escapeHtml(request.raw_url || "")}
-                </code>
-              </div>
-            `
+                <div class="raw-url">
+                  <code class="url text-sm font-mono break-all bg-gray-50 px-sm py-xs rounded border border-dashed border-gray-300">
+                    ${this.escapeHtml(request.raw_url || "")}
+                  </code>
+                </div>
+              `
                 : ""
             }
-          </div>
-        </div>
+              <div class="resolved-url">
+                <code class="url text-sm font-mono break-all bg-gray-100 px-sm py-xs rounded">
+                  ${this.escapeHtml(resolvedUrl)}
+                </code>
+              </div>
 
+            </div>
+          </div>
+          <span class="method-badge px-sm py-xs rounded font-mono text-sm font-bold bg-blue-100 text-blue-800">
+            ${this.escapeHtml(request.method)}
+          </span>
+        </div>
         ${
           Object.keys(request.headers || {}).length > 0
             ? this.html`
         <div class="headers-section">
-            <h5 class="text-sm font-semibold text-default mb-sm">Headers</h5>
-        <pre class="code-block"><code>${this.escapeHtml(
+            <h5 class="text-sm font-semibold text-default">Headers</h5>
+        <pre class="code-block mt-2"><code>${this.escapeHtml(
           this.formatHeaders(request.headers)
         )}</code></pre>
           </div>
@@ -185,8 +173,8 @@ export class RequestResponseComponent extends BaseComponentV2 {
           request.body
             ? this.html`
           <div class="body-section">
-            <h5 class="text-sm font-semibold text-default mb-sm">Body</h5>
-            <pre class="code-block"><code>${this.escapeHtml(
+            <h5 class="text-sm font-semibold text-default">Body</h5>
+            <pre class="code-block mt-2"><code>${this.escapeHtml(
               this.formatBody(request.body)
             )}</code></pre>
           </div>
@@ -226,7 +214,7 @@ export class RequestResponseComponent extends BaseComponentV2 {
             ? this.html`
           <div class="body-section">
             <h5 class="text-sm font-semibold text-default mb-sm">Body</h5>
-            <pre class="code-block" style="max-height: 24rem; overflow-y: auto;"><code>${this.escapeHtml(
+            <pre class="code-block"><code>${this.escapeHtml(
               this.formatBody(response.body)
             )}</code></pre>
           </div>

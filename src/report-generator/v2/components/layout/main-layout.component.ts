@@ -47,7 +47,7 @@ export class MainLayoutComponent extends BaseComponentV2 {
 
         <div id="container">
           ${sidebarHtml}
-          <div id="main">
+          <div id="main" class="${layout.showSidebar ? "" : "sidebar-collapsed"}">
             ${children}
           </div>
         </div>
@@ -121,6 +121,13 @@ export class MainLayoutComponent extends BaseComponentV2 {
           position: fixed;
           top: 60px;
           left: 0;
+          transition: transform 0.3s ease, box-shadow 0.3s ease;
+          z-index: 90;
+        }
+
+        #sidebar.is-collapsed {
+          transform: translateX(calc(-1 * var(--sidebar-width)));
+          box-shadow: none;
         }
 
         #main {
@@ -128,6 +135,11 @@ export class MainLayoutComponent extends BaseComponentV2 {
           padding: 40px 48px;
           background-color: var(--color-background);
           margin-left: var(--sidebar-width);
+          transition: margin-left 0.3s ease;
+        }
+
+        #main.sidebar-collapsed {
+          margin-left: 0;
         }
 
         .report-summary {
@@ -337,10 +349,11 @@ export class MainLayoutComponent extends BaseComponentV2 {
 
         .nav-link {
           flex: 1;
-          display: flex;
+          display: grid;
+          grid-template-columns: auto 1fr;
           align-items: center;
-          gap: 12px;
-          padding: 10px 14px;
+          gap: 8px;
+          padding: 10px 12px;
           text-decoration: none;
           color: var(--color-text);
           font-size: var(--font-size-sm);
@@ -364,23 +377,16 @@ export class MainLayoutComponent extends BaseComponentV2 {
         }
 
         .nav-status {
-          font-size: 12px;
-          flex-shrink: 0;
+          font-size: 13px;
+          font-weight: 600;
           color: var(--color-text-secondary);
-          margin-top: 0;
         }
 
         .nav-label {
-          flex: 1;
           overflow: hidden;
           white-space: normal;
           word-break: break-word;
           line-height: 1.4;
-        }
-
-        .priority-icon {
-          font-size: 14px;
-          line-height: 1;
         }
 
         .nav-counter {
@@ -744,18 +750,8 @@ export class MainLayoutComponent extends BaseComponentV2 {
         }
 
         @media (max-width: 960px) {
-          #container {
-            flex-direction: column;
-          }
-
-          #sidebar {
-            width: 100%;
-            border-right: none;
-            border-bottom: 1px solid rgba(15, 23, 42, 0.08);
-          }
-
           #main {
-            padding: 28px 20px 40px;
+            padding: 32px 22px;
           }
         }
 
@@ -830,25 +826,45 @@ export class MainLayoutComponent extends BaseComponentV2 {
         }
 
         /* Responsive */
-        @media (max-width: 768px) {
+        @media (max-width: 1024px) {
+          :root {
+            --sidebar-width: 320px;
+          }
+
           #sidebar {
-            position: static;
-            width: 100%;
-            height: auto;
-            margin-top: 0;
+            box-shadow: 12px 0 32px rgba(15, 23, 42, 0.1);
+          }
+
+          #main {
+            padding: 32px 24px;
+          }
+        }
+
+        @media (max-width: 768px) {
+          :root {
+            --sidebar-width: 280px;
+          }
+
+          #header {
+            position: fixed;
+          }
+
+          #container {
+            flex-direction: column;
+          }
+
+          #sidebar {
+            transform: translateX(0);
+            box-shadow: 12px 0 32px rgba(15, 23, 42, 0.18);
           }
 
           #main {
             margin-left: 0;
+            padding: 28px 20px;
           }
 
-          #header {
-            position: static;
-            height: auto;
-          }
-
-          #container {
-            margin-top: 0;
+          #main.sidebar-expanded {
+            margin-left: var(--sidebar-width);
           }
         }
 
@@ -856,10 +872,17 @@ export class MainLayoutComponent extends BaseComponentV2 {
         .header-content {
           display: flex;
           justify-content: space-between;
-          align-items: flex-start;
+          align-items: center;
           padding: 16px 24px;
           height: auto;
           gap: 16px;
+        }
+
+        .header-left {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+          flex-wrap: wrap;
         }
 
         .header-left h1 {
@@ -876,6 +899,56 @@ export class MainLayoutComponent extends BaseComponentV2 {
           display: inline-flex;
           gap: 4px;
           align-items: center;
+        }
+
+        .sidebar-toggle {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          padding: 8px 12px;
+          border-radius: 10px;
+          border: 1px solid rgba(15, 23, 42, 0.12);
+          background-color: rgba(15, 23, 42, 0.04);
+          color: var(--color-text);
+          cursor: pointer;
+          transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+        }
+
+        .sidebar-toggle:hover {
+          background-color: rgba(59, 130, 246, 0.12);
+          border-color: rgba(59, 130, 246, 0.4);
+          color: var(--color-primary);
+        }
+
+        .sidebar-toggle.is-active {
+          background-color: var(--color-primary);
+          border-color: var(--color-primary);
+          color: #ffffff;
+          box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
+        }
+
+        .sidebar-toggle .toggle-icon {
+          font-size: 18px;
+          line-height: 1;
+        }
+
+        .sidebar-toggle .toggle-label {
+          font-size: 13px;
+          font-weight: 600;
+        }
+
+        @media (max-width: 768px) {
+          .sidebar-toggle {
+            padding: 8px 10px;
+          }
+
+          .sidebar-toggle .toggle-label {
+            display: none;
+          }
+
+          .header-content {
+            align-items: center;
+          }
         }
 
         .breadcrumbs a {
@@ -1986,6 +2059,35 @@ export class MainLayoutComponent extends BaseComponentV2 {
             });
           }
 
+          function applySidebarState(collapsed) {
+            const sidebar = document.getElementById('sidebar');
+            const main = document.getElementById('main');
+            if (!sidebar || !main) return;
+
+            const toggleButtons = document.querySelectorAll('[data-toggle-sidebar]');
+
+            sidebar.classList.toggle('is-collapsed', collapsed);
+            sidebar.setAttribute('aria-hidden', String(collapsed));
+            main.classList.toggle('sidebar-collapsed', collapsed);
+            main.classList.toggle('sidebar-expanded', !collapsed);
+
+            toggleButtons.forEach(button => {
+              button.setAttribute('aria-expanded', String(!collapsed));
+              button.classList.toggle('is-active', !collapsed);
+            });
+          }
+
+          function toggleSidebar(force) {
+            const currentState = !!(window.reportV2State && window.reportV2State.sidebarCollapsed);
+            const collapsed = typeof force === 'boolean' ? force : !currentState;
+
+            if (window.reportV2State) {
+              window.reportV2State.sidebarCollapsed = collapsed;
+            }
+
+            applySidebarState(collapsed);
+          }
+
           document.addEventListener('keydown', event => {
             if (event.key !== 'Escape') return;
 
@@ -1997,8 +2099,39 @@ export class MainLayoutComponent extends BaseComponentV2 {
 
           document.addEventListener('DOMContentLoaded', () => {
             document.body.className = 'h-full bg-background text-default font-sans';
+
             registerFilters();
             applyFilters();
+
+            const autoCollapse = window.innerWidth <= 768;
+            const initialState = typeof window.reportV2State?.sidebarCollapsed === 'boolean'
+              ? (autoCollapse ? true : window.reportV2State.sidebarCollapsed)
+              : autoCollapse;
+
+            if (window.reportV2State) {
+              window.reportV2State.sidebarCollapsed = initialState;
+            }
+
+            applySidebarState(initialState);
+
+            document.querySelectorAll('[data-toggle-sidebar]').forEach(button => {
+              button.addEventListener('click', () => toggleSidebar());
+            });
+
+            const mq = window.matchMedia('(max-width: 768px)');
+            const handleMqChange = event => {
+              if (event.matches) {
+                toggleSidebar(true);
+              } else {
+                toggleSidebar(false);
+              }
+            };
+
+            if (mq.addEventListener) {
+              mq.addEventListener('change', handleMqChange);
+            } else if (mq.addListener) {
+              mq.addListener(handleMqChange);
+            }
           });
 
           window.copyToClipboard = copyToClipboard;
@@ -2006,6 +2139,7 @@ export class MainLayoutComponent extends BaseComponentV2 {
           window.toggleSection = toggleSection;
           window.applyFilters = applyFilters;
           window.showToast = showToast;
+          window.toggleSidebar = toggleSidebar;
         })();
       </script>
     `;
@@ -2019,9 +2153,14 @@ export class MainLayoutComponent extends BaseComponentV2 {
     const navigationContent = navigationHtml?.trim()
       ? navigationHtml
       : this.renderEmptyNavigationState();
+    const isSidebarVisible = props.appState.layout?.showSidebar !== false;
 
     return this.html`
-      <aside id="sidebar" aria-label="Navegação de suites e steps">
+      <aside
+        id="sidebar"
+        class="${isSidebarVisible ? "" : "is-collapsed"}"
+        aria-label="Navegação de suites e steps"
+      >
         <div class="sidebar-section sidebar-section--filters">
           <div class="sidebar-section-header">
             <h3>Filtros rápidos</h3>
@@ -2129,10 +2268,21 @@ export class MainLayoutComponent extends BaseComponentV2 {
       metadata.successRate !== undefined && metadata.successRate !== null
         ? Number(metadata.successRate).toFixed(1)
         : null;
+    const isSidebarVisible = props.appState.layout?.showSidebar !== false;
 
     return this.html`
       <div class="header-content">
         <div class="header-left">
+          <button
+            type="button"
+            class="sidebar-toggle ${isSidebarVisible ? "is-active" : ""}"
+            data-toggle-sidebar
+            aria-label="Alternar navegação"
+            aria-expanded="${isSidebarVisible ? "true" : "false"}"
+          >
+            <span class="toggle-icon">☰</span>
+            <span class="toggle-label">Menu</span>
+          </button>
           <h1>${this.escapeHtml(projectName)}</h1>
           <div class="breadcrumbs">
             <a href="#home">Home</a>
