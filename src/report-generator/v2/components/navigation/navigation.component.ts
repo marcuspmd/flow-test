@@ -19,10 +19,10 @@ export class NavigationComponent extends BaseComponentV2 {
   }
 
   renderNavigation(props: NavigationProps): string {
-    const { items, config } = props;
+    const { items } = props;
 
     if (!items || items.length === 0) {
-      return this.renderEmptyState();
+      return "";
     }
 
     return this.renderNavigationItems(items, props, 0);
@@ -43,7 +43,7 @@ export class NavigationComponent extends BaseComponentV2 {
     props: NavigationProps,
     level: number
   ): string {
-    const { selectedItem, config, onSelect, onToggle } = props;
+    const { selectedItem, config } = props;
     const isSelected = selectedItem?.id === item.id;
     const hasChildren = item.children && item.children.length > 0;
     const isExpanded = item.expanded || config.autoExpand;
@@ -53,8 +53,52 @@ export class NavigationComponent extends BaseComponentV2 {
     const headerStyle = indent > 0 ? `style="padding-left: ${indent}px;"` : "";
     const selectedClass = isSelected ? "active" : "";
 
-    let html = this.html`
-      <li class="nav-item level-${currentLevel}" data-item-id="${item.id}" data-filterable>
+    const statusIndicator = this.renderStatusIndicator(item);
+    const priorityIcon =
+      config.showPriorityIcons && item.priority
+        ? this.renderPriorityIcon(item.priority)
+        : "";
+    const counterMarkup = config.showCounters
+      ? this.renderCounter(item)
+      : "";
+
+    const searchTokens = [
+      item.name,
+      item.priority || "",
+      (item.tags || []).join(" "),
+    ]
+      .filter(Boolean)
+      .join(" ");
+
+    const toggleButton = hasChildren
+      ? this.html`
+        <button
+          type="button"
+          class="toggle-btn"
+          data-toggle="${item.id}"
+          aria-label="Alternar ${this.escapeHtml(item.name)}"
+          onclick="toggleNavItem('${item.id}'); return false;"
+        >
+          <span class="toggle-icon">${isExpanded ? "▼" : "▶"}</span>
+        </button>`
+      : "";
+
+    const childrenHtml = hasChildren
+      ? this.html`
+        <ul class="nav-children ${isExpanded ? "show" : ""}">
+          ${this.renderNavigationItems(item.children || [], props, level + 1)}
+        </ul>`
+      : "";
+
+    return this.html`
+      <li
+        class="nav-item level-${currentLevel} nav-item--${item.type}"
+        data-item-id="${item.id}"
+        data-filterable
+        data-status="${(item.status || "").toLowerCase()}"
+        data-priority="${(item.priority || "").toLowerCase()}"
+        data-searchable="${this.escapeHtml(searchTokens)}"
+      >
         <div class="nav-item-header" ${headerStyle}>
           <a
             href="#"
@@ -62,38 +106,17 @@ export class NavigationComponent extends BaseComponentV2 {
             data-item-link="${item.id}"
             onclick="selectNavItem('${item.id}'); return false;"
           >
-            ${this.renderStatusIndicator(item)}
+            ${statusIndicator}
+            ${priorityIcon}
             <span class="nav-label">${this.escapeHtml(item.name)}</span>
           </a>
-          ${
-            hasChildren
-              ? this.html`
-              <button
-                type="button"
-                class="toggle-btn"
-                data-toggle="${item.id}"
-                aria-label="Alternar ${this.escapeHtml(item.name)}"
-                onclick="toggleNavItem('${item.id}'); return false;"
-              >
-                <span class="toggle-icon">${isExpanded ? "▼" : "▶"}</span>
-              </button>
-            `
-              : ""
-          }
+          <div class="nav-item-tools">
+            ${counterMarkup}
+            ${toggleButton}
+          </div>
         </div>
-    `;
-
-    if (hasChildren) {
-      html += this.html`
-        <ul class="nav-children ${isExpanded ? "show" : ""}">
-          ${this.renderNavigationItems(item.children || [], props, level + 1)}
-        </ul>
-      `;
-    }
-
-    html += this.html`</li>`;
-
-    return html;
+        ${childrenHtml}
+      </li>`;
   }
 
   private renderStatusIndicator(item: NavigationItem): string {
@@ -105,7 +128,9 @@ export class NavigationComponent extends BaseComponentV2 {
       skipped: { icon: "○", className: "status-skipped", label: "Skipped" },
     };
 
-    const statusKey = (item.status || "").toLowerCase() as keyof typeof statusMap;
+    const statusKey = (
+      item.status || ""
+    ).toLowerCase() as keyof typeof statusMap;
     const config = statusMap[statusKey];
 
     if (!config?.icon) {
@@ -155,11 +180,11 @@ export class NavigationComponent extends BaseComponentV2 {
     ]);
 
     return this.html`
-      <div class="counter flex items-center space-x-xs text-xs">
+      <span class="nav-counter">
         ${
           successCount > 0
             ? this.html`
-          <span class="success-count px-1 rounded bg-green-100 text-green-800">
+          <span class="success-count">
             ${successCount}
           </span>
         `
@@ -168,13 +193,13 @@ export class NavigationComponent extends BaseComponentV2 {
         ${
           failureCount > 0
             ? this.html`
-          <span class="failure-count px-1 rounded bg-red-100 text-red-800">
+          <span class="failure-count">
             ${failureCount}
           </span>
         `
             : ""
         }
-      </div>
+      </span>
     `;
   }
 
@@ -232,7 +257,8 @@ export class NavigationComponent extends BaseComponentV2 {
           }
 
           if (settings.scroll !== false) {
-            window.scrollTo({ top: 0, behavior: settings.behavior || 'smooth' });
+            // Scroll to top removed - sidebar now has its own scroll
+            // window.scrollTo({ top: 0, behavior: settings.behavior || 'smooth' });
           }
 
           const event = new CustomEvent('nav-item-selected', {

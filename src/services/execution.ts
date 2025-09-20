@@ -1131,21 +1131,37 @@ export class ExecutionService {
 
       // 4. Captures variables
       let capturedVariables: Record<string, any> = {};
+
+      // First, include any variables captured by scenarios
+      if (httpResult.captured_variables) {
+        capturedVariables = { ...httpResult.captured_variables };
+
+        // Make sure scenario-captured variables are also available globally
+        if (Object.keys(capturedVariables).length > 0) {
+          this.globalVariables.setRuntimeVariables(
+            this.processCapturedVariables(capturedVariables, suite)
+          );
+        }
+      }
+
       if (step.capture && httpResult.response_details) {
         // Get current variables for capture context
         const currentVariables = this.globalVariables.getAllVariables();
 
-        capturedVariables = this.captureService.captureVariables(
+        const stepCapturedVariables = this.captureService.captureVariables(
           step.capture,
           httpResult,
           currentVariables
         );
+
+        // Merge step captures with scenario captures
+        capturedVariables = { ...capturedVariables, ...stepCapturedVariables };
         httpResult.captured_variables = capturedVariables;
 
         // Immediately update runtime variables so they're available for next steps
-        if (Object.keys(capturedVariables).length > 0) {
+        if (Object.keys(stepCapturedVariables).length > 0) {
           this.globalVariables.setRuntimeVariables(
-            this.processCapturedVariables(capturedVariables, suite)
+            this.processCapturedVariables(stepCapturedVariables, suite)
           );
         }
       }

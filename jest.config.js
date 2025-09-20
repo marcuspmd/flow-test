@@ -29,22 +29,7 @@ module.exports = {
   coverageReporters: ['text', 'text-summary', 'html', 'json', 'lcov'],
   collectCoverageFrom: [
     // Core modules (já testados)
-    'src/core/config.ts',
-    'src/core/discovery.ts',
-    'src/core/engine.ts',
-    'src/core/swagger/parser/swagger-parser.ts',
-    'src/core/swagger/parser/validator.ts',
-    // Services (todos os services, sem exclusões)
-    'src/services/assertion.service.ts',
-    'src/services/capture.service.ts',
-    'src/services/dependency.service.ts',
-    'src/services/faker.service.ts',
-    'src/services/global-registry.service.ts',
-    'src/services/http.service.ts',
-    'src/services/logger.service.ts',
-    'src/services/variable.service.ts',
-    // Report generator
-    'src/report-generator/**/*.ts',
+    'src/**/*.ts',
     // Excluir apenas arquivos de interface/utilitários
     '!src/cli.ts',
     '!src/index.ts',

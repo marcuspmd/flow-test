@@ -29,6 +29,8 @@ export { NavigationComponent } from "./components/navigation/navigation.componen
 // Componentes de test step
 export { AssertionsComponent } from "./components/test-step/assertions.component";
 export { RequestResponseComponent } from "./components/test-step/request-response.component";
+export { IterationsComponent } from "./components/test-step/iterations.component";
+export { ScenariosComponent } from "./components/test-step/scenarios.component";
 
 // Imports para a factory
 import { MainLayoutComponent } from "./components/layout/main-layout.component";
@@ -36,6 +38,8 @@ import { DetailsPanelComponent } from "./components/layout/details-panel.compone
 import { NavigationComponent } from "./components/navigation/navigation.component";
 import { AssertionsComponent } from "./components/test-step/assertions.component";
 import { RequestResponseComponent } from "./components/test-step/request-response.component";
+import { IterationsComponent } from "./components/test-step/iterations.component";
+import { ScenariosComponent } from "./components/test-step/scenarios.component";
 import { ThemeConfig } from "./types";
 
 /**
@@ -66,5 +70,13 @@ export class ComponentFactoryV2 {
 
   createRequestResponse(): RequestResponseComponent {
     return new RequestResponseComponent(this.theme);
+  }
+
+  createIterations(): IterationsComponent {
+    return new IterationsComponent(this.theme);
+  }
+
+  createScenarios(): ScenariosComponent {
+    return new ScenariosComponent(this.theme);
   }
 }

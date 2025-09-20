@@ -138,6 +138,12 @@ export interface LayoutProps {
   onStateChange?: (newState: Partial<AppState>) => void;
   /** Conteúdo a ser renderizado */
   children?: string;
+  /** HTML pronto para injetar na navegação da sidebar */
+  navigationHtml?: string;
+  /** Script adicional relacionado à navegação */
+  navigationScript?: string;
+  /** HTML customizado para filtros da sidebar */
+  filtersHtml?: string;
 }
 
 /**

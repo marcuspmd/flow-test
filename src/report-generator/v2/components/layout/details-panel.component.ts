@@ -7,6 +7,8 @@ import { BaseComponentV2 } from "../common/base-component-v2";
 import { DetailsPanelProps, ThemeConfig, NavigationItem } from "../../types";
 import { AssertionsComponent } from "../test-step/assertions.component";
 import { RequestResponseComponent } from "../test-step/request-response.component";
+import { IterationsComponent } from "../test-step/iterations.component";
+import { ScenariosComponent } from "../test-step/scenarios.component";
 
 /**
  * Renderiza o painel principal de detalhes com mais espaço para visualização
@@ -14,11 +16,15 @@ import { RequestResponseComponent } from "../test-step/request-response.componen
 export class DetailsPanelComponent extends BaseComponentV2 {
   private assertionsComponent: AssertionsComponent;
   private requestResponseComponent: RequestResponseComponent;
+  private iterationsComponent: IterationsComponent;
+  private scenariosComponent: ScenariosComponent;
 
   constructor(theme: ThemeConfig) {
     super(theme);
     this.assertionsComponent = new AssertionsComponent(theme);
     this.requestResponseComponent = new RequestResponseComponent(theme);
+    this.iterationsComponent = new IterationsComponent(theme);
+    this.scenariosComponent = new ScenariosComponent(theme);
   }
 
   render(): string {
@@ -28,35 +34,86 @@ export class DetailsPanelComponent extends BaseComponentV2 {
   renderDetailsPanel(props: DetailsPanelProps): string {
     const { selectedItem, navigationItems, testData } = props;
 
+    console.log('[DEBUG] DetailsPanelComponent.renderDetailsPanel - Input:', {
+      selectedItem_id: selectedItem?.id,
+      navigationItems_count: navigationItems?.length || 0,
+      navigationItems: navigationItems?.map(item => ({
+        id: item.id,
+        name: item.name,
+        type: item.type,
+        children_count: item.children?.length || 0
+      }))
+    });
+
     if (!navigationItems || navigationItems.length === 0) {
+      console.log('[DEBUG] No navigation items, rendering welcome state');
       return this.renderWelcomeState();
     }
 
     const activeId = selectedItem?.id || navigationItems[0]?.id || "";
+    console.log('[DEBUG] Active ID determined:', activeId);
+
     const sections: string[] = [];
 
-    navigationItems.forEach((item) => {
-      const rootSection = this.renderDetailSection(item, testData, activeId);
-      if (rootSection) {
-        sections.push(rootSection);
+    navigationItems.forEach((item, itemIndex) => {
+      console.log(`[DEBUG] Processing navigation item ${itemIndex}:`, {
+        id: item.id,
+        name: item.name,
+        type: item.type,
+        children_count: item.children?.length || 0
+      });
+
+      try {
+        const rootSection = this.renderDetailSection(item, testData, activeId);
+        if (rootSection) {
+          sections.push(rootSection);
+          console.log(`[DEBUG] Added root section for item ${item.id}, total sections: ${sections.length}`);
+        } else {
+          console.log(`[DEBUG] Root section for item ${item.id} returned empty`);
+        }
+      } catch (error) {
+        console.error(`[DEBUG] Error rendering root section for item ${item.id}:`, error);
+        // Add a fallback section
+        sections.push(this.renderErrorSection(item, error));
+        console.log(`[DEBUG] Added error section for item ${item.id}, total sections: ${sections.length}`);
       }
 
-      (item.children || []).forEach((child) => {
-        const childSection = this.renderDetailSection(
-          child,
-          testData,
-          activeId
-        );
-        if (childSection) {
-          sections.push(childSection);
+      (item.children || []).forEach((child, childIndex) => {
+        console.log(`[DEBUG] Processing child ${childIndex} of item ${item.id}:`, {
+          child_id: child.id,
+          child_name: child.name,
+          child_type: child.type
+        });
+
+        try {
+          const childSection = this.renderDetailSection(
+            child,
+            testData,
+            activeId
+          );
+          if (childSection) {
+            sections.push(childSection);
+            console.log(`[DEBUG] Added child section for ${child.id}, total sections: ${sections.length}`);
+          } else {
+            console.log(`[DEBUG] Child section for ${child.id} returned empty`);
+          }
+        } catch (error) {
+          console.error(`[DEBUG] Error rendering child section for item ${child.id}:`, error);
+          // Add a fallback section
+          sections.push(this.renderErrorSection(child, error));
+          console.log(`[DEBUG] Added error section for child ${child.id}, total sections: ${sections.length}`);
         }
       });
     });
 
+    console.log(`[DEBUG] Final sections count: ${sections.length}`);
+
     if (sections.length === 0) {
+      console.log('[DEBUG] No sections generated, rendering welcome state');
       return this.renderWelcomeState();
     }
 
+    console.log('[DEBUG] Rendering details panel with sections');
     return this.html`
       <div
         id="main-content-area"
@@ -73,35 +130,81 @@ export class DetailsPanelComponent extends BaseComponentV2 {
     testData: any,
     activeId: string
   ): string {
-    const content = this.renderItemContent(item, testData);
-    if (!content) {
-      return "";
+    console.log(`[DEBUG] renderDetailSection called for item ${item.id}:`, {
+      name: item.name,
+      type: item.type,
+      activeId,
+      isActive: item.id === activeId
+    });
+
+    try {
+      console.log(`[DEBUG] Calling renderItemContent for ${item.id}`);
+      const content = this.renderItemContent(item, testData);
+
+      if (!content) {
+        console.log(`[DEBUG] renderItemContent returned empty content for ${item.id}`);
+        return "";
+      }
+
+      console.log(`[DEBUG] renderItemContent succeeded for ${item.id}, content length: ${content.length}`);
+      const isActive = item.id === activeId;
+
+      const section = this.html`
+        <section
+          class="detail-section ${isActive ? "is-active" : "is-hidden"}"
+          data-item-id="${this.escapeHtml(item.id)}"
+          role="tabpanel"
+          aria-hidden="${isActive ? "false" : "true"}"
+        >
+          ${content}
+        </section>
+      `;
+
+      console.log(`[DEBUG] Generated section for ${item.id}, length: ${section.length}`);
+      return section;
+    } catch (error) {
+      console.error(`[DEBUG] Error in renderDetailSection for item ${item.id}:`, error);
+      throw error; // Re-throw to be caught by the outer try-catch
     }
-
-    const isActive = item.id === activeId;
-
-    return this.html`
-      <section
-        class="detail-section ${isActive ? "is-active" : "is-hidden"}"
-        data-item-id="${this.escapeHtml(item.id)}"
-        role="tabpanel"
-        aria-hidden="${isActive ? "false" : "true"}"
-      >
-        ${content}
-      </section>
-    `;
   }
 
   private renderItemContent(item: NavigationItem, testData: any): string {
-    switch (item.type) {
-      case "suite":
-        return this.buildSuiteContent(item, testData);
-      case "step":
-        return this.buildStepContent(item, testData);
-      case "group":
-        return this.buildGroupContent(item, testData);
-      default:
-        return this.renderUnknownItemType(item);
+    console.log(`[DEBUG] renderItemContent called for ${item.id}:`, {
+      name: item.name,
+      type: item.type
+    });
+
+    try {
+      let result: string;
+
+      switch (item.type) {
+        case "suite":
+          console.log(`[DEBUG] Building suite content for ${item.id}`);
+          result = this.buildSuiteContent(item, testData);
+          break;
+        case "step":
+          console.log(`[DEBUG] Building step content for ${item.id}`);
+          result = this.buildStepContent(item, testData);
+          break;
+        case "group":
+          console.log(`[DEBUG] Building group content for ${item.id}`);
+          result = this.buildGroupContent(item, testData);
+          break;
+        default:
+          console.log(`[DEBUG] Unknown item type for ${item.id}: ${item.type}`);
+          result = this.renderUnknownItemType(item);
+          break;
+      }
+
+      console.log(`[DEBUG] renderItemContent result for ${item.id}:`, {
+        content_length: result?.length || 0,
+        has_content: !!result
+      });
+
+      return result;
+    } catch (error) {
+      console.error(`[DEBUG] Error in renderItemContent for ${item.id}:`, error);
+      throw error;
     }
   }
 
@@ -190,12 +293,31 @@ export class DetailsPanelComponent extends BaseComponentV2 {
   }
 
   private buildStepContent(item: NavigationItem, testData: any): string {
+    console.log(`[DEBUG] buildStepContent called for step ${item.id}:`, {
+      name: item.name,
+      data_available: !!testData
+    });
+
     const stepResult = this.findStepData(item.id, testData);
+    console.log(`[DEBUG] findStepData result for ${item.id}:`, {
+      found: !!stepResult,
+      has_step: !!stepResult?.step,
+      has_suite: !!stepResult?.suite
+    });
+
     if (!stepResult) {
+      console.log(`[DEBUG] No step data found for ${item.id}, rendering missing data notice`);
       return this.renderMissingDataNotice("Step data not found");
     }
 
     const { step, suite } = stepResult;
+    console.log(`[DEBUG] Step data for ${item.id}:`, {
+      step_name: step?.name,
+      step_status: step?.status,
+      suite_name: suite?.name,
+      has_scenarios: !!step?.scenarios_meta,
+      has_iterations: !!step?.iteration_results?.length
+    });
 
     return this.html`
       <div class="detail-wrapper">
@@ -224,6 +346,9 @@ export class DetailsPanelComponent extends BaseComponentV2 {
             ${this.renderStepRequestResponse(step)}
           </div>
         </section>
+
+        ${this.renderStepIterations(step, item)}
+        ${this.renderStepScenarios(step, item)}
 
         ${(() => {
           const additional = this.renderStepAdditionalInfo(step);
@@ -342,45 +467,84 @@ export class DetailsPanelComponent extends BaseComponentV2 {
   }
 
   private renderStepSummary(item: NavigationItem, stepData: any): string {
+    // Calculate additional metrics for iterations and scenarios
+    const iterations = stepData?.iteration_results || stepData?.iterations || [];
+    const scenariosMeta = stepData?.scenarios_meta || stepData?.scenariosMeta;
+    const hasIterations = iterations.length > 0;
+    const hasScenarios = scenariosMeta?.has_scenarios;
+
+    const summaryItems = [
+      {
+        icon: "🔍",
+        iconClass: "text-primary",
+        value: stepData?.assertions?.length || 0,
+        label: "Assertions"
+      },
+      {
+        icon: "⏱️",
+        iconClass: "text-success",
+        value: this.formatDuration(stepData?.duration || 0),
+        label: "Duration"
+      },
+      {
+        icon: "🌐",
+        iconClass: "text-warning",
+        value: stepData?.request?.method || "N/A",
+        label: "Method"
+      },
+      {
+        icon: "📊",
+        iconClass: "text-secondary",
+        value: stepData?.response?.status_code || "N/A",
+        label: "Status Code"
+      }
+    ];
+
+    // Add iterations summary if present
+    if (hasIterations) {
+      summaryItems.push({
+        icon: "🔄",
+        iconClass: "text-info",
+        value: iterations.length,
+        label: "Iterations"
+      });
+    }
+
+    // Add scenarios summary if present
+    if (hasScenarios) {
+      const executedCount = scenariosMeta.executed_count || 0;
+      const totalScenarios = scenariosMeta.evaluations?.length || 0;
+      summaryItems.push({
+        icon: "🎭",
+        iconClass: "text-purple",
+        value: `${executedCount}/${totalScenarios}`,
+        label: "Scenarios"
+      });
+    }
+
     return this.html`
       <div class="step-summary">
-        <div class="summary-item w-full">
-          <span class="summary-icon text-primary">🔍</span>
-          <div>
-            <div class="summary-value">${
-              stepData?.assertions?.length || 0
-            }</div>
-            <div class="summary-label">Assertions</div>
+        ${summaryItems.map(item => this.html`
+          <div class="summary-item">
+            <span class="summary-icon ${item.iconClass}">${item.icon}</span>
+            <div>
+              <div class="summary-value">${item.value}</div>
+              <div class="summary-label">${item.label}</div>
+            </div>
           </div>
-        </div>
-        <div class="summary-item w-full">
-          <span class="summary-icon text-success">⏱️</span>
-          <div>
-            <div class="summary-value">${this.formatDuration(
-              stepData?.duration || 0
-            )}</div>
-            <div class="summary-label">Duration</div>
-          </div>
-        </div>
-        <div class="summary-item">
-          <span class="summary-icon text-warning">🌐</span>
-          <div>
-            <div class="summary-value">${
-              stepData?.request?.method || "N/A"
-            }</div>
-            <div class="summary-label">Method</div>
-          </div>
-        </div>
-        <div class="summary-item">
-          <span class="summary-icon text-secondary">📊</span>
-          <div>
-            <div class="summary-value">${
-              stepData?.response?.status_code || "N/A"
-            }</div>
-            <div class="summary-label">Status Code</div>
-          </div>
-        </div>
+        `).join('')}
       </div>
+
+      ${hasIterations || hasScenarios ? this.html`
+        <div class="step-enhanced-info mt-sm">
+          ${hasIterations ? this.html`
+            <div class="enhanced-info-badge iterations-badge">
+              🔄 ${iterations.length} iteration${iterations.length !== 1 ? 's' : ''}
+            </div>
+          ` : ''}
+          ${hasScenarios ? this.scenariosComponent.renderScenariosSummaryBadge(scenariosMeta) : ''}
+        </div>
+      ` : ''}
     `;
   }
 
@@ -490,6 +654,37 @@ export class DetailsPanelComponent extends BaseComponentV2 {
       response: stepData?.response,
       curlCommand: stepData?.curlCommand,
       stepId: stepData?.id || "unknown",
+    });
+  }
+
+  private renderStepIterations(stepData: any, navigationItem: NavigationItem): string {
+    // Check for iteration_results in stepData
+    const iterations = stepData?.iteration_results || stepData?.iterations;
+
+    if (!iterations || !Array.isArray(iterations) || iterations.length === 0) {
+      return "";
+    }
+
+    return this.iterationsComponent.renderIterations({
+      iterations,
+      stepName: navigationItem.name,
+      stepId: stepData?.id || navigationItem.id
+    });
+  }
+
+  private renderStepScenarios(stepData: any, navigationItem: NavigationItem): string {
+    // Check for scenarios_meta in stepData
+    const scenariosMeta = stepData?.scenarios_meta || stepData?.scenariosMeta;
+
+    if (!scenariosMeta || !scenariosMeta.has_scenarios) {
+      return "";
+    }
+
+    return this.scenariosComponent.renderScenarios({
+      scenariosMeta,
+      stepName: navigationItem.name,
+      stepId: stepData?.id || navigationItem.id,
+      stepData: stepData // Passar os dados do step para acessar captured_variables
     });
   }
 
@@ -677,6 +872,37 @@ export class DetailsPanelComponent extends BaseComponentV2 {
     `;
   }
 
+  private renderErrorSection(item: NavigationItem, error: any): string {
+    const isActive = false; // Error sections are not initially active
+
+    return this.html`
+      <section
+        class="detail-section ${isActive ? "is-active" : "is-hidden"}"
+        data-item-id="${this.escapeHtml(item.id)}"
+        role="tabpanel"
+        aria-hidden="${isActive ? "false" : "true"}"
+      >
+        <div class="detail-wrapper">
+          <section class="detail-card border-red-200 bg-red-50">
+            <div class="text-center p-xl">
+              <div class="text-4xl mb-md">⚠️</div>
+              <h2 class="text-xl font-semibold text-error mb-sm">Erro na renderização</h2>
+              <p class="text-sm text-muted mb-md">
+                Ocorreu um erro ao renderizar o item "${this.escapeHtml(item.name)}"
+              </p>
+              <details class="text-left">
+                <summary class="text-sm text-primary cursor-pointer">Detalhes do erro</summary>
+                <pre class="text-xs mt-sm p-sm bg-gray-100 rounded overflow-auto">
+${this.escapeHtml(error?.message || error?.toString() || 'Erro desconhecido')}
+                </pre>
+              </details>
+            </div>
+          </section>
+        </div>
+      </section>
+    `;
+  }
+
   // Métodos auxiliares para buscar dados
   private findSuiteData(id: string, testData: any): any {
     // Implementar busca nos dados dos testes
@@ -687,19 +913,45 @@ export class DetailsPanelComponent extends BaseComponentV2 {
     id: string,
     testData: any
   ): { step: any; suite: any } | null {
+    console.log(`[DEBUG] findStepData called for ID: ${id}`);
+    console.log(`[DEBUG] testData structure:`, {
+      has_testData: !!testData,
+      has_suites: !!testData?.suites,
+      suites_count: testData?.suites?.length || 0,
+      suites: testData?.suites?.map((s: any) => ({
+        id: s.id,
+        name: s.name,
+        steps_count: s.steps?.length || 0,
+        step_ids: s.steps?.map((step: any) => step.id)
+      }))
+    });
+
     if (!testData?.suites) {
+      console.log(`[DEBUG] No testData.suites available for ${id}`);
       return null;
     }
 
     for (const suite of testData.suites) {
+      console.log(`[DEBUG] Searching in suite ${suite.id} for step ${id}:`, {
+        suite_name: suite.name,
+        steps_count: suite.steps?.length || 0,
+        step_ids: suite.steps?.map((s: any) => s.id)
+      });
+
       const step = (suite.steps || []).find(
         (currentStep: any) => currentStep.id === id
       );
+
       if (step) {
+        console.log(`[DEBUG] Found step ${id} in suite ${suite.id}:`, {
+          step_name: step.name,
+          step_status: step.status
+        });
         return { step, suite };
       }
     }
 
+    console.log(`[DEBUG] Step ${id} not found in any suite`);
     return null;
   }
 

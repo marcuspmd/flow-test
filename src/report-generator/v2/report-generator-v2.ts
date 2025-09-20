@@ -101,7 +101,11 @@ export class ReportGeneratorV2 {
       const appState = this.buildAppState(navigationItems, transformedData);
 
       // Gerar HTML
-      const html = this.renderReport(appState, transformedData, navigationItems);
+      const html = this.renderReport(
+        appState,
+        transformedData,
+        navigationItems
+      );
 
       // Salvar arquivo
       await this.saveReport(html, outputPath);
@@ -117,7 +121,13 @@ export class ReportGeneratorV2 {
    * Transforma os dados de entrada para o formato interno V2
    */
   private transformData(data: AggregatedResult): any {
-    return {
+    console.log('[DEBUG] ReportGeneratorV2.transformData - Input data:', {
+      project_name: data.project_name,
+      total_tests: data.total_tests,
+      suites_count: data.suites_results?.length || 0
+    });
+
+    const transformedData = {
       metadata: {
         projectName: data.project_name || "Flow Test Report",
         totalTests: data.total_tests || 0,
@@ -128,53 +138,130 @@ export class ReportGeneratorV2 {
         generatedAt: new Date().toISOString(),
         version: "2.0.0",
       },
-      suites: (data.suites_results || []).map((suite, index) => ({
-        id: `suite-${index}`,
-        name: suite.suite_name,
-        status: suite.status,
-        duration: suite.duration_ms || 0,
-        metadata: {
-          priority: suite.priority,
-          tags: [],
-          description: suite.suite_name,
-        },
-        steps: (suite.steps_results || []).map((step, stepIndex) => ({
-          id: `step-${index}-${stepIndex}`,
-          name: step.step_name,
-          status: step.status,
-          duration: step.duration_ms || 0,
-          assertions: step.assertions_results || [],
-          request: step.request_details,
-          response: step.response_details,
-          curlCommand: step.request_details?.curl_command || "",
-          capturedVariables: step.captured_variables || [],
-          errorContext: step.error_message,
-        })),
-      })),
+      suites: (data.suites_results || []).map((suite, index) => {
+        console.log(`[DEBUG] Processing suite ${index}:`, {
+          name: suite.suite_name,
+          status: suite.status,
+          steps_count: suite.steps_results?.length || 0
+        });
+
+        const transformedSuite = {
+          id: `suite-${index}`,
+          name: suite.suite_name,
+          status: suite.status,
+          duration: suite.duration_ms || 0,
+          metadata: {
+            priority: suite.priority,
+            tags: [],
+            description: suite.suite_name,
+          },
+          steps: (suite.steps_results || []).map((step, stepIndex) => {
+            console.log(`[DEBUG] Processing step ${index}-${stepIndex}:`, {
+              name: step.step_name,
+              status: step.status,
+              has_scenarios: !!(step as any).scenarios_meta,
+              has_iterations: !!((step as any).iteration_results?.length)
+            });
+
+            return {
+              id: `step-${index}-${stepIndex}`,
+              name: step.step_name,
+              status: step.status,
+              duration: step.duration_ms || 0,
+              assertions: step.assertions_results || [],
+              request: step.request_details,
+              response: step.response_details,
+              curlCommand: step.request_details?.curl_command || "",
+              capturedVariables: step.captured_variables || {},
+              captured_variables: step.captured_variables || {}, // Also preserve with underscore for compatibility
+              errorContext: step.error_message,
+              // Preserve iteration_results for recurring tests
+              iteration_results: (step as any).iteration_results || [],
+              // Preserve scenarios_meta for conditional scenarios
+              scenarios_meta: (step as any).scenarios_meta || null,
+            };
+          }),
+        };
+
+        console.log(`[DEBUG] Transformed suite ${index}:`, {
+          id: transformedSuite.id,
+          name: transformedSuite.name,
+          steps_count: transformedSuite.steps.length,
+          steps_ids: transformedSuite.steps.map(s => s.id)
+        });
+
+        return transformedSuite;
+      }),
     };
+
+    console.log('[DEBUG] ReportGeneratorV2.transformData - Output:', {
+      suites_count: transformedData.suites.length,
+      total_steps: transformedData.suites.reduce((acc, s) => acc + s.steps.length, 0)
+    });
+
+    return transformedData;
   }
 
   /**
    * Constrói a árvore de navegação hierárquica
    */
   private buildNavigationTree(data: any): NavigationItem[] {
-    return data.suites.map((suite: any) => ({
-      id: suite.id,
-      name: suite.name,
-      type: "suite" as const,
-      status: suite.status,
-      priority: suite.metadata?.priority,
-      tags: suite.metadata?.tags,
-      expanded: false,
-      data: suite,
-      children: suite.steps.map((step: any) => ({
-        id: step.id,
-        name: step.name,
-        type: "step" as const,
-        status: step.status,
-        data: step,
-      })),
-    }));
+    console.log('[DEBUG] ReportGeneratorV2.buildNavigationTree - Input data:', {
+      suites_count: data.suites?.length || 0,
+      suites: data.suites?.map((s: any) => ({
+        id: s.id,
+        name: s.name,
+        steps_count: s.steps?.length || 0
+      }))
+    });
+
+    const navigationItems = data.suites.map((suite: any) => {
+      console.log(`[DEBUG] Building navigation for suite ${suite.id}:`, {
+        name: suite.name,
+        steps_count: suite.steps?.length || 0,
+        steps: suite.steps?.map((s: any) => ({ id: s.id, name: s.name }))
+      });
+
+      const navigationItem = {
+        id: suite.id,
+        name: suite.name,
+        type: "suite" as const,
+        status: suite.status,
+        priority: suite.metadata?.priority,
+        tags: suite.metadata?.tags,
+        expanded: false,
+        data: suite,
+        children: suite.steps.map((step: any) => {
+          console.log(`[DEBUG] Building navigation for step ${step.id}:`, {
+            name: step.name,
+            status: step.status
+          });
+
+          return {
+            id: step.id,
+            name: step.name,
+            type: "step" as const,
+            status: step.status,
+            data: step,
+          };
+        }),
+      };
+
+      console.log(`[DEBUG] Built navigation item for suite ${suite.id}:`, {
+        id: navigationItem.id,
+        children_count: navigationItem.children.length,
+        children_ids: navigationItem.children.map((c: any) => c.id)
+      });
+
+      return navigationItem;
+    });
+
+    console.log('[DEBUG] ReportGeneratorV2.buildNavigationTree - Output:', {
+      items_count: navigationItems.length,
+      total_children: navigationItems.reduce((acc: number, item: any) => acc + item.children.length, 0)
+    });
+
+    return navigationItems;
   }
 
   /**
@@ -185,7 +272,10 @@ export class ReportGeneratorV2 {
     data: any
   ): AppState {
     return {
-      selectedItem: navigationItems && navigationItems.length > 0 ? navigationItems[0] : undefined,
+      selectedItem:
+        navigationItems && navigationItems.length > 0
+          ? navigationItems[0]
+          : undefined,
       layout: this.config.layout,
       testData: data,
       filters: {
@@ -206,20 +296,9 @@ export class ReportGeneratorV2 {
     navigationItems: NavigationItem[]
   ): string {
     const mainLayout = this.componentFactory.createMainLayout();
-    const detailsPanel = this.componentFactory.createDetailsPanel();
     const navigation = this.componentFactory.createNavigation();
 
-    // Renderizar conteúdo principal
-    const mainContent = this.renderMainContent(appState, data, navigationItems);
-
-    // Renderizar layout principal
-    const layoutHtml = mainLayout.renderLayout({
-      appState,
-      children: mainContent,
-    });
-
-    // Renderizar navegação e script de interação
-    const navHtml = navigation.renderNavigation({
+    const navigationHtml = navigation.renderNavigation({
       items: navigationItems,
       selectedItem: appState.selectedItem,
       config: this.config.layout.navigation,
@@ -227,11 +306,14 @@ export class ReportGeneratorV2 {
 
     const navScript = navigation.renderNavigationScript();
 
-    // Injetar navegação no placeholder do layout
-    return layoutHtml.replace(
-      "<!-- Navigation will be inserted here by NavigationComponent -->",
-      navHtml + "\n" + navScript
-    );
+    const mainContent = this.renderMainContent(appState, data, navigationItems);
+
+    return mainLayout.renderLayout({
+      appState,
+      children: mainContent,
+      navigationHtml,
+      navigationScript: navScript,
+    });
   }
 
   /**
@@ -243,8 +325,10 @@ export class ReportGeneratorV2 {
     navigationItems: NavigationItem[]
   ): string {
     const detailsPanel = this.componentFactory.createDetailsPanel();
+    const summarySection = this.renderSummarySection(data?.metadata);
 
     return `
+      ${summarySection}
       ${detailsPanel.renderDetailsPanel({
         selectedItem: appState.selectedItem,
         navigationItems,
@@ -256,44 +340,93 @@ export class ReportGeneratorV2 {
     `;
   }
 
-  /**
-   * Renderiza filtros da sidebar
-   */
-  private renderFilters(): string {
+  private renderSummarySection(metadata: any): string {
+    if (!metadata) {
+      return "";
+    }
+
+    const summaryItems = [
+      {
+        label: "Total Tests",
+        value: metadata.totalTests ?? 0,
+        icon: "📦",
+      },
+      {
+        label: "Sucessos",
+        value: metadata.successfulTests ?? 0,
+        icon: "✅",
+      },
+      {
+        label: "Falhas",
+        value: metadata.failedTests ?? 0,
+        icon: "❌",
+      },
+      {
+        label: "Taxa de Sucesso",
+        value: this.formatSuccessRate(metadata.successRate),
+        icon: "📈",
+      },
+      {
+        label: "Duração Total",
+        value: this.formatDuration(metadata.totalDuration),
+        icon: "⏱️",
+      },
+    ];
+
     return `
-      <div class="space-y-sm mb-md">
-        <input
-          type="text"
-          id="search-input"
-          placeholder="Buscar tests..."
-          class="w-full px-sm py-xs border rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-        />
-
-        <select
-          id="status-filter"
-          class="w-full px-sm py-xs border rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-        >
-          <option value="">Todos os status</option>
-          <option value="success">Sucesso</option>
-          <option value="failed">Falha</option>
-          <option value="error">Erro</option>
-          <option value="skipped">Ignorado</option>
-        </select>
-
-        <select
-          id="priority-filter"
-          class="w-full px-sm py-xs border rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-        >
-          <option value="">Todas as prioridades</option>
-          <option value="critical">Crítica</option>
-          <option value="high">Alta</option>
-          <option value="medium">Média</option>
-          <option value="low">Baixa</option>
-        </select>
-      </div>
+      <section class="report-summary" aria-label="Resumo geral dos testes">
+        ${summaryItems
+          .map(
+            (item) => `
+              <div class="summary-card">
+                <span class="summary-icon">${item.icon}</span>
+                <div class="summary-content">
+                  <span class="summary-value">${item.value}</span>
+                  <span class="summary-label">${item.label}</span>
+                </div>
+              </div>
+            `
+          )
+          .join("")}
+      </section>
     `;
   }
 
+  private formatSuccessRate(value: number | undefined): string {
+    if (value === null || value === undefined || Number.isNaN(value)) {
+      return "-";
+    }
+
+    const numberValue = Number(value);
+    if (Number.isFinite(numberValue)) {
+      return `${numberValue.toFixed(1)}%`;
+    }
+
+    return `${value}`;
+  }
+
+  private formatDuration(durationMs: number | undefined): string {
+    if (!durationMs || durationMs <= 0) {
+      return "0ms";
+    }
+
+    if (durationMs < 1000) {
+      return `${durationMs}ms`;
+    }
+
+    const seconds = durationMs / 1000;
+    if (seconds < 60) {
+      return `${seconds.toFixed(1)}s`;
+    }
+
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = Math.floor(seconds % 60);
+    return `${minutes}m ${remainingSeconds.toString().padStart(2, "0")}s`;
+  }
+
+  /**
+   * Renderiza filtros da sidebar
+   */
   /**
    * Renderiza scripts customizados adicionais
    */
@@ -307,8 +440,31 @@ export class ReportGeneratorV2 {
             sidebarCollapsed: false
           };
 
+          function getDetailContainer() {
+            return document.getElementById('main-content-area');
+          }
+
+          function normalizeDetailSections() {
+            const container = getDetailContainer();
+            if (!container) return null;
+
+            if (container.dataset.normalized === 'true') {
+              return container;
+            }
+
+            const sections = document.querySelectorAll('.detail-section');
+            sections.forEach(section => {
+              if (section.parentElement !== container) {
+                container.appendChild(section);
+              }
+            });
+
+            container.dataset.normalized = 'true';
+            return container;
+          }
+
           function updateMainContent(itemId) {
-            const container = document.getElementById('main-content-area');
+            const container = normalizeDetailSections() || getDetailContainer();
             if (!container) return;
 
             container.dataset.activeId = itemId;
@@ -366,33 +522,29 @@ export class ReportGeneratorV2 {
               });
             }
 
-            const container = document.getElementById('main-content-area');
+            const container = normalizeDetailSections() || getDetailContainer();
             const initialId = container?.dataset.activeId;
             const hashId = location.hash ? location.hash.substring(1) : null;
             const startId = hashId || initialId;
 
             if (startId) {
-              setTimeout(() => {
-                if (typeof window.selectNavItem === 'function') {
-                  window.selectNavItem(startId, { push: false, scroll: false, behavior: 'auto' });
-                } else {
-                  updateMainContent(startId);
-                  ensureExpanded(startId);
-                }
+              // Execute navigation immediately for hash-based navigation
+              updateMainContent(startId);
+              ensureExpanded(startId);
 
-                try {
-                  window.history.replaceState({ nav: startId }, '', '#' + startId);
-                } catch (err) {
-                  console.warn('History replace failed', err);
-                }
-              }, 0);
+              try {
+                window.history.replaceState({ nav: startId }, '', '#' + startId);
+              } catch (err) {
+                console.warn('History replace failed', err);
+              }
             }
           });
 
           window.addEventListener('popstate', function(event) {
             const stateId = event.state?.nav || (location.hash ? location.hash.substring(1) : null);
-            if (stateId && typeof window.selectNavItem === 'function') {
-              window.selectNavItem(stateId, { push: false });
+            if (stateId) {
+              updateMainContent(stateId);
+              ensureExpanded(stateId);
             }
           });
         })();
