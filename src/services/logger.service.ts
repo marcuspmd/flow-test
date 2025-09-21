@@ -10,7 +10,6 @@
  */
 
 import chalk from "chalk";
-import boxen from "boxen";
 
 /**
  * Context information for structured logging operations.

@@ -142,3 +142,4 @@ results/*
 flows/*
 docs/
 tasks/
+coverage.info

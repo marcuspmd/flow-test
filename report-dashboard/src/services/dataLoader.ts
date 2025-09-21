@@ -1,6 +1,13 @@
 import type { ReportData } from "../types/dashboard.types";
 import fs from "fs";
 import path from "path";
+import { parse } from "yaml";
+
+interface FlowTestConfig {
+  reporting?: {
+    output_dir?: string;
+  };
+}
 
 /**
  * Load report data from flow-test results
@@ -8,35 +15,24 @@ import path from "path";
  */
 export async function loadReportData(): Promise<ReportData> {
   try {
-    // Path to flow-test results directory
-    const resultsDir = path.join(process.cwd(), "..", "results");
-    const latestJsonPath = path.join(resultsDir, "latest.json");
+    const candidateDirectories = resolveReportDirectories();
 
-    // Try to load latest.json first
-    if (fs.existsSync(latestJsonPath)) {
-      const rawData = fs.readFileSync(latestJsonPath, "utf-8");
-      const data = JSON.parse(rawData);
-      console.log("[DataLoader] Loaded data from latest.json");
-      return data as ReportData;
+    // Try to load a latest.json from candidate directories
+    for (const directory of candidateDirectories) {
+      const latestJsonPath = path.join(directory, "latest.json");
+      const directLoad = tryLoadReport(latestJsonPath);
+      if (directLoad) {
+        console.log(`[DataLoader] Loaded data from ${latestJsonPath}`);
+        return directLoad;
+      }
     }
 
-    // Fallback: Find most recent timestamped JSON file
-    if (fs.existsSync(resultsDir)) {
-      const files = fs
-        .readdirSync(resultsDir)
-        .filter(
-          (file) =>
-            file.endsWith(".json") && file.includes("flow-test-demo-project")
-        )
-        .sort()
-        .reverse(); // Most recent first
-
-      if (files.length > 0) {
-        const recentFile = path.join(resultsDir, files[0]);
-        const rawData = fs.readFileSync(recentFile, "utf-8");
-        const data = JSON.parse(rawData);
-        console.log(`[DataLoader] Loaded data from ${files[0]}`);
-        return data as ReportData;
+    // Fallback: find most recent timestamped file in each directory
+    for (const directory of candidateDirectories) {
+      const fallbackLoad = tryLoadMostRecentReport(directory);
+      if (fallbackLoad) {
+        console.log(`[DataLoader] Loaded data from latest timestamped report in ${directory}`);
+        return fallbackLoad;
       }
     }
 
@@ -101,6 +97,110 @@ function getFallbackData(): ReportData {
       version: "1.0.0",
     },
   };
+}
+
+function resolveReportDirectories(): string[] {
+  const directories = new Set<string>();
+
+  // Dashboard local data directory used for browser fetches
+  directories.add(path.join(process.cwd(), "src", "data"));
+
+  const configOutputDir = loadOutputDirFromConfig();
+  if (configOutputDir) {
+    directories.add(configOutputDir);
+  }
+
+  // Default fallback to ../results for backward compatibility
+  directories.add(path.join(process.cwd(), "..", "results"));
+
+  return Array.from(directories);
+}
+
+function loadOutputDirFromConfig(): string | null {
+  const possibleConfigs = [
+    path.join(process.cwd(), "flow-test.config.yml"),
+    path.join(process.cwd(), "flow-test.config.yaml"),
+    path.join(process.cwd(), "flow-test.config.json"),
+    path.join(process.cwd(), "..", "flow-test.config.yml"),
+    path.join(process.cwd(), "..", "flow-test.config.yaml"),
+    path.join(process.cwd(), "..", "flow-test.config.json"),
+  ];
+
+  for (const configPath of possibleConfigs) {
+    if (!fs.existsSync(configPath)) continue;
+
+    try {
+      const rawConfig = fs.readFileSync(configPath, "utf-8");
+      const extension = path.extname(configPath).toLowerCase();
+      let parsedConfig: FlowTestConfig | null = null;
+
+      if (extension === ".yml" || extension === ".yaml") {
+        parsedConfig = parse(rawConfig) as FlowTestConfig;
+      } else if (extension === ".json") {
+        parsedConfig = JSON.parse(rawConfig) as FlowTestConfig;
+      }
+
+      const outputDir =
+        parsedConfig?.reporting?.output_dir ?? "./results";
+
+      if (outputDir) {
+        const resolvedPath = path.resolve(path.dirname(configPath), outputDir);
+        console.log(
+          `[DataLoader] Resolved report output directory from ${path.basename(
+            configPath
+          )}: ${resolvedPath}`
+        );
+        return resolvedPath;
+      }
+    } catch (error) {
+      console.warn(
+        `[DataLoader] Failed to parse configuration at ${configPath}:`,
+        error
+      );
+    }
+  }
+
+  return null;
+}
+
+function tryLoadReport(filePath: string): ReportData | null {
+  if (!fs.existsSync(filePath)) {
+    return null;
+  }
+
+  try {
+    const rawData = fs.readFileSync(filePath, "utf-8");
+    const data = JSON.parse(rawData);
+    return data as ReportData;
+  } catch (error) {
+    console.warn(`[DataLoader] Failed to read report at ${filePath}:`, error);
+    return null;
+  }
+}
+
+function tryLoadMostRecentReport(directory: string): ReportData | null {
+  if (!fs.existsSync(directory)) {
+    return null;
+  }
+
+  const entries = fs
+    .readdirSync(directory)
+    .filter((file) => file.endsWith(".json") && file !== "latest.json")
+    .map((file) => {
+      const filePath = path.join(directory, file);
+      const stats = fs.statSync(filePath);
+      return { filePath, mtime: stats.mtimeMs };
+    })
+    .sort((a, b) => b.mtime - a.mtime);
+
+  for (const entry of entries) {
+    const data = tryLoadReport(entry.filePath);
+    if (data) {
+      return data;
+    }
+  }
+
+  return null;
 }
 
 /**

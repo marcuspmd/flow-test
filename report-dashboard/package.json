@@ -17,7 +17,8 @@
     "@types/react-dom": "^19.1.9",
     "astro": "^5.13.9",
     "react": "^19.1.1",
-    "react-dom": "^19.1.1"
+    "react-dom": "^19.1.1",
+    "yaml": "^2.6.0"
   },
   "devDependencies": {
     "@heroicons/react": "^2.2.0",
