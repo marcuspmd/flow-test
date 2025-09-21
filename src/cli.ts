@@ -782,8 +782,9 @@ async function handleDashboardCommand(command: string): Promise<void> {
       args = ["run", "build"];
       break;
     case "preview":
+      // Preview needs build first, so we build and then preview
       npmCommand = "npm";
-      args = ["run", "preview"];
+      args = ["run", "build"];
       break;
     case "serve":
       npmCommand = "npm";
@@ -814,6 +815,7 @@ async function handleDashboardCommand(command: string): Promise<void> {
       ...process.env,
       FLOW_TEST_PROJECT_DIR: projectDir,
       FLOW_TEST_CLI_DIR: cliDir, // Add CLI directory for finding guides
+      ...(command === "preview" && { FLOW_TEST_PREVIEW: "true" }), // Add preview flag
     };
 
     const child = spawn(npmCommand, args, {
@@ -839,6 +841,19 @@ async function handleDashboardCommand(command: string): Promise<void> {
 
         serveChild.on("error", (error: Error) => {
           console.error(`❌ Failed to start server: ${error.message}`);
+          process.exit(1);
+        });
+      } else if (command === "preview" && code === 0) {
+        // After build succeeds, start the preview command
+        console.log("🚀 Starting preview server...");
+        const previewChild = spawn("npm", ["run", "preview"], {
+          cwd: dashboardDir,
+          stdio: "inherit",
+          env: env,
+        });
+
+        previewChild.on("error", (error: Error) => {
+          console.error(`❌ Failed to start preview: ${error.message}`);
           process.exit(1);
         });
       } else if (code !== 0) {

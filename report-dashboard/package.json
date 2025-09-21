@@ -12,18 +12,18 @@
   },
   "dependencies": {
     "@astrojs/react": "^4.3.1",
-    "@tailwindcss/vite": "^4.1.13",
     "@types/react": "^19.1.13",
     "@types/react-dom": "^19.1.9",
     "astro": "^5.13.9",
+    "autoprefixer": "^10.4.21",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "yaml": "^2.6.0"
   },
   "devDependencies": {
     "@heroicons/react": "^2.2.0",
-    "daisyui": "^5.1.13",
+    "daisyui": "^4.12.24",
     "lucide-react": "^0.544.0",
-    "tailwindcss": "^4.1.13"
+    "tailwindcss": "^3.4.17"
   }
 }

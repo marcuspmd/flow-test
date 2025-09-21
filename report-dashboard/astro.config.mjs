@@ -1,14 +1,16 @@
 // @ts-check
 import { defineConfig } from "astro/config";
-import tailwindcss from "@tailwindcss/vite";
 import react from "@astrojs/react";
+import tailwindcss from "tailwindcss";
+import autoprefixer from "autoprefixer";
 
 // Detect if running locally via CLI or in development
 const isLocalDev = process.env.NODE_ENV === "development" || process.env.FLOW_TEST_PROJECT_DIR;
-const base = isLocalDev ? "/" : (process.env.PUBLIC_BASE_URL ?? "/flow-test");
+const isPreview = process.env.FLOW_TEST_PREVIEW === "true";
+const base = (isLocalDev || isPreview) ? "/" : (process.env.PUBLIC_BASE_URL ?? "/flow-test");
 const site = process.env.PUBLIC_SITE_URL ?? "https://marcuspmd.github.io/flow-test/";
 
-console.log(`[Astro Config] Local dev: ${isLocalDev}, Base: ${base}`);
+console.log(`[Astro Config] Local dev: ${isLocalDev}, Preview: ${isPreview}, Base: ${base}`);
 
 export default defineConfig({
   site,
@@ -16,7 +18,14 @@ export default defineConfig({
   output: "static",
   integrations: [react()],
   vite: {
-    plugins: [tailwindcss()],
+    css: {
+      postcss: {
+        plugins: [
+          tailwindcss,
+          autoprefixer,
+        ],
+      },
+    },
     server: {
       fs: {
         allow: [".."],
