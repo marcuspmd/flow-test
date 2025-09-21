@@ -21,6 +21,7 @@
     "yaml": "^2.6.0"
   },
   "devDependencies": {
+    "@astrojs/node": "^9.1.1",
     "@heroicons/react": "^2.2.0",
     "daisyui": "^5.1.13",
     "lucide-react": "^0.544.0",
