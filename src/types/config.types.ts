@@ -216,7 +216,7 @@ export interface ExecutionConfig {
  * @example
  * ```typescript
  * const reporting: ReportingConfig = {
- *   formats: ["json", "html", "junit"],
+ *   formats: ["json"],
  *   output_dir: "./results",
  *   aggregate: true,
  *   include_performance_metrics: true,
@@ -241,9 +241,6 @@ export interface ReportingConfig {
 
   /** Whether to include final variable state in reports */
   include_variables_state?: boolean;
-
-  /** Report generator version to use ("v1" or "v2") */
-  version?: "v1" | "v2";
 }
 
 /**
@@ -252,13 +249,12 @@ export interface ReportingConfig {
  * @remarks
  * Defines the supported formats for test result reports:
  * - `json`: Machine-readable JSON format
- * - `junit`: JUnit XML format for CI/CD integration
- * - `html`: Human-readable HTML reports with styling
- * - `console`: Terminal output with colors and formatting
+ * Additional visualizations should be generated through the standalone
+ * report dashboard.
  *
  * @public
  */
-export type ReportFormat = "json" | "junit" | "html" | "console";
+export type ReportFormat = "json";
 
 /**
  * Hierarchical variable context for test execution.

@@ -8,8 +8,8 @@ services:
       - .:/app
       - /app/node_modules
     working_dir: /app
-    # Instala deps, builda, executa testes (com args opcionais) e gera relatório
-    command: sh -lc "sleep 10 && npm ci && npm run build && node dist/cli.js ${FLOW_TEST_ARGS:---simple} && node dist/report-generator/cli.js results/latest.json"
+    # Instala deps, builda e executa testes (com args opcionais). O relatório JSON ficará em results/latest.json
+    command: sh -lc "sleep 10 && npm ci && npm run build && node dist/cli.js ${FLOW_TEST_ARGS:---simple}"
     environment:
       - NODE_ENV=test
       - FLOW_TEST_HTTPBIN_URL=http://httpbin

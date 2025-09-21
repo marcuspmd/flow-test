@@ -15,7 +15,7 @@ The "Flow Test Engine" is a powerful, TypeScript-based API testing framework. It
     - **Advanced Assertions**: Validate status codes, headers, response times, and body content using JMESPath.
     - **Conditional Logic**: Define different execution paths based on response data.
     - **Swagger/OpenAPI Import**: Automatically generate test suites from API specifications.
-    - **Comprehensive Reporting**: Generates JSON and HTML reports.
+    - **Comprehensive Reporting**: Gera artefatos JSON consumidos pelo dashboard HTML dedicado.
     - **CLI Tool**: A rich command-line interface (`flow-test`) for running and managing tests.
 
 ## 2. Key Files & Directories
@@ -25,7 +25,7 @@ The "Flow Test Engine" is a powerful, TypeScript-based API testing framework. It
     - **`src/core/engine.ts`**: The core logic for parsing YAML files and executing test steps.
     - **`src/core/discovery.ts`**: Handles the automatic discovery of test files in directories.
     - **`src/services/`**: Contains services for handling HTTP requests, assertions, variable interpolation, etc.
-    - **`src/report-generator/`**: Code for generating HTML reports.
+    - **`report-dashboard/`**: Aplicação Astro que transforma `results/latest.json` em dashboard HTML.
 - **`tests/`**: Contains all the YAML test files (`.yaml`). This is where test scenarios are defined. The engine automatically discovers tests in this directory and its subdirectories.
 - **`package.json`**: Defines project metadata, dependencies, and, most importantly, the `scripts` for building, running, and testing the project.
 - **`flow-test.config.yml`**: The main configuration file for the test engine (though not present in the initial file listing, it's a key concept).
@@ -57,9 +57,9 @@ The project uses `npm` for script and dependency management.
   npm run dev tests/path/to/your-test.yaml
   ```
 
-- **Generate HTML Report**: After tests have run, you can generate an HTML report from the latest results.
+- **Visualizar no Dashboard**: Após a execução, rode o dashboard para ver o relatório em HTML.
   ```bash
-  npm run report:html
+  npm run report:dashboard:dev
   ```
 
 ## 4. Development Conventions

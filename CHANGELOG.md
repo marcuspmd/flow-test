@@ -16,6 +16,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Created `docs/TROUBLESHOOTING.md` with comprehensive debugging and issue resolution guide
   - Updated `README.md` with enhanced examples and documentation references
 
+### Changed
+- **Reporting Flow**: O engine agora gera somente `results/latest.json`; a visualização HTML fica exclusiva no projeto `report-dashboard`
+
+### Removed
+- **Legacy HTML Generator**: `flow-test-html`, assets Tailwind e diretório `src/report-generator`
+
 ### Documentation
 - **YAML Examples**: Added comprehensive examples covering:
   - Basic API testing with request chaining

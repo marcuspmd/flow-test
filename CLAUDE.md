@@ -56,9 +56,9 @@ The codebase follows a modular architecture:
 - `src/services/swagger-import.service.ts` - Importer that reads OpenAPI/Swagger specs and generates YAML suites
 - CLI support: `--swagger-import <file>` with optional `--swagger-output <dir>`
 
-### Report Generator
+### Report Dashboard
 
-- `src/report-generator/` - HTML report generation with PostmanExporter and HistoryAnalyzer
+- `report-dashboard/` - Aplicação Astro independente para visualizar `results/latest.json` como dashboard HTML
 
 ## Test Configuration Structure
 
@@ -79,7 +79,7 @@ Each step supports:
 - **Variable System**: Environment variables, Faker.js integration, JavaScript expressions, hierarchical scoping
 - **Advanced Dependencies**: Flow dependencies with caching and retry logic
 - **Comprehensive Logging**: Automatic JSON logs with detailed execution information
-- **HTML Reports**: Visual report generation with Tailwind CSS styling
+- **HTML Reports**: Geração via dashboard externo consumindo o artefato JSON (`results/latest.json`)
 - **Priority Execution**: Tests can be filtered and executed by priority levels
 - **Swagger/OpenAPI Import**: Automatic test generation from API specifications with support for OpenAPI 3.x and Swagger 2.0
 

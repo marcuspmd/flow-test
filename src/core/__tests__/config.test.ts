@@ -45,7 +45,7 @@ describe("ConfigManager", () => {
       },
     },
     reporting: {
-      formats: ["json", "console"],
+      formats: ["json"],
       output_dir: "./results",
       aggregate: true,
       include_performance_metrics: true,
@@ -160,7 +160,7 @@ describe("ConfigManager", () => {
         "**/*.test.yaml",
       ]);
       expect(config.execution?.mode).toBe("sequential");
-      expect(config.reporting?.formats).toEqual(["json", "console"]);
+      expect(config.reporting?.formats).toEqual(["json"]);
     });
   });
 
@@ -377,26 +377,12 @@ describe("ConfigManager", () => {
       expect(config.test_directory).toBe("./custom-tests");
     });
 
-    it("should handle silent verbosity", () => {
-      const configManager = new ConfigManager({ verbosity: "silent" });
-      const config = configManager.getConfig();
+    it("should keep reporting formats when verbosity changes", () => {
+      const silentConfig = new ConfigManager({ verbosity: "silent" });
+      expect(silentConfig.getConfig().reporting?.formats).toEqual(["json"]);
 
-      expect(config.reporting?.formats).not.toContain("console");
-    });
-
-    it("should preserve other formats when silent", () => {
-      const configManager = new ConfigManager({ verbosity: "silent" });
-      const config = configManager.getConfig();
-
-      expect(config.reporting?.formats).toContain("json");
-    });
-
-    it("should not modify formats for non-silent verbosity", () => {
-      const configManager = new ConfigManager({ verbosity: "verbose" });
-      const config = configManager.getConfig();
-
-      expect(config.reporting?.formats).toContain("console");
-      expect(config.reporting?.formats).toContain("json");
+      const verboseConfig = new ConfigManager({ verbosity: "verbose" });
+      expect(verboseConfig.getConfig().reporting?.formats).toEqual(["json"]);
     });
   });
 
@@ -487,7 +473,7 @@ describe("ConfigManager", () => {
 
       expect(config.globals?.timeouts?.default).toBe(30000);
       expect(config.execution?.max_parallel).toBe(5);
-      expect(config.reporting?.formats).toEqual(["json", "console"]);
+      expect(config.reporting?.formats).toEqual(["json"]);
     });
 
     it("should handle boolean false values correctly", () => {
@@ -509,22 +495,29 @@ describe("ConfigManager", () => {
       expect(config.reporting?.aggregate).toBe(false);
     });
 
-    it("should handle all valid reporting formats", () => {
-      const configWithAllFormats = {
+    it("should accept json reporting format", () => {
+      const configWithJson = {
         project_name: "Test",
-        reporting: { formats: ["json", "junit", "html", "console"] },
+        reporting: { formats: ["json"] },
       };
-      mockYaml.load.mockReturnValue(configWithAllFormats);
+      mockYaml.load.mockReturnValue(configWithJson);
 
       const configManager = new ConfigManager();
       const config = configManager.getConfig();
 
-      expect(config.reporting?.formats).toEqual([
-        "json",
-        "junit",
-        "html",
-        "console",
-      ]);
+      expect(config.reporting?.formats).toEqual(["json"]);
+    });
+
+    it("should reject unsupported reporting formats", () => {
+      const configWithInvalidFormat = {
+        project_name: "Test",
+        reporting: { formats: ["html"] },
+      };
+      mockYaml.load.mockReturnValue(configWithInvalidFormat);
+
+      expect(() => new ConfigManager()).toThrow(
+        "Invalid reporting formats: html"
+      );
     });
 
     it("should handle all valid execution modes", () => {

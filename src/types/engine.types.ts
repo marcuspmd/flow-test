@@ -961,7 +961,7 @@ export interface EngineHooks {
    *     successRate: result.success_rate,
    *     totalTests: result.total_tests,
    *     duration: result.total_duration_ms,
-   *     reportUrl: `${process.env.REPORT_URL}/latest.html`
+   *     reportUrl: `${process.env.REPORT_URL}/latest.json`
    *   });
    * }
    * ```

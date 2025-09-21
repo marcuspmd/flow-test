@@ -18,7 +18,6 @@
       "src/cli.ts",
       "src/services/global-variables.ts",
       "src/__tests__",
-      "src/report-generator/__tests__",
       "dist"
     ],
     "includePattern": ".+\\.(ts|tsx)$",

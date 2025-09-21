@@ -107,7 +107,7 @@ export class ConfigInitializer {
         }
       },
       reporting: {
-        formats: ["html", "json"],
+        formats: ["json"],
         output_dir: "./results",
         aggregate: true,
         include_performance_metrics: true,
@@ -259,22 +259,10 @@ export class ConfigInitializer {
     console.log('\n📝 Reporting Configuration');
     console.log('---------------------------');
 
-    const reportFormats = await this.askChoice(
-      'Report formats:',
-      ['HTML only', 'JSON only', 'Both HTML and JSON'],
-      2
+    console.log(
+      '\nℹ️  O engine agora gera apenas artefatos JSON. Use o pacote report-dashboard para visualizar o relatório em HTML.'
     );
-
-    switch (reportFormats) {
-      case 'HTML only':
-        this.config.reporting.formats = ['html'];
-        break;
-      case 'JSON only':
-        this.config.reporting.formats = ['json'];
-        break;
-      default:
-        this.config.reporting.formats = ['html', 'json'];
-    }
+    this.config.reporting.formats = ['json'];
 
     this.config.reporting.output_dir = await this.ask(
       'Reports output directory',
@@ -466,7 +454,7 @@ export class ConfigInitializer {
           fail_fast_on_required: true
         },
         reporting: {
-          formats: ["html", "json", "junit"],
+          formats: ["json"],
           output_dir: "./test-results",
           aggregate: true,
           include_performance_metrics: true,
@@ -621,7 +609,7 @@ reporting:
     console.log(`1. Review your configuration: cat ${configPath}`);
     console.log('2. Create your first test file in the test directory');
     console.log('3. Run tests: npm test');
-    console.log('4. Generate reports: npm run report:html');
+    console.log('4. Visualize JSON reports com o dashboard: npm run report:dashboard:dev');
 
     console.log('\n🚀 Quick Start Commands:');
     console.log(`flow-test --config ${configPath}`);

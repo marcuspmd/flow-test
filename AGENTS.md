@@ -1,11 +1,12 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-- `src/` — TypeScript source (CLI, core, services, types, report-generator). Example: `src/services/http.service.ts`.
+- `src/` — TypeScript source (CLI, core, services, types). Example: `src/services/http.service.ts`.
 - `tests/` — YAML suites consumed by the engine. Prefer `*-test.yaml` or `*-examples.yaml`.
 - `dist/` — Compiled output from `npm run build` (do not edit).
 - `docs/` — Documentation and API reference.
 - `results/` — JSON run artifacts; latest at `results/latest.json`.
+- `report-dashboard/` — Astro app that converte `results/latest.json` em dashboard HTML.
 - Default config: `flow-test.config.yml` (override with `--config`).
 
 ## Build, Test, and Development Commands
@@ -15,7 +16,7 @@
 - `npm run test:verbose|test:silent|test:all` — Control logging/scope.
 - `npm run server:docker` — Start only httpbin service (Docker).
 - `npm run docs` / `npm run docs:serve` — Build and serve API docs.
-- `npm run report:html` — Generate HTML report from `results/latest.json`.
+- `npm run report:dashboard:dev|build|preview` — Visualize o relatório JSON na interface HTML.
 
 ### Docusaurus Docs (preview)
 - `cd docs-website && npm install` — Install docs site deps
@@ -34,7 +35,7 @@ The site autoloads markdown from `../docs` (existing repo docs) and generates si
 ## Testing Guidelines
 - Author suites in `tests/` (YAML). Name with clear intent: `auth-flows-test.yaml`, `performance-test.yaml`.
 - Run targeted: `npm run dev tests/<file>.yaml`; full: `npm test`.
-- Inspect artifacts in `results/latest.json`; create reports with `npm run report:html`.
+- Inspect artifacts em `results/latest.json`; visualize no dashboard com `npm run report:dashboard:dev`.
 - Aim to cover new branches/paths introduced by your change; keep suites minimal and focused.
 
 ## Commit & Pull Request Guidelines

@@ -104,11 +104,12 @@ npm test
 
 ## Reports
 
-- JSON artifacts in `results/` (latest at `results/latest.json`)
-- HTML report viewer via:
+- JSON artifacts live in `results/` (latest at `results/latest.json`).
+- Para visualizar em HTML, utilize o dashboard dedicado:
 
 ```bash
-npm run report:html
+npm run report:dashboard:dev   # modo desenvolvimento com hot reload
+npm run report:dashboard:build # build estático em report-dashboard/dist
 ```
 
 Example visuals:
@@ -570,17 +571,6 @@ flow-test/
 │   │   ├── swagger-import.service.ts
 │   │   ├── reporting.ts
 │   │   └── (logger|priority|execution|scenario|iteration|javascript).service.ts
-│   ├── report-generator/         # HTML report generator (CLI + components)
-│   │   ├── cli.ts
-│   │   ├── html-generator.ts
-│   │   ├── modular-html-generator.ts
-│   │   └── components/
-│   │       ├── header.component.ts
-│   │       ├── summary-cards.component.ts
-│   │       └── test-(suite|step).component.ts
-│   ├── templates/                # Report CSS templates
-│   │   ├── report.css
-│   │   └── styles.css            # Built via tailwind CLI
 │   └── types/                    # Type definitions (PascalCase)
 │       ├── engine.types.ts
 │       ├── config.types.ts
@@ -592,6 +582,7 @@ flow-test/
 ├── results/                      # Execution artifacts (latest.json)
 ├── docs/                         # Documentation and guides
 ├── public/                       # Static assets for README/docs
+├── report-dashboard/             # Astro dashboard para visualizar results/latest.json
 ├── dist/                         # Compiled output from `npm run build`
 ├── flow-test.config.yml          # Default engine config (override with --config)
 └── package.json

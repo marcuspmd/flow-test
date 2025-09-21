@@ -345,14 +345,13 @@ export class ConfigManager {
         },
       },
       reporting: {
-        formats: config.reporting?.formats || ["json", "console"],
+        formats: config.reporting?.formats || ["json"],
         output_dir: config.reporting?.output_dir || "./results",
         aggregate: config.reporting?.aggregate !== false,
         include_performance_metrics:
           config.reporting?.include_performance_metrics !== false,
         include_variables_state:
           config.reporting?.include_variables_state !== false,
-        version: config.reporting?.version || "v1",
       },
     };
 
@@ -366,15 +365,6 @@ export class ConfigManager {
   private applyOptionsOverrides(options: EngineExecutionOptions): void {
     if (options.test_directory) {
       this.config.test_directory = options.test_directory;
-    }
-
-    if (options.verbosity && this.config.reporting) {
-      // Ajusta formatos baseado na verbosidade
-      if (options.verbosity === "silent") {
-        this.config.reporting.formats = this.config.reporting.formats.filter(
-          (f) => f !== "console"
-        );
-      }
     }
 
     if (options.filters) {
@@ -442,7 +432,7 @@ export class ConfigManager {
     }
 
     // Valida reporting formats
-    const validFormats = ["json", "junit", "html", "console"];
+    const validFormats = ["json"];
     const invalidFormats = config.reporting!.formats.filter(
       (format) => !validFormats.includes(format)
     );
@@ -450,6 +440,10 @@ export class ConfigManager {
       throw new Error(
         `Invalid reporting formats: ${invalidFormats.join(", ")}`
       );
+    }
+
+    if (config.reporting!.formats.length === 0) {
+      throw new Error("At least one reporting format must be configured");
     }
 
     // Cria output directory se não existir

@@ -196,7 +196,7 @@ export class FlowTestEngine {
    *     timeout_ms: 30000
    *   },
    *   reporting: {
-   *     formats: ['html', 'json'],
+ *     formats: ['json'],
    *     output_directory: './test-reports'
    *   },
    *   filters: {

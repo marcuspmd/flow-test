@@ -40,10 +40,8 @@ execution:
     delay_ms: 2000
 reporting:
   formats:
-    - html
     - json
   output_dir: ./results
   aggregate: true
   include_performance_metrics: true
   include_variables_state: true
-  version: v2
