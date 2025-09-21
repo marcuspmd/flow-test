@@ -34,6 +34,10 @@ interface Assertions {
 
 interface FlowTestStep {
   name?: string;
+  iterate?: {
+    over: string;
+    as: string;
+  };
   request: {
     method?: string;
     url?: string;
@@ -49,6 +53,7 @@ interface FlowTestSuite {
   suite_name?: string;
   description?: string;
   base_url?: string;
+  variables?: Record<string, unknown>;
   steps?: FlowTestStep[];
 }
 
@@ -90,9 +95,14 @@ function convertSuiteToCollection(
     ? suite.description
     : `Exported from Flow Test suite: ${filePath}`;
 
-  const items: PostmanItem[] = (suite.steps || []).map((step, index) =>
-    convertStepToItem(step, suite, index)
-  );
+  const items: PostmanItem[] = [];
+
+  // Expand steps, handling iteration
+  for (let stepIndex = 0; stepIndex < (suite.steps || []).length; stepIndex++) {
+    const step = suite.steps![stepIndex];
+    const expandedItems = expandStepToItems(step, suite, stepIndex, items.length);
+    items.push(...expandedItems);
+  }
 
   return {
     info: {
@@ -102,6 +112,96 @@ function convertSuiteToCollection(
     },
     item: items,
   };
+}
+
+function expandStepToItems(
+  step: FlowTestStep,
+  suite: FlowTestSuite,
+  stepIndex: number,
+  globalItemIndex: number
+): PostmanItem[] {
+  if (step.iterate) {
+    return expandIterationStep(step, suite, stepIndex, globalItemIndex);
+  }
+
+  return [convertStepToItem(step, suite, globalItemIndex)];
+}
+
+function expandIterationStep(
+  step: FlowTestStep,
+  suite: FlowTestSuite,
+  stepIndex: number,
+  startingItemIndex: number
+): PostmanItem[] {
+  const items: PostmanItem[] = [];
+  const iterationData = resolveIterationData(step.iterate!, suite);
+
+  if (!Array.isArray(iterationData)) {
+    console.warn(`[Postman Export] Iteration data for step ${step.name} is not an array, creating single item`);
+    return [convertStepToItem(step, suite, startingItemIndex)];
+  }
+
+  iterationData.forEach((item, index) => {
+    const expandedStep = substituteVariablesInStep(step, item, step.iterate!.as);
+    const postmanItem = convertStepToItem(expandedStep, suite, startingItemIndex + index);
+
+    // Update the name to reflect the iteration
+    const itemName = typeof item === 'object' && item !== null && 'name' in item
+      ? String((item as any).name)
+      : `item ${index + 1}`;
+    postmanItem.name = `${expandedStep.name} (${itemName})`;
+
+    items.push(postmanItem);
+  });
+
+  return items;
+}
+
+function resolveIterationData(
+  iterate: { over: string; as: string },
+  suite: FlowTestSuite
+): unknown[] {
+  const varName = iterate.over.replace(/^{{\s*/, '').replace(/\s*}}$/, '');
+
+  if (suite.variables && varName in suite.variables) {
+    const data = suite.variables[varName];
+    return Array.isArray(data) ? data : [];
+  }
+
+  // If not found in variables, return empty array
+  console.warn(`[Postman Export] Iteration variable ${varName} not found in suite variables`);
+  return [];
+}
+
+function substituteVariablesInStep(
+  step: FlowTestStep,
+  itemData: unknown,
+  itemVariableName: string
+): FlowTestStep {
+  const stepJson = JSON.stringify(step);
+  const substituted = substituteVariablesInString(stepJson, itemData, itemVariableName);
+  return JSON.parse(substituted) as FlowTestStep;
+}
+
+function substituteVariablesInString(
+  text: string,
+  itemData: unknown,
+  itemVariableName: string
+): string {
+  if (typeof itemData !== 'object' || itemData === null) {
+    return text;
+  }
+
+  const itemObject = itemData as Record<string, unknown>;
+
+  // Replace {{item.property}} patterns
+  return text.replace(new RegExp(`{{\\s*${itemVariableName}\\.(\\w+)\\s*}}`, 'g'), (match, property) => {
+    if (property in itemObject) {
+      const value = itemObject[property];
+      return typeof value === 'string' ? value : JSON.stringify(value);
+    }
+    return match;
+  });
 }
 
 function convertStepToItem(

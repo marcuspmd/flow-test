@@ -25,22 +25,36 @@ export const PostmanExportButton: React.FC<PostmanExportButtonProps> = ({
   const exportToPostman = () => {
     let postmanCollection: PostmanCollection | null = null;
 
+    console.log("[Postman Export] Starting export for suite:", suite.suite_name);
+    console.log("[Postman Export] Has YAML content:", !!suite.suite_yaml_content);
+    console.log("[Postman Export] Has step results:", !!suite.steps_results && suite.steps_results.length > 0);
+
     if (suite.suite_yaml_content) {
-      postmanCollection = buildPostmanCollectionFromSuiteYaml({
-        yamlContent: suite.suite_yaml_content,
-        fallbackSuiteName: suite.suite_name,
-        filePath: suite.file_path,
-      });
+      try {
+        postmanCollection = buildPostmanCollectionFromSuiteYaml({
+          yamlContent: suite.suite_yaml_content,
+          fallbackSuiteName: suite.suite_name,
+          filePath: suite.file_path,
+        });
+        console.log("[Postman Export] Built collection from YAML. Items count:", postmanCollection?.item?.length || 0);
+      } catch (error) {
+        console.error("[Postman Export] Error building collection from YAML:", error);
+      }
     }
 
-    if (!postmanCollection) {
+    if (!postmanCollection || !postmanCollection.item || postmanCollection.item.length === 0) {
+      console.log("[Postman Export] Falling back to step results");
       postmanCollection = buildCollectionFromStepResults(suite);
+      console.log("[Postman Export] Built collection from step results. Items count:", postmanCollection?.item?.length || 0);
     }
 
-    if (!postmanCollection) {
+    if (!postmanCollection || !postmanCollection.item || postmanCollection.item.length === 0) {
       console.error("[Postman Export] Unable to build collection for suite", {
         suite: suite.suite_name,
+        hasYaml: !!suite.suite_yaml_content,
+        hasStepResults: !!suite.steps_results && suite.steps_results.length > 0,
       });
+      alert(`Failed to export ${suite.suite_name}: No valid requests found to export.`);
       return;
     }
 

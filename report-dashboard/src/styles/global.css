@@ -54,9 +54,43 @@
 
   /* Mobile drawer optimization */
   @media (max-width: 1023px) {
+    /* Remove the blur that was causing visibility issues */
     .drawer-overlay {
-      backdrop-filter: blur(4px);
-      background-color: rgba(0, 0, 0, 0.3);
+      background-color: rgba(0, 0, 0, 0.5);
+      /* backdrop-filter: blur(4px); -- removed this line */
+    }
+
+    /* Ensure main content is not blurred on mobile */
+    .drawer-content {
+      backdrop-filter: none !important;
+      filter: none !important;
+    }
+
+    /* Fix mobile layout visibility */
+    .drawer:not(.drawer-open) .drawer-content {
+      backdrop-filter: none;
+      filter: none;
+    }
+
+    /* Mobile specific optimizations */
+    .drawer-content main {
+      padding: 1rem;
+    }
+
+    /* Ensure navbar is properly visible on mobile */
+    .navbar {
+      min-height: 4rem;
+      padding: 0 1rem;
+    }
+
+    /* Improve mobile touch targets */
+    .btn {
+      min-height: 2.5rem;
+    }
+
+    /* Mobile sidebar optimization */
+    .drawer-side aside {
+      width: 280px;
     }
   }
 }

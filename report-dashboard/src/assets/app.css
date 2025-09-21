@@ -68,8 +68,52 @@ html.theme-transition *::after {
 
 /* Mobile drawer optimization */
 @media (max-width: 1023px) {
+  /* Fixed mobile drawer overlay - removed blur effect */
   .drawer-overlay {
-    backdrop-filter: blur(4px);
-    background-color: rgba(0, 0, 0, 0.3);
+    background-color: rgba(0, 0, 0, 0.5);
+    /* Removed backdrop-filter to fix mobile visibility */
+  }
+
+  /* Ensure main content is not affected by overlay */
+  .drawer-content {
+    backdrop-filter: none !important;
+    filter: none !important;
+  }
+
+  /* Force remove any blur effects that might be applied */
+  body, html, .drawer, .drawer-content, main, * {
+    backdrop-filter: none !important;
+    filter: none !important;
+  }
+
+  /* Mobile specific optimizations */
+  .drawer-content main {
+    padding: 1rem;
+  }
+
+  /* Ensure navbar is properly visible on mobile */
+  .navbar {
+    min-height: 4rem;
+    padding: 0 1rem;
+  }
+
+  /* Improve mobile touch targets */
+  .btn {
+    min-height: 2.5rem;
+  }
+
+  /* Mobile sidebar optimization */
+  .drawer-side aside {
+    width: 280px;
+  }
+
+  /* Fix any potential z-index issues */
+  .drawer-content {
+    position: relative;
+    z-index: 1;
+  }
+
+  .drawer-side {
+    z-index: 10;
   }
 }
