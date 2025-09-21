@@ -198,7 +198,7 @@ steps:
     capture:
       oauth2_auth_code: "auth_code_xyz789abc123"
       oauth2_state: "random_state_string"  # State para OAuth2
-      oauth2_redirect_uri: "http://localhost:8080/callback"  # URI de callback
+      oauth2_redirect_uri: "{{httpbin_url}}/callback" # URI de callback
       oauth2_auth_started: "true"
 
   # Passo 7: Trocar Authorization Code por Access Token
@@ -214,7 +214,7 @@ steps:
         code: "{{oauth2_auth_code}}"
         client_id: "{{test_credentials.client_id}}"
         client_secret: "{{test_credentials.client_secret}}"
-        redirect_uri: "http://localhost:8080/callback"  # URI de callback direta
+        redirect_uri: "{{httpbin_url}}/callback" # URI de callback direta
 
     assert:
       status_code: 200
