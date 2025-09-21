@@ -3,6 +3,7 @@ import AdminLayout from '../layouts/AdminLayout.astro';
 import SuiteDetailsModal from '../components/SuiteDetailsModal';
 import type { ReportData, SuiteResult } from '../types/dashboard.types';
 import { loadReportData } from '../services/dataLoader';
+import { withBase } from '../utils/url';
 
 // Load real data from flow-test results
 const reportData: ReportData = await loadReportData();
@@ -152,11 +153,11 @@ function formatDuration(ms: number): string {
 
           <!-- Action Buttons -->
           <div class="card-actions justify-end mt-auto">
-            <a href={`/suite/${suite.node_id}`} class="btn btn-primary btn-sm">
+            <a href={withBase(`suite/${suite.node_id}`)} class="btn btn-primary btn-sm">
               View Details
             </a>
             <a
-              href={`/api/postman-export?file=${encodeURIComponent(suite.file_path)}`}
+              href={withBase(`api/postman-export?file=${encodeURIComponent(suite.file_path)}`)}
               class="btn btn-outline btn-sm"
             >
               Export Postman

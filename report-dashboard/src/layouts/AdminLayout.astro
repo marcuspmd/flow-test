@@ -2,6 +2,7 @@
 import '../assets/app.css';
 import type { ReportData, DashboardConfig } from '../types/dashboard.types';
 import logoUrl from '../assets/logo.png';
+import { withBase } from '../utils/url';
 
 export interface Props {
   title: string;
@@ -13,9 +14,6 @@ const { title, reportData, dashboardConfig } = Astro.props;
 
 // Determine the default theme
 const defaultTheme = dashboardConfig?.themes?.default || 'light';
-const base = new URL(import.meta.env.BASE_URL || '/', 'http://localhost');
-const withBase = (path: string) =>
-  new URL(path.replace(/^\//, ''), base).pathname;
 ---
 
 <!DOCTYPE html>
@@ -49,7 +47,7 @@ const withBase = (path: string) =>
           <div class="flex items-center gap-3 ml-4 lg:ml-0">
             <div class="avatar">
               <div class="w-10 rounded-xl">
-                <img src={logoUrl} alt="Flow Test Logo" class="w-full h-full object-contain" />
+                <img src={withBase(logoUrl.src)} alt="Flow Test Logo" class="w-full h-full object-contain" />
               </div>
             </div>
             <div>
@@ -123,7 +121,7 @@ const withBase = (path: string) =>
           <div class="flex items-center gap-3">
             <div class="avatar">
               <div class="w-12 rounded-xl">
-                <img src={logoUrl} alt="Flow Test Logo" class="w-full h-full object-contain" />
+                <img src={withBase(logoUrl.src)} alt="Flow Test Logo" class="w-full h-full object-contain" />
               </div>
             </div>
             <div>
@@ -329,12 +327,24 @@ const withBase = (path: string) =>
       });
 
       // Highlight current page in navigation
-      const currentPath = window.location.pathname;
+      const normalizePath = (value) => {
+        if (!value) return '/';
+        try {
+          const url = new URL(value, window.location.origin);
+          const pathname = url.pathname.replace(/\/+$/, '');
+          return pathname || '/';
+        } catch (error) {
+          return value;
+        }
+      };
+
+      const currentPath = normalizePath(window.location.pathname);
       const navItems = document.querySelectorAll('aside a');
 
       navItems.forEach(link => {
         const href = link.getAttribute('href');
-        if (href === currentPath || (currentPath === '/' && href === '/')) {
+        const linkPath = normalizePath(href);
+        if (linkPath === currentPath) {
           link.classList.add('nav-active');
         }
       });

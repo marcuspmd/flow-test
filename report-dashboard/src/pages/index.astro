@@ -2,9 +2,7 @@
 import AdminLayout from '../layouts/AdminLayout.astro';
 import type { ReportData } from '../types/dashboard.types';
 import { loadReportData, extractMetricsData } from '../services/dataLoader';
-
-const base = new URL(import.meta.env.BASE_URL || '/', 'http://localhost');
-const withBase = (path: string) => new URL(path.replace(/^\//, ''), base).pathname;
+import { withBase } from '../utils/url';
 
 // Load real data from flow-test results
 const reportData: ReportData = await loadReportData();

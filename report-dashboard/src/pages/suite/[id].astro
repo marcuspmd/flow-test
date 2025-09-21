@@ -3,6 +3,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
 import CodeBlock from '../../components/CodeBlock.tsx';
 import type { ReportData, SuiteResult } from '../../types/dashboard.types';
 import { loadReportData } from '../../services/dataLoader';
+import { withBase } from '../../utils/url';
 
 export async function getStaticPaths() {
   const reportData = await loadReportData();
@@ -15,14 +16,11 @@ export async function getStaticPaths() {
 const reportData: ReportData = await loadReportData();
 const { id } = Astro.params;
 
-const base = new URL(import.meta.env.BASE_URL || '/', 'http://localhost');
-const withBase = (path: string) => new URL(path.replace(/^\//, ''), base).pathname;
-
 // Find the suite by ID
 const suite = reportData.suites_results.find(s => s.node_id === id);
 
 if (!suite) {
-  return Astro.redirect('/suites');
+  return Astro.redirect(withBase('suites'));
 }
 
 // Helper functions
