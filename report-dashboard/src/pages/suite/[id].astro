@@ -1,0 +1,677 @@
+---
+export const prerender = false;
+
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import CodeBlock from '../../components/CodeBlock.tsx';
+import type { ReportData, SuiteResult } from '../../types/dashboard.types';
+import { loadReportData } from '../../services/dataLoader';
+
+// Load real data from flow-test results
+const reportData: ReportData = await loadReportData();
+const { id } = Astro.params;
+
+// Find the suite by ID
+const suite = reportData.suites_results.find(s => s.node_id === id);
+
+if (!suite) {
+  return Astro.redirect('/suites');
+}
+
+// Helper functions
+function getStatusIcon(status: string) {
+  switch (status) {
+    case 'success': return '✅';
+    case 'failed': return '❌';
+    case 'skipped': return '⏭️';
+    default: return '❓';
+  }
+}
+
+function formatDuration(ms: number): string {
+  if (ms < 1000) return `${ms}ms`;
+  return `${(ms / 1000).toFixed(1)}s`;
+}
+
+function formatTimestamp(timestamp: string): string {
+  return new Date(timestamp).toLocaleString('pt-BR');
+}
+
+function getPriorityColor(priority: string) {
+  switch (priority) {
+    case 'critical': return 'badge-error';
+    case 'high': return 'badge-warning';
+    case 'medium': return 'badge-info';
+    case 'low': return 'badge-success';
+    default: return 'badge-ghost';
+  }
+}
+
+// Calculate suite statistics
+const totalSteps = suite.steps_results.length;
+const successfulSteps = suite.steps_results.filter(s => s.status === 'success').length;
+const failedSteps = suite.steps_results.filter(s => s.status === 'failed').length;
+const skippedSteps = suite.steps_results.filter(s => s.status === 'skipped').length;
+const successRate = totalSteps > 0 ? Math.round((successfulSteps / totalSteps) * 100) : 0;
+
+// Group steps by type for better organization
+const requestSteps = suite.steps_results.filter(s => s.request_details && s.request_details.method);
+const flowSteps = suite.steps_results.filter(s => !s.request_details || !s.request_details.method);
+
+// Identify iteration steps
+const iterationSteps = suite.steps_results.filter(s => s.iteration_results && s.iteration_results.length > 0);
+const totalIterations = iterationSteps.reduce((acc, step) => acc + (step.iteration_results?.length || 0), 0);
+---
+
+<AdminLayout title={`Suite: ${suite.suite_name}`} reportData={reportData}>
+  <!-- Breadcrumb -->
+  <div class="breadcrumbs text-sm mb-6">
+    <ul>
+      <li><a href="/" class="hover:text-primary">Dashboard</a></li>
+      <li><a href="/suites" class="hover:text-primary">Test Suites</a></li>
+      <li class="text-base-content/70">{suite.suite_name}</li>
+    </ul>
+  </div>
+
+  <!-- Suite Header -->
+  <div class="hero bg-base-200 rounded-box mb-8">
+    <div class="hero-content text-center">
+      <div class="max-w-4xl">
+        <div class="flex items-center justify-center gap-3 mb-4">
+          <span class="text-4xl">{getStatusIcon(suite.status)}</span>
+          <h1 class="text-4xl font-bold text-base-content">{suite.suite_name}</h1>
+        </div>
+
+        <p class="text-base-content/70 mb-4 text-lg">
+          {suite.file_path}
+        </p>
+
+        <div class="flex flex-wrap justify-center gap-4">
+          <div class={`badge badge-lg ${getPriorityColor(suite.priority)}`}>
+            {suite.priority}
+          </div>
+          <div class="badge badge-lg badge-outline">
+            {totalSteps} Steps
+          </div>
+          <div class="badge badge-lg badge-outline">
+            Duration: {formatDuration(suite.duration_ms)}
+          </div>
+          <div class="badge badge-lg badge-outline">
+            Success Rate: {successRate}%
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Suite Statistics -->
+  <div class="stats stats-vertical lg:stats-horizontal shadow mb-8 w-full">
+    <div class="stat">
+      <div class="stat-figure text-success">
+        <span class="text-2xl">✅</span>
+      </div>
+      <div class="stat-title">Successful Steps</div>
+      <div class="stat-value text-success">{successfulSteps}</div>
+      <div class="stat-desc">{successRate}% success rate</div>
+    </div>
+
+    <div class="stat">
+      <div class="stat-figure text-error">
+        <span class="text-2xl">❌</span>
+      </div>
+      <div class="stat-title">Failed Steps</div>
+      <div class="stat-value text-error">{failedSteps}</div>
+      <div class="stat-desc">{totalSteps > 0 ? Math.round((failedSteps / totalSteps) * 100) : 0}% of total</div>
+    </div>
+
+    <div class="stat">
+      <div class="stat-figure text-warning">
+        <span class="text-2xl">⏭️</span>
+      </div>
+      <div class="stat-title">Skipped Steps</div>
+      <div class="stat-value text-warning">{skippedSteps}</div>
+      <div class="stat-desc">{totalSteps > 0 ? Math.round((skippedSteps / totalSteps) * 100) : 0}% of total</div>
+    </div>
+
+    <div class="stat">
+      <div class="stat-figure text-info">
+        <span class="text-2xl">🔗</span>
+      </div>
+      <div class="stat-title">HTTP Requests</div>
+      <div class="stat-value text-info">{requestSteps.length}</div>
+      <div class="stat-desc">{Math.round((requestSteps.length / totalSteps) * 100)}% requests</div>
+    </div>
+
+    <div class="stat">
+      <div class="stat-figure text-primary">
+        <span class="text-2xl">🔄</span>
+      </div>
+      <div class="stat-title">Iterações</div>
+      <div class="stat-value text-primary">{totalIterations}</div>
+      <div class="stat-desc">{iterationSteps.length} steps com iterações</div>
+    </div>
+  </div>
+
+  <!-- Execution Timeline -->
+  <div class="card bg-base-100 shadow-lg mb-8">
+    <div class="card-body">
+      <h2 class="card-title text-2xl mb-4">📊 Execution Timeline</h2>
+
+      <div class="overflow-x-auto">
+        <table class="table table-zebra w-full">
+          <thead>
+            <tr>
+              <th class="w-12">#</th>
+              <th class="w-16">Status</th>
+              <th>Step Name</th>
+              <th class="w-20">Type</th>
+              <th class="w-24">Duration</th>
+              <th class="w-32">Started At</th>
+              <th>Details</th>
+            </tr>
+          </thead>
+          <tbody>
+            {suite.steps_results.map((step, index) => (
+              <tr>
+                <td class="text-center font-mono">{index + 1}</td>
+                <td class="text-center text-xl">{getStatusIcon(step.status)}</td>
+                <td>
+                  <div class="font-semibold">{step.step_name}</div>
+                  {step.request_details && (
+                    <div class="text-sm text-base-content/70">
+                      {step.request_details.method} {step.request_details.url}
+                    </div>
+                  )}
+                </td>
+                <td>
+                  <div class="badge badge-outline badge-sm">
+                    {step.request_details ? 'request' : 'flow'}
+                  </div>
+                </td>
+                <td class="font-mono text-sm">{formatDuration(step.duration_ms)}</td>
+                <td class="font-mono text-xs">{formatTimestamp(suite.start_time)}</td>
+                <td>
+                  {!step.assertions_results.every(a => a.passed) && (
+                    <div class="alert alert-error alert-sm p-2 text-xs">
+                      <span class="text-xs">❌ Assertion failed</span>
+                    </div>
+                  )}
+                  {step.status === 'success' && step.request_details && (
+                    <div class="text-success text-xs">
+                      ✅ Request completed successfully
+                    </div>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- HTTP Requests Details -->
+  {requestSteps.length > 0 && (
+    <div class="card bg-base-100 shadow-lg mb-8">
+      <div class="card-body">
+        <h2 class="card-title text-2xl mb-4">🌐 HTTP Requests Debug Info</h2>
+
+        <div class="space-y-6">
+          {requestSteps.map((step, index) => (
+            <div class="card bg-base-200 shadow">
+              <div class="card-body">
+                <div class="flex justify-between items-start mb-4">
+                  <div class="flex items-center gap-3">
+                    <span class="text-xl">{getStatusIcon(step.status)}</span>
+                    <div>
+                      <h3 class="font-bold text-lg">{step.step_name}</h3>
+                      <p class="text-sm text-base-content/70">Step #{index + 1}</p>
+                    </div>
+                  </div>
+                  <div class="text-right">
+                    <div class="badge badge-outline">{formatDuration(step.duration_ms)}</div>
+                  </div>
+                </div>
+
+                <!-- Request Details -->
+                {step.request_details && (
+                  <div class="grid lg:grid-cols-2 gap-4 mb-4">
+                    <div class="card bg-base-100 p-4">
+                      <h4 class="font-semibold mb-2 text-info">📤 Request</h4>
+                      <div class="space-y-2 text-sm">
+                        <div><strong>Method:</strong>
+                          <span class="badge badge-sm ml-2 font-mono">{step.request_details.method}</span>
+                        </div>
+                        <div><strong>URL:</strong>
+                          <code class="text-xs bg-base-200 px-2 py-1 rounded ml-2 break-all">
+                            {step.request_details.full_url}
+                          </code>
+                        </div>
+                        <div><strong>Base URL:</strong>
+                          <code class="text-xs bg-base-200 px-2 py-1 rounded ml-2">
+                            {step.request_details.base_url}
+                          </code>
+                        </div>
+                        {step.request_details.headers && Object.keys(step.request_details.headers).length > 0 && (
+                          <div>
+                            <CodeBlock
+                              client:load
+                              code={Object.entries(step.request_details.headers).map(([key, value]) => `${key}: ${value}`).join('\n')}
+                              language="http"
+                              title="Request Headers"
+                              maxHeight="200px"
+                            />
+                          </div>
+                        )}
+                        {step.request_details.body && (
+                          <div>
+                            <CodeBlock
+                              client:load
+                              code={typeof step.request_details.body === 'string' ? step.request_details.body : JSON.stringify(step.request_details.body, null, 2)}
+                              language="json"
+                              title="Request Body"
+                              maxHeight="300px"
+                            />
+                          </div>
+                        )}
+                        <div>
+                          <CodeBlock
+                            client:load
+                            code={step.request_details.curl_command}
+                            language="bash"
+                            title="cURL Command"
+                            maxHeight="150px"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Response Details -->
+                    {step.response_details && (
+                      <div class="card bg-base-100 p-4">
+                        <h4 class="font-semibold mb-2 text-success">📥 Response</h4>
+                        <div class="space-y-2 text-sm">
+                          <div><strong>Status Code:</strong>
+                            <span class="badge badge-sm ml-2 font-mono">{step.response_details.status_code}</span>
+                          </div>
+                          <div><strong>Duration:</strong>
+                            <span class="font-mono ml-2">{formatDuration(step.duration_ms)}</span>
+                          </div>
+                          <div><strong>Size:</strong>
+                            <span class="font-mono ml-2">{step.response_details.size_bytes} bytes</span>
+                          </div>
+                          {step.response_details.headers && Object.keys(step.response_details.headers).length > 0 && (
+                            <div>
+                              <CodeBlock
+                                client:load
+                                code={Object.entries(step.response_details.headers).map(([key, value]) => `${key}: ${value}`).join('\n')}
+                                language="http"
+                                title="Response Headers"
+                                maxHeight="200px"
+                              />
+                            </div>
+                          )}
+                          {step.response_details.body && (
+                            <div>
+                              <CodeBlock
+                                client:load
+                                code={typeof step.response_details.body === 'string' ? step.response_details.body : JSON.stringify(step.response_details.body, null, 2)}
+                                language="json"
+                                title="Response Body"
+                                maxHeight="400px"
+                              />
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <!-- Assertions Results -->
+                {step.assertions_results && step.assertions_results.length > 0 && (
+                  <div class="mt-4">
+                    <h4 class="font-semibold mb-2 text-warning">🔍 Assertions</h4>
+                    <div class="space-y-2">
+                      {step.assertions_results.map((assertion, idx) => (
+                        <div class={`alert ${assertion.passed ? 'alert-success' : 'alert-error'} alert-sm`}>
+                          <span class="text-xs">
+                            <strong>{assertion.field}:</strong>
+                            Expected <CodeBlock
+                              client:load
+                              code={assertion.expected}
+                              language="json"
+                              title=""
+                              maxHeight="50px"
+                            />,
+                            Got <CodeBlock
+                              client:load
+                              code={assertion.actual}
+                              language="json"
+                              title=""
+                              maxHeight="50px"
+                            />
+                            {assertion.message && ` - ${assertion.message}`}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <!-- Variables and Context -->
+                {step.captured_variables && Object.keys(step.captured_variables).length > 0 && (
+                  <div class="mt-4">
+                    <CodeBlock
+                      client:load
+                      code={JSON.stringify(step.captured_variables, null, 2)}
+                      language="json"
+                      title="Captured Variables"
+                      maxHeight="200px"
+                    />
+                  </div>
+                )}
+
+                <!-- Available Variables -->
+                {step.available_variables && Object.keys(step.available_variables).length > 0 && (
+                  <div class="mt-4">
+                    <CodeBlock
+                      client:load
+                      code={JSON.stringify(step.available_variables, null, 2)}
+                      language="json"
+                      title="Available Variables"
+                      maxHeight="200px"
+                    />
+                  </div>
+                )}
+
+                <!-- Scenarios Metadata -->
+                {step.scenarios_meta && step.scenarios_meta.has_scenarios && (
+                  <div class="mt-4">
+                    <h4 class="font-semibold mb-2 text-purple-600">🎭 Scenarios</h4>
+                    <div class="space-y-2">
+                      <div class="text-sm">
+                        <strong>Executed:</strong> {step.scenarios_meta.executed_count} scenarios
+                      </div>
+                      {step.scenarios_meta.evaluations && step.scenarios_meta.evaluations.length > 0 && (
+                        <div class="space-y-1">
+                          {step.scenarios_meta.evaluations.map((evaluation, idx) => (
+                            <div class={`badge badge-sm ${evaluation.executed ? 'badge-success' : 'badge-outline'}`}>
+                              Scenario {evaluation.index}: {evaluation.branch}
+                              {evaluation.executed ? '✓' : '○'}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )}
+
+  <!-- Iteration Tests Detail -->
+  {iterationSteps.length > 0 && (
+    <div class="card bg-base-100 shadow-lg mb-8">
+      <div class="card-body">
+        <h2 class="card-title text-2xl mb-4">🔄 Iteration Tests - Detailed Breakdown</h2>
+        <div class="alert alert-info mb-4">
+          <div class="flex items-center">
+            <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+            </svg>
+            <span>
+              <strong>{totalIterations} iterações</strong> executadas em {iterationSteps.length} steps de teste.
+              Cada iteração mostra request/response detalhados com URL, cURL e resultados específicos.
+            </span>
+          </div>
+        </div>
+
+        <div class="space-y-8">
+          {iterationSteps.map((step, stepIndex) => (
+            <div class="card bg-base-200 shadow-lg">
+              <div class="card-body">
+                <div class="flex justify-between items-start mb-6">
+                  <div class="flex items-center gap-3">
+                    <span class="text-2xl">{getStatusIcon(step.status)}</span>
+                    <div>
+                      <h3 class="font-bold text-xl">{step.step_name}</h3>
+                      <p class="text-sm text-base-content/70">
+                        {step.iteration_results?.length || 0} iterações • Duration total: {formatDuration(step.duration_ms)}
+                      </p>
+                    </div>
+                  </div>
+                  <div class="text-right">
+                    <div class="badge badge-lg badge-outline">Step #{stepIndex + 1}</div>
+                  </div>
+                </div>
+
+                <!-- Iteration Results -->
+                {step.iteration_results && (
+                  <div class="space-y-6">
+                    <h4 class="font-semibold text-lg text-primary mb-4">🎯 Iterações Executadas:</h4>
+
+                    {step.iteration_results.map((iteration, iterIndex) => (
+                      <div class="card bg-base-100 shadow border-l-4 border-l-primary">
+                        <div class="card-body">
+                          <div class="flex justify-between items-start mb-4">
+                            <div class="flex items-center gap-3">
+                              <span class="text-lg">{getStatusIcon(iteration.status)}</span>
+                              <div>
+                                <h5 class="font-bold text-base">{iteration.step_name}</h5>
+                                <p class="text-xs text-base-content/70">
+                                  Iteração {iterIndex + 1} de {step.iteration_results?.length || 0} • {formatDuration(iteration.duration_ms)}
+                                </p>
+                              </div>
+                            </div>
+                            <div class="badge badge-outline badge-sm">#{iterIndex + 1}</div>
+                          </div>
+
+                          <!-- Iteration Request/Response Details -->
+                          {iteration.request_details && (
+                            <div class="grid lg:grid-cols-2 gap-4 mb-4">
+                              <div class="card bg-base-200 p-4">
+                                <h6 class="font-semibold mb-3 text-info">📤 Request Iteration #{iterIndex + 1}</h6>
+                                <div class="space-y-3 text-sm">
+                                  <div><strong>Method:</strong>
+                                    <span class="badge badge-sm ml-2 font-mono">{iteration.request_details.method}</span>
+                                  </div>
+                                  <div><strong>URL:</strong>
+                                    <code class="text-xs bg-base-300 px-2 py-1 rounded ml-2 break-all block mt-1">
+                                      {iteration.request_details.full_url}
+                                    </code>
+                                  </div>
+                                  <div><strong>Base URL:</strong>
+                                    <code class="text-xs bg-base-300 px-2 py-1 rounded ml-2">
+                                      {iteration.request_details.base_url}
+                                    </code>
+                                  </div>
+
+                                  {iteration.request_details.headers && Object.keys(iteration.request_details.headers).length > 0 && (
+                                    <div>
+                                      <CodeBlock
+                                        client:load
+                                        code={Object.entries(iteration.request_details.headers).map(([key, value]) => `${key}: ${value}`).join('\n')}
+                                        language="http"
+                                        title={`Request Headers - Iteração ${iterIndex + 1}`}
+                                        maxHeight="150px"
+                                      />
+                                    </div>
+                                  )}
+
+                                  {iteration.request_details.body && (
+                                    <div>
+                                      <CodeBlock
+                                        client:load
+                                        code={typeof iteration.request_details.body === 'string' ? iteration.request_details.body : JSON.stringify(iteration.request_details.body, null, 2)}
+                                        language="json"
+                                        title={`Request Body - Iteração ${iterIndex + 1}`}
+                                        maxHeight="200px"
+                                      />
+                                    </div>
+                                  )}
+
+                                  <div>
+                                    <CodeBlock
+                                      client:load
+                                      code={iteration.request_details.curl_command}
+                                      language="bash"
+                                      title={`cURL Command - Iteração ${iterIndex + 1}`}
+                                      maxHeight="100px"
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+
+                              <!-- Response Details -->
+                              {iteration.response_details && (
+                                <div class="card bg-base-200 p-4">
+                                  <h6 class="font-semibold mb-3 text-success">📥 Response Iteration #{iterIndex + 1}</h6>
+                                  <div class="space-y-3 text-sm">
+                                    <div><strong>Status Code:</strong>
+                                      <span class="badge badge-sm ml-2 font-mono">{iteration.response_details.status_code}</span>
+                                    </div>
+                                    <div><strong>Duration:</strong>
+                                      <span class="font-mono ml-2">{formatDuration(iteration.duration_ms)}</span>
+                                    </div>
+                                    <div><strong>Size:</strong>
+                                      <span class="font-mono ml-2">{iteration.response_details.size_bytes} bytes</span>
+                                    </div>
+
+                                    {iteration.response_details.headers && Object.keys(iteration.response_details.headers).length > 0 && (
+                                      <div>
+                                        <CodeBlock
+                                          client:load
+                                          code={Object.entries(iteration.response_details.headers).map(([key, value]) => `${key}: ${value}`).join('\n')}
+                                          language="http"
+                                          title={`Response Headers - Iteração ${iterIndex + 1}`}
+                                          maxHeight="150px"
+                                        />
+                                      </div>
+                                    )}
+
+                                    {iteration.response_details.body && (
+                                      <div>
+                                        <CodeBlock
+                                          client:load
+                                          code={typeof iteration.response_details.body === 'string' ? iteration.response_details.body : JSON.stringify(iteration.response_details.body, null, 2)}
+                                          language="json"
+                                          title={`Response Body - Iteração ${iterIndex + 1}`}
+                                          maxHeight="300px"
+                                        />
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          <!-- Iteration Assertions -->
+                          {iteration.assertions_results && iteration.assertions_results.length > 0 && (
+                            <div class="mt-4">
+                              <h6 class="font-semibold mb-2 text-warning">🔍 Assertions - Iteração #{iterIndex + 1}</h6>
+                              <div class="space-y-2">
+                                {iteration.assertions_results.map((assertion, assertIndex) => (
+                                  <div class={`alert ${assertion.passed ? 'alert-success' : 'alert-error'} alert-sm`}>
+                                    <span class="text-xs">
+                                      <strong>{assertion.field}:</strong>
+                                      Expected <CodeBlock
+                                        client:load
+                                        code={assertion.expected}
+                                        language="json"
+                                        title=""
+                                        maxHeight="50px"
+                                      />,
+                                      Got <CodeBlock
+                                        client:load
+                                        code={assertion.actual}
+                                        language="json"
+                                        title=""
+                                        maxHeight="50px"
+                                      />
+                                      {assertion.message && ` - ${assertion.message}`}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          <!-- Iteration Variables -->
+                          {iteration.captured_variables && Object.keys(iteration.captured_variables).length > 0 && (
+                            <div class="mt-4">
+                              <CodeBlock
+                                client:load
+                                code={JSON.stringify(iteration.captured_variables, null, 2)}
+                                language="json"
+                                title={`Captured Variables - Iteração ${iterIndex + 1}`}
+                                maxHeight="150px"
+                              />
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )}
+
+  <!-- Flow and Other Steps -->
+  {flowSteps.length > 0 && (
+    <div class="card bg-base-100 shadow-lg mb-8">
+      <div class="card-body">
+        <h2 class="card-title text-2xl mb-4">🔄 Flow & Other Steps</h2>
+
+        <div class="space-y-4">
+          {flowSteps.map((step, index) => (
+            <div class="card bg-base-200 shadow-sm">
+              <div class="card-body p-4">
+                <div class="flex justify-between items-center">
+                  <div class="flex items-center gap-3">
+                    <span class="text-xl">{getStatusIcon(step.status)}</span>
+                    <div>
+                      <h3 class="font-semibold">{step.step_name}</h3>
+                      <p class="text-sm text-base-content/70">
+                        Type: flow • Duration: {formatDuration(step.duration_ms)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {step.assertions_results && !step.assertions_results.every(a => a.passed) && (
+                  <div class="alert alert-error alert-sm mt-2">
+                    <span class="text-xs">Assertion failed</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )}
+
+  <!-- Raw Suite Data -->
+  <div class="card bg-base-100 shadow-lg">
+    <div class="card-body">
+      <h2 class="card-title text-2xl mb-4">📄 Raw Suite Data</h2>
+      <CodeBlock
+        client:load
+        code={JSON.stringify(suite, null, 2)}
+        language="json"
+        title="Complete Suite Data"
+        maxHeight="500px"
+      />
+    </div>
+  </div>
+</AdminLayout>

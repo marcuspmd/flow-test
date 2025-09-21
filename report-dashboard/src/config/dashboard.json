@@ -1,0 +1,177 @@
+{
+  "layout": {
+    "sidebarWidth": "280px",
+    "headerHeight": "64px",
+    "collapsible": true,
+    "responsive": true
+  },
+  "navigation": [
+    {
+      "id": "overview",
+      "label": "Visão Geral",
+      "icon": "chart-bar",
+      "route": "/",
+      "path": "/",
+      "description": "Estatísticas gerais e métricas do relatório"
+    },
+    {
+      "id": "suites",
+      "label": "Test Suites",
+      "icon": "clipboard-list",
+      "route": "/suites",
+      "path": "/suites",
+      "description": "Lista de todas as suites de teste executadas"
+    },
+    {
+      "id": "requests",
+      "label": "Requests",
+      "icon": "globe-alt",
+      "route": "/requests",
+      "path": "/requests",
+      "description": "Detalhes de todos os requests HTTP executados"
+    },
+    {
+      "id": "performance",
+      "label": "Performance",
+      "icon": "clock",
+      "route": "/performance",
+      "path": "/performance",
+      "description": "Métricas de performance e duração"
+    },
+    {
+      "id": "scenarios",
+      "label": "Scenarios",
+      "icon": "puzzle-piece",
+      "route": "/scenarios",
+      "path": "/scenarios",
+      "description": "Cenários condicionais executados"
+    }
+  ],
+  "components": {
+    "overview": [
+      {
+        "id": "stats-overview",
+        "type": "metrics",
+        "title": "Estatísticas Gerais",
+        "dataSource": "$",
+        "props": {
+          "metrics": [
+            "total_tests",
+            "success_rate",
+            "total_duration_ms"
+          ],
+          "layout": "grid"
+        },
+        "grid": {
+          "cols": 4
+        }
+      },
+      {
+        "id": "success-chart",
+        "type": "chart",
+        "title": "Taxa de Sucesso por Suite",
+        "dataSource": "$.suites_results",
+        "props": {
+          "chartType": "bar",
+          "xAxis": "suite_name",
+          "yAxis": "success_rate"
+        },
+        "grid": {
+          "cols": 6
+        }
+      },
+      {
+        "id": "duration-chart",
+        "type": "chart",
+        "title": "Duração por Suite",
+        "dataSource": "$.suites_results",
+        "props": {
+          "chartType": "line",
+          "xAxis": "suite_name",
+          "yAxis": "duration_ms"
+        },
+        "grid": {
+          "cols": 6
+        }
+      }
+    ],
+    "suites": [
+      {
+        "id": "suites-table",
+        "type": "table",
+        "title": "Test Suites",
+        "dataSource": "$.suites_results",
+        "props": {
+          "columns": [
+            "suite_name",
+            "priority",
+            "status",
+            "success_rate",
+            "duration_ms"
+          ],
+          "sortable": true,
+          "filterable": true,
+          "pagination": true
+        }
+      }
+    ],
+    "requests": [
+      {
+        "id": "requests-tabs",
+        "type": "tabs",
+        "title": "Request/Response Inspector",
+        "dataSource": "$.suites_results[*].steps_results[*]",
+        "props": {
+          "tabs": [
+            "Request",
+            "Response",
+            "cURL",
+            "Raw"
+          ],
+          "codeHighlight": true
+        }
+      }
+    ],
+    "performance": [
+      {
+        "id": "performance-metrics",
+        "type": "metrics",
+        "title": "Métricas de Performance",
+        "dataSource": "$",
+        "props": {
+          "metrics": [
+            "total_duration_ms",
+            "avg_duration",
+            "min_duration",
+            "max_duration"
+          ]
+        }
+      }
+    ],
+    "scenarios": [
+      {
+        "id": "scenarios-viewer",
+        "type": "scenarios",
+        "title": "Cenários Condicionais",
+        "dataSource": "$.suites_results[*].steps_results[*].scenarios_meta",
+        "props": {
+          "showEvaluations": true,
+          "expandable": true
+        }
+      }
+    ]
+  },
+  "themes": {
+    "default": "corporate",
+    "available": [
+      "light",
+      "dark",
+      "dracula",
+      "cupcake",
+      "bumblebee",
+      "emerald",
+      "corporate"
+    ],
+    "darkMode": false
+  }
+}

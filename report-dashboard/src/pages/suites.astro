@@ -1,0 +1,272 @@
+---
+import AdminLayout from '../layouts/AdminLayout.astro';
+import SuiteDetailsModal from '../components/SuiteDetailsModal';
+import type { ReportData, SuiteResult } from '../types/dashboard.types';
+import { loadReportData } from '../services/dataLoader';
+
+// Load real data from flow-test results
+const reportData: ReportData = await loadReportData();
+
+// Funções auxiliares
+function getStatusIcon(status: string) {
+  switch (status) {
+    case 'success': return '✅';
+    case 'failed': return '❌';
+    case 'skipped': return '⏭️';
+    default: return '❓';
+  }
+}
+
+function getPriorityColor(priority: string) {
+  switch (priority) {
+    case 'critical': return 'badge-error';
+    case 'high': return 'badge-warning';
+    case 'medium': return 'badge-info';
+    case 'low': return 'badge-success';
+    default: return 'badge-ghost';
+  }
+}
+
+function formatDuration(ms: number): string {
+  if (ms < 1000) return `${ms}ms`;
+  return `${(ms / 1000).toFixed(1)}s`;
+}
+---
+
+<AdminLayout title="Test Suites" reportData={reportData}>
+  <!-- Header Section -->
+  <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-8">
+    <div>
+      <h1 class="text-3xl font-bold text-base-content mb-2">Test Suites</h1>
+      <p class="text-base-content/70">
+        Overview of all executed test suites and their results
+      </p>
+    </div>
+
+    <!-- Suite Stats -->
+    <div class="mt-4 lg:mt-0">
+      <div class="stats stats-vertical lg:stats-horizontal shadow bg-base-100">
+        <div class="stat">
+          <div class="stat-title">Total Suites</div>
+          <div class="stat-value text-primary">{reportData.suites_results.length}</div>
+        </div>
+        <div class="stat">
+          <div class="stat-title">Success Rate</div>
+          <div class="stat-value text-success">{reportData.success_rate}%</div>
+        </div>
+        <div class="stat">
+          <div class="stat-title">Total Duration</div>
+          <div class="stat-value text-info">{formatDuration(reportData.total_duration_ms)}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filter Section -->
+  <div class="card bg-base-100 shadow-xl mb-6">
+    <div class="card-body">
+      <h2 class="card-title">Filters</h2>
+      <div class="flex flex-wrap gap-4">
+        <div class="form-control">
+          <label class="label">
+            <span class="label-text">Priority</span>
+          </label>
+          <select class="select select-bordered w-full max-w-xs" id="priority-filter">
+            <option value="">All Priorities</option>
+            <option value="critical">Critical</option>
+            <option value="high">High</option>
+            <option value="medium">Medium</option>
+            <option value="low">Low</option>
+          </select>
+        </div>
+
+        <div class="form-control">
+          <label class="label">
+            <span class="label-text">Status</span>
+          </label>
+          <select class="select select-bordered w-full max-w-xs" id="status-filter">
+            <option value="">All Status</option>
+            <option value="success">Success</option>
+            <option value="failed">Failed</option>
+            <option value="skipped">Skipped</option>
+          </select>
+        </div>
+
+        <div class="form-control">
+          <label class="label">
+            <span class="label-text">Search</span>
+          </label>
+          <input type="text" placeholder="Search suites..." class="input input-bordered w-full max-w-xs" id="search-input" />
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Suites Grid -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch" id="suites-grid">
+    {reportData.suites_results.map((suite, index) => (
+      <div class="card bg-base-100 border border-base-200/60 shadow-sm hover:shadow-md transition-all suite-card h-full"
+           data-priority={suite.priority}
+           data-status={suite.status}
+           data-name={suite.suite_name.toLowerCase()}>
+        <div class="card-body flex flex-col gap-4">
+          <!-- Suite Header -->
+          <div class="flex justify-between items-start">
+            <div class="flex items-center gap-2">
+              <span class="text-2xl">{getStatusIcon(suite.status)}</span>
+              <div>
+                <h3 class="card-title text-lg">{suite.suite_name}</h3>
+                <p class="text-sm text-base-content/60">{suite.file_path}</p>
+              </div>
+            </div>
+            <div class={`badge ${getPriorityColor(suite.priority)}`}>
+              {suite.priority}
+            </div>
+          </div>
+          <!-- Suite Stats -->
+          <div class="grid grid-cols-2 gap-3 text-sm">
+            <div class="rounded-lg border border-base-200 bg-base-200/60 p-3">
+              <span class="block text-xs uppercase tracking-wide text-base-content/70">Tests</span>
+              <span class="block text-lg font-semibold text-base-content">{suite.steps_executed}</span>
+            </div>
+            <div class="rounded-lg border border-base-200 bg-base-200/60 p-3">
+              <span class="block text-xs uppercase tracking-wide text-base-content/70">Success Rate</span>
+              <span class="block text-lg font-semibold text-success">{suite.success_rate}%</span>
+            </div>
+            <div class="rounded-lg border border-base-200 bg-base-200/60 p-3 col-span-2 flex items-center justify-between">
+              <span class="text-xs uppercase tracking-wide text-base-content/70">Duration</span>
+              <span class="text-base font-medium text-base-content">{formatDuration(suite.duration_ms)}</span>
+            </div>
+            <div class="rounded-lg border border-base-200 bg-base-200/60 p-3 col-span-2 flex items-center justify-between">
+              <span class="text-xs uppercase tracking-wide text-base-content/70">Finished at</span>
+              <span class="text-base font-medium text-base-content">{new Date(suite.end_time).toLocaleTimeString()}</span>
+            </div>
+          </div>
+
+          <!-- Progress Bar -->
+          <div>
+            <div class="w-full bg-base-200 rounded-full h-2">
+              <div class="bg-success h-2 rounded-full" style={`width: ${suite.success_rate}%`}></div>
+            </div>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="card-actions justify-end mt-auto">
+            <a href={`/suite/${suite.node_id}`} class="btn btn-primary btn-sm">
+              View Details
+            </a>
+            <a
+              href={`/api/postman-export?file=${encodeURIComponent(suite.file_path)}`}
+              class="btn btn-outline btn-sm"
+            >
+              Export Postman
+            </a>
+            <button class="btn btn-ghost btn-sm view-details-btn"
+                    data-suite={JSON.stringify(suite)}>
+              Quick Info
+            </button>
+          </div>
+        </div>
+      </div>
+    ))}
+  </div>
+
+  <!-- View Details Modal -->
+  <SuiteDetailsModal client:load />
+
+  <!-- Empty State (shown when no suites match filters) -->
+  <div class="text-center py-12 hidden" id="empty-state">
+    <div class="text-6xl mb-4">🔍</div>
+    <h3 class="text-xl font-semibold mb-2">No Suites Found</h3>
+    <p class="text-base-content/60">Try adjusting your filters or search terms</p>
+  </div>
+</AdminLayout>
+
+<script>
+  // Filter functionality
+  const priorityFilter = document.getElementById('priority-filter') as HTMLSelectElement;
+  const statusFilter = document.getElementById('status-filter') as HTMLSelectElement;
+  const searchInput = document.getElementById('search-input') as HTMLInputElement;
+  const suitesGrid = document.getElementById('suites-grid') as HTMLElement;
+  const emptyState = document.getElementById('empty-state') as HTMLElement;
+
+  function filterSuites() {
+    const priority = priorityFilter.value;
+    const status = statusFilter.value;
+    const search = searchInput.value.toLowerCase();
+
+    const suiteCards = document.querySelectorAll('.suite-card') as NodeListOf<HTMLElement>;
+    let visibleCount = 0;
+
+    suiteCards.forEach(card => {
+      const cardPriority = card.dataset.priority;
+      const cardStatus = card.dataset.status;
+      const cardName = card.dataset.name;
+
+      const matchesPriority = !priority || cardPriority === priority;
+      const matchesStatus = !status || cardStatus === status;
+      const matchesSearch = !search || cardName?.includes(search);
+
+      if (matchesPriority && matchesStatus && matchesSearch) {
+        card.style.display = 'block';
+        visibleCount++;
+      } else {
+        card.style.display = 'none';
+      }
+    });
+
+    // Show/hide empty state
+    if (visibleCount === 0) {
+      suitesGrid.style.display = 'none';
+      emptyState.classList.remove('hidden');
+    } else {
+      suitesGrid.style.display = 'grid';
+      emptyState.classList.add('hidden');
+    }
+  }
+
+  // Event listeners
+  priorityFilter.addEventListener('change', filterSuites);
+  statusFilter.addEventListener('change', filterSuites);
+  searchInput.addEventListener('input', filterSuites);
+
+  // View Details modal functionality
+  document.addEventListener('DOMContentLoaded', () => {
+    const viewDetailsButtons = document.querySelectorAll('.view-details-btn');
+
+    viewDetailsButtons.forEach(button => {
+      button.addEventListener('click', (e) => {
+        const target = e.target as HTMLElement;
+        const suiteData = target.dataset.suite;
+
+        if (suiteData) {
+          try {
+            const suite = JSON.parse(suiteData);
+            // Trigger custom event to open modal with suite data
+            window.dispatchEvent(new CustomEvent('openSuiteDetails', {
+              detail: { suite }
+            }));
+          } catch (error) {
+            console.error('Error parsing suite data:', error);
+          }
+        }
+      });
+    });
+  });
+</script>
+
+<style>
+  .suite-card {
+    transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .suite-card:hover {
+    transform: translateY(-2px);
+  }
+
+  .suite-card .card-body {
+    height: 100%;
+  }
+</style>

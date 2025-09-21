@@ -1,0 +1,340 @@
+---
+import '../assets/app.css';
+import type { ReportData, DashboardConfig } from '../types/dashboard.types';
+
+export interface Props {
+  title: string;
+  reportData?: ReportData;
+  dashboardConfig?: DashboardConfig;
+}
+
+const { title, reportData, dashboardConfig } = Astro.props;
+
+// Determine the default theme
+const defaultTheme = dashboardConfig?.themes?.default || 'light';
+---
+
+<!DOCTYPE html>
+<html lang="en" data-theme={defaultTheme}>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="description" content="Flow Test Reporting Dashboard" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <title>{title} - Flow Test Dashboard</title>
+</head>
+<body class="min-h-screen bg-base-100">
+  <!-- DaisyUI Drawer Layout -->
+  <div class="drawer lg:drawer-open">
+    <!-- Toggle checkbox -->
+    <input id="drawer-toggle" type="checkbox" class="drawer-toggle" />
+
+    <!-- Main Content -->
+    <div class="drawer-content flex flex-col">
+      <!-- Header -->
+      <header class="navbar bg-base-100 border-b border-base-300 min-h-16">
+        <div class="navbar-start">
+          <!-- Mobile menu toggle -->
+          <label for="drawer-toggle" class="btn btn-ghost btn-circle lg:hidden">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </label>
+
+          <!-- Logo/Brand -->
+          <div class="flex items-center gap-3 ml-4 lg:ml-0">
+            <div class="avatar">
+              <div class="w-10 rounded-xl">
+                <img src="/src/assets/logo.png" alt="Flow Test Logo" class="w-full h-full object-contain" />
+              </div>
+            </div>
+            <div>
+              <h1 class="text-xl font-bold text-base-content">{title}</h1>
+              <p class="text-sm text-base-content/70">Flow Test Dashboard</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Header Actions -->
+        <div class="navbar-end">
+          <!-- Theme Selector -->
+          <div class="dropdown dropdown-end">
+            <label tabindex="0" class="btn btn-ghost btn-circle">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>
+              </svg>
+            </label>
+            <ul tabindex="0" class="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-52 z-50">
+              <li><a data-set-theme="light" class="flex items-center gap-2">🌞 Light</a></li>
+              <li><a data-set-theme="dark" class="flex items-center gap-2">🌙 Dark</a></li>
+              <li><a data-set-theme="dracula" class="flex items-center gap-2">🧛 Dracula</a></li>
+              <li><a data-set-theme="corporate" class="flex items-center gap-2">🏢 Corporate</a></li>
+              <li><a data-set-theme="emerald" class="flex items-center gap-2">💚 Emerald</a></li>
+              <li><a data-set-theme="cupcake" class="flex items-center gap-2">🧁 Cupcake</a></li>
+            </ul>
+          </div>
+        </div>
+      </header>
+
+      <!-- Breadcrumbs -->
+      <div class="breadcrumbs text-sm px-6 py-2 bg-base-200/50">
+        <ul>
+          <li><a href="/" class="text-primary">Dashboard</a></li>
+          <li class="text-base-content/70">{title}</li>
+        </ul>
+      </div>
+
+      <!-- Main Content -->
+      <main class="flex-1 p-6 bg-base-200/30 min-h-screen">
+        <slot />
+      </main>
+
+      <!-- Footer -->
+      <footer class="footer footer-center p-6 bg-base-100 border-t border-base-300 text-base-content">
+        <div class="grid grid-flow-col gap-4">
+          <div class="flex items-center gap-4">
+            <div class="flex items-center gap-2">
+              <div class="w-2 h-2 bg-success rounded-full animate-pulse"></div>
+              <span class="text-sm">Flow Test Engine</span>
+            </div>
+            {reportData && (
+              <div class="text-sm text-base-content/70">
+                Report generated on {new Date(reportData.end_time).toLocaleString('en-US')}
+              </div>
+            )}
+          </div>
+        </div>
+        <div class="text-xs text-base-content/50 mt-2">
+          © 2025 Flow Test Engine. Dynamic Reporting System.
+        </div>
+      </footer>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="drawer-side z-30">
+      <label for="drawer-toggle" aria-label="close sidebar" class="drawer-overlay"></label>
+      <aside class="min-h-full w-80 bg-base-100 border-r border-base-300 flex flex-col">
+        <!-- Sidebar Header -->
+        <div class="p-6 border-b border-base-300">
+          <div class="flex items-center gap-3">
+            <div class="avatar">
+              <div class="w-12 rounded-xl">
+                <img src="/src/assets/logo.png" alt="Flow Test Logo" class="w-full h-full object-contain" />
+              </div>
+            </div>
+            <div>
+              <h2 class="text-lg font-bold text-base-content">Flow Test</h2>
+              <p class="text-sm text-base-content/70">Dashboard Reports</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Navigation Menu -->
+        <nav class="flex-1 p-4">
+          <ul class="menu w-full">
+            <!-- Overview -->
+            <li>
+              <a href="/" class="flex items-center gap-3 p-3 rounded-lg hover:bg-primary hover:text-primary-content transition-all">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                </svg>
+                <div>
+                  <div class="font-medium">Overview</div>
+                  <div class="text-xs opacity-70">Statistics and metrics</div>
+                </div>
+              </a>
+            </li>
+
+            <!-- Test Suites -->
+            <li>
+              <a href="/suites" class="flex items-center gap-3 p-3 rounded-lg hover:bg-primary hover:text-primary-content transition-all">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
+                </svg>
+                <div>
+                  <div class="font-medium">Test Suites</div>
+                  <div class="text-xs opacity-70">Executed suites</div>
+                </div>
+              </a>
+            </li>
+
+            <!-- Documentation -->
+            <li>
+              <a href="/docs" class="flex items-center gap-3 p-3 rounded-lg hover:bg-primary hover:text-primary-content transition-all">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6l4 2m4 2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2z"></path>
+                </svg>
+                <div>
+                  <div class="font-medium">Documentation</div>
+                  <div class="text-xs opacity-70">Synced guides</div>
+                </div>
+              </a>
+            </li>
+
+            <!-- Requests -->
+            <li>
+              <a href="/requests" class="flex items-center gap-3 p-3 rounded-lg hover:bg-primary hover:text-primary-content transition-all">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9v-9m0-9v9"></path>
+                </svg>
+                <div>
+                  <div class="font-medium">Requests</div>
+                  <div class="text-xs opacity-70">HTTP details</div>
+                </div>
+              </a>
+            </li>
+
+            <!-- Performance -->
+            <li>
+              <a href="/performance" class="flex items-center gap-3 p-3 rounded-lg hover:bg-primary hover:text-primary-content transition-all">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <div>
+                  <div class="font-medium">Performance</div>
+                  <div class="text-xs opacity-70">Timing metrics</div>
+                </div>
+              </a>
+            </li>
+
+            <!-- Scenarios -->
+            <li>
+              <a href="/scenarios" class="flex items-center gap-3 p-3 rounded-lg hover:bg-primary hover:text-primary-content transition-all">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a1 1 0 01-1-1V9a1 1 0 011-1h1a2 2 0 100-4H4a1 1 0 01-1-1V4a1 1 0 011-1h3a1 1 0 011 1v1z"></path>
+                </svg>
+                <div>
+                  <div class="font-medium">Scenarios</div>
+                  <div class="text-xs opacity-70">Conditional flows</div>
+                </div>
+              </a>
+            </li>
+          </ul>
+        </nav>
+
+        <!-- Sidebar Footer -->
+        <div class="p-4 border-t border-base-300">
+          {reportData && (
+            <div class="stats stats-vertical shadow-sm">
+              <div class="stat p-3">
+                <div class="stat-title text-xs">Total Tests</div>
+                <div class="stat-value text-lg">{reportData.total_tests}</div>
+              </div>
+              <div class="stat p-3">
+                <div class="stat-title text-xs">Success Rate</div>
+                <div class="stat-value text-lg text-success">{reportData.success_rate}%</div>
+              </div>
+              <div class="stat p-3">
+                <div class="stat-title text-xs">Duration</div>
+                <div class="stat-value text-lg">{Math.round(reportData.total_duration_ms / 1000)}s</div>
+              </div>
+            </div>
+          )}
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <!-- Theme change script -->
+  <script is:inline>
+    document.addEventListener('DOMContentLoaded', function () {
+      const THEME_STORAGE_KEY = 'theme';
+      const UI_STATE_KEY = 'flowtest-ui-state';
+      const THEME_CHANGE_EVENT = 'flowtest:theme-change';
+
+      const getSystemTheme = () => {
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+          return 'dark';
+        }
+        return 'light';
+      };
+
+      const updateUIStateTheme = (theme) => {
+        try {
+          const savedState = localStorage.getItem(UI_STATE_KEY);
+          const parsedState = savedState ? JSON.parse(savedState) : {};
+          const nextState = {
+            sidebarCollapsed: parsedState?.sidebarCollapsed ?? false,
+            activeSection: parsedState?.activeSection ?? 'overview',
+            theme,
+          };
+          localStorage.setItem(UI_STATE_KEY, JSON.stringify(nextState));
+        } catch (error) {
+          console.warn('[FlowTest] Unable to sync theme into UI state.', error);
+        }
+      };
+
+      const applyTheme = (theme, persistChoice = true, syncUIState = true) => {
+        if (!theme) return;
+        document.documentElement.setAttribute('data-theme', theme);
+        if (persistChoice) {
+          localStorage.setItem(THEME_STORAGE_KEY, theme);
+        }
+        if (syncUIState) {
+          updateUIStateTheme(theme);
+        }
+        window.dispatchEvent(new CustomEvent(THEME_CHANGE_EVENT, { detail: theme }));
+      };
+
+      const storedTheme = localStorage.getItem(THEME_STORAGE_KEY);
+      const initialTheme = storedTheme || getSystemTheme();
+      applyTheme(initialTheme, Boolean(storedTheme));
+
+      if (!storedTheme && window.matchMedia) {
+        const systemThemeWatcher = window.matchMedia('(prefers-color-scheme: dark)');
+        const handleSystemThemeChange = (event) => {
+          applyTheme(event.matches ? 'dark' : 'light', false);
+        };
+
+        if (typeof systemThemeWatcher.addEventListener === 'function') {
+          systemThemeWatcher.addEventListener('change', handleSystemThemeChange);
+        } else if (typeof systemThemeWatcher.addListener === 'function') {
+          systemThemeWatcher.addListener(handleSystemThemeChange);
+        }
+      }
+
+      const themeButtons = document.querySelectorAll('[data-set-theme]');
+
+      themeButtons.forEach((button) => {
+        button.addEventListener('click', function () {
+          const theme = this.getAttribute('data-set-theme');
+          if (!theme) return;
+
+          applyTheme(theme, true);
+
+          const dropdown = this.closest('.dropdown');
+          if (dropdown) {
+            const trigger = dropdown.querySelector('label[tabindex="0"]');
+            if (trigger) {
+              trigger.blur();
+            }
+          }
+        });
+      });
+
+      // Auto-close drawer on navigation (mobile)
+      const drawerToggle = document.getElementById('drawer-toggle');
+      const navLinks = document.querySelectorAll('aside a');
+
+      navLinks.forEach(link => {
+        link.addEventListener('click', () => {
+          if (window.innerWidth < 1024 && drawerToggle) { // lg breakpoint
+            drawerToggle.checked = false;
+          }
+        });
+      });
+
+      // Highlight current page in navigation
+      const currentPath = window.location.pathname;
+      const navItems = document.querySelectorAll('aside a');
+
+      navItems.forEach(link => {
+        const href = link.getAttribute('href');
+        if (href === currentPath || (currentPath === '/' && href === '/')) {
+          link.classList.add('nav-active');
+        }
+      });
+    });
+  </script>
+</body>
+</html>

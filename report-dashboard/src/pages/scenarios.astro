@@ -1,0 +1,104 @@
+---
+import AdminLayout from '../layouts/AdminLayout.astro';
+import ScenariosComponent from '../components/Scenarios';
+import type { ReportData } from '../types/dashboard.types';
+import { loadReportData } from '../services/dataLoader';
+
+// Load real data from flow-test results
+const reportData: ReportData = await loadReportData();
+
+// Collect all scenarios from all steps
+const allScenarios = reportData.suites_results?.flatMap(suite =>
+  suite.steps_results?.filter(step => step.scenarios_meta?.has_scenarios)
+    .map(step => ({
+      stepName: step.step_name,
+      suiteName: suite.suite_name,
+      scenarios: step.scenarios_meta
+    })) || []
+) || [];
+
+// Global scenario statistics
+const totalScenariosSteps = allScenarios.length;
+const totalScenariosCount = allScenarios.reduce((acc, item) =>
+  acc + (item.scenarios?.evaluations?.length || 0), 0);
+const totalExecutedCount = allScenarios.reduce((acc, item) =>
+  acc + (item.scenarios?.executed_count || 0), 0);
+---
+
+<AdminLayout title="Scenarios" reportData={reportData}>
+  <!-- Header Section -->
+  <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-8">
+    <div>
+      <h1 class="text-3xl font-bold text-base-content mb-2">Test Scenarios</h1>
+      <p class="text-base-content/70">
+        Conditional test scenarios and their execution results
+      </p>
+    </div>
+
+    <!-- Scenario Stats -->
+    <div class="mt-4 lg:mt-0">
+      <div class="stats stats-vertical lg:stats-horizontal shadow bg-base-100">
+        <div class="stat">
+          <div class="stat-title">Steps with Scenarios</div>
+          <div class="stat-value text-primary">{totalScenariosSteps}</div>
+        </div>
+        <div class="stat">
+          <div class="stat-title">Total Scenarios</div>
+          <div class="stat-value text-secondary">{totalScenariosCount}</div>
+        </div>
+        <div class="stat">
+          <div class="stat-title">Executed</div>
+          <div class="stat-value text-accent">{totalExecutedCount}</div>
+        </div>
+        <div class="stat">
+          <div class="stat-title">Execution Rate</div>
+          <div class="stat-value text-info">
+            {totalScenariosCount > 0 ? Math.round((totalExecutedCount / totalScenariosCount) * 100) : 0}%
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scenarios List -->
+  <div class="space-y-6">
+    {allScenarios.length === 0 ? (
+      <div class="text-center py-12">
+        <div class="text-6xl mb-4">🎭</div>
+        <h3 class="text-xl font-semibold mb-2">No Scenarios Found</h3>
+        <p class="text-base-content/60">
+          No conditional test scenarios were found in the current test results.
+        </p>
+      </div>
+    ) : (
+      allScenarios.map((item, index) => (
+        <div class="card bg-base-100 shadow-xl">
+          <div class="card-body">
+            <div class="flex items-center justify-between mb-4">
+              <div>
+                <h3 class="card-title text-lg">{item.stepName}</h3>
+                <p class="text-sm text-base-content/60">
+                  Suite: <span class="badge badge-outline">{item.suiteName}</span>
+                </p>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="badge badge-primary">
+                  {item.scenarios?.executed_count || 0} / {item.scenarios?.evaluations?.length || 0} executed
+                </span>
+              </div>
+            </div>
+
+            <!-- Scenarios Component -->
+            {item.scenarios && (
+              <ScenariosComponent
+                scenarios={item.scenarios}
+                className="mt-4"
+                client:load
+              />
+            )}
+          </div>
+        </div>
+      ))
+    )}
+  </div>
+</AdminLayout>

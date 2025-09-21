@@ -1,0 +1,86 @@
+---
+import AdminLayout from '../layouts/AdminLayout.astro';
+import RequestTabs from '../components/RequestTabs';
+import type { ReportData, StepResult } from '../types/dashboard.types';
+import { loadReportData } from '../services/dataLoader';
+
+// Load real data from flow-test results
+const reportData: ReportData = await loadReportData();
+
+// Coleta todos os steps de todas as suites
+const allSteps = reportData.suites_results?.flatMap(suite =>
+  suite.steps_results?.map(step => ({
+    ...step,
+    suite_name: suite.suite_name,
+    suite_priority: suite.priority
+  })) || []
+) || [];
+
+// Funções auxiliares
+function getMethodColor(method: string): string {
+  switch (method.toUpperCase()) {
+    case 'GET': return 'badge-info';
+    case 'POST': return 'badge-success';
+    case 'PUT': return 'badge-warning';
+    case 'PATCH': return 'badge-warning';
+    case 'DELETE': return 'badge-error';
+    default: return 'badge-ghost';
+  }
+}
+
+function getStatusColor(status: string): string {
+  switch (status) {
+    case 'success': return 'text-success';
+    case 'failed': return 'text-error';
+    case 'skipped': return 'text-warning';
+    default: return 'text-base-content';
+  }
+}
+
+function formatDuration(ms: number): string {
+  return ms < 1000 ? `${ms}ms` : `${(ms / 1000).toFixed(1)}s`;
+}
+
+function formatJson(obj: any): string {
+  return JSON.stringify(obj, null, 2);
+}
+---
+
+<AdminLayout title="HTTP Requests" reportData={reportData}>
+  <!-- Header Section -->
+  <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-8">
+    <div>
+      <h1 class="text-3xl font-bold text-base-content mb-2">HTTP Requests</h1>
+      <p class="text-base-content/70">
+        Detailed view of all HTTP requests made during test execution
+      </p>
+    </div>
+
+    <!-- Request Stats -->
+    <div class="mt-4 lg:mt-0">
+      <div class="stats stats-vertical lg:stats-horizontal shadow bg-base-100">
+        <div class="stat">
+          <div class="stat-title">Total Requests</div>
+          <div class="stat-value text-primary">{allSteps.length}</div>
+        </div>
+        <div class="stat">
+          <div class="stat-title">Success Rate</div>
+          <div class="stat-value text-success">
+            {Math.round((allSteps.filter(s => s.status === 'success').length / allSteps.length) * 100)}%
+          </div>
+        </div>
+        <div class="stat">
+          <div class="stat-title">Avg Response</div>
+          <div class="stat-value text-info">
+            {Math.round(allSteps.reduce((acc, s) => acc + s.duration_ms, 0) / allSteps.length)}ms
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Requests Component -->
+  <div class="space-y-6">
+    <RequestTabs steps={allSteps} className="w-full" client:load />
+  </div>
+</AdminLayout>
