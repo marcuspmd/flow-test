@@ -1,4 +1,4 @@
-name: Deploy Documentation to GitHub Pages
+name: Deploy Dashboard to GitHub Pages
 
 on:
   workflow_run:
@@ -14,7 +14,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: "pages"
+  group: "dashboard-pages"
   cancel-in-progress: false
 
 jobs:
@@ -63,23 +63,35 @@ jobs:
         fi
         test -f results/latest.json || { echo "latest.json not found in artifact"; ls -R; exit 1; }
 
-    - name: Generate HTML report from latest results
-      if: ${{ github.event_name == 'workflow_run' }}
+    - name: Prepare dashboard data
       run: |
-        npm run report:html
-        mkdir -p docs/public/report
-        cp results/latest.html docs/public/report/index.html
+        mkdir -p report-dashboard/src/data
+        if [ -f results/latest.json ]; then
+          cp results/latest.json report-dashboard/src/data/latest.json
+        elif [ ! -f report-dashboard/src/data/latest.json ]; then
+          echo "{}" > report-dashboard/src/data/latest.json
+        else
+          echo "Using existing report-dashboard/src/data/latest.json"
+        fi
 
-    - name: Generate documentation
-      run: npm run docs
+    - name: Install dashboard dependencies
+      run: npm run report:dashboard:install
+
+    - name: Build dashboard
+      run: npm run report:dashboard:build
+
+    - name: Copy report JSON to build output
+      run: |
+        mkdir -p report-dashboard/dist/data
+        cp report-dashboard/src/data/latest.json report-dashboard/dist/data/latest.json
 
     - name: Setup Pages
       uses: actions/configure-pages@v4
 
-    - name: Upload documentation artifacts
+    - name: Upload dashboard artifacts
       uses: actions/upload-pages-artifact@v3
       with:
-        path: './docs'
+        path: './report-dashboard/dist'
 
   deploy:
     environment:

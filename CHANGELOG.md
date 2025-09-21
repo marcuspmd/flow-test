@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - **Reporting Flow**: O engine agora gera somente `results/latest.json`; a visualização HTML fica exclusiva no projeto `report-dashboard`
+- **CI/CD**: GitHub Pages agora publica o build do `report-dashboard` sem gerar `docs/`
 
 ### Removed
 - **Legacy HTML Generator**: `flow-test-html`, assets Tailwind e diretório `src/report-generator`

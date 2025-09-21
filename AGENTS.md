@@ -15,7 +15,6 @@
 - `npm test` — Run full suite via Docker Compose (httpbin service).
 - `npm run test:verbose|test:silent|test:all` — Control logging/scope.
 - `npm run server:docker` — Start only httpbin service (Docker).
-- `npm run docs` / `npm run docs:serve` — Build and serve API docs.
 - `npm run report:dashboard:dev|build|preview` — Visualize o relatório JSON na interface HTML.
 
 ### Docusaurus Docs (preview)
