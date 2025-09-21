@@ -1,17 +1,20 @@
-const BASE_PLACEHOLDER = "http://localhost";
-const baseUrl = new URL(import.meta.env.BASE_URL || "/", BASE_PLACEHOLDER);
+const BASE_URL = import.meta.env.BASE_URL || "/";
 
 export function withBase(path = "") {
-  const cleanedPath = path.replace(/^\/+/, "");
-  const resolved = new URL(cleanedPath || baseUrl.pathname, baseUrl);
-  const pathname = cleanedPath
-    ? resolved.pathname.replace(/\/+$/, "")
-    : resolved.pathname;
+  if (!path) return BASE_URL;
 
-  return `${pathname}${resolved.search}${resolved.hash}`;
+  const cleanedPath = path.replace(/^\/+/, "");
+  const baseUrlClean = BASE_URL.replace(/\/+$/, "");
+
+  if (baseUrlClean === "" || baseUrlClean === "/") {
+    return `/${cleanedPath}`;
+  }
+
+  return `${baseUrlClean}/${cleanedPath}`;
 }
 
 export function withBaseAbsolute(path = "") {
   const cleanedPath = path.replace(/^\/+/, "");
-  return new URL(cleanedPath, baseUrl).toString();
+  const baseUrlWithProtocol = `http://localhost${withBase(cleanedPath)}`;
+  return baseUrlWithProtocol;
 }
