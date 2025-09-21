@@ -3,6 +3,9 @@ import AdminLayout from '../layouts/AdminLayout.astro';
 import type { ReportData } from '../types/dashboard.types';
 import { loadReportData, extractMetricsData } from '../services/dataLoader';
 
+const base = new URL(import.meta.env.BASE_URL || '/', 'http://localhost');
+const withBase = (path: string) => new URL(path.replace(/^\//, ''), base).pathname;
+
 // Load real data from flow-test results
 const reportData: ReportData = await loadReportData();
 
@@ -57,7 +60,7 @@ const allSteps = reportData.suites_results?.flatMap(suite => suite.steps_results
 
   <!-- Quick Actions Grid -->
   <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-    <a href="/suites" class="card bg-primary text-primary-content shadow-xl hover:shadow-2xl transition-all transform hover:scale-105">
+    <a href={withBase('suites')} class="card bg-primary text-primary-content shadow-xl hover:shadow-2xl transition-all transform hover:scale-105">
       <div class="card-body">
         <h2 class="card-title">
           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -69,7 +72,7 @@ const allSteps = reportData.suites_results?.flatMap(suite => suite.steps_results
       </div>
     </a>
 
-    <a href="/requests" class="card bg-secondary text-secondary-content shadow-xl hover:shadow-2xl transition-all transform hover:scale-105">
+    <a href={withBase('requests')} class="card bg-secondary text-secondary-content shadow-xl hover:shadow-2xl transition-all transform hover:scale-105">
       <div class="card-body">
         <h2 class="card-title">
           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -81,7 +84,7 @@ const allSteps = reportData.suites_results?.flatMap(suite => suite.steps_results
       </div>
     </a>
 
-    <a href="/performance" class="card bg-accent text-accent-content shadow-xl hover:shadow-2xl transition-all transform hover:scale-105">
+    <a href={withBase('performance')} class="card bg-accent text-accent-content shadow-xl hover:shadow-2xl transition-all transform hover:scale-105">
       <div class="card-body">
         <h2 class="card-title">
           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">

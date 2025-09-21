@@ -171,6 +171,7 @@ function tryLoadReport(filePath: string): ReportData | null {
   try {
     const rawData = fs.readFileSync(filePath, "utf-8");
     const data = JSON.parse(rawData);
+    persistReportSnapshot(filePath, rawData);
     return data as ReportData;
   } catch (error) {
     console.warn(`[DataLoader] Failed to read report at ${filePath}:`, error);
@@ -201,6 +202,27 @@ function tryLoadMostRecentReport(directory: string): ReportData | null {
   }
 
   return null;
+}
+
+function persistReportSnapshot(sourcePath: string, rawData: string): void {
+  try {
+    const publicDataDir = path.join(process.cwd(), "public", "data");
+    fs.mkdirSync(publicDataDir, { recursive: true });
+    const destinationPath = path.join(publicDataDir, "latest.json");
+    fs.writeFileSync(destinationPath, rawData, "utf-8");
+    // Ensure the original report is available alongside the public copy for debugging
+    if (sourcePath !== destinationPath) {
+      const cachedDir = path.join(process.cwd(), ".cache", "reports");
+      fs.mkdirSync(cachedDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(cachedDir, path.basename(sourcePath)),
+        rawData,
+        "utf-8"
+      );
+    }
+  } catch (error) {
+    console.warn("[DataLoader] Failed to persist report snapshot:", error);
+  }
 }
 
 /**

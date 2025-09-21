@@ -12,6 +12,7 @@ import type {
   StepResult,
   UIState,
 } from "../types/dashboard.types";
+import dashboardConfigFile from "../config/dashboard.json";
 
 interface ReportContextType {
   reportData: ReportData | null;
@@ -47,7 +48,7 @@ export function ReportProvider({
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<ReportData | null>(reportData || null);
   const [config, setConfig] = useState<DashboardConfig | null>(
-    dashboardConfig || null
+    dashboardConfig || (dashboardConfigFile as DashboardConfig)
   );
 
   const getInitialTheme = () => {
@@ -174,7 +175,10 @@ export function ReportProvider({
 
       // Load report data
       if (!data) {
-        const reportResponse = await fetch("/src/data/latest.json");
+        const baseUrl = import.meta.env.BASE_URL || "/";
+        const sanitizedBase = baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`;
+        const reportUrl = `${sanitizedBase}data/latest.json`;
+        const reportResponse = await fetch(reportUrl);
         if (!reportResponse.ok) {
           throw new Error("Failed to load report data");
         }
@@ -182,14 +186,8 @@ export function ReportProvider({
         setData(reportData);
       }
 
-      // Load dashboard config
       if (!config) {
-        const configResponse = await fetch("/src/config/dashboard.json");
-        if (!configResponse.ok) {
-          throw new Error("Failed to load dashboard config");
-        }
-        const configData = await configResponse.json();
-        setConfig(configData);
+        setConfig(dashboardConfigFile as DashboardConfig);
       }
     } catch (err) {
       console.error("Error loading data:", err);

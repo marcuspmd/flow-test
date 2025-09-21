@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 
 interface CodeBlockProps {
-  code: string;
+  code: unknown;
   language?: string;
   title?: string;
   maxHeight?: string;
@@ -15,9 +15,32 @@ const CodeBlock: React.FC<CodeBlockProps> = ({
 }) => {
   const [copied, setCopied] = useState(false);
 
+  const formatCode = (value: unknown): string => {
+    if (value === null || value === undefined) {
+      return String(value);
+    }
+
+    if (typeof value === "string") {
+      return value;
+    }
+
+    if (typeof value === "object") {
+      try {
+        return JSON.stringify(value, null, 2);
+      } catch (error) {
+        console.warn("Failed to stringify object for CodeBlock", error);
+        return String(value);
+      }
+    }
+
+    return String(value);
+  };
+
+  const formattedCode = formatCode(code);
+
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(code);
+      await navigator.clipboard.writeText(formattedCode);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
@@ -80,7 +103,7 @@ const CodeBlock: React.FC<CodeBlockProps> = ({
       {/* Code content - no horizontal scroll, word wrap instead */}
       <div className="overflow-y-auto bg-base-300" style={{ maxHeight }}>
         <pre className="p-4 text-xs leading-relaxed text-base-content whitespace-pre-wrap break-all">
-          <code className={`language-${language}`}>{code}</code>
+          <code className={`language-${language}`}>{formattedCode}</code>
         </pre>
       </div>
     </div>
