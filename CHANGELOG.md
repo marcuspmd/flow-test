@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Postman Integration**: Convert Flow Test suites to Postman collections and import collections back into YAML using the CLI
 - **Documentation Enhancement**: Comprehensive documentation improvements with practical examples
   - Created `docs/YAML_EXAMPLES.md` with 6 major testing patterns and advanced scenarios
   - Enhanced `docs/API_DOCUMENTATION.md` with detailed usage examples for all services

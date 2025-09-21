@@ -20,6 +20,7 @@ O Dashboard Moderno é uma interface de relatórios completamente renovada para 
 
 ### 🔧 Funcionalidades Interativas
 - **Exportação de dados**: Download dos resultados em JSON
+- **Exportação Postman**: Geração da coleção Postman diretamente dos cards de suite
 - **Filtros em tempo real**: Filtragem dinâmica sem recarregar a página
 - **Tema persistente**: Preferência de tema salva no localStorage
 - **Navegação intuitiva**: Interface click-friendly com feedback visual

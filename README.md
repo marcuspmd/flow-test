@@ -84,6 +84,18 @@ node dist/cli.js --swagger-import api.yaml --swagger-output ./tests/imported-api
 node dist/cli.js --swagger-import api.json && node dist/cli.js --directory ./tests/imported-api --verbose
 ```
 
+## Postman Collection Import/Export
+
+Convert between Flow Test suites and Postman collections directly from the CLI.
+
+```bash
+# Export an existing suite to Postman format
+node dist/cli.js --postman-export tests/auth-flows-test.yaml --postman-output ./exports/auth-flows.postman_collection.json
+
+# Import a Postman collection and generate Flow Test YAML
+node dist/cli.js --postman-import ./postman/create-proposal.postman_collection.json --postman-import-output ./tests/imported-postman
+```
+
 To perform the end-to-end import → run → cleanup in one command, use:
 
 ```bash
@@ -489,6 +501,10 @@ Configuration:
 Import/Export:
   --swagger-import <file>   Import OpenAPI/Swagger spec and generate test files
   --swagger-output <dir>    Output directory for imported Swagger tests (default: ./tests/imported)
+  --postman-export <path>   Export Flow Test suite(s) to a Postman collection JSON
+  --postman-output <path>   Output file or directory for Postman export (defaults alongside input)
+  --postman-import <file>   Import a Postman collection and generate Flow Test suite(s)
+  --postman-import-output <dir> Output directory for generated suites (default alongside collection)
 
 Verbosity:
   --verbose                 Show detailed output including request/response data

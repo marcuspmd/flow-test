@@ -61,6 +61,17 @@ Generate test files from API specifications:
 | `--swagger-import <file>` | Import OpenAPI/Swagger spec | `--swagger-import api.json` |
 | `--swagger-output <dir>` | Output directory for generated tests | `--swagger-output ./tests/api` |
 
+### Postman Collection Import/Export
+
+Exchange suites with Postman collections:
+
+| Option | Description | Example |
+|--------|-------------|---------|
+| `--postman-export <path>` | Export Flow suite(s) to Postman collection JSON | `--postman-export tests/auth.yaml` |
+| `--postman-output <path>` | Output file or directory for export | `--postman-output ./exports/auth.postman_collection.json` |
+| `--postman-import <file>` | Import Postman collection JSON | `--postman-import collections/api.postman_collection.json` |
+| `--postman-import-output <dir>` | Output directory for generated suites | `--postman-import-output ./tests/imported-postman` |
+
 ### Other Options
 
 | Option | Short | Description |
@@ -126,6 +137,12 @@ flow-test --swagger-import swagger.yaml --swagger-output ./tests/generated
 
 # Import and run generated tests
 flow-test --swagger-import api.json && flow-test --directory ./tests/imported
+
+# Export an existing suite to Postman format
+flow-test --postman-export tests/auth-flows-test.yaml --postman-output ./exports/auth-flows.postman_collection.json
+
+# Import a Postman collection as Flow tests
+flow-test --postman-import ./postman/create-proposal.postman_collection.json --postman-import-output ./tests/imported-postman
 ```
 
 ## Configuration File Resolution

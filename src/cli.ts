@@ -41,6 +41,7 @@ import {
   ImportOptions,
 } from "./services/swagger-import.service";
 import { handleInitCommand } from "./commands/init";
+import { PostmanCollectionService } from "./services/postman-collection.service";
 
 /**
  * Main CLI entry point function.
@@ -80,6 +81,10 @@ async function main() {
   let dryRun = false;
   let swaggerImport: string | undefined;
   let swaggerOutput: string | undefined;
+  let postmanExport: string | undefined;
+  let postmanExportOutput: string | undefined;
+  let postmanImport: string | undefined;
+  let postmanImportOutput: string | undefined;
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
@@ -171,6 +176,31 @@ async function main() {
         }
         break;
 
+      case "--postman-export":
+        if (i + 1 < args.length) {
+          postmanExport = args[++i];
+        }
+        break;
+
+      case "--postman-export-output":
+      case "--postman-output":
+        if (i + 1 < args.length) {
+          postmanExportOutput = args[++i];
+        }
+        break;
+
+      case "--postman-import":
+        if (i + 1 < args.length) {
+          postmanImport = args[++i];
+        }
+        break;
+
+      case "--postman-import-output":
+        if (i + 1 < args.length) {
+          postmanImportOutput = args[++i];
+        }
+        break;
+
       case "-h":
       case "--help":
         showHelp = true;
@@ -189,12 +219,29 @@ async function main() {
     }
   }
 
+  if (postmanExport && postmanImport) {
+    console.error(
+      "❌ Cannot use --postman-export and --postman-import in the same command."
+    );
+    process.exit(1);
+  }
+
   if (showHelp) {
     printHelp();
     process.exit(0);
   }
 
   // Handle Swagger import if requested
+  if (postmanExport) {
+    await handlePostmanExport(postmanExport, postmanExportOutput);
+    process.exit(0);
+  }
+
+  if (postmanImport) {
+    await handlePostmanImport(postmanImport, postmanImportOutput);
+    process.exit(0);
+  }
+
   if (swaggerImport) {
     await handleSwaggerImport(swaggerImport, swaggerOutput);
     process.exit(0);
@@ -346,6 +393,12 @@ SWAGGER IMPORT:
   --swagger-import <file>    Import OpenAPI/Swagger spec and generate test files
   --swagger-output <dir>     Output directory for generated tests (default: ./tests/imported)
 
+POSTMAN COLLECTIONS:
+  --postman-export <path>    Export a Flow Test suite file or directory to a Postman collection
+  --postman-output <path>    Output file or directory for the exported collection (default: alongside input)
+  --postman-import <file>    Import a Postman collection JSON file and generate Flow Test suite(s)
+  --postman-import-output <dir> Output directory for generated suites (default: alongside input)
+
 OTHER:
   -h, --help             Show this help message
   -v, --version          Show version information
@@ -366,6 +419,8 @@ EXAMPLES:
   flow-test --environment staging --silent    # Run in staging environment silently
   flow-test --swagger-import api.json         # Import OpenAPI spec and generate tests
   flow-test --swagger-import api.yaml --swagger-output ./tests/api # Import with custom output
+  flow-test --postman-export tests/auth-flows-test.yaml --postman-output ./exports/auth.postman_collection.json
+  flow-test --postman-import ./postman/collection.json --postman-import-output ./tests/imported-postman
 
 CONFIGURATION:
   The engine looks for configuration files in this order:
@@ -432,6 +487,70 @@ async function handleSwaggerImport(
     console.log(`  3. Run tests: flow-test --directory ${result.outputPath}`);
   } catch (error) {
     console.error("❌ Unexpected error during import:", error);
+    process.exit(1);
+  }
+}
+
+async function handlePostmanExport(
+  inputPath: string,
+  outputPath?: string
+): Promise<void> {
+  console.log(`🔄 Exporting Flow Test suite(s) to Postman collection: ${inputPath}`);
+
+  try {
+    const service = new PostmanCollectionService();
+    const result = await service.exportFromPath(inputPath, {
+      outputPath,
+    });
+
+    if (!result.success) {
+      console.error("❌ Export failed:");
+      result.errors.forEach((error) => console.error(`  • ${error}`));
+      process.exit(1);
+    }
+
+    if (result.warnings.length > 0) {
+      console.log("\n⚠️  Warnings:");
+      result.warnings.forEach((warning) => console.warn(`  • ${warning}`));
+    }
+
+    console.log("\n✅ Export completed successfully!");
+    result.outputFiles.forEach((file) => console.log(`📄 Generated: ${file}`));
+  } catch (error) {
+    console.error("❌ Unexpected error during Postman export:", error);
+    process.exit(1);
+  }
+}
+
+async function handlePostmanImport(
+  collectionPath: string,
+  outputDir?: string
+): Promise<void> {
+  console.log(
+    `🔄 Importing Postman collection into Flow Test suite(s): ${collectionPath}`
+  );
+
+  try {
+    const service = new PostmanCollectionService();
+    const result = await service.importFromFile(collectionPath, {
+      outputDir,
+    });
+
+    if (!result.success) {
+      console.error("❌ Import failed:");
+      result.errors.forEach((error) => console.error(`  • ${error}`));
+      process.exit(1);
+    }
+
+    if (result.warnings.length > 0) {
+      console.log("\n⚠️  Warnings:");
+      result.warnings.forEach((warning) => console.warn(`  • ${warning}`));
+    }
+
+    console.log("\n✅ Import completed successfully!");
+    result.outputFiles.forEach((file) => console.log(`📄 Generated: ${file}`));
+  } catch (error) {
+    console.error("❌ Unexpected error during Postman import:", error);
     process.exit(1);
   }
 }
