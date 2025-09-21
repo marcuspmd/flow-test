@@ -760,6 +760,9 @@ async function handleDashboardCommand(command: string): Promise<void> {
   const cliDir = path.dirname(path.dirname(__filename));
   const dashboardDir = path.join(cliDir, "report-dashboard");
 
+  // Get the current project directory (where flow-test was called from)
+  const projectDir = process.cwd();
+
   console.log(`🎯 Running dashboard command: ${command}`);
 
   let npmCommand: string;
@@ -804,10 +807,19 @@ async function handleDashboardCommand(command: string): Promise<void> {
     }
 
     console.log(`📁 Working directory: ${dashboardDir}`);
+    console.log(`📍 Project directory: ${projectDir}`);
+
+    // Set environment variable so dashboard can find project results
+    const env = {
+      ...process.env,
+      FLOW_TEST_PROJECT_DIR: projectDir,
+      FLOW_TEST_CLI_DIR: cliDir, // Add CLI directory for finding guides
+    };
 
     const child = spawn(npmCommand, args, {
       cwd: dashboardDir,
       stdio: "inherit",
+      env: env,
     });
 
     child.on("error", (error: Error) => {
@@ -822,6 +834,7 @@ async function handleDashboardCommand(command: string): Promise<void> {
         const serveChild = spawn("npx", ["serve", "dist", "--single"], {
           cwd: dashboardDir,
           stdio: "inherit",
+          env: env,
         });
 
         serveChild.on("error", (error: Error) => {

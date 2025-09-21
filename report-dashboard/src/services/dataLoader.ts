@@ -31,7 +31,9 @@ export async function loadReportData(): Promise<ReportData> {
     for (const directory of candidateDirectories) {
       const fallbackLoad = tryLoadMostRecentReport(directory);
       if (fallbackLoad) {
-        console.log(`[DataLoader] Loaded data from latest timestamped report in ${directory}`);
+        console.log(
+          `[DataLoader] Loaded data from latest timestamped report in ${directory}`
+        );
         return fallbackLoad;
       }
     }
@@ -105,24 +107,40 @@ function resolveReportDirectories(): string[] {
   // Dashboard local data directory used for browser fetches
   directories.add(path.join(process.cwd(), "src", "data"));
 
-  const configOutputDir = loadOutputDirFromConfig();
-  if (configOutputDir) {
-    directories.add(configOutputDir);
-  }
+  // If running from CLI with project directory set, use it first
+  if (process.env.FLOW_TEST_PROJECT_DIR) {
+    const projectDir = process.env.FLOW_TEST_PROJECT_DIR;
+    console.log(`[DataLoader] Using project directory from CLI: ${projectDir}`);
 
-  // Default fallback to ../results for backward compatibility
-  directories.add(path.join(process.cwd(), "..", "results"));
+    // Try to load config from project directory
+    const configOutputDir = loadOutputDirFromConfig(projectDir);
+    if (configOutputDir) {
+      directories.add(configOutputDir);
+    } else {
+      // Fallback to default results directory in project
+      directories.add(path.join(projectDir, "results"));
+    }
+  } else {
+    // Legacy behavior when no project directory is set
+    const configOutputDir = loadOutputDirFromConfig();
+    if (configOutputDir) {
+      directories.add(configOutputDir);
+    }
+
+    // Default fallback to ../results for backward compatibility
+    directories.add(path.join(process.cwd(), "..", "results"));
+  }
 
   return Array.from(directories);
 }
 
-function loadOutputDirFromConfig(): string | null {
-  // Look for config files in the project root (parent of report-dashboard)
-  const projectRoot = path.join(process.cwd(), "..");
+function loadOutputDirFromConfig(projectDir?: string): string | null {
+  // Look for config files in the specified project root or parent of report-dashboard
+  const searchRoot = projectDir || path.join(process.cwd(), "..");
   const possibleConfigs = [
-    path.join(projectRoot, "flow-test.config.yml"),
-    path.join(projectRoot, "flow-test.config.yaml"),
-    path.join(projectRoot, "flow-test.config.json"),
+    path.join(searchRoot, "flow-test.config.yml"),
+    path.join(searchRoot, "flow-test.config.yaml"),
+    path.join(searchRoot, "flow-test.config.json"),
   ];
 
   for (const configPath of possibleConfigs) {
@@ -139,8 +157,7 @@ function loadOutputDirFromConfig(): string | null {
         parsedConfig = JSON.parse(rawConfig) as FlowTestConfig;
       }
 
-      const outputDir =
-        parsedConfig?.reporting?.output_dir ?? "./results";
+      const outputDir = parsedConfig?.reporting?.output_dir ?? "./results";
 
       if (outputDir) {
         const resolvedPath = path.resolve(path.dirname(configPath), outputDir);

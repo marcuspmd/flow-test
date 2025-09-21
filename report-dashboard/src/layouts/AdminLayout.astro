@@ -17,13 +17,32 @@ const defaultTheme = dashboardConfig?.themes?.default || 'light';
 ---
 
 <!DOCTYPE html>
-<html lang="en" data-theme={defaultTheme}>
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="description" content="Flow Test Reporting Dashboard" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" type="image/svg+xml" href={withBase('favicon.svg')} />
   <title>{title} - Flow Test Dashboard</title>
+
+  <!-- Prevent theme flash by applying theme before CSS loads -->
+  <script is:inline>
+    (function() {
+      const THEME_STORAGE_KEY = 'theme';
+      const getSystemTheme = () => {
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+          return 'dark';
+        }
+        return 'light';
+      };
+
+      const storedTheme = localStorage.getItem(THEME_STORAGE_KEY);
+      const defaultTheme = '{defaultTheme}';
+      const initialTheme = storedTheme || defaultTheme || getSystemTheme();
+
+      document.documentElement.setAttribute('data-theme', initialTheme);
+    })();
+  </script>
 </head>
 <body class="min-h-screen bg-base-100">
   <!-- DaisyUI Drawer Layout -->
@@ -266,26 +285,45 @@ const defaultTheme = dashboardConfig?.themes?.default || 'light';
         }
       };
 
-      const applyTheme = (theme, persistChoice = true, syncUIState = true) => {
+      const applyTheme = (theme, persistChoice = true, syncUIState = true, enableTransition = false) => {
         if (!theme) return;
+
+        // Enable transition for manual theme changes
+        if (enableTransition) {
+          document.documentElement.classList.add('theme-transition');
+        }
+
         document.documentElement.setAttribute('data-theme', theme);
+
         if (persistChoice) {
           localStorage.setItem(THEME_STORAGE_KEY, theme);
         }
         if (syncUIState) {
           updateUIStateTheme(theme);
         }
+
         window.dispatchEvent(new CustomEvent(THEME_CHANGE_EVENT, { detail: theme }));
+
+        // Remove transition class after animation completes
+        if (enableTransition) {
+          setTimeout(() => {
+            document.documentElement.classList.remove('theme-transition');
+          }, 200);
+        }
       };
 
+      // Initialize theme system (theme already applied by inline script)
       const storedTheme = localStorage.getItem(THEME_STORAGE_KEY);
-      const initialTheme = storedTheme || getSystemTheme();
-      applyTheme(initialTheme, Boolean(storedTheme));
+      const currentTheme = document.documentElement.getAttribute('data-theme');
 
+      // Sync UI state with current theme
+      updateUIStateTheme(currentTheme);
+
+      // Set up system theme watching only if no stored preference
       if (!storedTheme && window.matchMedia) {
         const systemThemeWatcher = window.matchMedia('(prefers-color-scheme: dark)');
         const handleSystemThemeChange = (event) => {
-          applyTheme(event.matches ? 'dark' : 'light', false);
+          applyTheme(event.matches ? 'dark' : 'light', false, true, false);
         };
 
         if (typeof systemThemeWatcher.addEventListener === 'function') {
@@ -295,6 +333,7 @@ const defaultTheme = dashboardConfig?.themes?.default || 'light';
         }
       }
 
+      // Theme change handlers
       const themeButtons = document.querySelectorAll('[data-set-theme]');
 
       themeButtons.forEach((button) => {
@@ -302,8 +341,10 @@ const defaultTheme = dashboardConfig?.themes?.default || 'light';
           const theme = this.getAttribute('data-set-theme');
           if (!theme) return;
 
-          applyTheme(theme, true);
+          // Apply theme with smooth transition for manual changes
+          applyTheme(theme, true, true, true);
 
+          // Close dropdown after selection
           const dropdown = this.closest('.dropdown');
           if (dropdown) {
             const trigger = dropdown.querySelector('label[tabindex="0"]');

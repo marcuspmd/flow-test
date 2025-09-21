@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Dashboard Auto-Discovery**: Dashboard commands now automatically detect project location when using global installations
 - **Postman Integration**: Convert Flow Test suites to Postman collections and import collections back into YAML using the CLI
 - **Documentation Enhancement**: Comprehensive documentation improvements with practical examples
   - Created `docs/YAML_EXAMPLES.md` with 6 major testing patterns and advanced scenarios
@@ -15,6 +16,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Created `docs/BEST_PRACTICES.md` with naming conventions, patterns, and maintenance guidelines
   - Created `docs/TROUBLESHOOTING.md` with comprehensive debugging and issue resolution guide
   - Updated `README.md` with enhanced examples and documentation references
+
+### Fixed
+- **Global Installation Issue**: Resolved problem where dashboard couldn't find project results when flow-test-engine was installed globally
+- **CLI Project Detection**: Dashboard commands now pass current working directory to resolve data location automatically
+- **Theme Flash Issue**: Eliminated visual flash when changing themes or navigating between pages by implementing pre-CSS theme application
+- **Guides Access in Global Installation**: Fixed issue where documentation guides were not accessible when Flow Test Engine was installed as a global npm package
 
 ### Changed
 - **Reporting Flow**: O engine agora gera somente `results/latest.json`; a visualização HTML fica exclusiva no projeto `report-dashboard`

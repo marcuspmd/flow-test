@@ -1,13 +1,21 @@
 @import "tailwindcss";
-@plugin "daisyui" {
-  themes: light, dark, dracula, corporate, emerald, cupcake
-}
 
 /* Custom styles for Flow Test Dashboard */
 
 /* Smooth scrolling */
 html {
   scroll-behavior: smooth;
+}
+
+/* Theme transition (only for manual theme changes, not initial load) */
+html.theme-transition {
+  transition: color 0.2s ease-in-out, background-color 0.2s ease-in-out;
+}
+
+html.theme-transition *,
+html.theme-transition *::before,
+html.theme-transition *::after {
+  transition: color 0.2s ease-in-out, background-color 0.2s ease-in-out, border-color 0.2s ease-in-out, fill 0.2s ease-in-out !important;
 }
 
 /* Custom scrollbars */
