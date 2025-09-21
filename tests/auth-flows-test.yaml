@@ -18,6 +18,9 @@ exports:
   - auth_flow_results
 
 variables:
+  # URL base do httpbin
+  httpbin_url: "{{js: env.HTTPBIN_URL || 'http://localhost:8080'}}"
+
   # Credenciais de teste
   test_credentials:
     username: "test_user@flowtest.com"

@@ -13,6 +13,7 @@ services:
     environment:
       - NODE_ENV=test
       - FLOW_TEST_HTTPBIN_URL=http://httpbin
+      - HTTPBIN_URL=http://httpbin
     depends_on:
       - httpbin
     networks:

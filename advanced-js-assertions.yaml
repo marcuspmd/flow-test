@@ -1,6 +1,6 @@
 suite_name: "Exemplos Avançados de $js em Assertions"
 node_id: "advanced-js-assertions"
-base_url: "http://localhost:8080"
+base_url: "{{js: env.HTTPBIN_URL || 'http://localhost:8080'}}"
 
 variables:
   # Valores dinâmicos usando $js

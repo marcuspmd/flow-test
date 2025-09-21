@@ -179,6 +179,9 @@ export class JavaScriptService {
       captured: context.captured || {},
       request: context.request || {},
 
+      // Environment variables access
+      env: process.env,
+
       // Safe utility functions
       Date: Date,
       Math: Math,
@@ -258,16 +261,16 @@ export class JavaScriptService {
       /constructor/,
       /prototype/,
       /__proto__/,
-      /process/,
-      /global/,
-      /Buffer/,
-      /child_process/,
-      /fs/,
-      /os/,
-      /net/,
-      /http/,
-      /https/,
-      /crypto/,
+      /process\s*\./,
+      /global\s*\./,
+      /Buffer\s*\./,
+      /child_process\s*\./,
+      /fs\s*\./,
+      /os\s*\./,
+      /net\s*\./,
+      /http\s*\./,
+      /https\s*\./,
+      /crypto\s*\./,
     ];
 
     for (const pattern of dangerousPatterns) {

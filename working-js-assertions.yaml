@@ -1,6 +1,6 @@
 suite_name: "JavaScript Assertions - FUNCIONANDO"
 node_id: "working-js-assertions"
-base_url: "http://localhost:8080"
+base_url: "{{js: env.HTTPBIN_URL || 'http://localhost:8080'}}"
 
 variables:
   # Use valores fixos ou interpolação simples

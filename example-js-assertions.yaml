@@ -1,6 +1,6 @@
-suite_name: "JavaScript em Assertions - Exemplos"
-node_id: "js-assertions-examples"
-base_url: "http://localhost:8080"
+suite_name: "Exemplos de JavaScript em Assertions"
+node_id: "example-js-assertions"
+base_url: "{{js: env.HTTPBIN_URL || 'http://localhost:8080'}}"
 
 variables:
   current_timestamp: 1726945524000  # Timestamp fixo para exemplo
