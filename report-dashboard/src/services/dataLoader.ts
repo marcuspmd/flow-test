@@ -117,13 +117,12 @@ function resolveReportDirectories(): string[] {
 }
 
 function loadOutputDirFromConfig(): string | null {
+  // Look for config files in the project root (parent of report-dashboard)
+  const projectRoot = path.join(process.cwd(), "..");
   const possibleConfigs = [
-    path.join(process.cwd(), "flow-test.config.yml"),
-    path.join(process.cwd(), "flow-test.config.yaml"),
-    path.join(process.cwd(), "flow-test.config.json"),
-    path.join(process.cwd(), "..", "flow-test.config.yml"),
-    path.join(process.cwd(), "..", "flow-test.config.yaml"),
-    path.join(process.cwd(), "..", "flow-test.config.json"),
+    path.join(projectRoot, "flow-test.config.yml"),
+    path.join(projectRoot, "flow-test.config.yaml"),
+    path.join(projectRoot, "flow-test.config.json"),
   ];
 
   for (const configPath of possibleConfigs) {
