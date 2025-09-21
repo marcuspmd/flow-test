@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **CLI Project Detection**: Dashboard commands now pass current working directory to resolve data location automatically
 - **Theme Flash Issue**: Eliminated visual flash when changing themes or navigating between pages by implementing pre-CSS theme application
 - **Guides Access in Global Installation**: Fixed issue where documentation guides were not accessible when Flow Test Engine was installed as a global npm package
+- **Dashboard CSS Loading**: Fixed CSS/styling not loading when running dashboard via CLI due to incorrect base URL configuration
 
 ### Changed
 - **Reporting Flow**: O engine agora gera somente `results/latest.json`; a visualização HTML fica exclusiva no projeto `report-dashboard`
