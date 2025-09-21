@@ -30,7 +30,7 @@ steps:
       status_code: 200
       body:
         headers:
-          X-User:
+          X-Home:
             exists: true
     capture:
       env_user: "body.data | fromjson | @.user"
