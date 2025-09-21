@@ -42,8 +42,8 @@ steps:
         headers:
           X-Environment:
             equals: "testing"
-          X-CLI-Test:
-            equals: "{{cli_test_marker}}"
+          X-Cli-Test:
+            equals: "CLI comprehensive test execution"
     metadata:
       description: "Tests that --environment flag enables proper variable resolution"
 

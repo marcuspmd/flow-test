@@ -48,10 +48,12 @@ steps:
     assert:
       status_code: 200
       body:
-        json.login_request.username:
-          equals: "test_user@security.test"
-        json.login_request.password:
-          equals: "super_secret_password_123"
+        json:
+          login_request:
+            username:
+              equals: "test_user@security.test"
+            password:
+              equals: "super_secret_password_123"
     capture:
       auth_response: "json"
       simulated_auth_token: "{{faker.string.alphanumeric(32)}}"
@@ -70,10 +72,11 @@ steps:
     assert:
       status_code: 200
       body:
-        headers.Authorization:
-          contains: "Bearer"
-        headers."X-Api-Key":
-          equals: "client_secret_xyz789"
+        headers:
+          Authorization:
+            contains: "Bearer"
+          "X-Api-Key":
+            equals: "client_secret_xyz789"
     capture:
       api_key_test_response: "json"
       headers_received: "headers"
@@ -100,12 +103,15 @@ steps:
     assert:
       status_code: 200
       body:
-        json.token_validation.token_type:
-          equals: "Bearer"
-        json.token_validation.expires_in:
-          equals: 3600
-        json.security_check.is_secure:
-          equals: true
+        json:
+          token_validation:
+            token_type:
+              equals: "Bearer"
+            expires_in:
+              equals: 3600
+          security_check:
+            is_secure:
+              equals: true
     capture:
       # Use secure_token prefix to indicate this should be masked
       secure_token: "json.token_validation.access_token"
@@ -133,10 +139,13 @@ steps:
     assert:
       status_code: 200
       body:
-        json.password_change_request.change_timestamp:
-          type: number
-        json.security_validation.password_strength:
-          equals: "strong"
+        json:
+          password_change_request:
+            change_timestamp:
+              type: number
+          security_validation:
+            password_strength:
+              equals: "strong"
     capture:
       password_change_response: "json"
       change_timestamp: "json.password_change_request.change_timestamp"
@@ -203,12 +212,16 @@ steps:
     assert:
       status_code: 200
       body:
-        json.security_test_summary.total_security_tests:
-          equals: 5
-        json.security_metrics.sensitive_data_test_passed:
-          equals: true
-        json.compliance_check.passwords_masked:
-          equals: true
+        json:
+          security_test_summary:
+            total_security_tests:
+              equals: 5
+          security_metrics:
+            sensitive_data_test_passed:
+              equals: true
+          compliance_check:
+            passwords_masked:
+              equals: true
     capture:
       security_test_passed: "json.security_metrics.sensitive_data_test_passed"
       sensitive_data_masked: "json.compliance_check.passwords_masked"

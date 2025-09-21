@@ -258,7 +258,8 @@ export class GlobalRegistryService {
     this.logger.info(
       `Registered node '${nodeId}' (${suiteName}) with exports: [${exports.join(
         ", "
-      )}]`
+      )}]`,
+      { metadata: { type: "node_registration", internal: true } }
     );
   }
 
@@ -304,7 +305,9 @@ export class GlobalRegistryService {
     const fullName = `${nodeId}.${variableName}`;
     this.variableIndex.set(fullName, nodeId);
 
-    this.logger.info(`Exported: ${fullName} = ${this.formatValue(value)}`);
+    this.logger.info(`Exported: ${fullName} = ${this.formatValue(value)}`, {
+      metadata: { type: "variable_export", internal: true },
+    });
   }
 
   /**

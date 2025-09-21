@@ -154,7 +154,10 @@ export class HttpService {
       // Builds the complete URL
       const fullUrl = this.buildFullUrl(request.url);
 
-      this.logger.info(`${request.method} ${fullUrl}`, { stepName });
+      this.logger.info(`${request.method} ${fullUrl}`, {
+        stepName,
+        metadata: { type: "http_request", internal: true },
+      });
 
       // Configures the request
       const axiosConfig = {
@@ -174,7 +177,11 @@ export class HttpService {
       // Calculates response size
       const responseSize = this.calculateResponseSize(response);
 
-      this.logger.info(`${response.status}`, { stepName, duration });
+      this.logger.info(`${response.status}`, {
+        stepName,
+        duration,
+        metadata: { type: "http_response", internal: true },
+      });
 
       return {
         step_name: stepName,

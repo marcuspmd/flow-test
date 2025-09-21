@@ -39,6 +39,7 @@
   "license": "MIT",
   "files": [
     "dist/**/*",
+    "report-dashboard/**/*",
     "README.md"
   ],
   "dependencies": {

@@ -73,8 +73,9 @@ export class CaptureService {
 
         if (value !== undefined) {
           capturedVariables[variableName] = value;
-          console.log(
-            `    [📥] Captured: ${variableName} = ${this.formatValue(value)}`
+          this.logger.info(
+            `    [📥] Captured: ${variableName} = ${this.formatValue(value)}`,
+            { metadata: { type: "variable_capture", internal: true } }
           );
         } else {
           this.logger.warn(

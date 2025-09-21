@@ -526,6 +526,194 @@ export class PinoLoggerAdapter implements Logger {
 }
 
 /**
+ * Simple Jest-style console logger adapter for Flow Test Engine
+ *
+ * @remarks
+ * This logger provides Jest-like output formatting with clean, readable
+ * test results. Designed for simple console output with test status indicators.
+ *
+ * @example Jest-style output
+ * ```
+ * PASS src/services/dependency.service.test.ts (5.623 s)
+ *   DependencyService
+ *     constructor
+ *       ✓ should create instance with empty graph (4 ms)
+ *       ✓ should handle simple dependencies (1 ms)
+ * ```
+ *
+ * @public
+ * @since 1.0.0
+ */
+export class JestStyleLoggerAdapter implements Logger {
+  private verbosity: "silent" | "simple" | "detailed" | "verbose" = "simple";
+  private currentSuite: string = "";
+  private suiteStartTime: number = 0;
+  private passCount: number = 0;
+  private failCount: number = 0;
+  private totalSuites: number = 0;
+  private totalStartTime: number = 0;
+  private currentSteps: string[] = []; // Store steps for correct ordering
+
+  constructor(
+    verbosity: "silent" | "simple" | "detailed" | "verbose" = "simple"
+  ) {
+    this.verbosity = verbosity;
+    this.totalStartTime = Date.now();
+  }
+
+  debug(message: string, context?: LogContext): void {
+    if (this.verbosity === "verbose") {
+      console.log(chalk.gray(`[DEBUG] ${message}`));
+    }
+  }
+
+  info(message: string, context?: LogContext): void {
+    if (this.verbosity !== "silent") {
+      // Filter out internal messages in simple mode
+      if (this.verbosity === "simple" && context?.metadata?.internal) {
+        return;
+      }
+
+      // For simple mode, we handle test results specially
+      if (context?.metadata?.type === "suite_start") {
+        this.handleSuiteStart(message, context);
+      } else if (context?.metadata?.type === "suite_complete") {
+        this.handleSuiteComplete(message, context);
+      } else if (context?.metadata?.type === "step_result") {
+        this.handleStepResult(message, context);
+      } else if (context?.metadata?.type === "execution_summary") {
+        this.handleExecutionSummary(context.metadata);
+      } else {
+        // Regular info message (only show if not internal in simple mode)
+        console.log(message);
+      }
+    }
+  }
+
+  warn(message: string, context?: LogContext): void {
+    if (this.verbosity !== "silent") {
+      console.warn(chalk.yellow(`⚠️  ${message}`));
+    }
+  }
+
+  error(message: string, context?: LogContext): void {
+    console.error(chalk.red(`❌ ${message}`));
+    if (context?.error) {
+      const errorDetails =
+        context.error instanceof Error
+          ? context.error.stack || context.error.message
+          : context.error;
+      console.error(chalk.red(`   ${errorDetails}`));
+    }
+  }
+
+  private handleSuiteStart(message: string, context: LogContext): void {
+    this.currentSuite = context.metadata?.suite_name || "Unknown Suite";
+    this.suiteStartTime = Date.now();
+    this.currentSteps = []; // Reset steps for new suite
+  }
+
+  private handleSuiteComplete(message: string, context: LogContext): void {
+    const duration = ((Date.now() - this.suiteStartTime) / 1000).toFixed(3);
+    const status = context.metadata?.success ? "PASS" : "FAIL";
+    const statusColor = context.metadata?.success ? chalk.green : chalk.red;
+
+    // Format file path to look more like jest
+    const filePath = context.metadata?.file_path || this.currentSuite;
+    const formattedPath = `tests/${filePath}.yaml`;
+
+    // Show PASS/FAIL first (Jest order)
+    console.log(`${statusColor(status)} ${formattedPath} (${duration} s)`);
+    console.log(`  ${this.currentSuite}`);
+
+    // Then show all accumulated steps
+    this.currentSteps.forEach((step) => console.log(step));
+
+    if (context.metadata?.success) {
+      this.passCount++;
+    } else {
+      this.failCount++;
+    }
+    this.totalSuites++;
+  }
+
+  private handleStepResult(message: string, context: LogContext): void {
+    const status = context.metadata?.success ? "✓" : "✗";
+    const statusColor = context.metadata?.success ? chalk.green : chalk.red;
+    const stepName = context.stepName || message;
+    const duration = context.duration ? ` (${context.duration} ms)` : "";
+
+    // Store step instead of immediately printing
+    const stepLine = `    ${statusColor(status)} ${stepName}${chalk.gray(
+      duration
+    )}`;
+    this.currentSteps.push(stepLine);
+  }
+
+  private handleExecutionSummary(metadata: any): void {
+    const totalTime = ((Date.now() - this.totalStartTime) / 1000).toFixed(3);
+
+    console.log("");
+    if (this.failCount > 0) {
+      console.log(
+        chalk.red(
+          `Test Suites: ${this.failCount} failed, ${this.passCount} passed, ${this.totalSuites} total`
+        )
+      );
+    } else {
+      console.log(
+        chalk.green(
+          `Test Suites: ${this.passCount} passed, ${this.totalSuites} total`
+        )
+      );
+    }
+
+    // Use the actual executed tests count instead of total discovered
+    const actualExecutedTests =
+      metadata.successful_tests + metadata.failed_tests;
+    if (metadata.failed_tests > 0) {
+      console.log(
+        chalk.red(
+          `Tests: ${metadata.failed_tests} failed, ${metadata.successful_tests} passed, ${actualExecutedTests} total`
+        )
+      );
+    } else {
+      console.log(
+        chalk.green(
+          `Tests: ${actualExecutedTests} passed, ${actualExecutedTests} total`
+        )
+      );
+    }
+
+    console.log(`Time: ${totalTime} s`);
+    console.log("");
+  }
+
+  displayCapturedVariables(
+    variables: Record<string, any>,
+    context?: LogContext
+  ): void {
+    if (this.verbosity === "verbose" && Object.keys(variables).length > 0) {
+      console.log(chalk.blue("\n📥 Variables Captured:"));
+      Object.entries(variables).forEach(([key, value]) => {
+        const formattedValue =
+          typeof value === "object" ? JSON.stringify(value) : String(value);
+        console.log(chalk.cyan(`   ${key}: ${formattedValue}`));
+      });
+    }
+  }
+
+  displayTestMetadata(suite: any): void {
+    if (this.verbosity === "verbose") {
+      console.log(chalk.yellow(`\n📋 ${suite.suite_name || "Test Suite"}`));
+      if (suite.metadata?.priority) {
+        console.log(chalk.gray(`   Priority: ${suite.metadata.priority}`));
+      }
+    }
+  }
+}
+
+/**
  * Logger service with configurable adapter
  */
 export class LoggerService {
@@ -637,7 +825,13 @@ export function setupLogger(
   if (type === "pino") {
     logger = new PinoLoggerAdapter(options);
   } else {
-    logger = new ConsoleLoggerAdapter(options.verbosity || "simple");
+    // Use Jest-style logger for simple mode, console for others
+    const verbosity = options.verbosity || "simple";
+    if (verbosity === "simple") {
+      logger = new JestStyleLoggerAdapter(verbosity);
+    } else {
+      logger = new ConsoleLoggerAdapter(verbosity);
+    }
   }
 
   LoggerService.setLogger(logger);

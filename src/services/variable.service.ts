@@ -97,6 +97,36 @@ export class VariableService {
    */
   interpolate(template: string | any, suppressWarnings: boolean = false): any {
     if (typeof template === "string") {
+      // Check if the entire string is a single variable interpolation
+      const singleVariableMatch = this.extractSingleVariable(template);
+      if (singleVariableMatch) {
+        const variablePath = singleVariableMatch.trim();
+        const value = this.resolveVariable(variablePath);
+        if (value === undefined) {
+          if (!suppressWarnings) {
+            const isRuntimeVariable =
+              this.isLikelyRuntimeVariable(variablePath);
+            if (isRuntimeVariable) {
+              this.logger.debug(
+                `Runtime variable '${variablePath}' not found (expected after cleanup)`
+              );
+            } else {
+              this.logger.warn(
+                `Variable '${variablePath}' not found during interpolation`
+              );
+            }
+          }
+          return template; // Keep the original placeholder
+        }
+        // Return the value directly (could be object, array, etc.)
+        // Don't recursively interpolate primitive values as it can cause type conversion
+        if (value !== null && typeof value === "object") {
+          return this.interpolate(value, suppressWarnings);
+        }
+        return value;
+      }
+
+      // Handle multiple variables within the string
       return template.replace(/\{\{([^}]+)\}\}/g, (match, variablePath) => {
         const value = this.resolveVariable(variablePath.trim());
         if (value === undefined) {
@@ -135,6 +165,30 @@ export class VariableService {
     }
 
     return template;
+  }
+
+  /**
+   * Extracts a single variable from a template string if it's just one variable
+   * Handles nested braces properly (e.g., {{$js.return Object.keys({a:1, b:2}).length}})
+   */
+  private extractSingleVariable(template: string): string | null {
+    if (!template.startsWith("{{") || !template.endsWith("}}")) {
+      return null;
+    }
+
+    // Remove outer braces
+    const content = template.slice(2, -2);
+
+    // Check if there are any unmatched variable delimiters inside
+    // This is a simple check - if we find {{ or }} inside, it's not a single variable
+    if (content.includes("{{") || content.includes("}}")) {
+      return null;
+    }
+
+    this.logger.debug(
+      `extractSingleVariable: template="${template}" -> content="${content}"`
+    );
+    return content;
   }
 
   /**

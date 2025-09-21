@@ -213,7 +213,8 @@ export class ExecutionService {
     const orderedTests = this.dependencyService.resolveExecutionOrder(tests);
 
     this.logger.info(
-      `Dependency-aware execution order resolved for ${orderedTests.length} test(s)`
+      `Dependency-aware execution order resolved for ${orderedTests.length} test(s)`,
+      { metadata: { type: "internal_debug", internal: true } }
     );
     if (config.execution!.mode === "parallel") {
       this.logger.warn(
@@ -520,7 +521,8 @@ export class ExecutionService {
       this.globalVariables.clearAllNonGlobalVariables();
 
       this.logger.info(
-        `Starting fresh variable context for node '${discoveredTest.node_id}'`
+        `Starting fresh variable context for node '${discoveredTest.node_id}'`,
+        { metadata: { type: "internal_debug", internal: true } }
       );
 
       // Configures suite variables
@@ -648,6 +650,18 @@ export class ExecutionService {
       const successRate =
         totalSteps > 0 ? (successfulSteps / totalSteps) * 100 : 0;
 
+      // Read original YAML content for frontend processing
+      let suiteYamlContent: string | undefined;
+      try {
+        if (fs.existsSync(discoveredTest.file_path)) {
+          suiteYamlContent = fs.readFileSync(discoveredTest.file_path, "utf-8");
+        }
+      } catch (error) {
+        this.logger.warn(
+          `Could not read YAML content for ${discoveredTest.file_path}: ${error}`
+        );
+      }
+
       const result: SuiteExecutionResult = {
         node_id: suite.node_id,
         suite_name: suite.suite_name,
@@ -666,6 +680,7 @@ export class ExecutionService {
         available_variables: this.filterAvailableVariables(
           this.globalVariables.getAllVariables()
         ),
+        suite_yaml_content: suiteYamlContent,
       };
 
       // Display final results in Jest style
@@ -677,6 +692,18 @@ export class ExecutionService {
       return result;
     } catch (error) {
       const endTime = new Date();
+
+      // Read original YAML content for frontend processing (even in error case)
+      let suiteYamlContent: string | undefined;
+      try {
+        if (fs.existsSync(discoveredTest.file_path)) {
+          suiteYamlContent = fs.readFileSync(discoveredTest.file_path, "utf-8");
+        }
+      } catch (yamlError) {
+        this.logger.warn(
+          `Could not read YAML content for ${discoveredTest.file_path}: ${yamlError}`
+        );
+      }
 
       const errorResult: SuiteExecutionResult = {
         node_id: discoveredTest.node_id,
@@ -697,6 +724,7 @@ export class ExecutionService {
         available_variables: this.filterAvailableVariables(
           this.globalVariables.getAllVariables()
         ),
+        suite_yaml_content: suiteYamlContent,
       };
 
       return errorResult;

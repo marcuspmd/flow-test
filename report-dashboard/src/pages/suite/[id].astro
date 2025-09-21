@@ -334,7 +334,15 @@ const totalIterations = iterationSteps.reduce((acc, step) => acc + (step.iterati
                     <div class="badge badge-outline">{formatDuration(step.duration_ms)}</div>
                   </div>
                 </div>
-
+                <div>
+                  <CodeBlock
+                    client:load
+                    code={step.request_details.curl_command}
+                    language="bash"
+                    title="cURL Command"
+                    maxHeight="150px"
+                  />
+                </div>
                 <!-- Request Details -->
                 {step.request_details && (
                   <div class="grid lg:grid-cols-2 gap-4 mb-4">
@@ -376,15 +384,7 @@ const totalIterations = iterationSteps.reduce((acc, step) => acc + (step.iterati
                             />
                           </div>
                         )}
-                        <div>
-                          <CodeBlock
-                            client:load
-                            code={step.request_details.curl_command}
-                            language="bash"
-                            title="cURL Command"
-                            maxHeight="150px"
-                          />
-                        </div>
+
                       </div>
                     </div>
 
@@ -547,12 +547,6 @@ const totalIterations = iterationSteps.reduce((acc, step) => acc + (step.iterati
                                     </div>
                                   </div>
 
-                                  {assertion.message && (
-                                    <div class="text-sm text-base-content/80 bg-base-200/50 rounded-lg px-3 py-2 mb-3">
-                                      {assertion.message}
-                                    </div>
-                                  )}
-
                                   {/* Detalhes dos valores */}
                                   {(shouldShowDetails && !isEqual) || !assertion.passed ? (
                                     <div class="space-y-4">
@@ -604,15 +598,15 @@ const totalIterations = iterationSteps.reduce((acc, step) => acc + (step.iterati
                                       </div>
                                     </div>
                                   ) : assertion.passed && isEqual ? (
-                                    <div class="bg-success/10 border border-success/20 rounded-lg p-3">
-                                      <div class="flex items-center gap-2 text-success">
+                                    <div class="bg-base-100 border border-success/20 rounded-lg p-3">
+                                      <div class="flex items-center gap-2 text-primary">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                                           <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
                                         </svg>
                                         <span class="text-sm font-medium">Assertion passou conforme esperado</span>
                                       </div>
-                                      <div class="text-xs text-success/80 mt-1">
-                                        Valor recebido: <span class="font-mono bg-success/20 px-1 rounded">
+                                      <div class="text-sm text-secondary mt-1">
+                                        Valor recebido: <span class="font-mono font-bold px-1 rounded">
                                           {typeof assertion.actual === 'object' ? 'Objeto/Array' : String(assertion.actual)}
                                         </span>
                                       </div>

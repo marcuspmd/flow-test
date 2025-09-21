@@ -128,6 +128,15 @@ export interface AssertionChecks {
     /** Maximum length */
     less_than?: number;
   };
+
+  /** Regular expression pattern matching (alias for regex) */
+  pattern?: string;
+
+  /** Minimum length validation for strings and arrays */
+  minLength?: number;
+
+  /** Check if field is not empty (null, undefined, empty string, empty array, or empty object) */
+  notEmpty?: boolean;
 }
 
 /**

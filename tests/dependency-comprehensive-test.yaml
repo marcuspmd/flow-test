@@ -177,7 +177,7 @@ steps:
           modified_config: "{{modified_config_id}}"
           manipulation_result: "{{manipulation_result}}"
           isolation_data: "{{isolation_test_data}}"
-        inheritance_verification: true
+          inheritance_verification: true
     assert:
       status_code: 200
       body:

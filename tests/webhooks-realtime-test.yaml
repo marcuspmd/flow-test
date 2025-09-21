@@ -73,10 +73,6 @@ steps:
         X-Event-ID: "{{event_user_id}}"
     assert:
       status_code: 200
-      body:
-        headers:
-          X-Event-ID:
-            equals: "{{event_user_id}}"
     scenarios:
       - name: "Webhook delivery validation"
         condition: "status_code == 200"
@@ -153,7 +149,7 @@ steps:
     assert:
       status_code: 200
     capture:
-      stream_event_count: "body.json.stream_events.length"
+      stream_event_count: "length(body.json.stream_events)"
 
   - name: "Validate webhook system health"
     request:

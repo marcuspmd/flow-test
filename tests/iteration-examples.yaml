@@ -47,8 +47,9 @@ steps:
     assert:
       status_code: 200
       body:
-        json.user_id:
-          equals: "{{item.id}}"
+        json:
+          user_id:
+            equals: "{{item.id}}"
     capture:
       created_user_id: "json.user_id"
       user_creation_timestamp: "json.created_at"
@@ -90,10 +91,13 @@ steps:
     assert:
       status_code: 200
       body:
-        json.test_summary.total_iterations:
-          equals: 8
-        json.performance_metrics.users_created_count:
-          equals: 3
+        json:
+          test_summary:
+            total_iterations:
+              equals: 8
+          performance_metrics:
+            users_created_count:
+              equals: 3
     capture:
       users_tested: "json.test_summary.users_created_count"
       range_test_summary: "json.test_summary"

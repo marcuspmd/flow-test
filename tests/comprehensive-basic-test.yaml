@@ -37,7 +37,7 @@ steps:
         headers:
           X-Test-User:
             equals: "flow_test_user"
-          X-Test-ID:
+          X-Test-Id:
             equals: "12345"
         args:
           # httpbin retorna objeto vazio {} para GET sem query params
@@ -74,10 +74,11 @@ steps:
             equals: 12345
           action:
             equals: "create_resource"
-          metadata.api_version:
-            equals: "v2.1"
-          metadata.test_mode:
-            equals: true
+          metadata:
+            api_version:
+              equals: "v2.1"
+            test_mode:
+              equals: true
         headers:
           Authorization:
             contains: "Bearer test-token-12345"
@@ -192,12 +193,13 @@ steps:
         json:
           final_test:
             equals: true
-          summary.total_requests:
-            equals: 7
-          summary.captured_data:
-            equals: "create_resource"
+          summary:
+            total_requests:
+              equals: 7
+            captured_data:
+              equals: "create_resource"
         headers:
-          X-Numeric-ID:
+          X-Numeric-Id:
             equals: "12345"
           X-Boolean-Flag:
             equals: "true"

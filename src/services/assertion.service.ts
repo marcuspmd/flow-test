@@ -288,7 +288,10 @@ export class AssertionService {
     const results: AssertionResult[] = [];
     const actualBody = result.response_details!.body;
 
-    for (const [fieldPath, checks] of Object.entries(expectedBody)) {
+    // Flatten nested body assertions into JMESPath expressions
+    const flattenedAssertions = this.flattenBodyAssertions(expectedBody);
+
+    for (const [fieldPath, checks] of Object.entries(flattenedAssertions)) {
       let actualValue: any;
 
       try {
@@ -312,6 +315,80 @@ export class AssertionService {
     }
 
     return results;
+  }
+
+  /**
+   * Flattens nested body assertions into JMESPath expressions
+   *
+   * @param bodyAssertions - Nested body assertions from YAML
+   * @param prefix - Current path prefix for recursion
+   * @returns Flattened assertions with JMESPath expressions as keys
+   *
+   * @example
+   * Input: { json: { token: { type: "string", pattern: "^[A-Za-z0-9-_.]+$" } } }
+   * Output: { "json.token": { type: "string", pattern: "^[A-Za-z0-9-_.]+$" } }
+   */
+  private flattenBodyAssertions(
+    bodyAssertions: any,
+    prefix: string = ""
+  ): Record<string, AssertionChecks> {
+    const flattened: Record<string, AssertionChecks> = {};
+
+    for (const [key, value] of Object.entries(bodyAssertions)) {
+      const escapedKey = this.escapeJMESPathKey(key);
+      const currentPath = prefix ? `${prefix}.${escapedKey}` : escapedKey;
+
+      // Check if this is an AssertionChecks object (has assertion operators)
+      if (this.isAssertionChecks(value)) {
+        flattened[currentPath] = value as AssertionChecks;
+      } else if (typeof value === "object" && value !== null) {
+        // Recursively flatten nested objects
+        const nestedFlattened = this.flattenBodyAssertions(value, currentPath);
+        Object.assign(flattened, nestedFlattened);
+      } else {
+        // Direct value assertion - convert to equals check
+        flattened[currentPath] = { equals: value };
+      }
+    }
+
+    return flattened;
+  }
+
+  /**
+   * Escapes JMESPath keys that contain special characters
+   */
+  private escapeJMESPathKey(key: string): string {
+    // If key contains special characters (hyphens, spaces, etc.), quote it
+    if (/[^a-zA-Z0-9_]/.test(key)) {
+      return `"${key}"`;
+    }
+    return key;
+  }
+
+  /**
+   * Checks if an object is an AssertionChecks object (has assertion operators)
+   */
+  private isAssertionChecks(obj: any): boolean {
+    if (typeof obj !== "object" || obj === null) {
+      return false;
+    }
+
+    const assertionKeys = [
+      "equals",
+      "not_equals",
+      "contains",
+      "greater_than",
+      "less_than",
+      "regex",
+      "exists",
+      "type",
+      "length",
+      "pattern",
+      "minLength",
+      "notEmpty",
+    ];
+
+    return assertionKeys.some((key) => obj.hasOwnProperty(key));
   }
 
   /**
@@ -380,13 +457,19 @@ export class AssertionService {
           response_time: result.duration_ms,
         };
 
+        // Handle js: prefix if present
+        let condition = customAssertion.condition;
+        if (condition.startsWith("js:")) {
+          condition = condition.slice(3).trim();
+        }
+
         // Evaluate the condition using Function constructor for safety
         const evaluationFunction = new Function(
           "status_code",
           "headers",
           "body",
           "response_time",
-          `return ${customAssertion.condition}`
+          `return ${condition}`
         );
 
         const conditionResult = evaluationFunction(
@@ -587,6 +670,75 @@ export class AssertionService {
           );
         }
       }
+    }
+
+    // Additional validation checks to support YAML test syntax
+    if ((checks as any).pattern !== undefined) {
+      const passed = this.matchesRegex(actualValue, (checks as any).pattern);
+      results.push(
+        this.createAssertionResult(
+          `${fieldName}.pattern`,
+          (checks as any).pattern,
+          actualValue,
+          passed,
+          passed
+            ? undefined
+            : `Value does not match pattern: ${(checks as any).pattern}`
+        )
+      );
+    }
+
+    if ((checks as any).minLength !== undefined) {
+      const length = this.getValueLength(actualValue);
+      if (length === -1) {
+        results.push(
+          this.createAssertionResult(
+            `${fieldName}.minLength`,
+            "valid array or string",
+            actualValue,
+            false,
+            "Value must be an array or string to check minLength"
+          )
+        );
+      } else {
+        const passed = length >= (checks as any).minLength;
+        results.push(
+          this.createAssertionResult(
+            `${fieldName}.minLength`,
+            `>= ${(checks as any).minLength}`,
+            length,
+            passed,
+            passed
+              ? undefined
+              : `Length ${length} is less than minimum ${
+                  (checks as any).minLength
+                }`
+          )
+        );
+      }
+    }
+
+    if ((checks as any).notEmpty !== undefined) {
+      const isEmpty =
+        actualValue === null ||
+        actualValue === undefined ||
+        actualValue === "" ||
+        (Array.isArray(actualValue) && actualValue.length === 0) ||
+        (typeof actualValue === "object" &&
+          Object.keys(actualValue).length === 0);
+
+      const passed = (checks as any).notEmpty ? !isEmpty : isEmpty;
+      results.push(
+        this.createAssertionResult(
+          `${fieldName}.notEmpty`,
+          (checks as any).notEmpty,
+          !isEmpty,
+          passed,
+          passed
+            ? undefined
+            : `Value ${(checks as any).notEmpty ? "is empty" : "is not empty"}`
+        )
+      );
     }
 
     return results;

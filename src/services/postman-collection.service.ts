@@ -7,6 +7,11 @@ import {
   Assertions,
   AssertionChecks,
 } from "../types/engine.types";
+import {
+  AggregatedResult,
+  SuiteExecutionResult,
+  StepExecutionResult,
+} from "../types/config.types";
 
 export interface PostmanCollection {
   info: {
@@ -882,5 +887,272 @@ export class PostmanCollectionService {
     }
 
     return urlInfo.raw || "";
+  }
+
+  /**
+   * Export a Postman collection from execution results (results/latest.json).
+   * This uses real, processed data from test execution instead of raw YAML templates.
+   */
+  async exportFromExecutionResults(
+    resultsPath: string,
+    options: PostmanExportOptions = {}
+  ): Promise<PostmanExportResult> {
+    const result: PostmanExportResult = {
+      success: false,
+      errors: [],
+      warnings: [],
+      outputFiles: [],
+    };
+
+    try {
+      if (!fs.existsSync(resultsPath)) {
+        throw new Error(`Results file not found: ${resultsPath}`);
+      }
+
+      const raw = fs.readFileSync(resultsPath, "utf-8");
+      const executionResults = JSON.parse(raw) as AggregatedResult;
+
+      // Process each suite in the execution results
+      for (const suiteResult of executionResults.suites_results) {
+        const collection = this.convertExecutionResultToCollection(suiteResult, executionResults, options);
+
+        const outputFile = this.resolveOutputFile(
+          resultsPath,
+          options.outputPath,
+          `${suiteResult.node_id}.postman_collection.json`
+        );
+
+        this.writeCollection(outputFile, collection);
+        result.outputFiles.push(outputFile);
+      }
+
+      result.success = result.errors.length === 0;
+      return result;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      result.errors.push(message);
+      return result;
+    }
+  }
+
+  /**
+   * Convert execution result data to a Postman collection with real, processed values.
+   */
+  private convertExecutionResultToCollection(
+    suiteResult: SuiteExecutionResult,
+    _aggregatedResult: AggregatedResult,
+    options: PostmanExportOptions = {}
+  ): PostmanCollection {
+    const collectionName = options.collectionName || suiteResult.suite_name;
+    const items: PostmanItem[] = [];
+
+    // Convert each executed step to a Postman item
+    for (const stepResult of suiteResult.steps_results) {
+      if (stepResult.request_details && stepResult.response_details) {
+        const item = this.convertStepResultToItem(stepResult);
+        items.push(item);
+      }
+    }
+
+    const collection: PostmanCollection = {
+      info: {
+        name: collectionName,
+        schema: POSTMAN_SCHEMA_URL,
+        description: `Exported from execution results: ${suiteResult.file_path}\nExecuted at: ${suiteResult.start_time}`,
+      },
+      item: items,
+    };
+
+    const suiteVariables = this.collectVariablesForCollection(suiteResult);
+    if (suiteVariables.length > 0) {
+      collection.variable = suiteVariables.map(([key, value]) => ({
+        key,
+        value: value,
+        type: "default",
+      }));
+    }
+
+    return collection;
+  }
+
+  private collectVariablesForCollection(
+    suiteResult: SuiteExecutionResult
+  ): Array<[string, string]> {
+    const entries = new Map<string, string>();
+
+    const addVariable = (key: string, value: unknown) => {
+      if (!key) {
+        return;
+      }
+
+      if (value === undefined || value === null) {
+        return;
+      }
+
+      if (typeof value === "object") {
+        return;
+      }
+
+      entries.set(key, String(value));
+    };
+
+    if (suiteResult.variables_captured) {
+      for (const [key, value] of Object.entries(
+        suiteResult.variables_captured
+      )) {
+        addVariable(key, value);
+      }
+    }
+
+    for (const step of suiteResult.steps_results || []) {
+      if (!step.captured_variables) {
+        continue;
+      }
+
+      for (const [key, value] of Object.entries(step.captured_variables)) {
+        addVariable(key, value);
+      }
+    }
+
+    return Array.from(entries.entries());
+  }
+
+  /**
+   * Convert a step execution result to a Postman item with real request/response data.
+   */
+  private convertStepResultToItem(stepResult: StepExecutionResult): PostmanItem {
+    const { request_details, response_details, assertions_results } = stepResult;
+
+    if (!request_details) {
+      throw new Error(`Missing request details for step: ${stepResult.step_name}`);
+    }
+
+    // Build URL from full_url or construct from base + url
+    const fullUrl = request_details.full_url || request_details.url;
+    const url = this.parseUrlForPostman(fullUrl);
+
+    // Convert headers, removing undefined values
+    const headers = Object.entries(request_details.headers || {})
+      .filter(([_, value]) => value !== undefined && value !== null)
+      .map(([key, value]) => ({
+        key,
+        value: String(value),
+        disabled: false,
+      }));
+
+    // Build request
+    const request: PostmanRequest = {
+      method: request_details.method,
+      url,
+      header: headers,
+    };
+
+    // Add body if present
+    if (request_details.body) {
+      if (typeof request_details.body === 'string') {
+        request.body = {
+          mode: 'raw',
+          raw: request_details.body,
+          options: {
+            raw: {
+              language: 'text'
+            }
+          }
+        };
+      } else {
+        request.body = {
+          mode: 'raw',
+          raw: JSON.stringify(request_details.body, null, 2),
+          options: {
+            raw: {
+              language: 'json'
+            }
+          }
+        };
+      }
+    }
+
+    // Generate test script from assertions
+    const testScript = this.generateTestScriptFromAssertions(assertions_results || []);
+
+    const item: PostmanItem = {
+      name: stepResult.step_name,
+      request,
+    };
+
+    if (testScript.length > 0) {
+      item.event = [
+        {
+          listen: "test",
+          script: {
+            type: "text/javascript",
+            exec: testScript,
+          },
+        },
+      ];
+    }
+
+    return item;
+  }
+
+  /**
+   * Parse URL for Postman format, handling query parameters properly.
+   */
+  private parseUrlForPostman(fullUrl: string): PostmanRequest['url'] {
+    try {
+      const urlObj = new URL(fullUrl);
+
+      const query = Array.from(urlObj.searchParams.entries()).map(([key, value]) => ({
+        key,
+        value,
+      }));
+
+      return {
+        raw: fullUrl,
+        host: [urlObj.hostname],
+        path: urlObj.pathname.split('/').filter(Boolean),
+        query: query.length > 0 ? query : undefined,
+      };
+    } catch (error) {
+      // Fallback for malformed URLs
+      return {
+        raw: fullUrl,
+      };
+    }
+  }
+
+  /**
+   * Generate Postman test script from assertion results.
+   */
+  private generateTestScriptFromAssertions(assertions: any[]): string[] {
+    const lines: string[] = [];
+
+    for (const assertion of assertions) {
+      if (assertion.passed) {
+        // Generate positive test based on the assertion
+        if (assertion.field === 'status_code') {
+          lines.push(`pm.test("Status code is ${assertion.expected}", function () {`);
+          lines.push(`    pm.response.to.have.status(${assertion.expected});`);
+          lines.push(`});`);
+          lines.push(``);
+        } else if (assertion.field.startsWith('body.')) {
+          const fieldPath = assertion.field.replace('body.', '');
+          lines.push(`pm.test("${assertion.field} validation", function () {`);
+          lines.push(`    const responseJson = pm.response.json();`);
+          lines.push(`    pm.expect(responseJson).to.have.property('${fieldPath.split('.')[0]}');`);
+          lines.push(`});`);
+          lines.push(``);
+        } else if (assertion.field.startsWith('custom.')) {
+          const testName = assertion.field.replace('custom.', '');
+          lines.push(`pm.test("${testName}", function () {`);
+          lines.push(`    // Custom validation: ${assertion.message || 'OK'}`);
+          lines.push(`    pm.expect(true).to.be.true; // This assertion passed in Flow Test`);
+          lines.push(`});`);
+          lines.push(``);
+        }
+      }
+    }
+
+    return lines;
   }
 }

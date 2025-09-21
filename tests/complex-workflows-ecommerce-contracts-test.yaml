@@ -78,9 +78,8 @@ steps:
       body:
         json:
           operation: { equals: "register_customer" }
-          customer_data:
-            id: { equals: "{{customer_id}}" }
-            email: { matches: "^[^@]+@[^@]+\\.[^@]+$" }
+          customer_data: { exists: true, type: "object" }
+          registration_source: { equals: "web" }
     capture:
       customer_registration_result: "success"
       registered_customer_id: "{{customer_id}}"

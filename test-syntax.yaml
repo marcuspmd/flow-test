@@ -1,0 +1,30 @@
+node_id: "test-js-syntax"
+suite_name: "Test JavaScript Syntax Fix"
+base_url: "{{httpbin_url}}"
+
+variables:
+  number_var: 42
+
+steps:
+  - name: "Test JS syntax correction"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        # Correct JS syntax:
+        simple_return: "{{$js.return 123}}"
+        object_length: "{{$js.return Object.keys({a:1, b:2, c:3}).length}}"
+        # Test variable interpolation:
+        variable_value: "{{number_var}}"
+    assert:
+      status_code: 200
+      body:
+        json:
+          simple_return:
+            type: number
+          object_length:
+            equals: 3
+          variable_value:
+            type: number

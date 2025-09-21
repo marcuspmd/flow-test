@@ -1,0 +1,91 @@
+# tests/meu-primeiro-teste.yaml
+suite_name: "Teste de Login API"
+node_id: "auth"
+base_url: "{{api_base_url}}"
+
+variables:
+  secure_signing_key: "NTNv7j0TuYARvmNMmWXo6fKvM4o6nv/aUi9ryX38ZH+L1bkrnD1ObOQ8JAUmHCBq7Iy7otZcyAagBLHVKvvYaIpmMuxmARQ97jUVG16Jkpkp1wXOPsrF9zwew6TpczyHkHgX5EuLg2MeBuiT/qJACs1J0apruOOJCg/gOtkjB4c="
+  # Credenciais de teste
+  test_credentials:
+    username: "test_user@flowtest.com"
+    password: "test_password_123"
+
+  # URLs simuladas de autenticação
+  auth_endpoints:
+    login: "/post"
+    user_profile: "/anything"
+
+  # Tokens simulados para testes
+  mock_responses:
+    jwt_login_success:
+      # Acess Token valido (exemplo fictício) jwt.io
+      access_token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWUsImlhdCI6MTUxNjIzOTAyMn0.KMUFsIDTnFmyG3nMiGM6H9FNFUROf3wh7SmqJp-QV30"
+
+    user_profile:
+      name: "John Doe"
+      admin: true
+      username: "test_user@flowtest.com"
+
+# Exports para que possa utilizar em outras suits
+# Será exportada como {{auth.token}} "node_id.variavelName"
+exports:
+  - token
+
+steps:
+  # Step 1
+  - name: "Fazer login"
+    request:
+      method: POST
+      url: "{{auth_endpoints.login}}"
+      headers:
+        Content-Type: "application/json"
+        X-Auth-Token: "{{auth_token}}"
+      body:
+        username: "{{test_credentials.username}}"
+        password: "{{test_credentials.password}}"
+        # Simula para o httpbin.org/post retorne o token no response
+        token: "{{mock_responses.jwt_login_success.access_token}}"
+    assert:
+      status_code: 200
+      body:
+        json:
+          token:
+            type: "string"
+            pattern: "^[A-Za-z0-9-_.]+$"
+            minLength: 10
+            notEmpty: true
+    capture:
+      token: "body.json.token"
+
+  # Step 2
+  - name: "Buscar perfil do usuário"
+    request:
+      method: GET
+      url: "{{auth_endpoints.user_profile}}?username={{test_credentials.username}}&admin=true&name={{mock_responses.user_profile.name}}"
+      headers:
+        # Variaveis de mesma suite não precisa de prefixo.
+        Authorization: "Bearer {{token}}"
+    assert:
+      status_code: 200
+      body:
+        args:
+          admin:
+            equals: true
+          name:
+            type: "string"
+            equals: "{{mock_responses.user_profile.name}}"
+            minLength: 1
+      custom:
+        - name: "Validar URL da resposta contém parâmetros corretos"
+          condition: "body.url && body.url.indexOf('username=') >= 0 && body.url.indexOf('admin=true') >= 0"
+          message: "URL da resposta deve conter parâmetros username e admin"
+        - name: "Verificar se usuário é admin válido"
+          condition: "body.args.admin == 'true' && body.args.username && body.args.name"
+          message: "Admin deve ter username e name preenchidos"
+        - name: "Validar resposta completa do perfil"
+          condition: "js: Object.keys(body.args).length >= 3"
+          message: "Resposta deve conter pelo menos 3 campos no args"
+
+    capture:
+      user_name: "body.args.name"
+      is_admin: "body.args.admin"

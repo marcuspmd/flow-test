@@ -380,6 +380,8 @@ export interface SuiteExecutionResult {
   error_message?: string;
   variables_captured: Record<string, any>;
   available_variables?: Record<string, any>;
+  /** Original YAML content of the test suite for frontend processing */
+  suite_yaml_content?: string;
 }
 
 /**
@@ -471,6 +473,7 @@ export interface EngineExecutionOptions {
     node_ids?: string[];
     suite_names?: string[];
     tags?: string[];
+    file_patterns?: string[];
   };
   logging?: {
     enabled?: boolean;

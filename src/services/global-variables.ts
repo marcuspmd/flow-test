@@ -321,17 +321,20 @@ export class GlobalVariablesService {
     }
 
     let result = template;
-    const variablePattern = /\{\{([^}]+)\}\}/g;
-    let match;
 
-    while ((match = variablePattern.exec(template)) !== null) {
-      const fullMatch = match[0]; // {{variable_name}}
-      const variableName = match[1].trim(); // variable_name
+    // Use a more sophisticated approach to find variable expressions
+    const matches = this.findAllVariableExpressions(template);
+
+    // Process matches in reverse order to avoid position shifts
+    for (let i = matches.length - 1; i >= 0; i--) {
+      const { fullMatch, variableName, start, end } = matches[i];
 
       const value = this.resolveVariableExpression(variableName);
 
       if (value !== undefined) {
-        result = result.replace(fullMatch, this.convertValueToString(value));
+        const before = result.substring(0, start);
+        const after = result.substring(end);
+        result = before + this.convertValueToString(value) + after;
       } else {
         // Verifica se é uma variável runtime que foi intencionalmente limpa
         const isLikelyRuntimeVariable =
@@ -354,6 +357,66 @@ export class GlobalVariablesService {
   }
 
   /**
+   * Extracts a single variable from a template string if it's just one variable
+   * Handles nested braces properly (e.g., {{$js.return Object.keys({a:1, b:2}).length}})
+   */
+  private extractSingleVariable(template: string): string | null {
+    if (!template.startsWith("{{") || !template.endsWith("}}")) {
+      return null;
+    }
+
+    // Remove outer braces
+    const content = template.slice(2, -2);
+
+    // Use a more sophisticated approach to handle nested braces
+    // Count opening and closing braces to ensure we're dealing with a single expression
+    let braceCount = 0;
+    let inQuotes = false;
+    let quoteChar = "";
+
+    for (let i = 0; i < content.length; i++) {
+      const char = content[i];
+      const nextChar = content[i + 1];
+
+      // Handle quote strings
+      if ((char === '"' || char === "'") && content[i - 1] !== "\\") {
+        if (!inQuotes) {
+          inQuotes = true;
+          quoteChar = char;
+        } else if (char === quoteChar) {
+          inQuotes = false;
+          quoteChar = "";
+        }
+        continue;
+      }
+
+      // Skip characters inside quotes
+      if (inQuotes) {
+        continue;
+      }
+
+      // Count braces
+      if (char === "{") {
+        braceCount++;
+      } else if (char === "}") {
+        braceCount--;
+      }
+
+      // Check for nested variable expressions ({{ or }})
+      if (
+        (char === "{" && nextChar === "{") ||
+        (char === "}" && nextChar === "}")
+      ) {
+        return null; // Contains nested variable expression
+      }
+    }
+
+    // If we have unmatched braces at the end, it's still a single expression
+    // (e.g., Object.keys({a:1, b:2}) has unmatched braces but is valid)
+    return content;
+  }
+
+  /**
    * Interpolates any object (strings, objects, arrays)
    */
   interpolate<T>(obj: T): T {
@@ -362,6 +425,16 @@ export class GlobalVariablesService {
     }
 
     if (typeof obj === "string") {
+      // Check if the string is a single variable expression
+      const singleVariable = this.extractSingleVariable(obj);
+      if (singleVariable) {
+        const value = this.resolveVariableExpression(singleVariable);
+        if (value !== undefined) {
+          // Return the value directly without string conversion
+          // This preserves types (numbers, objects, arrays, etc.)
+          return value as unknown as T;
+        }
+      }
       return this.interpolateString(obj) as unknown as T;
     }
 
@@ -378,6 +451,89 @@ export class GlobalVariablesService {
     }
 
     return obj; // Numbers, booleans, etc.
+  }
+
+  /**
+   * Finds all variable expressions in a template string, handling nested braces
+   */
+  private findAllVariableExpressions(template: string): Array<{
+    fullMatch: string;
+    variableName: string;
+    start: number;
+    end: number;
+  }> {
+    const results: Array<{
+      fullMatch: string;
+      variableName: string;
+      start: number;
+      end: number;
+    }> = [];
+
+    let i = 0;
+    while (i < template.length - 1) {
+      // Look for opening {{
+      if (template[i] === "{" && template[i + 1] === "{") {
+        const start = i;
+        i += 2; // Skip {{
+
+        let braceCount = 1;
+        let inQuotes = false;
+        let quoteChar = "";
+        let end = -1;
+
+        // Find the matching }}
+        while (i < template.length - 1) {
+          const char = template[i];
+          const nextChar = template[i + 1];
+
+          // Handle quotes
+          if ((char === '"' || char === "'") && template[i - 1] !== "\\") {
+            if (!inQuotes) {
+              inQuotes = true;
+              quoteChar = char;
+            } else if (char === quoteChar) {
+              inQuotes = false;
+              quoteChar = "";
+            }
+          }
+
+          // Skip characters inside quotes
+          if (inQuotes) {
+            i++;
+            continue;
+          }
+
+          // Look for }} to close the expression
+          if (char === "}" && nextChar === "}") {
+            braceCount--;
+            if (braceCount === 0) {
+              end = i + 2;
+              break;
+            }
+          }
+          // Look for {{ to open nested (which we don't support in interpolation)
+          else if (char === "{" && nextChar === "{") {
+            braceCount++;
+            i++; // Skip the next {
+          }
+
+          i++;
+        }
+
+        if (end > 0) {
+          const fullMatch = template.substring(start, end);
+          const variableName = template.substring(start + 2, end - 2).trim();
+          results.push({ fullMatch, variableName, start, end });
+          i = end;
+        } else {
+          i++;
+        }
+      } else {
+        i++;
+      }
+    }
+
+    return results;
   }
 
   /**

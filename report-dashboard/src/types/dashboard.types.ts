@@ -78,6 +78,7 @@ export interface SuiteResult {
   steps_results: StepResult[];
   description?: string;
   metadata?: SuiteMetadata;
+  suite_yaml_content?: string;
 }
 
 export interface SuiteMetadata {

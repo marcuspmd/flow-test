@@ -1,6 +1,7 @@
 ---
 import AdminLayout from '../layouts/AdminLayout.astro';
 import SuiteDetailsModal from '../components/SuiteDetailsModal';
+import { PostmanExportButton } from '../components/PostmanExportButton';
 import type { ReportData, SuiteResult } from '../types/dashboard.types';
 import { loadReportData } from '../services/dataLoader';
 import { withBase } from '../utils/url';
@@ -189,15 +190,13 @@ function formatDuration(ms: number): string {
             <a href={withBase(`suite/${suite.node_id}`)} class="btn btn-primary btn-sm">
               View Details
             </a>
-            <button
-              class="btn btn-outline btn-sm postman-export-btn"
-              data-suite={JSON.stringify(suite)}
-              title={`Export ${suite.suite_name} to Postman collection`}
-            >
-              Export Postman
-            </button>
+            <PostmanExportButton
+              client:idle
+              suite={suite}
+              className="btn btn-outline btn-sm"
+            />
             <button class="btn btn-ghost btn-sm view-details-btn"
-                    data-suite={JSON.stringify(suite)}>
+                    data-suite={JSON.stringify({ ...suite, suite_yaml_content: undefined })}>
               Quick Info
             </button>
           </div>
@@ -288,82 +287,6 @@ function formatDuration(ms: number): string {
       });
     });
 
-    // Postman Export functionality
-    const postmanExportButtons = document.querySelectorAll('.postman-export-btn');
-
-    postmanExportButtons.forEach(button => {
-      button.addEventListener('click', (e) => {
-        const target = e.target as HTMLElement;
-        const suiteData = target.dataset.suite;
-
-        if (suiteData) {
-          try {
-            const suite = JSON.parse(suiteData);
-            exportToPostman(suite);
-          } catch (error) {
-            console.error('Error parsing suite data for Postman export:', error);
-          }
-        }
-      });
-    });
-
-    function exportToPostman(suite: any) {
-      const postmanCollection = {
-        info: {
-          name: suite.suite_name,
-          schema: "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-          description: `Exported from Flow Test suite: ${suite.file_path}`
-        },
-        item: suite.steps?.map((step: any) => ({
-          name: step.name,
-          request: {
-            method: step.request?.method || 'GET',
-            url: {
-              raw: step.request?.url?.startsWith('http')
-                ? step.request.url
-                : `${suite.base_url || ''}${step.request?.url || ''}`,
-              ...(step.request?.params && {
-                query: Object.entries(step.request.params).map(([key, value]) => ({
-                  key,
-                  value: String(value)
-                }))
-              })
-            },
-            ...(step.request?.headers && {
-              header: Object.entries(step.request.headers).map(([key, value]) => ({
-                key,
-                value: String(value)
-              }))
-            }),
-            ...(step.request?.body && {
-              body: {
-                mode: "raw",
-                raw: JSON.stringify(step.request.body, null, 2),
-                options: {
-                  raw: {
-                    language: "json"
-                  }
-                }
-              }
-            })
-          },
-          response: []
-        })) || []
-      };
-
-      const blob = new Blob([JSON.stringify(postmanCollection, null, 2)], {
-        type: 'application/json'
-      });
-
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${suite.suite_name.replace(/[^a-zA-Z0-9]/g, '_')}.postman_collection.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    }
   });
 </script>
 
