@@ -125,7 +125,7 @@ steps:
         debug_request_info:
           method: "POST"
           url: "/post"
-          timestamp: {{$js.return Date.now()}}
+          timestamp: "{{$js.return Date.now()}}"
           test_data: "debug-introspection"
         captured_data:
           environment_user: "{{environment_user}}"

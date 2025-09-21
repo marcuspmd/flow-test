@@ -212,7 +212,12 @@ export class GlobalVariablesService {
    * Sets variables in suite scope
    */
   setSuiteVariables(variables: Record<string, any>): void {
-    this.context.suite = { ...this.context.suite, ...variables };
+    // Interpolate variables when setting them to resolve expressions like {{$js.return ...}}
+    const interpolatedVariables: Record<string, any> = {};
+    for (const [key, value] of Object.entries(variables)) {
+      interpolatedVariables[key] = this.interpolate(value);
+    }
+    this.context.suite = { ...this.context.suite, ...interpolatedVariables };
     this.clearCache();
   }
 

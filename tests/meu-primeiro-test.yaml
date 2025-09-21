@@ -54,6 +54,23 @@ steps:
             pattern: "^[A-Za-z0-9-_.]+$"
             minLength: 10
             notEmpty: true
+      # Custom assertions com JavaScript
+      custom:
+        - name: "jwt_token_format"
+          condition: "body.json.token.split('.').length === 3"
+          message: "Token JWT deve ter 3 partes separadas por ponto"
+
+        - name: "token_not_empty"
+          condition: "body.json.token && body.json.token.trim().length > 0"
+          message: "Token não pode ser vazio ou apenas espaços"
+
+        - name: "token_length_valid"
+          condition: "body.json.token.length > 50"
+          message: "Token deve ter comprimento adequado para JWT"
+
+        - name: "response_time_reasonable"
+          condition: "response_time < 5000"
+          message: "Tempo de resposta deve ser menor que 5 segundos"
     capture:
       token: "body.json.token"
 
@@ -75,16 +92,35 @@ steps:
             type: "string"
             equals: "{{mock_responses.user_profile.name}}"
             minLength: 1
+      # Custom assertions para validação avançada
       custom:
-        - name: "Validar URL da resposta contém parâmetros corretos"
-          condition: "body.url && body.url.indexOf('username=') >= 0 && body.url.indexOf('admin=true') >= 0"
-          message: "URL da resposta deve conter parâmetros username e admin"
-        - name: "Verificar se usuário é admin válido"
-          condition: "body.args.admin == 'true' && body.args.username && body.args.name"
-          message: "Admin deve ter username e name preenchidos"
-        - name: "Validar resposta completa do perfil"
-          condition: "js: Object.keys(body.args).length >= 3"
-          message: "Resposta deve conter pelo menos 3 campos no args"
+        - name: "admin_privileges_check"
+          condition: "body.args.admin === 'true' || body.args.admin === true"
+          message: "Usuário deve ter privilégios de administrador"
+
+        - name: "name_not_empty"
+          condition: "body.args.name && body.args.name.trim().length > 0"
+          message: "Nome do usuário não pode ser vazio"
+
+        - name: "name_format_valid"
+          condition: "body.args.name.split(' ').length >= 2"
+          message: "Nome deve ter pelo menos nome e sobrenome"
+
+        - name: "username_in_query"
+          condition: "body.args.username && body.args.username.includes('@')"
+          message: "Username deve ser um email válido"
+
+        - name: "authorization_header_present"
+          condition: "body.headers.Authorization && body.headers.Authorization.startsWith('Bearer ')"
+          message: "Header Authorization deve estar presente e começar com 'Bearer '"
+
+        - name: "response_contains_expected_data"
+          condition: "Object.keys(body.args).length >= 3"
+          message: "Response deve conter pelo menos 3 parâmetros"
+
+        - name: "token_in_authorization"
+          condition: "body.headers.Authorization && body.headers.Authorization.includes('eyJ')"
+          message: "Header Authorization deve conter o token JWT"
 
     capture:
       user_name: "body.args.name"

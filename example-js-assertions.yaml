@@ -1,0 +1,98 @@
+suite_name: "JavaScript em Assertions - Exemplos"
+node_id: "js-assertions-examples"
+base_url: "http://localhost:8080"
+
+variables:
+  current_timestamp: 1726945524000  # Timestamp fixo para exemplo
+  min_age: 18
+
+steps:
+  - name: "Teste com JavaScript em Assertions"
+    request:
+      method: POST
+      url: "/post"
+      body:
+        timestamp: "{{current_timestamp}}"
+        user:
+          age: 25
+          email: "test@example.com"
+        items: [
+          { id: 1, price: 10.50 },
+          { id: 2, price: 25.99 }
+        ]
+
+    assert:
+      status_code: 200
+
+      # 1. Assertions customizadas com JavaScript
+      custom:
+        - name: "timestamp_validation"
+          condition: "body.json.timestamp > 1726945000000"
+          message: "Timestamp deve ser válido"
+
+        - name: "email_format"
+          condition: "/^[^@]+@[^@]+\\.[^@]+$/.test(body.json.user.email)"
+          message: "Email deve ter formato válido"
+
+        - name: "all_prices_positive"
+          condition: "body.json.items.every(item => item.price > 0)"
+          message: "Todos os preços devem ser positivos"
+
+        - name: "age_validation"
+          condition: "body.json.user.age >= 18"
+          message: "Usuário deve ser maior de idade"
+
+      # 2. Uso de $js para gerar valores dinâmicos (usando valores fixos para exemplo)
+      body:
+        json:
+          timestamp:
+            greater_than: 1726945000000  # Timestamp mínimo
+          user:
+            age:
+              greater_than: 17  # Maior que 17
+          items:
+            length:
+              equals: 2  # Exatamente 2 itens
+
+  - name: "Exemplo com Validação de Data/Hora"
+    request:
+      method: GET
+      url: "/delay/1"
+
+    assert:
+      status_code: 200
+
+      # Validação de tempo de resposta usando JavaScript
+      custom:
+        - name: "response_time_check"
+          condition: "response_time >= 1000 && response_time <= 2000"
+          message: "Tempo de resposta deve estar entre 1-2 segundos"
+
+      # Tempo de resposta usando valor fixo para exemplo
+      response_time_ms:
+        greater_than: 800   # Pelo menos 800ms
+        less_than: 3000     # Máximo 3 segundos
+
+  - name: "Validação com Variáveis e Lógica Complexa"
+    request:
+      method: POST
+      url: "/post"
+      body:
+        current_hour: 14     # Simula 14h para teste
+        random_score: 75     # Score fixo para teste
+
+    assert:
+      status_code: 200
+
+      custom:
+        - name: "business_hours"
+          condition: "body.json.current_hour >= 9 && body.json.current_hour <= 17"
+          message: "Deve estar em horário comercial (9h-17h)"
+
+        - name: "score_range"
+          condition: "body.json.random_score >= 0 && body.json.random_score <= 100"
+          message: "Score deve estar entre 0-100"
+
+        - name: "combination_check"
+          condition: "body.json.current_hour > 12 || body.json.random_score > 50"
+          message: "Deve ser após meio-dia OU score alto"
