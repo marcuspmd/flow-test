@@ -202,6 +202,16 @@ export class FakerService {
     "helpers.arrayElements",
     "helpers.shuffle",
 
+    // Word generation
+    "word.noun",
+    "word.verb",
+    "word.adjective",
+    "word.adverb",
+
+    // Random helpers (modern equivalents)
+    "string.sample",
+    "helpers.slugify",
+
     // Finance
     "finance.amount",
     "finance.currencyCode",

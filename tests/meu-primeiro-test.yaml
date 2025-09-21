@@ -1,7 +1,7 @@
 # tests/meu-primeiro-teste.yaml
 suite_name: "Teste de Login API"
 node_id: "auth"
-base_url: "{{api_base_url}}"
+base_url: "{{httpbin_url}}"
 
 variables:
   secure_signing_key: "NTNv7j0TuYARvmNMmWXo6fKvM4o6nv/aUi9ryX38ZH+L1bkrnD1ObOQ8JAUmHCBq7Iy7otZcyAagBLHVKvvYaIpmMuxmARQ97jUVG16Jkpkp1wXOPsrF9zwew6TpczyHkHgX5EuLg2MeBuiT/qJACs1J0apruOOJCg/gOtkjB4c="

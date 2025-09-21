@@ -10,7 +10,7 @@ metadata:
 
 variables:
   workflow_test_id: "workflow-{{$faker.string.uuid}}"
-  customer_id: "{{$faker.random.number({min: 1000, max: 9999})}}"
+  customer_id: "{{$faker.number.int({min: 1000, max: 9999})}}"
   session_id: "session-{{$faker.string.uuid}}"
 
   # E-commerce test data
