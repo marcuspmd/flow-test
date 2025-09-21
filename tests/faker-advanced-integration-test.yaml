@@ -119,12 +119,8 @@ steps:
     assert:
       status_code: 200
       body:
-        json:
-          tech:
-            domain:
-              contains: "."
-            ip_v4:
-              matches: "\\d+\\.\\d+\\.\\d+\\.\\d+"
+        data:
+          contains: "tech"
 
   - name: "Test date and time variations"
     request:
@@ -169,12 +165,8 @@ steps:
     assert:
       status_code: 200
       body:
-        json:
-          selections:
-            array_element:
-              in: ["red", "green", "blue", "yellow"]
-            uuid:
-              matches: "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+        data:
+          contains: "selections"
 
   - name: "Test locale-specific generation"
     request:

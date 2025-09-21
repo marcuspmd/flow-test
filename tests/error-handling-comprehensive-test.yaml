@@ -319,7 +319,7 @@ steps:
         step: 3
         chain_id: "{{error_test_id}}"
         previous_step_result: "{{chain_step_2_result}}"
-        operation: "{{chain_step_2_result === 'success' ? 'normal_processing' : 'error_recovery'}}"
+        operation: "{{chain_step_2_result === 'success' ? 'normal_operation' : 'error_recovery'}}"
     assert:
       status_code: 200
       body:
@@ -344,7 +344,7 @@ steps:
           capture:
             error_code: "422"
             error_type: "validation_error"
-            error_message: "Unprocessable Entity"
+            error_message: "`Unprocessable Entity`"
             error_details: "validation_failed"
 
   # 9. Cleanup After Errors

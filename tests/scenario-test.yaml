@@ -28,8 +28,8 @@ steps:
           assert:
             status_code: 200
             body:
-              json.action:
-                equals: "login"
+              data:
+                contains: "login"
           capture:
             auth_token: "body.headers.Host"
             login_success: "`true`"

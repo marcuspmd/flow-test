@@ -155,6 +155,7 @@ export class FakerService {
     "internet.ip",
     "internet.ipv4",
     "internet.mac",
+    "internet.userAgent",
 
     // Phone
     "phone.number",
@@ -175,6 +176,7 @@ export class FakerService {
     "lorem.sentence",
     "lorem.sentences",
     "lorem.paragraph",
+    "lorem.paragraphs",
     "lorem.text",
     "lorem.lines",
 
@@ -188,6 +190,9 @@ export class FakerService {
     "string.alphanumeric",
     "string.numeric",
     "string.uuid",
+    "string.hexadecimal",
+    "string.binary",
+    "string.octal",
 
     // Boolean
     "datatype.boolean",

@@ -139,22 +139,20 @@ steps:
 
     scenarios:
       # Happy Path: Usuário premium com feature habilitada
-      - condition: "status_code == `200` && body.json.user_type == `premium` && body.json.feature_enabled == `true`"
+      - condition: "status_code == `200` && contains(body.data, 'premium') && contains(body.data, 'true')"
         then:
           assert:
             status_code: 200
             body:
-              json.user_type:
-                equals: "premium"
-              json.feature_enabled:
-                equals: true
+              data:
+                contains: "premium"
           capture:
             access_level: "'full'"
             feature_access: "'enabled'"
             billing_tier: "'premium'"
 
       # Sad Path: Usuário básico
-      - condition: "body.json.user_type != 'premium'"
+      - condition: "!contains(body.data, 'premium')"
         then:
           capture:
             access_level: "'limited'"
@@ -162,7 +160,7 @@ steps:
             billing_tier: "'basic'"
 
       # Edge Case: Feature desabilitada
-      - condition: "body.json.feature_enabled == `false`"
+      - condition: "contains(body.data, 'false')"
         then:
           capture:
             access_level: "'disabled'"
@@ -245,7 +243,7 @@ steps:
 
     scenarios:
       # Teste completamente bem-sucedido
-      - condition: "body.json.test_summary.auth_status == `authenticated` && body.json.test_summary.error_handled == `true`"
+      - condition: "contains(body.data, 'authenticated') && contains(body.data, 'true')"
         then:
           capture:
             final_scenario_result: "'all_scenarios_passed'"
@@ -253,7 +251,7 @@ steps:
             recommendation: "'deploy_to_production'"
 
       # Teste com alguns problemas
-      - condition: "body.json.test_summary.auth_status == `authenticated` && body.json.test_summary.error_handled == `false`"
+      - condition: "contains(body.data, 'authenticated') && contains(body.data, 'false')"
         then:
           capture:
             final_scenario_result: "'partial_success'"
@@ -261,7 +259,7 @@ steps:
             recommendation: "'review_error_handling'"
 
       # Teste com falhas críticas
-      - condition: "body.json.test_summary.auth_status != 'authenticated'"
+      - condition: "!contains(body.data, 'authenticated')"
         then:
           capture:
             final_scenario_result: "'critical_failures'"

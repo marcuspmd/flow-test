@@ -540,53 +540,7 @@ export class GlobalVariablesService {
    * Resolves variable expressions with support for paths and exported variables
    */
   private resolveVariableExpression(expression: string): any {
-    // Check if it's a JavaScript expression (starts with 'js:', '$js.', or contains logical operators)
-    const hasLogicalOperators = /\|\||&&|[><=!]==?|\?|:/.test(expression);
-    if (
-      expression.startsWith("js:") ||
-      expression.startsWith("$js.") ||
-      hasLogicalOperators
-    ) {
-      try {
-        let jsExpression: string | null = null;
-
-        if (expression.startsWith("js:")) {
-          jsExpression =
-            javascriptService.parseJavaScriptExpression(expression);
-        } else if (expression.startsWith("$js.")) {
-          // Handle $js.return and $js.expression formats
-          jsExpression = expression.substring(4); // Remove "$js."
-        } else if (hasLogicalOperators) {
-          // Handle logical expressions like "jwt_login_success || false"
-          jsExpression = expression;
-        }
-
-        if (jsExpression) {
-          // Update execution context with current variables
-          const allVars = this.getAllVariables();
-          const context: JavaScriptExecutionContext = {
-            ...this.currentExecutionContext,
-            variables: allVars,
-          };
-          // Use code block mode only for $js expressions, not for logical operators
-          const useCodeBlock = expression.startsWith("$js.");
-          const result = javascriptService.executeExpression(
-            jsExpression,
-            context,
-            useCodeBlock
-          );
-          return result;
-        }
-        return undefined;
-      } catch (error) {
-        console.warn(
-          `Error resolving JavaScript expression '${expression}': ${error}`
-        );
-        return undefined;
-      }
-    }
-
-    // Check if it's a Faker expression (starts with 'faker.' or '$faker.')
+    // Check if it's a Faker expression (starts with 'faker.' or '$faker.') - PRIORITY OVER JS
     if (expression.startsWith("faker.") || expression.startsWith("$faker.")) {
       try {
         let fakerExpression = expression;
@@ -601,6 +555,55 @@ export class GlobalVariablesService {
           `Error resolving Faker expression '${expression}': ${error}`
         );
         return undefined;
+      }
+    }
+
+    // Check if it's a JavaScript expression, but NOT if it's a Faker expression
+    if (!expression.startsWith("faker.") && !expression.startsWith("$faker.")) {
+      const hasLogicalOperators = /\|\||&&|[><=!]==?|\?|:/.test(expression);
+
+      if (
+        expression.startsWith("js:") ||
+        expression.startsWith("$js.") ||
+        hasLogicalOperators
+      ) {
+        try {
+          let jsExpression: string | null = null;
+
+          if (expression.startsWith("js:")) {
+            jsExpression =
+              javascriptService.parseJavaScriptExpression(expression);
+          } else if (expression.startsWith("$js.")) {
+            // Handle $js.return and $js.expression formats
+            jsExpression = expression.substring(4); // Remove "$js."
+          } else if (hasLogicalOperators) {
+            // Handle logical expressions like "jwt_login_success || false"
+            jsExpression = expression;
+          }
+
+          if (jsExpression) {
+            // Update execution context with current variables
+            const allVars = this.getAllVariables();
+            const context: JavaScriptExecutionContext = {
+              ...this.currentExecutionContext,
+              variables: allVars,
+            };
+            // Use code block mode only for $js expressions, not for logical operators
+            const useCodeBlock = expression.startsWith("$js.");
+            const result = javascriptService.executeExpression(
+              jsExpression,
+              context,
+              useCodeBlock
+            );
+            return result;
+          }
+          return undefined;
+        } catch (error) {
+          console.warn(
+            `Error resolving JavaScript expression '${expression}': ${error}`
+          );
+          return undefined;
+        }
       }
     }
 

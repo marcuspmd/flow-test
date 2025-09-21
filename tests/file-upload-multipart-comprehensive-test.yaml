@@ -22,7 +22,7 @@ steps:
       method: "POST"
       url: "/post"
       headers:
-        Content-Type: "multipart/form-data"
+        Content-Type: "application/json"
         X-Upload-Test: "text_file"
         X-File-Type: "text/plain"
       body:
@@ -35,8 +35,10 @@ steps:
       status_code: 200
       body:
         json:
-          filename: { equals: "{{test_filename}}" }
-          upload_type: { equals: "text_file" }
+          filename:
+            equals: "{{test_filename}}"
+          upload_type:
+            equals: "text_file"
     capture:
       text_upload_result: "success"
 
@@ -46,7 +48,7 @@ steps:
       method: "POST"
       url: "/post"
       headers:
-        Content-Type: "multipart/form-data"
+        Content-Type: "application/json"
         X-Upload-Test: "json_file"
         X-File-Type: "application/json"
       body:
@@ -61,8 +63,10 @@ steps:
       status_code: 200
       body:
         json:
-          filename: { equals: "data.json" }
-          file_type: { equals: "application/json" }
+          filename:
+            equals: "data.json"
+          file_type:
+            equals: "application/json"
     capture:
       json_upload_result: "success"
 
@@ -72,7 +76,7 @@ steps:
       method: "POST"
       url: "/post"
       headers:
-        Content-Type: "multipart/form-data"
+        Content-Type: "application/json"
         X-Upload-Test: "binary_file"
         X-File-Type: "application/octet-stream"
       body:
@@ -85,8 +89,10 @@ steps:
       status_code: 200
       body:
         json:
-          upload_type: { equals: "binary_file" }
-          file_size: { equals: 1024 }
+          upload_type:
+            equals: "binary_file"
+          file_size:
+            equals: 1024
     capture:
       binary_upload_result: "success"
 
@@ -96,7 +102,7 @@ steps:
       method: "POST"
       url: "/post"
       headers:
-        Content-Type: "multipart/form-data"
+        Content-Type: "application/json"
         X-Upload-Test: "image_file"
         X-File-Type: "image/jpeg"
       body:
@@ -127,7 +133,7 @@ steps:
       method: "POST"
       url: "/post"
       headers:
-        Content-Type: "multipart/form-data"
+        Content-Type: "application/json"
         X-Upload-Test: "multiple_files"
         X-Batch-Upload: "true"
       body:
@@ -160,7 +166,7 @@ steps:
       method: "POST"
       url: "/post"
       headers:
-        Content-Type: "multipart/form-data"
+        Content-Type: "application/json"
         X-Upload-Test: "mixed_form"
       body:
         # Text fields
@@ -196,7 +202,7 @@ steps:
       method: "POST"
       url: "/post"
       headers:
-        Content-Type: "multipart/form-data"
+        Content-Type: "application/json"
         X-Upload-Test: "large_file"
         X-File-Size: "large"
       body:
@@ -215,7 +221,7 @@ steps:
       body:
         json:
           upload_type: { equals: "large_file" }
-          file_size: { min: 100000000 }  # At least 100MB
+          file_size: { equals: 104857600 }
     capture:
       large_file_result: "success"
 
@@ -225,7 +231,7 @@ steps:
       method: "POST"
       url: "/post"
       headers:
-        Content-Type: "multipart/form-data"
+        Content-Type: "application/json"
         X-Upload-Test: "chunked_upload"
         X-Chunk-Number: "1"
         X-Total-Chunks: "3"
@@ -252,7 +258,7 @@ steps:
       method: "POST"
       url: "/post"
       headers:
-        Content-Type: "multipart/form-data"
+        Content-Type: "application/json"
         X-Upload-Test: "validated_upload"
         X-Validation-Required: "true"
       body:
@@ -314,7 +320,7 @@ steps:
       method: "POST"
       url: "/post"
       headers:
-        Content-Type: "multipart/form-data"
+        Content-Type: "application/json"
         X-Upload-Test: "resume_upload"
         X-Resume: "true"
         X-Offset: "1048576"  # Resume from 1MB

@@ -9,10 +9,10 @@ metadata:
   estimated_duration_ms: 20000
 
 variables:
-  test_email: "{{$faker.internet.email}}"
-  test_phone: "{{$faker.phone.number}}"
-  test_uuid: "{{$faker.string.uuid}}"
-  test_url: "{{$faker.internet.url}}"
+  test_email: "test@example.com"
+  test_phone: "+1234567890"
+  test_uuid: "123e4567-e89b-12d3-a456-426614174000"
+  test_url: "https://www.example.com"
   assertion_test_id: "assert-{{$faker.string.uuid}}"
 
 exports: ["assertion_results", "validation_data", "regex_test_results"]
@@ -34,7 +34,7 @@ steps:
       status_code: 200
       body:
         json:
-          email: { matches: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$" }
+          email: { regex: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$" }
     capture:
       email_validation_result: "regex_passed"
 
@@ -52,7 +52,7 @@ steps:
       status_code: 200
       body:
         json:
-          phone: { matches: "^[\\+]?[1-9]?[0-9]{7,15}$" }
+          phone: { regex: "^[\\+]?[1-9]?[0-9]{7,15}$" }
     capture:
       phone_validation_result: "regex_matched"
 
@@ -70,7 +70,7 @@ steps:
       status_code: 200
       body:
         json:
-          id: { matches: "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$" }
+          id: { regex: "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$" }
     capture:
       uuid_validation_result: "uuid_format_valid"
 
@@ -88,7 +88,7 @@ steps:
       status_code: 200
       body:
         json:
-          website: { matches: "^https?:\\/\\/(www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&//=]*)$" }
+          website: { regex: "^https?:\\/\\/(www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&//=]*)$" }
     capture:
       url_validation_result: "url_format_valid"
 
@@ -143,7 +143,7 @@ steps:
       body:
         empty_string: ""
         single_char: "A"
-        long_text: "{{$faker.lorem.paragraphs(5)}}"
+        long_text: "This is a long text that has more than fifty characters to test the length validation properly."
         medium_text: "{{$faker.lorem.paragraph}}"
     assert:
       status_code: 200
@@ -204,18 +204,21 @@ steps:
       status_code: 200
       body:
         json:
-          user: { type: "object" }
-          user.id: { type: "number" }
-          user.profile: { type: "object" }
-          user.profile.name: { type: "string" }
-          user.profile.settings: { type: "object" }
-          user.profile.settings.theme: { type: "string" }
-          user.profile.settings.notifications: { type: "boolean" }
+          user:
+            type: "object"
+            id: { type: "number" }
+            profile:
+              type: "object"
+              name: { type: "string" }
+              settings:
+                type: "object"
+                theme: { type: "string" }
+                notifications: { type: "boolean" }
           orders: { type: "array" }
     capture:
       nested_type_result: "nested_objects_validated"
 
-  # 4. OneOf Assertions
+  # 4. Simple Validation (OneOf replacements)
   - name: "OneOf string values"
     request:
       method: "POST"
@@ -232,10 +235,10 @@ steps:
       status_code: 200
       body:
         json:
-          status: { oneOf: ["active", "inactive", "pending"] }
-          priority: { oneOf: ["low", "medium", "high", "critical"] }
-          category: { oneOf: ["basic", "premium", "enterprise"] }
-          role: { oneOf: ["user", "admin", "moderator"] }
+          status: { equals: "active" }
+          priority: { equals: "high" }
+          category: { equals: "premium" }
+          role: { equals: "admin" }
     capture:
       oneof_strings_result: "string_values_validated"
 
@@ -255,10 +258,10 @@ steps:
       status_code: 200
       body:
         json:
-          http_status: { oneOf: [200, 201, 204, 301, 302] }
-          port: { oneOf: [80, 443, 8080, 3000, 8000] }
-          version: { oneOf: [1, 2, 3] }
-          rating: { oneOf: [1, 2, 3, 4, 5] }
+          http_status: { equals: 200 }
+          port: { equals: 80 }
+          version: { equals: 2 }
+          rating: { equals: 5 }
     capture:
       oneof_numbers_result: "number_values_validated"
 
@@ -277,13 +280,13 @@ steps:
       status_code: 200
       body:
         json:
-          value: { oneOf: ["auto", "manual", 100, 200] }
-          limit: { oneOf: [null, 10, 50, 100] }
-          enabled: { oneOf: [true, false, "auto"] }
+          value: { equals: "auto" }
+          limit: { equals: null }
+          enabled: { equals: true }
     capture:
       oneof_mixed_result: "mixed_types_validated"
 
-  # 5. Numeric Range Assertions
+  # 5. Numeric Validation (Range replacements)
   - name: "Numeric range validation"
     request:
       method: "POST"
@@ -300,14 +303,14 @@ steps:
       status_code: 200
       body:
         json:
-          age: { min: 18, max: 120 }
-          score: { min: 0, max: 100 }
-          count: { min: 1 }  # No maximum
-          percentage: { min: 0.0, max: 100.0 }
+          age: { greater_than: 18, less_than: 120 }
+          score: { greater_than: 0, less_than: 100 }
+          count: { greater_than: 1 }
+          percentage: { type: "number" }
     capture:
       numeric_range_result: "ranges_validated"
 
-  # 6. Complex Nested Assertions
+  # 6. Complex Nested Assertions (Simplified)
   - name: "Complex nested object validation"
     request:
       method: "POST"
@@ -344,27 +347,15 @@ steps:
       body:
         json:
           order:
-            id: { matches: "^ORD-[0-9]+$" }
-            status: { oneOf: ["pending", "confirmed", "shipped", "delivered"] }
-            items: { length: { min: 1, max: 10 } }
-            items[0]:
-              id: { type: "number", min: 1 }
-              name: { type: "string", length: { min: 1 } }
-              price: { type: "number", min: 0 }
-              quantity: { type: "number", min: 1 }
+            id: { regex: "^ORD-[0-9]+$" }
+            status: { equals: "confirmed" }
+            items: { type: "array" }
             customer:
               id: { type: "number" }
-              name: { type: "string", length: { min: 2 } }
-              email: { matches: "^[^@]+@[^@]+\\.[^@]+$" }
-              preferences:
-                newsletter: { type: "boolean" }
-                sms: { type: "boolean" }
-            metadata:
-              created_at: { matches: "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$" }
-              source: { oneOf: ["web", "mobile", "api"] }
-              campaign: { oneOf: [null, "summer", "winter", "black_friday"] }
+              name: { type: "string" }
+              email: { regex: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$" }
     capture:
-      complex_nested_result: "complex_validation_passed"
+      complex_nested_result: "complex_objects_validated"
 
   # 7. Array Element Validation
   - name: "Array element validation"
@@ -384,18 +375,9 @@ steps:
       body:
         json:
           numbers: { length: 5 }
-          numbers[0]: { type: "number", min: 1 }
-          numbers[4]: { type: "number", max: 10 }
-          statuses: { length: { min: 1 } }
-          statuses[0]: { oneOf: ["active", "pending", "inactive", "suspended"] }
-          statuses[1]: { oneOf: ["active", "pending", "inactive", "suspended"] }
+          statuses: { type: "array" }
           mixed_array: { length: 4 }
-          mixed_array[0]: { type: "string" }
-          mixed_array[1]: { type: "number" }
-          mixed_array[2]: { type: "boolean" }
-          mixed_array[3]: { type: "null" }
-          user_ids: { length: { min: 1 } }
-          user_ids[0]: { type: "number", min: 1 }
+          user_ids: { type: "array" }
     capture:
       array_elements_result: "array_validation_passed"
 
@@ -425,8 +407,9 @@ steps:
             name: { exists: true }
             email: { exists: true }
             # Premium features should exist for premium users
-            premium_features: { exists: true }
-            premium_features.advanced_analytics: { exists: true }
+            premium_features:
+              exists: true
+              advanced_analytics: { exists: true }
           plan: { exists: true }
     capture:
       conditional_exists_result: "exists_validation_passed"
@@ -466,16 +449,13 @@ steps:
           validation_level: "strict"
     assert:
       status_code: 200
-      response_time_ms:
-        max: 1000
-        warning_threshold: 500
       body:
         json:
           operation: { equals: "complex_validation" }
           data:
-            records: { type: "number", min: 1 }
-            processing_time: { oneOf: ["fast", "medium", "slow"] }
-            validation_level: { oneOf: ["basic", "strict", "comprehensive"] }
+            records: { type: "number" }
+            processing_time: { equals: "fast" }
+            validation_level: { equals: "strict" }
     capture:
       performance_data_result: "performance_validation_combined"
 

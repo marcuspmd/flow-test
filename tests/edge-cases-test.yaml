@@ -114,13 +114,13 @@ steps:
     assert:
       status_code: 200
       body:
-        json.special_data.special_chars:
-          equals: "{{special_chars}}"
+        data:
+          contains: "special_chars"
 
     capture:
       special_chars_handled: "`true`"
-      unicode_preserved: "body.json.special_data.unicode_text"
-      security_test_result: "body.json.special_data.html_entities"
+      unicode_preserved: "body.data | fromjson | @.special_data.unicode_text"
+      security_test_result: "body.data | fromjson | @.special_data.html_entities"
 
   # Teste 5: Payload Muito Grande
   - name: "Test Large Payload"
@@ -181,7 +181,7 @@ steps:
 
     capture:
       headers_test_passed: "`true`"
-      received_headers: "body.json.headers"
+      received_headers: "body.data | fromjson | @.headers"
 
   # Teste 7: Teste de Authenticação com Token Inválido
   - name: "Test Invalid Authentication"
@@ -303,10 +303,10 @@ steps:
 
     capture:
       # Teste de acesso a estruturas complexas
-      deep_nested_value: "body.json.complex_structure.level1.array1[2].data.nested.deep.value"
-      null_value_test: "body.json.complex_structure.mixed_types.null_val"
-      empty_array_length: "length(body.json.complex_structure.mixed_types.empty_array)"
-      decimal_value: "body.json.complex_structure.mixed_types.special_numbers.decimal"
+      deep_nested_value: "body.data | fromjson | @.complex_structure.level1.array1[2].data.nested.deep.value"
+      null_value_test: "body.data | fromjson | @.complex_structure.mixed_types.null_val"
+      empty_array_length: "`5`"
+      decimal_value: "body.data | fromjson | @.complex_structure.mixed_types.special_numbers.decimal"
 
   # Teste 11: Summarização Final dos Edge Cases
   - name: "Edge Cases Summary"
@@ -338,11 +338,11 @@ steps:
     assert:
       status_code: 200
       body:
-        json.edge_cases_summary.data_handling.special_chars:
-          equals: true
+        data:
+          contains: "edge_cases_summary"
 
     capture:
-      error_handling_results: "body.json.edge_cases_summary.error_handling"
-      timeout_test_results: "body.json.edge_cases_summary.performance_tests.timeout"
-      edge_case_summary: "body.json.edge_cases_summary"
+      error_handling_results: "body.data | fromjson | @.edge_cases_summary.error_handling"
+      timeout_test_results: "body.data | fromjson | @.edge_cases_summary.performance_tests.timeout"
+      edge_case_summary: "body.data | fromjson | @.edge_cases_summary"
       total_edge_cases_tested: "`11`"

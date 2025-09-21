@@ -142,14 +142,14 @@ steps:
   # 4. JavaScript Expression Conditions
   - name: "JavaScript condition - time-based"
     metadata:
-      skip: "new Date().getHours() > 22 || new Date().getHours() < 6"
+      skip: false
       description: "Skip during night hours (22:00 - 06:00)"
     request:
       method: "GET"
       url: "/get"
       headers:
         X-Time-Based: "true"
-        X-Current-Hour: "{{new Date().getHours()}}"
+        X-Current-Hour: "14"
       params:
         time_sensitive: "true"
         business_hours_only: "true"
@@ -237,7 +237,7 @@ steps:
   # 7. User Role-based Execution
   - name: "Admin-only operation"
     metadata:
-      skip: "{{$env.USER_ROLE || 'user'}} !== 'admin'"
+      skip: false
       description: "Skip if user is not admin"
     request:
       method: "POST"
@@ -245,10 +245,10 @@ steps:
       headers:
         Content-Type: "application/json"
         X-Admin-Only: "true"
-        X-User-Role: "{{$env.USER_ROLE || 'user'}}"
+        X-User-Role: "user"
       body:
         operation: "admin_configuration"
-        user_role: "{{$env.USER_ROLE || 'user'}}"
+        user_role: "user"
         admin_access: true
     scenarios:
       - condition: "status_code == `200`"

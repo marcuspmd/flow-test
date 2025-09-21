@@ -186,7 +186,7 @@ steps:
         additional_data: "{{$faker.lorem.paragraphs(5)}}"
         metadata:
           description: "{{$faker.lorem.paragraph}}"
-          tags: ["{{$faker.word}}", "{{$faker.word}}", "{{$faker.word}}"]
+          tags: ["{{$faker.lorem.word}}", "{{$faker.lorem.word}}", "{{$faker.lorem.word}}"]
     assert:
       status_code: 200
       response_time_ms:
@@ -359,7 +359,7 @@ steps:
         baseline_test: "false"
         additional_processing: "true"
         complex_data:
-          items: ["{{$faker.word}}", "{{$faker.word}}", "{{$faker.word}}"]
+          items: ["{{$faker.lorem.word}}", "{{$faker.lorem.word}}", "{{$faker.lorem.word}}"]
           metadata: "{{$faker.lorem.paragraph}}"
     assert:
       status_code: 200
