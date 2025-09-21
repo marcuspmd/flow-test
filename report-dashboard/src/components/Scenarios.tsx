@@ -242,7 +242,7 @@ const Scenarios: React.FC<ScenariosProps> = ({
               filteredScenarios.map((scenario) => (
                 <div
                   key={scenario.index}
-                  className="card bg-base-50 border border-base-200 hover:bg-base-100 transition-colors"
+                  className="card bg-base-50 border-2 border-base-200 hover:bg-base-100 transition-all duration-200 hover:shadow-md"
                 >
                   <div className="card-body p-4">
                     <div
@@ -319,8 +319,8 @@ const Scenarios: React.FC<ScenariosProps> = ({
                             <h5 className="font-semibold text-sm mb-2">
                               Condição
                             </h5>
-                            <div className="bg-base-200 rounded p-3 text-sm">
-                              <code className="break-all">
+                            <div className="bg-base-200/50 rounded-lg px-3 py-2 text-sm">
+                              <code className="break-all font-mono">
                                 {scenario.condition}
                               </code>
                             </div>

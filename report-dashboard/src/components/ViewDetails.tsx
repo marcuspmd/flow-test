@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import CodeBlock from "./CodeBlock";
+import AssertionStats from "./AssertionStats";
 import type {
   StepResult,
   SuiteResult,
@@ -320,57 +321,10 @@ const ViewDetails: React.FC<ViewDetailsProps> = ({
 
   const renderAssertionsSection = (step: StepResult) => (
     <div className="space-y-4">
-      {step.assertions_results && step.assertions_results.length > 0 ? (
-        <div className="space-y-3">
-          {step.assertions_results.map((assertion, idx) => (
-            <div
-              key={idx}
-              className={`alert ${
-                assertion.passed ? "alert-success" : "alert-error"
-              }`}
-            >
-              <span className="text-lg">{assertion.passed ? "✅" : "❌"}</span>
-              <div>
-                <h4 className="font-bold">{assertion.field || "Assertion"}</h4>
-                <div className="text-sm">
-                  {assertion.message}
-                  {assertion.expected && (
-                    <div className="mt-1">
-                      <strong>Esperado:</strong>
-                      <div className="mt-1">
-                        <CodeBlock
-                          code={assertion.expected}
-                          language="json"
-                          title=""
-                          maxHeight="100px"
-                        />
-                      </div>
-                    </div>
-                  )}
-                  {assertion.actual && (
-                    <div className="mt-1">
-                      <strong>Atual:</strong>
-                      <div className="mt-1">
-                        <CodeBlock
-                          code={assertion.actual}
-                          language="json"
-                          title=""
-                          maxHeight="100px"
-                        />
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className="text-center py-8">
-          <div className="text-4xl mb-4">🔍</div>
-          <p className="text-base-content/60">Nenhuma assertion encontrada</p>
-        </div>
-      )}
+      <AssertionStats
+        assertions={step.assertions_results || []}
+        showDetails={true}
+      />
     </div>
   );
 

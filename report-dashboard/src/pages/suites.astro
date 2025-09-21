@@ -144,6 +144,39 @@ function formatDuration(ms: number): string {
             </div>
           </div>
 
+          <!-- Metadata Section -->
+          {(suite.description || suite.metadata) && (
+            <div class="space-y-3">
+              {suite.description && (
+                <div class="text-sm">
+                  <span class="text-xs uppercase tracking-wide text-base-content/70 block mb-1">Descrição</span>
+                  <p class="text-base-content/80 line-clamp-2">{suite.description}</p>
+                </div>
+              )}
+
+              {suite.metadata && (
+                <div class="flex flex-wrap gap-2">
+                  {suite.metadata.tags && suite.metadata.tags.length > 0 && (
+                    <div class="flex flex-wrap gap-1">
+                      {suite.metadata.tags.slice(0, 3).map((tag: string) => (
+                        <span class="badge badge-outline badge-xs">{tag}</span>
+                      ))}
+                      {suite.metadata.tags.length > 3 && (
+                        <span class="badge badge-ghost badge-xs">+{suite.metadata.tags.length - 3}</span>
+                      )}
+                    </div>
+                  )}
+
+                  {suite.metadata.estimated_duration_ms && (
+                    <div class="text-xs text-base-content/60">
+                      Est: {formatDuration(suite.metadata.estimated_duration_ms)}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
           <!-- Progress Bar -->
           <div>
             <div class="w-full bg-base-200 rounded-full h-2">
@@ -156,12 +189,13 @@ function formatDuration(ms: number): string {
             <a href={withBase(`suite/${suite.node_id}`)} class="btn btn-primary btn-sm">
               View Details
             </a>
-            <a
-              href={withBase(`api/postman-export?file=${encodeURIComponent(suite.file_path)}`)}
-              class="btn btn-outline btn-sm"
+            <button
+              class="btn btn-outline btn-sm postman-export-btn"
+              data-suite={JSON.stringify(suite)}
+              title={`Export ${suite.suite_name} to Postman collection`}
             >
               Export Postman
-            </a>
+            </button>
             <button class="btn btn-ghost btn-sm view-details-btn"
                     data-suite={JSON.stringify(suite)}>
               Quick Info
@@ -253,6 +287,83 @@ function formatDuration(ms: number): string {
         }
       });
     });
+
+    // Postman Export functionality
+    const postmanExportButtons = document.querySelectorAll('.postman-export-btn');
+
+    postmanExportButtons.forEach(button => {
+      button.addEventListener('click', (e) => {
+        const target = e.target as HTMLElement;
+        const suiteData = target.dataset.suite;
+
+        if (suiteData) {
+          try {
+            const suite = JSON.parse(suiteData);
+            exportToPostman(suite);
+          } catch (error) {
+            console.error('Error parsing suite data for Postman export:', error);
+          }
+        }
+      });
+    });
+
+    function exportToPostman(suite: any) {
+      const postmanCollection = {
+        info: {
+          name: suite.suite_name,
+          schema: "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+          description: `Exported from Flow Test suite: ${suite.file_path}`
+        },
+        item: suite.steps?.map((step: any) => ({
+          name: step.name,
+          request: {
+            method: step.request?.method || 'GET',
+            url: {
+              raw: step.request?.url?.startsWith('http')
+                ? step.request.url
+                : `${suite.base_url || ''}${step.request?.url || ''}`,
+              ...(step.request?.params && {
+                query: Object.entries(step.request.params).map(([key, value]) => ({
+                  key,
+                  value: String(value)
+                }))
+              })
+            },
+            ...(step.request?.headers && {
+              header: Object.entries(step.request.headers).map(([key, value]) => ({
+                key,
+                value: String(value)
+              }))
+            }),
+            ...(step.request?.body && {
+              body: {
+                mode: "raw",
+                raw: JSON.stringify(step.request.body, null, 2),
+                options: {
+                  raw: {
+                    language: "json"
+                  }
+                }
+              }
+            })
+          },
+          response: []
+        })) || []
+      };
+
+      const blob = new Blob([JSON.stringify(postmanCollection, null, 2)], {
+        type: 'application/json'
+      });
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${suite.suite_name.replace(/[^a-zA-Z0-9]/g, '_')}.postman_collection.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
   });
 </script>
 

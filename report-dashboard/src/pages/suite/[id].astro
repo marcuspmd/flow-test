@@ -109,6 +109,103 @@ const totalIterations = iterationSteps.reduce((acc, step) => acc + (step.iterati
     </div>
   </div>
 
+  <!-- Suite Metadata -->
+  {(suite.description || suite.metadata) && (
+    <div class="card bg-base-100 shadow-xl mb-8">
+      <div class="card-body">
+        <div class="flex items-center gap-3 mb-4">
+          <span class="text-2xl">📋</span>
+          <h2 class="card-title">Metadados da Suite</h2>
+        </div>
+
+        {suite.description && (
+          <div class="mb-4">
+            <h3 class="text-lg font-semibold mb-2">Descrição</h3>
+            <p class="text-base-content/80 bg-base-200/50 rounded-lg px-4 py-3">
+              {suite.description}
+            </p>
+          </div>
+        )}
+
+        {suite.metadata && (
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {suite.metadata.description && suite.metadata.description !== suite.description && (
+              <div class="space-y-2">
+                <h4 class="font-semibold text-sm text-base-content/60 uppercase tracking-wide">
+                  Descrição Adicional
+                </h4>
+                <p class="text-sm bg-base-200/50 rounded px-3 py-2">
+                  {suite.metadata.description}
+                </p>
+              </div>
+            )}
+
+            {suite.metadata.tags && suite.metadata.tags.length > 0 && (
+              <div class="space-y-2">
+                <h4 class="font-semibold text-sm text-base-content/60 uppercase tracking-wide">
+                  Tags
+                </h4>
+                <div class="flex flex-wrap gap-2">
+                  {suite.metadata.tags.map((tag: string) => (
+                    <span class="badge badge-outline badge-sm">{tag}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {suite.metadata.priority && (
+              <div class="space-y-2">
+                <h4 class="font-semibold text-sm text-base-content/60 uppercase tracking-wide">
+                  Prioridade Definida
+                </h4>
+                <div class={`badge ${getPriorityColor(suite.metadata.priority)}`}>
+                  {suite.metadata.priority}
+                </div>
+              </div>
+            )}
+
+            {suite.metadata.estimated_duration_ms && (
+              <div class="space-y-2">
+                <h4 class="font-semibold text-sm text-base-content/60 uppercase tracking-wide">
+                  Duração Estimada
+                </h4>
+                <div class="text-sm bg-info/10 border border-info/20 rounded px-3 py-2">
+                  <span class="font-mono">{formatDuration(suite.metadata.estimated_duration_ms)}</span>
+                  <span class="text-xs text-base-content/60 ml-2">
+                    (Real: {formatDuration(suite.duration_ms)})
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {suite.metadata.timeout && (
+              <div class="space-y-2">
+                <h4 class="font-semibold text-sm text-base-content/60 uppercase tracking-wide">
+                  Timeout Configurado
+                </h4>
+                <div class="text-sm bg-warning/10 border border-warning/20 rounded px-3 py-2">
+                  <span class="font-mono">{formatDuration(suite.metadata.timeout)}</span>
+                </div>
+              </div>
+            )}
+
+            {(!suite.metadata.tags || suite.metadata.tags.length === 0) &&
+             !suite.metadata.estimated_duration_ms &&
+             !suite.metadata.timeout &&
+             !suite.metadata.description && (
+              <div class="col-span-full text-center py-4">
+                <div class="text-2xl mb-2">📝</div>
+                <p class="text-base-content/60 text-sm">
+                  Esta suite não possui metadados adicionais configurados
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  )}
+
   <!-- Suite Statistics -->
   <div class="stats stats-vertical lg:stats-horizontal shadow mb-8 w-full">
     <div class="stat">
@@ -336,31 +433,198 @@ const totalIterations = iterationSteps.reduce((acc, step) => acc + (step.iterati
                 <!-- Assertions Results -->
                 {step.assertions_results && step.assertions_results.length > 0 && (
                   <div class="mt-4">
-                    <h4 class="font-semibold mb-2 text-warning">🔍 Assertions</h4>
-                    <div class="space-y-2">
-                      {step.assertions_results.map((assertion, idx) => (
-                        <div class={`alert ${assertion.passed ? 'alert-success' : 'alert-error'} alert-sm`}>
-                          <span class="text-xs">
-                            <strong>{assertion.field}:</strong>
-                            Expected <CodeBlock
-                              client:load
-                              code={assertion.expected}
-                              language="json"
-                              title=""
-                              maxHeight="50px"
-                            />,
-                            Got <CodeBlock
-                              client:load
-                              code={assertion.actual}
-                              language="json"
-                              title=""
-                              maxHeight="50px"
-                            />
-                            {assertion.message && ` - ${assertion.message}`}
-                          </span>
+                    {(() => {
+                      const total = step.assertions_results.length;
+                      const passed = step.assertions_results.filter(a => a.passed).length;
+                      const failed = total - passed;
+                      const successRate = total > 0 ? Math.round((passed / total) * 100) : 0;
+
+                      return (
+                        <div>
+                          <!-- Stats Header -->
+                          <div class="stats stats-vertical lg:stats-horizontal shadow bg-base-100 w-full mb-4">
+                            <div class="stat">
+                              <div class="stat-figure text-primary">
+                                <span class="text-lg">📊</span>
+                              </div>
+                              <div class="stat-title text-xs">Total</div>
+                              <div class="stat-value text-sm text-primary">{total}</div>
+                              <div class="stat-desc text-xs">assertions</div>
+                            </div>
+
+                            <div class="stat">
+                              <div class="stat-figure text-success">
+                                <span class="text-lg">✅</span>
+                              </div>
+                              <div class="stat-title text-xs">Passed</div>
+                              <div class="stat-value text-sm text-success">{passed}</div>
+                              <div class="stat-desc text-xs">{passed === 1 ? 'assertion' : 'assertions'}</div>
+                            </div>
+
+                            {failed > 0 && (
+                              <div class="stat">
+                                <div class="stat-figure text-error">
+                                  <span class="text-lg">❌</span>
+                                </div>
+                                <div class="stat-title text-xs">Failed</div>
+                                <div class="stat-value text-sm text-error">{failed}</div>
+                                <div class="stat-desc text-xs">{failed === 1 ? 'assertion' : 'assertions'}</div>
+                              </div>
+                            )}
+
+                            <div class="stat">
+                              <div class="stat-figure text-info">
+                                <span class="text-lg">📈</span>
+                              </div>
+                              <div class="stat-title text-xs">Success Rate</div>
+                              <div class={`stat-value text-sm ${successRate === 100 ? 'text-success' : successRate >= 80 ? 'text-warning' : 'text-error'}`}>
+                                {successRate}%
+                              </div>
+                              <div class="stat-desc text-xs">success</div>
+                            </div>
+                          </div>
+
+                          <!-- Assertion Details -->
+                          <div class="space-y-2">
+                            {step.assertions_results.map((assertion, idx) => {
+                              const isEqual = JSON.stringify(assertion.expected) === JSON.stringify(assertion.actual);
+                              const failedCount = step.assertions_results.filter(a => !a.passed).length;
+                              const shouldShowDetails = !assertion.passed || failedCount < 3;
+
+                              return (
+                                <div class={`rounded-lg border-2 p-4 mb-3 transition-all duration-200 hover:shadow-md ${
+                                  assertion.passed
+                                    ? 'bg-success/5 border-success/30 hover:bg-success/10'
+                                    : 'bg-error/5 border-error/30 hover:bg-error/10'
+                                }`}>
+                                  {/* Header com status e campo */}
+                                  <div class="flex items-start justify-between gap-4 mb-3">
+                                    <div class="flex items-center gap-3">
+                                      <div class={`flex items-center justify-center w-8 h-8 rounded-full text-lg font-bold ${
+                                        assertion.passed
+                                          ? 'bg-success text-success-content'
+                                          : 'bg-error text-error-content'
+                                      }`}>
+                                        {assertion.passed ? '✓' : '✗'}
+                                      </div>
+                                      <div>
+                                        <h4 class="font-semibold text-base text-base-content">{assertion.field}</h4>
+                                        <div class="flex items-center gap-2 mt-1">
+                                          <span class={`badge badge-sm font-medium ${
+                                            assertion.passed ? 'badge-success' : 'badge-error'
+                                          }`}>
+                                            {assertion.passed ? 'PASSED' : 'FAILED'}
+                                          </span>
+                                          {assertion.operator && (
+                                            <span class="badge badge-outline badge-sm font-mono">
+                                              {assertion.operator}
+                                            </span>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+
+                                    {assertion.passed && isEqual && (
+                                      <div class="flex items-center gap-2">
+                                        <span class="text-sm text-success font-medium">✓ Match</span>
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  {/* Condição da assertion */}
+                                  <div class="bg-base-100 rounded-lg p-3 mb-3">
+                                    <div class="text-xs font-medium text-base-content/60 mb-2 uppercase tracking-wide">
+                                      Condição
+                                    </div>
+                                    <div class="text-sm font-mono bg-base-200 rounded px-3 py-2">
+                                      <span class="text-primary font-semibold">{assertion.field}</span>
+                                      <span class="text-base-content/70 mx-2">{assertion.operator || 'equals'}</span>
+                                      <span class="text-secondary font-semibold">
+                                        {typeof assertion.expected === 'object'
+                                          ? JSON.stringify(assertion.expected)
+                                          : assertion.expected}
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  {assertion.message && (
+                                    <div class="text-sm text-base-content/80 bg-base-200/50 rounded-lg px-3 py-2 mb-3">
+                                      {assertion.message}
+                                    </div>
+                                  )}
+
+                                  {/* Detalhes dos valores */}
+                                  {(shouldShowDetails && !isEqual) || !assertion.passed ? (
+                                    <div class="space-y-4">
+                                      <div class="divider my-2">Comparação de Valores</div>
+                                      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                        <div class="space-y-2">
+                                          <div class="flex items-center gap-2">
+                                            <span class="text-sm font-semibold text-info">Esperado</span>
+                                            <span class="badge badge-info badge-xs">expected</span>
+                                          </div>
+                                          {typeof assertion.expected === 'object' ? (
+                                            <CodeBlock
+                                              client:load
+                                              code={JSON.stringify(assertion.expected, null, 2)}
+                                              language="json"
+                                              title=""
+                                              maxHeight="150px"
+                                            />
+                                          ) : (
+                                            <div class="bg-info/10 border border-info/20 rounded-lg px-3 py-2">
+                                              <div class="text-sm font-mono text-info-content break-all">
+                                                {String(assertion.expected)}
+                                              </div>
+                                            </div>
+                                          )}
+                                        </div>
+
+                                        <div class="space-y-2">
+                                          <div class="flex items-center gap-2">
+                                            <span class="text-sm font-semibold text-warning">Recebido</span>
+                                            <span class="badge badge-warning badge-xs">actual</span>
+                                          </div>
+                                          {typeof assertion.actual === 'object' ? (
+                                            <CodeBlock
+                                              client:load
+                                              code={JSON.stringify(assertion.actual, null, 2)}
+                                              language="json"
+                                              title=""
+                                              maxHeight="150px"
+                                            />
+                                          ) : (
+                                            <div class="bg-warning/10 border border-warning/20 rounded-lg px-3 py-2">
+                                              <div class="text-sm font-mono text-warning-content break-all">
+                                                {String(assertion.actual)}
+                                              </div>
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ) : assertion.passed && isEqual ? (
+                                    <div class="bg-success/10 border border-success/20 rounded-lg p-3">
+                                      <div class="flex items-center gap-2 text-success">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                          <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                                        </svg>
+                                        <span class="text-sm font-medium">Assertion passou conforme esperado</span>
+                                      </div>
+                                      <div class="text-xs text-success/80 mt-1">
+                                        Valor recebido: <span class="font-mono bg-success/20 px-1 rounded">
+                                          {typeof assertion.actual === 'object' ? 'Objeto/Array' : String(assertion.actual)}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  ) : null}
+                                </div>
+                              );
+                            })}
+                          </div>
                         </div>
-                      ))}
-                    </div>
+                      );
+                    })()}
                   </div>
                 )}
 
@@ -579,30 +843,82 @@ const totalIterations = iterationSteps.reduce((acc, step) => acc + (step.iterati
                           <!-- Iteration Assertions -->
                           {iteration.assertions_results && iteration.assertions_results.length > 0 && (
                             <div class="mt-4">
-                              <h6 class="font-semibold mb-2 text-warning">🔍 Assertions - Iteração #{iterIndex + 1}</h6>
+                              <h6 class="font-semibold mb-3 text-warning flex items-center gap-2">
+                                🔍 Assertions - Iteração #{iterIndex + 1}
+                                <span class="badge badge-sm badge-neutral">{iteration.assertions_results.length}</span>
+                              </h6>
+
                               <div class="space-y-2">
-                                {iteration.assertions_results.map((assertion, assertIndex) => (
-                                  <div class={`alert ${assertion.passed ? 'alert-success' : 'alert-error'} alert-sm`}>
-                                    <span class="text-xs">
-                                      <strong>{assertion.field}:</strong>
-                                      Expected <CodeBlock
-                                        client:load
-                                        code={assertion.expected}
-                                        language="json"
-                                        title=""
-                                        maxHeight="50px"
-                                      />,
-                                      Got <CodeBlock
-                                        client:load
-                                        code={assertion.actual}
-                                        language="json"
-                                        title=""
-                                        maxHeight="50px"
-                                      />
-                                      {assertion.message && ` - ${assertion.message}`}
-                                    </span>
-                                  </div>
-                                ))}
+                                {iteration.assertions_results.map((assertion, assertIndex) => {
+                                  const isEqual = JSON.stringify(assertion.expected) === JSON.stringify(assertion.actual);
+
+                                  return (
+                                    <div class={`rounded-lg border p-2 ${
+                                      assertion.passed
+                                        ? 'bg-success/5 border-success/20'
+                                        : 'bg-error/10 border-error/30'
+                                    }`}>
+                                      <div class="flex items-start gap-2">
+                                        <span class={`text-sm ${assertion.passed ? 'text-success' : 'text-error'}`}>
+                                          {assertion.passed ? '✅' : '❌'}
+                                        </span>
+
+                                        <div class="flex-1 min-w-0">
+                                          <div class="flex items-center gap-2 mb-1">
+                                            <span class="font-medium text-xs">{assertion.field}</span>
+                                            {assertion.passed && isEqual && (
+                                              <span class="text-xs text-success bg-success/10 px-1 py-0.5 rounded">
+                                                {typeof assertion.actual === 'object' ? 'OK' : assertion.actual} ✓
+                                              </span>
+                                            )}
+                                          </div>
+
+                                          {assertion.message && (
+                                            <p class="text-xs text-base-content/70 mb-1">{assertion.message}</p>
+                                          )}
+
+                                          {!assertion.passed && !isEqual && (
+                                            <div class="grid grid-cols-1 lg:grid-cols-2 gap-2 mt-1">
+                                              <div>
+                                                <div class="text-xs font-medium text-base-content/60 mb-1">Expected:</div>
+                                                {typeof assertion.expected === 'object' ? (
+                                                  <CodeBlock
+                                                    client:load
+                                                    code={JSON.stringify(assertion.expected, null, 2)}
+                                                    language="json"
+                                                    title=""
+                                                    maxHeight="80px"
+                                                  />
+                                                ) : (
+                                                  <div class="bg-base-200 rounded px-2 py-1 text-xs font-mono">
+                                                    {assertion.expected}
+                                                  </div>
+                                                )}
+                                              </div>
+
+                                              <div>
+                                                <div class="text-xs font-medium text-base-content/60 mb-1">Actual:</div>
+                                                {typeof assertion.actual === 'object' ? (
+                                                  <CodeBlock
+                                                    client:load
+                                                    code={JSON.stringify(assertion.actual, null, 2)}
+                                                    language="json"
+                                                    title=""
+                                                    maxHeight="80px"
+                                                  />
+                                                ) : (
+                                                  <div class="bg-base-200 rounded px-2 py-1 text-xs font-mono">
+                                                    {assertion.actual}
+                                                  </div>
+                                                )}
+                                              </div>
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
                               </div>
                             </div>
                           )}

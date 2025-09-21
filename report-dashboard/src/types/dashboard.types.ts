@@ -76,6 +76,16 @@ export interface SuiteResult {
   steps_failed: number;
   success_rate: number;
   steps_results: StepResult[];
+  description?: string;
+  metadata?: SuiteMetadata;
+}
+
+export interface SuiteMetadata {
+  priority?: string;
+  tags?: string[];
+  timeout?: number;
+  estimated_duration_ms?: number;
+  description?: string;
 }
 
 export interface StepResult {

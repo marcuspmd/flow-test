@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import CodeBlock from "./CodeBlock";
+import AssertionStats from "./AssertionStats";
 import type { StepResult } from "../types/dashboard.types";
 
 interface RequestTabsProps {
@@ -293,58 +294,10 @@ const RequestTabs: React.FC<RequestTabsProps> = ({
                       {step.assertions_results &&
                         step.assertions_results.length > 0 && (
                           <div className="mt-4">
-                            <h4 className="font-semibold text-sm mb-2">
-                              Assertions
-                            </h4>
-                            <div className="space-y-2">
-                              {step.assertions_results.map((assertion, idx) => (
-                                <div
-                                  key={idx}
-                                  className="flex items-start gap-2 text-sm p-2 bg-base-100 rounded"
-                                >
-                                  <span
-                                    className={
-                                      assertion.passed
-                                        ? "text-success"
-                                        : "text-error"
-                                    }
-                                  >
-                                    {assertion.passed ? "✅" : "❌"}
-                                  </span>
-                                  <div className="flex-1">
-                                    <div className="font-medium mb-1">
-                                      {assertion.message || assertion.field}
-                                    </div>
-                                    {assertion.expected && (
-                                      <div className="text-xs">
-                                        <span className="text-base-content/60">
-                                          Expected:
-                                        </span>
-                                        <CodeBlock
-                                          code={assertion.expected}
-                                          language="json"
-                                          title=""
-                                          maxHeight="50px"
-                                        />
-                                      </div>
-                                    )}
-                                    {assertion.actual && (
-                                      <div className="text-xs mt-1">
-                                        <span className="text-base-content/60">
-                                          Actual:
-                                        </span>
-                                        <CodeBlock
-                                          code={assertion.actual}
-                                          language="json"
-                                          title=""
-                                          maxHeight="50px"
-                                        />
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
+                            <AssertionStats
+                              assertions={step.assertions_results}
+                              showDetails={true}
+                            />
                           </div>
                         )}
                     </div>
