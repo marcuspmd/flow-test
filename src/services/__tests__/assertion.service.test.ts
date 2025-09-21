@@ -410,7 +410,7 @@ describe("AssertionService", () => {
 
       expect(results).toHaveLength(1);
       expect(results[0]).toEqual({
-        field: "body.invalid[path",
+        field: 'body."invalid[path"',
         expected: { equals: "value" },
         actual: undefined,
         passed: false,
@@ -427,6 +427,10 @@ describe("AssertionService", () => {
         "body.user.name": "John",
         status_code: 200,
       };
+
+      mockJmespathSearch
+        .mockReturnValueOnce("success") // body.status
+        .mockReturnValueOnce("John"); // body.user.name
 
       const result = createMockResult(
         200,

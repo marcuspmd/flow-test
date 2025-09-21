@@ -727,14 +727,12 @@ describe("CaptureService", () => {
 
       mockJmespath.search.mockReturnValueOnce(longString);
 
-      const consoleSpy = jest.spyOn(console, "log").mockImplementation();
       captureService.captureVariables(captures, mockResult);
 
-      expect(consoleSpy).toHaveBeenCalledWith(
-        `    [📥] Captured: long_text = "${longString.substring(0, 100)}..."`
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        `    [📥] Captured: long_text = "${longString.substring(0, 100)}..."`,
+        { metadata: { type: "variable_capture", internal: true } }
       );
-
-      consoleSpy.mockRestore();
     });
 
     test("deve formatar objeto grande truncado", () => {
@@ -745,15 +743,13 @@ describe("CaptureService", () => {
 
       mockJmespath.search.mockReturnValueOnce(largeObj);
 
-      const consoleSpy = jest.spyOn(console, "log").mockImplementation();
       captureService.captureVariables(captures, mockResult);
 
       const objStr = JSON.stringify(largeObj);
-      expect(consoleSpy).toHaveBeenCalledWith(
-        `    [📥] Captured: large_obj = ${objStr.substring(0, 100)}...`
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        `    [📥] Captured: large_obj = ${objStr.substring(0, 100)}...`,
+        { metadata: { type: "variable_capture", internal: true } }
       );
-
-      consoleSpy.mockRestore();
     });
 
     test("deve formatar valores undefined/null", () => {
@@ -766,14 +762,12 @@ describe("CaptureService", () => {
         .mockReturnValueOnce(undefined)
         .mockReturnValueOnce(null);
 
-      const consoleSpy = jest.spyOn(console, "log").mockImplementation();
       captureService.captureVariables(captures, mockResult);
 
-      expect(consoleSpy).toHaveBeenCalledWith(
-        "    [📥] Captured: null_val = null"
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        "    [📥] Captured: null_val = null",
+        { metadata: { type: "variable_capture", internal: true } }
       );
-
-      consoleSpy.mockRestore();
     });
 
     test("deve formatar string curta sem truncar", () => {
@@ -784,14 +778,12 @@ describe("CaptureService", () => {
 
       mockJmespath.search.mockReturnValueOnce(shortString);
 
-      const consoleSpy = jest.spyOn(console, "log").mockImplementation();
       captureService.captureVariables(captures, mockResult);
 
-      expect(consoleSpy).toHaveBeenCalledWith(
-        `    [📥] Captured: short_text = "${shortString}"`
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        `    [📥] Captured: short_text = "${shortString}"`,
+        { metadata: { type: "variable_capture", internal: true } }
       );
-
-      consoleSpy.mockRestore();
     });
 
     test("deve formatar objeto pequeno sem truncar", () => {
@@ -802,14 +794,12 @@ describe("CaptureService", () => {
 
       mockJmespath.search.mockReturnValueOnce(smallObj);
 
-      const consoleSpy = jest.spyOn(console, "log").mockImplementation();
       captureService.captureVariables(captures, mockResult);
 
-      expect(consoleSpy).toHaveBeenCalledWith(
-        `    [📥] Captured: small_obj = ${JSON.stringify(smallObj)}`
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        `    [📥] Captured: small_obj = ${JSON.stringify(smallObj)}`,
+        { metadata: { type: "variable_capture", internal: true } }
       );
-
-      consoleSpy.mockRestore();
     });
 
     test("deve formatar valores primitivos", () => {
@@ -820,17 +810,16 @@ describe("CaptureService", () => {
 
       mockJmespath.search.mockReturnValueOnce(42).mockReturnValueOnce(true);
 
-      const consoleSpy = jest.spyOn(console, "log").mockImplementation();
       captureService.captureVariables(captures, mockResult);
 
-      expect(consoleSpy).toHaveBeenCalledWith(
-        "    [📥] Captured: number_val = 42"
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        "    [📥] Captured: number_val = 42",
+        { metadata: { type: "variable_capture", internal: true } }
       );
-      expect(consoleSpy).toHaveBeenCalledWith(
-        "    [📥] Captured: boolean_val = true"
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        "    [📥] Captured: boolean_val = true",
+        { metadata: { type: "variable_capture", internal: true } }
       );
-
-      consoleSpy.mockRestore();
     });
   });
 });

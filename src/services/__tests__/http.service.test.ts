@@ -173,11 +173,21 @@ describe("HttpService", () => {
 
       expect(mockLogger.info).toHaveBeenCalledWith(
         "GET https://api.example.com/users",
-        { stepName: "Log Test" }
+        {
+          stepName: "Log Test",
+          metadata: {
+            internal: true,
+            type: "http_request",
+          },
+        }
       );
       expect(mockLogger.info).toHaveBeenCalledWith("200", {
         duration: 500,
         stepName: "Log Test",
+        metadata: {
+          internal: true,
+          type: "http_response",
+        },
       });
     });
   });

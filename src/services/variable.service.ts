@@ -95,7 +95,11 @@ export class VariableService {
    * interpolate(['{{env}}', '{{version}}']) // → ['production', '1.0.0']
    * ```
    */
-  interpolate(template: string | any, suppressWarnings: boolean = false): any {
+  interpolate(
+    template: string | any,
+    suppressWarnings: boolean = false,
+    visitedObjects: Set<any> = new Set()
+  ): any {
     if (typeof template === "string") {
       // Check if the entire string is a single variable interpolation
       const singleVariableMatch = this.extractSingleVariable(template);
@@ -118,12 +122,25 @@ export class VariableService {
           }
           return template; // Keep the original placeholder
         }
-        // Return the value directly (could be object, array, etc.)
-        // Don't recursively interpolate primitive values as it can cause type conversion
+        // For string templates, always convert to string even for single variables
+        // to maintain consistency with string interpolation behavior
         if (value !== null && typeof value === "object") {
-          return this.interpolate(value, suppressWarnings);
+          // Check for circular reference
+          if (visitedObjects.has(value)) {
+            return "[Circular Reference]";
+          }
+          // For objects/arrays in string templates, we need to convert them to strings
+          // but we should still process them for nested interpolation first
+          visitedObjects.add(value);
+          const result = this.interpolate(
+            value,
+            suppressWarnings,
+            visitedObjects
+          );
+          visitedObjects.delete(value);
+          return String(result);
         }
-        return value;
+        return String(value);
       }
 
       // Handle multiple variables within the string
@@ -153,14 +170,29 @@ export class VariableService {
     }
 
     if (Array.isArray(template)) {
-      return template.map((item) => this.interpolate(item, suppressWarnings));
+      // Check for circular reference
+      if (visitedObjects.has(template)) {
+        return "[Circular Reference]";
+      }
+      visitedObjects.add(template);
+      const result = template.map((item) =>
+        this.interpolate(item, suppressWarnings, visitedObjects)
+      );
+      visitedObjects.delete(template);
+      return result;
     }
 
     if (template && typeof template === "object") {
+      // Check for circular reference
+      if (visitedObjects.has(template)) {
+        return "[Circular Reference]";
+      }
+      visitedObjects.add(template);
       const result: any = {};
       for (const [key, value] of Object.entries(template)) {
-        result[key] = this.interpolate(value, suppressWarnings);
+        result[key] = this.interpolate(value, suppressWarnings, visitedObjects);
       }
+      visitedObjects.delete(template);
       return result;
     }
 

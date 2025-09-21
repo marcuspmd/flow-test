@@ -215,9 +215,9 @@ describe("FakerService", () => {
   describe("Tratamento de erros", () => {
     test("deve lançar erro para método não allowlistado", () => {
       expect(() => {
-        fakerService.executeMethod("internet.userAgent");
+        fakerService.executeMethod("internet.protocol");
       }).toThrow(
-        "Faker method 'internet.userAgent' is not allowlisted for security reasons"
+        "Faker method 'internet.protocol' is not allowlisted for security reasons"
       );
     });
 

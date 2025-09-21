@@ -358,8 +358,8 @@ export class AssertionService {
    * Escapes JMESPath keys that contain special characters
    */
   private escapeJMESPathKey(key: string): string {
-    // If key contains special characters (hyphens, spaces, etc.), quote it
-    if (/[^a-zA-Z0-9_]/.test(key)) {
+    // If key contains special characters (hyphens, spaces, etc.) but not dots (which are valid JMESPath), quote it
+    if (/[^a-zA-Z0-9_.]/.test(key)) {
       return `"${key}"`;
     }
     return key;
