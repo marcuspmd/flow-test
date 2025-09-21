@@ -78,6 +78,9 @@ jobs:
       run: npm run report:dashboard:install
 
     - name: Build dashboard
+      env:
+        PUBLIC_BASE_URL: /flow-test
+        PUBLIC_SITE_URL: https://marcuspmd.github.io/flow-test/
       run: npm run report:dashboard:build
 
     - name: Copy report JSON to build output
