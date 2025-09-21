@@ -1,0 +1,126 @@
+---
+import AdminLayout from "../../layouts/AdminLayout.astro";
+import type { MarkdownInstance } from "astro";
+
+export async function getStaticPaths() {
+  const modules = import.meta.glob("../../content/guides/**/*.md", {
+    eager: true,
+  });
+
+  return Object.keys(modules).map((path) => {
+    const relative = path.split("/guides/")[1].replace(/\.md$/, "");
+    return { params: { slug: relative } };
+  });
+}
+
+const slugParam = Astro.params.slug ?? "";
+const normalizedSlug = Array.isArray(slugParam) ? slugParam.join("/") : slugParam;
+
+const markdownModules = import.meta.glob("../../content/guides/**/*.md", { eager: true });
+
+const baseUrl = import.meta.env.BASE_URL || "/flow-test";
+const withBase = (path: string) => `${baseUrl}/${path.replace(/^\//, "")}`;
+
+interface GuideModule extends MarkdownInstance<Record<string, any>> {}
+
+const entries = Object.entries(markdownModules)
+  .filter(([path]) => path.endsWith(".md"))
+  .map(([path, mod]: [string, any]) => {
+    const relative = path.split("/guides/")[1].replace(/\.md$/, "");
+    return { path, relative, mod: mod as GuideModule };
+  });
+
+const current = entries.find((entry) => entry.relative === normalizedSlug);
+
+if (!current) {
+  throw new Error(`Document not found for slug: ${normalizedSlug}`);
+}
+
+function formatTitle(input: string) {
+  return input
+    .split(/[\/-]/)
+    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1).replace(/-/g, " "))
+    .join(" / ")
+    .replace(/_/g, " ");
+}
+
+const Content = current.mod.Content;
+const frontmatter = current.mod.frontmatter ?? {};
+const pageTitle = frontmatter.title || formatTitle(current.relative);
+const otherGuides = entries
+  .filter((entry) => entry.relative !== current.relative)
+  .map((entry) => ({
+    slug: entry.relative,
+    title: (entry.mod.frontmatter?.title as string) || formatTitle(entry.relative),
+  }))
+  .sort((a, b) => a.title.localeCompare(b.title));
+---
+
+<AdminLayout title={pageTitle}>
+  <section class="max-w-6xl mx-auto grid gap-6 lg:grid-cols-[1fr_18rem]">
+    <article class="card bg-base-100 shadow p-6 text-base-content leading-relaxed space-y-4 doc-article">
+      <Content />
+    </article>
+
+    <aside class="card bg-base-100 shadow p-4 h-fit">
+      <h2 class="text-lg font-semibold mb-3">Other guides</h2>
+      <ul class="space-y-2 text-sm">
+        {otherGuides.map((guide) => (
+          <li>
+            <a href={withBase(`docs/${guide.slug}`)} class="link link-primary">
+              {guide.title}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </aside>
+  </section>
+</AdminLayout>
+
+<style>
+  .doc-article :global(ul) {
+    list-style: disc;
+    margin-left: 1.5rem;
+  }
+
+  .doc-article :global(ol) {
+    list-style: decimal;
+    margin-left: 1.5rem;
+  }
+
+  .doc-article :global(h1) {
+    font-size: 1.875rem;
+    font-weight: 700;
+  }
+
+  .doc-article :global(h2) {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-top: 1.5rem;
+  }
+
+  .doc-article :global(h3) {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-top: 1.25rem;
+  }
+
+  .doc-article :global(code) {
+    background: rgba(0, 0, 0, 0.06);
+    padding: 0.125rem 0.375rem;
+    border-radius: 0.25rem;
+    font-size: 0.875rem;
+  }
+
+  .doc-article :global(pre) {
+    background: rgba(0, 0, 0, 0.06);
+    padding: 1rem;
+    border-radius: 0.5rem;
+    overflow-x: auto;
+    overflow-y: auto;
+    max-height: 60vh;
+    max-width: 100%;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+</style>

@@ -140,6 +140,6 @@ vite.config.ts.timestamp-*
 
 results/*
 flows/*
-docs/
+docs/*
 tasks/
 coverage.info
