@@ -288,7 +288,8 @@ export class GlobalVariablesService {
     }
 
     // Check for dependency variables if registry is available
-    if (this.globalRegistry && this.dependencies.length > 0) {
+    // Only check for direct dependency names, not dot notation (that's handled in interpolation)
+    if (this.globalRegistry && this.dependencies.length > 0 && !name.includes('.')) {
       // Check if the variable name is a dependency itself
       if (this.dependencies.includes(name)) {
         const exportedValue = this.globalRegistry.getExportedVariable(name);
@@ -297,7 +298,7 @@ export class GlobalVariablesService {
         }
       }
 
-      // Check for exported variables from dependencies
+      // Check for exported variables from dependencies (simple names only)
       for (const dependencyNodeId of this.dependencies) {
         const exportedValue = this.globalRegistry.getExportedVariable(`${dependencyNodeId}.${name}`);
         if (exportedValue !== undefined) {
@@ -357,7 +358,7 @@ export class GlobalVariablesService {
 
     // Process matches in reverse order to avoid position shifts
     for (let i = matches.length - 1; i >= 0; i--) {
-      const { fullMatch, variableName, start, end } = matches[i];
+      const { variableName, start, end } = matches[i];
 
       const value = this.resolveVariableExpression(variableName);
 

@@ -568,32 +568,33 @@ export class JestStyleLoggerAdapter implements Logger {
   }
 
   info(message: string, context?: LogContext): void {
-    if (this.verbosity !== "silent") {
-      // Filter out internal messages in simple mode
-      if (this.verbosity === "simple" && context?.metadata?.internal) {
-        return;
-      }
+    if (this.verbosity === "silent") {
+      return;
+    }
+    // Filter out internal messages in simple mode
+    if (this.verbosity === "simple" && context?.metadata?.internal) {
+      return;
+    }
 
-      // For simple mode, we handle test results specially
-      if (context?.metadata?.type === "suite_start") {
-        this.handleSuiteStart(message, context);
-      } else if (context?.metadata?.type === "suite_complete") {
-        this.handleSuiteComplete(message, context);
-      } else if (context?.metadata?.type === "step_result") {
-        this.handleStepResult(message, context);
-      } else if (context?.metadata?.type === "execution_summary") {
-        this.handleExecutionSummary(context.metadata);
-      } else {
-        // Regular info message (only show if not internal in simple mode)
-        console.log(message);
-      }
+    // For simple mode, we handle test results specially
+    if (context?.metadata?.type === "suite_start") {
+      this.handleSuiteStart(message, context);
+    } else if (context?.metadata?.type === "suite_complete") {
+      this.handleSuiteComplete(message, context);
+    } else if (context?.metadata?.type === "step_result") {
+      this.handleStepResult(message, context);
+    } else if (context?.metadata?.type === "execution_summary") {
+      this.handleExecutionSummary(context.metadata);
+    } else {
+      console.log(message);
     }
   }
 
   warn(message: string, context?: LogContext): void {
-    if (this.verbosity !== "silent") {
-      console.warn(chalk.yellow(`⚠️  ${message}`));
+    if (this.verbosity === "silent") {
+      return;
     }
+    console.warn(chalk.yellow(`⚠️  ${message}`));
   }
 
   error(message: string, context?: LogContext): void {

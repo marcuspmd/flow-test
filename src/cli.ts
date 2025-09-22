@@ -30,11 +30,7 @@
  */
 
 import { FlowTestEngine } from "./core/engine";
-import {
-  EngineExecutionOptions,
-  DiscoveredTest,
-  SuiteExecutionResult,
-} from "./types/config.types";
+import { EngineExecutionOptions, DiscoveredTest } from "./types/config.types";
 import { ExecutionStats, TestSuite } from "./types/engine.types";
 import {
   SwaggerImportService,
@@ -42,7 +38,11 @@ import {
 } from "./services/swagger-import.service";
 import { handleInitCommand } from "./commands/init";
 import { PostmanCollectionService } from "./services/postman-collection.service";
-import { setupLogger, LoggerService, getLogger } from "./services/logger.service";
+import {
+  setupLogger,
+  LoggerService,
+  getLogger,
+} from "./services/logger.service";
 
 /**
  * Main CLI entry point function.
@@ -409,7 +409,7 @@ async function main() {
       },
       onError: (error: Error) => {
         getLogger().error(`💥 Engine error: ${error.message}`, {
-          error: error
+          error: error,
         });
       },
     });
@@ -454,7 +454,7 @@ async function main() {
     }
   } catch (error) {
     getLogger().error("❌ Fatal error:", {
-      error: error as Error
+      error: error as Error,
     });
 
     process.exit(1);
@@ -615,15 +615,21 @@ async function handleSwaggerImport(
     getLogger().info(`📄 Generated test suites: ${result.generatedSuites}`);
 
     if (result.generatedDocs > 0) {
-      getLogger().info(`📚 Generated documentation files: ${result.generatedDocs}`);
+      getLogger().info(
+        `📚 Generated documentation files: ${result.generatedDocs}`
+      );
     }
 
     getLogger().info("\n🚀 Next steps:");
     getLogger().info("  1. Review generated test files");
     getLogger().info("  2. Adjust variables and assertions as needed");
-    getLogger().info(`  3. Run tests: flow-test --directory ${result.outputPath}`);
+    getLogger().info(
+      `  3. Run tests: flow-test --directory ${result.outputPath}`
+    );
   } catch (error) {
-    getLogger().error("❌ Unexpected error during import:", { error: error as Error });
+    getLogger().error("❌ Unexpected error during import:", {
+      error: error as Error,
+    });
     process.exit(1);
   }
 }
@@ -654,7 +660,9 @@ async function handlePostmanExportFromResults(
     }
 
     getLogger().info("\n✅ Export completed successfully!");
-    result.outputFiles.forEach((file) => getLogger().info(`📄 Generated: ${file}`));
+    result.outputFiles.forEach((file) =>
+      getLogger().info(`📄 Generated: ${file}`)
+    );
   } catch (error) {
     getLogger().error(
       "❌ Unexpected error during Postman export from results:",
@@ -690,9 +698,13 @@ async function handlePostmanExport(
     }
 
     getLogger().info("\n✅ Export completed successfully!");
-    result.outputFiles.forEach((file) => getLogger().info(`📄 Generated: ${file}`));
+    result.outputFiles.forEach((file) =>
+      getLogger().info(`📄 Generated: ${file}`)
+    );
   } catch (error) {
-    getLogger().error("❌ Unexpected error during Postman export:", { error: error as Error });
+    getLogger().error("❌ Unexpected error during Postman export:", {
+      error: error as Error,
+    });
     process.exit(1);
   }
 }
@@ -723,9 +735,13 @@ async function handlePostmanImport(
     }
 
     getLogger().info("\n✅ Import completed successfully!");
-    result.outputFiles.forEach((file) => getLogger().info(`📄 Generated: ${file}`));
+    result.outputFiles.forEach((file) =>
+      getLogger().info(`📄 Generated: ${file}`)
+    );
   } catch (error) {
-    getLogger().error("❌ Unexpected error during Postman import:", { error: error as Error });
+    getLogger().error("❌ Unexpected error during Postman import:", {
+      error: error as Error,
+    });
     process.exit(1);
   }
 }
@@ -770,7 +786,9 @@ async function handleDashboardCommand(command: string): Promise<void> {
       break;
     default:
       getLogger().error(`❌ Unknown dashboard command: ${command}`);
-      getLogger().error("Available commands: install, dev, build, preview, serve");
+      getLogger().error(
+        "Available commands: install, dev, build, preview, serve"
+      );
       process.exit(1);
   }
 
@@ -803,7 +821,9 @@ async function handleDashboardCommand(command: string): Promise<void> {
     });
 
     child.on("error", (error: Error) => {
-      getLogger().error(`❌ Failed to start dashboard command: ${error.message}`);
+      getLogger().error(
+        `❌ Failed to start dashboard command: ${error.message}`
+      );
       process.exit(1);
     });
 
@@ -838,7 +858,9 @@ async function handleDashboardCommand(command: string): Promise<void> {
         getLogger().error(`❌ Dashboard command failed with exit code ${code}`);
         process.exit(code || 1);
       } else {
-        getLogger().info(`✅ Dashboard command '${command}' completed successfully`);
+        getLogger().info(
+          `✅ Dashboard command '${command}' completed successfully`
+        );
       }
     });
   } catch (error) {
@@ -865,7 +887,9 @@ process.on("uncaughtException", (error) => {
 });
 
 process.on("unhandledRejection", (reason, promise) => {
-  getLogger().error("💥 Unhandled Rejection at:", { metadata: { promise, reason } });
+  getLogger().error("💥 Unhandled Rejection at:", {
+    metadata: { promise, reason },
+  });
   process.exit(1);
 });
 
