@@ -11,6 +11,7 @@
  */
 
 import path from "path";
+import { getLogger } from "./logger.service";
 import {
   DiscoveredTest,
   FlowDependency,
@@ -189,7 +190,7 @@ export class DependencyService {
             node.dependencies.add(dependencyNodeId);
             this.graph.get(dependencyNodeId)!.dependents.add(test.node_id);
           } else {
-            console.warn(
+            getLogger().warn(
               `⚠️  Dependency '${JSON.stringify(
                 dependency
               )}' not found for test '${test.node_id}' (${test.suite_name})`

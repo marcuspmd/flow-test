@@ -10,6 +10,7 @@
  */
 
 import { ConfigManager } from "../core/config";
+import { getLogger } from "./logger.service";
 import { DiscoveredTest } from "../types/engine.types";
 
 /**
@@ -196,7 +197,7 @@ export class PriorityService {
       if (readyTests.length === 0) {
         // Detects circular dependency or dependency not found
         const stuck = Array.from(remaining)[0];
-        console.warn(
+        getLogger().warn(
           `⚠️  Warning: Possible circular dependency detected. Forcing execution of '${stuck.suite_name}'`
         );
         readyTests.push(stuck);

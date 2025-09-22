@@ -8,13 +8,33 @@ This is a TypeScript-based API testing engine that allows creating complex test 
 
 ## Key Commands
 
-- `npm test` - Run tests with default configuration
-- `npm run test:verbose` - Run tests with detailed output
-- `npm run test:silent` - Run tests silently (errors only)
+### Testing & Development
+- `npm test` - Smart test runner (checks Docker, builds, runs flow tests)
+- `npm run test:unit` - Run Jest unit tests only
+- `npm run test:unit:watch` - Run Jest tests in watch mode
 - `npm run build` - Compile TypeScript to JavaScript
-- `npm run dev` - Run CLI in development mode
-- `flow-test` - CLI command for running tests (after build)
+- `npm run dev <file.yaml>` - Run CLI in development mode with specific YAML file
+- `npm run init` - Initialize configuration and sample test suites
+
+### Docker Services
+- `npm run server:docker` - Start httpbin mock server in Docker
+- `npm run server:down` - Stop and remove Docker services
+- `npm run server:logs` - View httpbin container logs
+
+### Flow Test CLI (after build)
+- `flow-test` - Run default test suite (./tests/start-flow.yaml)
+- `flow-test --config <file>` - Use specific config file
 - `flow-test --swagger-import <file>` - Import OpenAPI/Swagger spec and generate tests
+- `flow-test --dry-run` - Show execution plan without running
+- `flow-test --verbose` - Detailed output
+- `flow-test --priority critical,high` - Filter by priority levels
+- `flow-test --tag <tags>` - Filter by YAML tags
+
+### Report Dashboard
+- `npm run report:dashboard:install` - Install dashboard dependencies
+- `npm run report:dashboard:dev` - Start development server
+- `npm run report:dashboard:build` - Build static dashboard
+- `npm run report:dashboard:serve` - Build and serve dashboard
 
 ## Architecture
 
@@ -88,10 +108,32 @@ Each step supports:
 - Default test file: `./tests/start-flow.yaml`
 - Test files use httpbin.org for demonstration purposes
 
+## Development Workflow
+
+### Smart Testing
+The `npm test` command uses a smart test runner (`scripts/smart-test.js`) that:
+- Checks Docker status and starts missing services automatically
+- Builds the project before testing
+- Supports environment variable `FLOW_TEST_ARGS` for custom arguments
+- Uses `CLEANUP_AFTER_TESTS=true` to cleanup Docker services after tests
+
+### Unit Testing
+- Jest configuration requires 80% code coverage across all metrics
+- Tests use `ts-jest` preset with TypeScript support
+- Test files: `**/__tests__/**/*.ts`, `**/*.test.ts`, `**/*.spec.ts`
+- HTML test reports generated in `coverage/html-report/test-report.html`
+
+### Report System
+- Every execution writes `results/latest.json` artifact
+- Astro-based dashboard in `report-dashboard/` consumes this JSON
+- Dashboard can be linked or copied: `ln -sf ../results/latest.json report-dashboard/src/data/latest.json`
+
 ## Important Instructions
 
-- Always use z.uuid() instead of z.string().uuid() (deprecated)
+- Always use `z.uuid()` instead of `z.string().uuid()` (deprecated)
 - When starting servers, use background execution with `&` at the end of commands
-- Follow TypeScript strict mode conventions
-- All services use centralized logging through logger.service.ts
+- Follow TypeScript strict mode conventions (enabled in tsconfig.json)
+- All services use centralized logging through `logger.service.ts`
 - Variable interpolation supports nested object access and array indexing
+- The project targets ES6 with CommonJS modules (see tsconfig.json)
+- Node.js 16+ required (engines field in package.json)

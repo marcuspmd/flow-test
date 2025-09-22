@@ -284,7 +284,7 @@ export class GlobalRegistryService {
 
     // Verifica se a variável está na lista de exports
     if (!namespace.exports.includes(variableName)) {
-      console.warn(
+      getLogger().warn(
         `⚠️  Variable '${variableName}' is not in exports list for node '${nodeId}'`
       );
     }

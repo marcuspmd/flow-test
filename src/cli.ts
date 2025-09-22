@@ -42,7 +42,7 @@ import {
 } from "./services/swagger-import.service";
 import { handleInitCommand } from "./commands/init";
 import { PostmanCollectionService } from "./services/postman-collection.service";
-import { setupLogger, LoggerService } from "./services/logger.service";
+import { setupLogger, LoggerService, getLogger } from "./services/logger.service";
 
 /**
  * Main CLI entry point function.
@@ -215,7 +215,7 @@ async function main() {
         if (i + 1 < args.length) {
           dashboardCommand = args[++i];
         } else {
-          console.error(
+          getLogger().error(
             "❌ Dashboard command requires a subcommand: install, dev, build, preview, serve"
           );
           process.exit(1);
@@ -229,7 +229,7 @@ async function main() {
 
       case "-v":
       case "--version":
-        console.log("Flow Test Engine v1.0.0");
+        getLogger().info("Flow Test Engine v1.0.0");
         process.exit(0);
         break;
 
@@ -238,7 +238,7 @@ async function main() {
         if (!arg.startsWith("-") && !testFile) {
           testFile = arg;
         } else {
-          console.error(`❌ Unknown argument: ${arg}`);
+          getLogger().error(`❌ Unknown argument: ${arg}`);
           showHelp = true;
         }
         break;
@@ -246,14 +246,14 @@ async function main() {
   }
 
   if (postmanExport && postmanImport) {
-    console.error(
+    getLogger().error(
       "❌ Cannot use --postman-export and --postman-import in the same command."
     );
     process.exit(1);
   }
 
   if (postmanExportFromResults && (postmanExport || postmanImport)) {
-    console.error(
+    getLogger().error(
       "❌ Cannot use --postman-export-from-results with other postman export/import commands."
     );
     process.exit(1);
@@ -310,7 +310,7 @@ async function main() {
 
       // Verifica se o arquivo existe
       if (!fs.existsSync(resolvedPath)) {
-        console.error(`❌ Test file not found: ${testFile}`);
+        getLogger().error(`❌ Test file not found: ${testFile}`);
         process.exit(1);
       }
 
@@ -343,11 +343,11 @@ async function main() {
             },
           };
         } else {
-          console.error(`❌ Invalid test file format: ${testFile}`);
+          getLogger().error(`❌ Invalid test file format: ${testFile}`);
           process.exit(1);
         }
       } catch (error) {
-        console.error(`❌ Error reading test file: ${error}`);
+        getLogger().error(`❌ Error reading test file: ${error}`);
         process.exit(1);
       }
     } else {
@@ -362,21 +362,14 @@ async function main() {
     // Cria o engine
     const engine = new FlowTestEngine(engineOptions, {
       onExecutionStart: (stats: ExecutionStats) => {
-        if (
-          options.verbosity === "detailed" ||
-          options.verbosity === "verbose"
-        ) {
-          console.log(
-            `🚀 Starting execution of ${stats.tests_discovered} test(s)`
-          );
-        }
+        getLogger().info(
+          `🚀 Starting execution of ${stats.tests_discovered} test(s)`
+        );
       },
       onTestDiscovered: (test: DiscoveredTest) => {
-        if (options.verbosity === "verbose") {
-          console.log(
-            `📋 Discovered: ${test.node_id} - ${test.suite_name} (${test.priority})`
-          );
-        }
+        getLogger().debug(
+          `📋 Discovered: ${test.node_id} - ${test.suite_name} (${test.priority})`
+        );
       },
       onSuiteStart: (suite: TestSuite) => {
         logger.info(`Starting suite`, {
@@ -386,12 +379,7 @@ async function main() {
             file_path: suite.node_id,
           },
         });
-        if (
-          options.verbosity === "detailed" ||
-          options.verbosity === "verbose"
-        ) {
-          console.log(`▶️  Starting: ${suite.suite_name}`);
-        }
+        getLogger().info(`▶️  Starting: ${suite.suite_name}`);
       },
       onSuiteEnd: (suite: TestSuite, result: any) => {
         logger.info(`Suite completed`, {
@@ -402,17 +390,12 @@ async function main() {
             success: result.status === "success",
           },
         });
-        if (
-          options.verbosity === "detailed" ||
-          options.verbosity === "verbose"
-        ) {
-          const emoji = result.status === "success" ? "✅" : "❌";
-          console.log(
-            `${emoji} Completed: ${suite.suite_name} (${
-              result.duration_ms || 0
-            }ms)`
-          );
-        }
+        const emoji = result.status === "success" ? "✅" : "❌";
+        getLogger().info(
+          `${emoji} Completed: ${suite.suite_name} (${
+            result.duration_ms || 0
+          }ms)`
+        );
       },
       onStepEnd: (step: any, result: any, context: any) => {
         logger.info(`Step completed`, {
@@ -425,10 +408,9 @@ async function main() {
         });
       },
       onError: (error: Error) => {
-        console.error(`💥 Engine error: ${error.message}`);
-        if (options.verbosity === "verbose") {
-          console.error(error.stack);
-        }
+        getLogger().error(`💥 Engine error: ${error.message}`, {
+          error: error
+        });
       },
     });
 
@@ -436,9 +418,9 @@ async function main() {
       // Execução em modo dry-run
       const plan = await engine.dryRun();
 
-      console.log(`\n📊 Execution plan would run ${plan.length} test(s):`);
+      getLogger().info(`\n📊 Execution plan would run ${plan.length} test(s):`);
       plan.forEach((test: DiscoveredTest, index: number) => {
-        console.log(
+        getLogger().info(
           `  ${index + 1}. ${test.suite_name} (${test.priority || "medium"})`
         );
       });
@@ -462,22 +444,18 @@ async function main() {
       // Exit code baseado no resultado
       const exitCode = result.success_rate === 100 ? 0 : 1;
 
-      if (options.verbosity === "detailed" || options.verbosity === "verbose") {
-        console.log(
-          `\n🏁 Execution completed with ${result.success_rate.toFixed(
-            1
-          )}% success rate`
-        );
-      }
+      getLogger().info(
+        `\n🏁 Execution completed with ${result.success_rate.toFixed(
+          1
+        )}% success rate`
+      );
 
       process.exit(exitCode);
     }
   } catch (error) {
-    console.error("❌ Fatal error:", error);
-
-    if (options.verbosity === "verbose") {
-      console.error((error as Error).stack);
-    }
+    getLogger().error("❌ Fatal error:", {
+      error: error as Error
+    });
 
     process.exit(1);
   }
@@ -497,7 +475,7 @@ async function main() {
  * ```
  */
 function printHelp() {
-  console.log(`
+  getLogger().info(`
 🚀 Flow Test Engine v1.0.0
 
 USAGE:
@@ -600,7 +578,7 @@ async function handleSwaggerImport(
   specFilePath: string,
   outputDir?: string
 ): Promise<void> {
-  console.log(
+  getLogger().info(
     `🔄 Importing Swagger/OpenAPI specification from: ${specFilePath}`
   );
 
@@ -620,32 +598,32 @@ async function handleSwaggerImport(
     );
 
     if (!result.success) {
-      console.error("❌ Import failed:");
-      result.errors.forEach((error) => console.error(`  • ${error}`));
+      getLogger().error("❌ Import failed:");
+      result.errors.forEach((error) => getLogger().error(`  • ${error}`));
       process.exit(1);
     }
 
     // Show warnings if any
     if (result.warnings.length > 0) {
-      console.log("\n⚠️  Warnings:");
-      result.warnings.forEach((warning) => console.warn(`  • ${warning}`));
+      getLogger().info("\n⚠️  Warnings:");
+      result.warnings.forEach((warning) => getLogger().warn(`  • ${warning}`));
     }
 
     // Show success summary
-    console.log("\n✅ Import completed successfully!");
-    console.log(`📁 Output directory: ${result.outputPath}`);
-    console.log(`📄 Generated test suites: ${result.generatedSuites}`);
+    getLogger().info("\n✅ Import completed successfully!");
+    getLogger().info(`📁 Output directory: ${result.outputPath}`);
+    getLogger().info(`📄 Generated test suites: ${result.generatedSuites}`);
 
     if (result.generatedDocs > 0) {
-      console.log(`📚 Generated documentation files: ${result.generatedDocs}`);
+      getLogger().info(`📚 Generated documentation files: ${result.generatedDocs}`);
     }
 
-    console.log("\n🚀 Next steps:");
-    console.log("  1. Review generated test files");
-    console.log("  2. Adjust variables and assertions as needed");
-    console.log(`  3. Run tests: flow-test --directory ${result.outputPath}`);
+    getLogger().info("\n🚀 Next steps:");
+    getLogger().info("  1. Review generated test files");
+    getLogger().info("  2. Adjust variables and assertions as needed");
+    getLogger().info(`  3. Run tests: flow-test --directory ${result.outputPath}`);
   } catch (error) {
-    console.error("❌ Unexpected error during import:", error);
+    getLogger().error("❌ Unexpected error during import:", { error: error as Error });
     process.exit(1);
   }
 }
@@ -654,7 +632,7 @@ async function handlePostmanExportFromResults(
   resultsPath: string,
   outputPath?: string
 ): Promise<void> {
-  console.log(
+  getLogger().info(
     `🔄 Exporting Postman collection from execution results: ${resultsPath}`
   );
 
@@ -665,22 +643,22 @@ async function handlePostmanExportFromResults(
     });
 
     if (!result.success) {
-      console.error("❌ Export failed:");
-      result.errors.forEach((error) => console.error(`  • ${error}`));
+      getLogger().error("❌ Export failed:");
+      result.errors.forEach((error) => getLogger().error(`  • ${error}`));
       process.exit(1);
     }
 
     if (result.warnings.length > 0) {
-      console.log("\n⚠️  Warnings:");
-      result.warnings.forEach((warning) => console.warn(`  • ${warning}`));
+      getLogger().info("\n⚠️  Warnings:");
+      result.warnings.forEach((warning) => getLogger().warn(`  • ${warning}`));
     }
 
-    console.log("\n✅ Export completed successfully!");
-    result.outputFiles.forEach((file) => console.log(`📄 Generated: ${file}`));
+    getLogger().info("\n✅ Export completed successfully!");
+    result.outputFiles.forEach((file) => getLogger().info(`📄 Generated: ${file}`));
   } catch (error) {
-    console.error(
+    getLogger().error(
       "❌ Unexpected error during Postman export from results:",
-      error
+      { error: error as Error }
     );
     process.exit(1);
   }
@@ -690,7 +668,7 @@ async function handlePostmanExport(
   inputPath: string,
   outputPath?: string
 ): Promise<void> {
-  console.log(
+  getLogger().info(
     `🔄 Exporting Flow Test suite(s) to Postman collection: ${inputPath}`
   );
 
@@ -701,20 +679,20 @@ async function handlePostmanExport(
     });
 
     if (!result.success) {
-      console.error("❌ Export failed:");
-      result.errors.forEach((error) => console.error(`  • ${error}`));
+      getLogger().error("❌ Export failed:");
+      result.errors.forEach((error) => getLogger().error(`  • ${error}`));
       process.exit(1);
     }
 
     if (result.warnings.length > 0) {
-      console.log("\n⚠️  Warnings:");
-      result.warnings.forEach((warning) => console.warn(`  • ${warning}`));
+      getLogger().info("\n⚠️  Warnings:");
+      result.warnings.forEach((warning) => getLogger().warn(`  • ${warning}`));
     }
 
-    console.log("\n✅ Export completed successfully!");
-    result.outputFiles.forEach((file) => console.log(`📄 Generated: ${file}`));
+    getLogger().info("\n✅ Export completed successfully!");
+    result.outputFiles.forEach((file) => getLogger().info(`📄 Generated: ${file}`));
   } catch (error) {
-    console.error("❌ Unexpected error during Postman export:", error);
+    getLogger().error("❌ Unexpected error during Postman export:", { error: error as Error });
     process.exit(1);
   }
 }
@@ -723,7 +701,7 @@ async function handlePostmanImport(
   collectionPath: string,
   outputDir?: string
 ): Promise<void> {
-  console.log(
+  getLogger().info(
     `🔄 Importing Postman collection into Flow Test suite(s): ${collectionPath}`
   );
 
@@ -734,20 +712,20 @@ async function handlePostmanImport(
     });
 
     if (!result.success) {
-      console.error("❌ Import failed:");
-      result.errors.forEach((error) => console.error(`  • ${error}`));
+      getLogger().error("❌ Import failed:");
+      result.errors.forEach((error) => getLogger().error(`  • ${error}`));
       process.exit(1);
     }
 
     if (result.warnings.length > 0) {
-      console.log("\n⚠️  Warnings:");
-      result.warnings.forEach((warning) => console.warn(`  • ${warning}`));
+      getLogger().info("\n⚠️  Warnings:");
+      result.warnings.forEach((warning) => getLogger().warn(`  • ${warning}`));
     }
 
-    console.log("\n✅ Import completed successfully!");
-    result.outputFiles.forEach((file) => console.log(`📄 Generated: ${file}`));
+    getLogger().info("\n✅ Import completed successfully!");
+    result.outputFiles.forEach((file) => getLogger().info(`📄 Generated: ${file}`));
   } catch (error) {
-    console.error("❌ Unexpected error during Postman import:", error);
+    getLogger().error("❌ Unexpected error during Postman import:", { error: error as Error });
     process.exit(1);
   }
 }
@@ -763,7 +741,7 @@ async function handleDashboardCommand(command: string): Promise<void> {
   // Get the current project directory (where flow-test was called from)
   const projectDir = process.cwd();
 
-  console.log(`🎯 Running dashboard command: ${command}`);
+  getLogger().info(`🎯 Running dashboard command: ${command}`);
 
   let npmCommand: string;
   let args: string[] = [];
@@ -791,8 +769,8 @@ async function handleDashboardCommand(command: string): Promise<void> {
       args = ["run", "build"];
       break;
     default:
-      console.error(`❌ Unknown dashboard command: ${command}`);
-      console.error("Available commands: install, dev, build, preview, serve");
+      getLogger().error(`❌ Unknown dashboard command: ${command}`);
+      getLogger().error("Available commands: install, dev, build, preview, serve");
       process.exit(1);
   }
 
@@ -800,15 +778,15 @@ async function handleDashboardCommand(command: string): Promise<void> {
     // Check if dashboard directory exists
     const fs = require("fs");
     if (!fs.existsSync(dashboardDir)) {
-      console.error(`❌ Dashboard directory not found: ${dashboardDir}`);
-      console.error(
+      getLogger().error(`❌ Dashboard directory not found: ${dashboardDir}`);
+      getLogger().error(
         "Make sure the report-dashboard is included in the package."
       );
       process.exit(1);
     }
 
-    console.log(`📁 Working directory: ${dashboardDir}`);
-    console.log(`📍 Project directory: ${projectDir}`);
+    getLogger().info(`📁 Working directory: ${dashboardDir}`);
+    getLogger().info(`📍 Project directory: ${projectDir}`);
 
     // Set environment variable so dashboard can find project results
     const env = {
@@ -825,14 +803,14 @@ async function handleDashboardCommand(command: string): Promise<void> {
     });
 
     child.on("error", (error: Error) => {
-      console.error(`❌ Failed to start dashboard command: ${error.message}`);
+      getLogger().error(`❌ Failed to start dashboard command: ${error.message}`);
       process.exit(1);
     });
 
     child.on("close", (code: number | null) => {
       if (command === "serve" && code === 0) {
         // After build succeeds, start the serve command
-        console.log("🚀 Starting server...");
+        getLogger().info("🚀 Starting server...");
         const serveChild = spawn("npx", ["serve", "dist", "--single"], {
           cwd: dashboardDir,
           stdio: "inherit",
@@ -840,12 +818,12 @@ async function handleDashboardCommand(command: string): Promise<void> {
         });
 
         serveChild.on("error", (error: Error) => {
-          console.error(`❌ Failed to start server: ${error.message}`);
+          getLogger().error(`❌ Failed to start server: ${error.message}`);
           process.exit(1);
         });
       } else if (command === "preview" && code === 0) {
         // After build succeeds, start the preview command
-        console.log("🚀 Starting preview server...");
+        getLogger().info("🚀 Starting preview server...");
         const previewChild = spawn("npm", ["run", "preview"], {
           cwd: dashboardDir,
           stdio: "inherit",
@@ -853,46 +831,46 @@ async function handleDashboardCommand(command: string): Promise<void> {
         });
 
         previewChild.on("error", (error: Error) => {
-          console.error(`❌ Failed to start preview: ${error.message}`);
+          getLogger().error(`❌ Failed to start preview: ${error.message}`);
           process.exit(1);
         });
       } else if (code !== 0) {
-        console.error(`❌ Dashboard command failed with exit code ${code}`);
+        getLogger().error(`❌ Dashboard command failed with exit code ${code}`);
         process.exit(code || 1);
       } else {
-        console.log(`✅ Dashboard command '${command}' completed successfully`);
+        getLogger().info(`✅ Dashboard command '${command}' completed successfully`);
       }
     });
   } catch (error) {
-    console.error(`❌ Error executing dashboard command: ${error}`);
+    getLogger().error(`❌ Error executing dashboard command: ${error}`);
     process.exit(1);
   }
 }
 
 // Tratamento de sinais para cleanup graceful
 process.on("SIGINT", () => {
-  console.log("\n🛑 Received SIGINT, shutting down gracefully...");
+  getLogger().info("\n🛑 Received SIGINT, shutting down gracefully...");
   process.exit(130);
 });
 
 process.on("SIGTERM", () => {
-  console.log("\n🛑 Received SIGTERM, shutting down gracefully...");
+  getLogger().info("\n🛑 Received SIGTERM, shutting down gracefully...");
   process.exit(143);
 });
 
 // Tratamento de exceções não capturadas
 process.on("uncaughtException", (error) => {
-  console.error("💥 Uncaught Exception:", error);
+  getLogger().error("💥 Uncaught Exception:", { error });
   process.exit(1);
 });
 
 process.on("unhandledRejection", (reason, promise) => {
-  console.error("💥 Unhandled Rejection at:", promise, "reason:", reason);
+  getLogger().error("💥 Unhandled Rejection at:", { metadata: { promise, reason } });
   process.exit(1);
 });
 
 // Executa o CLI
 main().catch((error) => {
-  console.error("💥 CLI execution failed:", error);
+  getLogger().error("💥 CLI execution failed:", { error });
   process.exit(1);
 });

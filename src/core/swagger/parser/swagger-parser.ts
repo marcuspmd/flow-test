@@ -12,6 +12,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import * as yaml from "js-yaml";
+import { getLogger } from "../../../services/logger.service";
 import {
   OpenAPISpec,
   SwaggerParseResult,
@@ -254,7 +255,7 @@ export class SwaggerParser {
         const resolved = this.resolveRef(param.$ref);
         return resolved;
       } catch (error) {
-        console.warn(
+        getLogger().warn(
           `Failed to resolve parameter reference ${param.$ref}: ${
             (error as Error).message
           }`

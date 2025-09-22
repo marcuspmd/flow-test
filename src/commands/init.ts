@@ -2,6 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as readline from 'readline';
 import * as yaml from 'js-yaml';
+import { getLogger } from '../services/logger.service';
 
 interface ConfigTemplate {
   project_name: string;
@@ -147,10 +148,10 @@ export class ConfigInitializer {
    * Ask for multiple choice selection
    */
   private async askChoice(question: string, choices: string[], defaultIndex: number = 0): Promise<string> {
-    console.log(`\n${question}`);
+    getLogger().info(`\n${question}`);
     choices.forEach((choice, index) => {
       const marker = index === defaultIndex ? '→' : ' ';
-      console.log(`${marker} ${index + 1}. ${choice}`);
+      getLogger().info(`${marker} ${index + 1}. ${choice}`);
     });
 
     const answer = await this.ask(`Enter choice (1-${choices.length})`, (defaultIndex + 1).toString());
@@ -167,12 +168,12 @@ export class ConfigInitializer {
    * Interactive configuration setup
    */
   async runInteractiveSetup(): Promise<void> {
-    console.log('🚀 Flow Test Engine Configuration Setup');
-    console.log('=====================================\n');
+    getLogger().info('🚀 Flow Test Engine Configuration Setup');
+    getLogger().info('=====================================\n');
 
     // Project Information
-    console.log('📋 Project Information');
-    console.log('----------------------');
+    getLogger().info('📋 Project Information');
+    getLogger().info('----------------------');
 
     this.config.project_name = await this.ask(
       'Project name',
@@ -185,8 +186,8 @@ export class ConfigInitializer {
     );
 
     // API Configuration
-    console.log('\n🌐 API Configuration');
-    console.log('--------------------');
+    getLogger().info('\n🌐 API Configuration');
+    getLogger().info('--------------------');
 
     const apiUrl = await this.ask(
       'API base URL',
@@ -200,8 +201,8 @@ export class ConfigInitializer {
     }
 
     // Execution Configuration
-    console.log('\n⚙️  Execution Configuration');
-    console.log('---------------------------');
+    getLogger().info('\n⚙️  Execution Configuration');
+    getLogger().info('---------------------------');
 
     const executionMode = await this.askChoice(
       'Execution mode:',
@@ -224,8 +225,8 @@ export class ConfigInitializer {
     );
 
     // Retry Configuration
-    console.log('\n🔄 Retry Configuration');
-    console.log('----------------------');
+    getLogger().info('\n🔄 Retry Configuration');
+    getLogger().info('----------------------');
 
     this.config.execution.retry_failed.enabled = await this.askBoolean(
       'Enable automatic retry on failure?',
@@ -247,8 +248,8 @@ export class ConfigInitializer {
     }
 
     // Priority Configuration
-    console.log('\n📊 Priority Configuration');
-    console.log('-------------------------');
+    getLogger().info('\n📊 Priority Configuration');
+    getLogger().info('-------------------------');
 
     const setupPriorities = await this.askBoolean('Configure custom test priorities?');
     if (setupPriorities) {
@@ -256,10 +257,10 @@ export class ConfigInitializer {
     }
 
     // Reporting Configuration
-    console.log('\n📝 Reporting Configuration');
-    console.log('---------------------------');
+    getLogger().info('\n📝 Reporting Configuration');
+    getLogger().info('---------------------------');
 
-    console.log(
+    getLogger().info(
       '\nℹ️  O engine agora gera apenas artefatos JSON. Use o pacote report-dashboard para visualizar o relatório em HTML.'
     );
     this.config.reporting.formats = ['json'];
@@ -275,15 +276,15 @@ export class ConfigInitializer {
     );
 
     // Test Discovery
-    console.log('\n🔍 Test Discovery Configuration');
-    console.log('-------------------------------');
+    getLogger().info('\n🔍 Test Discovery Configuration');
+    getLogger().info('-------------------------------');
 
     const setupDiscovery = await this.askBoolean('Configure custom test discovery patterns?');
     if (setupDiscovery) {
       await this.setupDiscovery();
     }
 
-    console.log('\n✅ Configuration setup complete!');
+    getLogger().info('\n✅ Configuration setup complete!');
   }
 
   /**
@@ -305,7 +306,7 @@ export class ConfigInitializer {
       else if (!isNaN(Number(varValue)) && varValue !== '') parsedValue = Number(varValue);
 
       variables[varName] = parsedValue;
-      console.log(`✅ Added: ${varName} = ${JSON.stringify(parsedValue)}`);
+      getLogger().info(`✅ Added: ${varName} = ${JSON.stringify(parsedValue)}`);
     }
 
     this.config.globals.variables = variables;
@@ -315,7 +316,7 @@ export class ConfigInitializer {
    * Setup priority configuration
    */
   private async setupPriorities(): Promise<void> {
-    console.log('\nCurrent priority levels:', this.config.priorities.levels.join(', '));
+    getLogger().info(`\nCurrent priority levels: ${this.config.priorities.levels.join(', ')}`);
 
     const customLevels = await this.ask(
       'Enter priority levels (comma-separated)',
@@ -341,9 +342,9 @@ export class ConfigInitializer {
    * Setup test discovery patterns
    */
   private async setupDiscovery(): Promise<void> {
-    console.log('\nCurrent include patterns:');
+    getLogger().info('\nCurrent include patterns:');
     this.config.discovery.patterns.forEach((pattern, index) => {
-      console.log(`  ${index + 1}. ${pattern}`);
+      getLogger().info(`  ${index + 1}. ${pattern}`);
     });
 
     const addPatterns = await this.askBoolean('Add additional include patterns?');
@@ -355,7 +356,7 @@ export class ConfigInitializer {
         if (!pattern) break;
 
         patterns.push(pattern);
-        console.log(`✅ Added include pattern: ${pattern}`);
+        getLogger().info(`✅ Added include pattern: ${pattern}`);
       }
 
       this.config.discovery.patterns = patterns;
@@ -370,7 +371,7 @@ export class ConfigInitializer {
         if (!pattern) break;
 
         excludes.push(pattern);
-        console.log(`✅ Added exclude pattern: ${pattern}`);
+        getLogger().info(`✅ Added exclude pattern: ${pattern}`);
       }
 
       this.config.discovery.exclude = excludes;
@@ -384,13 +385,13 @@ export class ConfigInitializer {
     const templates = this.getTemplates();
 
     if (!templates[templateName]) {
-      console.error(`❌ Template "${templateName}" not found.`);
-      console.log('Available templates:', Object.keys(templates).join(', '));
+      getLogger().error(`❌ Template "${templateName}" not found.`);
+      getLogger().info(`Available templates: ${Object.keys(templates).join(', ')}`);
       return;
     }
 
     this.config = { ...this.config, ...templates[templateName] };
-    console.log(`✅ Configuration generated from template: ${templateName}`);
+    getLogger().info(`✅ Configuration generated from template: ${templateName}`);
   }
 
   /**
@@ -512,7 +513,7 @@ export class ConfigInitializer {
       );
 
       if (!overwrite) {
-        console.log('❌ Configuration not saved.');
+        getLogger().info('❌ Configuration not saved.');
         return;
       }
     }
@@ -528,13 +529,13 @@ export class ConfigInitializer {
       }
 
       fs.writeFileSync(configPath, yamlContent, 'utf8');
-      console.log(`✅ Configuration saved to: ${configPath}`);
+      getLogger().info(`✅ Configuration saved to: ${configPath}`);
 
       // Show next steps
       this.showNextSteps(configPath);
 
     } catch (error) {
-      console.error('❌ Failed to save configuration:', error);
+      getLogger().error('❌ Failed to save configuration:', { error: error as Error });
     }
   }
 
@@ -602,24 +603,24 @@ reporting:
    * Show helpful next steps
    */
   private showNextSteps(configPath: string): void {
-    console.log('\n🎉 Configuration Setup Complete!');
-    console.log('================================\n');
+    getLogger().info('\n🎉 Configuration Setup Complete!');
+    getLogger().info('================================\n');
 
-    console.log('📋 Next Steps:');
-    console.log(`1. Review your configuration: cat ${configPath}`);
-    console.log('2. Create your first test file in the test directory');
-    console.log('3. Run tests: npm test');
-    console.log('4. Visualize JSON reports com o dashboard: npm run report:dashboard:dev');
+    getLogger().info('📋 Next Steps:');
+    getLogger().info(`1. Review your configuration: cat ${configPath}`);
+    getLogger().info('2. Create your first test file in the test directory');
+    getLogger().info('3. Run tests: npm test');
+    getLogger().info('4. Visualize JSON reports com o dashboard: npm run report:dashboard:dev');
 
-    console.log('\n🚀 Quick Start Commands:');
-    console.log(`flow-test --config ${configPath}`);
-    console.log(`flow-test --config ${configPath} --dry-run`);
-    console.log(`flow-test --config ${configPath} --verbose`);
+    getLogger().info('\n🚀 Quick Start Commands:');
+    getLogger().info(`flow-test --config ${configPath}`);
+    getLogger().info(`flow-test --config ${configPath} --dry-run`);
+    getLogger().info(`flow-test --config ${configPath} --verbose`);
 
-    console.log('\n📚 Documentation:');
-    console.log('- Configuration Guide: ./guides/configuration-guide.md');
-    console.log('- YAML Syntax Reference: ./guides/yaml-syntax-reference.md');
-    console.log('- Getting Started: ./guides/getting-started.md');
+    getLogger().info('\n📚 Documentation:');
+    getLogger().info('- Configuration Guide: ./guides/configuration-guide.md');
+    getLogger().info('- YAML Syntax Reference: ./guides/yaml-syntax-reference.md');
+    getLogger().info('- Getting Started: ./guides/getting-started.md');
   }
 
   /**
@@ -628,20 +629,20 @@ reporting:
   listTemplates(): void {
     const templates = this.getTemplates();
 
-    console.log('📋 Available Configuration Templates:');
-    console.log('=====================================\n');
+    getLogger().info('📋 Available Configuration Templates:');
+    getLogger().info('=====================================\n');
 
     Object.entries(templates).forEach(([name, template]) => {
-      console.log(`🔧 ${name}`);
-      console.log(`   Project: ${template.project_name || 'Default'}`);
+      getLogger().info(`🔧 ${name}`);
+      getLogger().info(`   Project: ${template.project_name || 'Default'}`);
       if (template.execution) {
-        console.log(`   Mode: ${template.execution.mode || 'sequential'}`);
-        console.log(`   Parallel: ${template.execution.max_parallel || 'N/A'}`);
+        getLogger().info(`   Mode: ${template.execution.mode || 'sequential'}`);
+        getLogger().info(`   Parallel: ${template.execution.max_parallel || 'N/A'}`);
       }
-      console.log('');
+      getLogger().info('');
     });
 
-    console.log('Usage: flow-test init --template <template-name>');
+    getLogger().info('Usage: flow-test init --template <template-name>');
   }
 
   /**
@@ -726,7 +727,7 @@ export async function handleInitCommand(args: string[]): Promise<void> {
  * Show help for init command
  */
 function showInitHelp(): void {
-  console.log(`
+  getLogger().info(`
 🚀 Flow Test Engine - Configuration Initializer
 
 USAGE:

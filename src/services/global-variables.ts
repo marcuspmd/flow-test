@@ -2,6 +2,7 @@ import { ConfigManager } from "../core/config";
 import { GlobalVariableContext } from "../types/engine.types";
 import { GlobalRegistryService } from "./global-registry.service";
 import { fakerService } from "./faker.service";
+import { getLogger } from "./logger.service";
 import {
   javascriptService,
   JavaScriptExecutionContext,
@@ -286,6 +287,25 @@ export class GlobalVariablesService {
       return this.context.environment[name];
     }
 
+    // Check for dependency variables if registry is available
+    if (this.globalRegistry && this.dependencies.length > 0) {
+      // Check if the variable name is a dependency itself
+      if (this.dependencies.includes(name)) {
+        const exportedValue = this.globalRegistry.getExportedVariable(name);
+        if (exportedValue !== undefined) {
+          return exportedValue;
+        }
+      }
+
+      // Check for exported variables from dependencies
+      for (const dependencyNodeId of this.dependencies) {
+        const exportedValue = this.globalRegistry.getExportedVariable(`${dependencyNodeId}.${name}`);
+        if (exportedValue !== undefined) {
+          return exportedValue;
+        }
+      }
+    }
+
     // Provide default fallback values for commonly used variables
     if (name === 'execution_mode') {
       return 'sequential';
@@ -350,7 +370,7 @@ export class GlobalVariablesService {
         const isLikelyRuntimeVariable =
           this.isLikelyRuntimeVariable(variableName);
         if (!isLikelyRuntimeVariable) {
-          console.warn(
+          getLogger().warn(
             `⚠️  Warning: Variable '${variableName}' not found during interpolation`
           );
         }
@@ -561,7 +581,7 @@ export class GlobalVariablesService {
         const result = fakerService.parseFakerExpression(fakerExpression);
         return result;
       } catch (error) {
-        console.warn(
+        getLogger().warn(
           `Error resolving Faker expression '${expression}': ${error}`
         );
         return undefined;
@@ -605,7 +625,7 @@ export class GlobalVariablesService {
           return result;
         }
       } catch (error) {
-        console.warn(
+        getLogger().warn(
           `Error resolving $env expression '${expression}': ${error}`
         );
         return undefined;
@@ -653,7 +673,7 @@ export class GlobalVariablesService {
           }
           return undefined;
         } catch (error) {
-          console.warn(
+          getLogger().warn(
             `Error resolving JavaScript expression '${expression}': ${error}`
           );
           return undefined;
@@ -759,6 +779,10 @@ export class GlobalVariablesService {
    * Gets variables from a specific scope
    */
   getVariablesByScope(scope: keyof GlobalVariableContext): Record<string, any> {
+    // For environment variables, return current process.env instead of cached version
+    if (scope === 'environment') {
+      return { ...process.env };
+    }
     return { ...this.context[scope] };
   }
 

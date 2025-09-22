@@ -19,6 +19,7 @@ import { DependencyService } from "../services/dependency.service";
 import { GlobalRegistryService } from "../services/global-registry.service";
 import { ReportingService } from "../services/reporting";
 import { ExecutionService } from "../services/execution";
+import { getLogger } from "../services/logger.service";
 import {
   EngineExecutionOptions,
   AggregatedResult,
@@ -367,33 +368,34 @@ export class FlowTestEngine {
       // Trigger execution start hook
       await this.hooks.onExecutionStart?.(this.stats);
 
-      console.log(`\n🚀 Flow Test Engine v1.0`);
-      console.log(`📊 Project: ${config.project_name}`);
-      console.log(`📁 Test Directory: ${config.test_directory}`);
-      console.log(`⚙️  Execution Mode: ${config.execution!.mode}`);
+      const logger = getLogger();
+      logger.info(`\n🚀 Flow Test Engine v1.0`);
+      logger.info(`📊 Project: ${config.project_name}`);
+      logger.info(`📁 Test Directory: ${config.test_directory}`);
+      logger.info(`⚙️  Execution Mode: ${config.execution!.mode}`);
 
       // 1. Test Discovery Phase
-      console.log(`\n🔍 Discovering tests...`);
+      logger.info(`\n🔍 Discovering tests...`);
       const discoveredTests = await this.discoverTests();
 
       if (discoveredTests.length === 0) {
-        console.log(`❌ No tests found in ${config.test_directory}`);
+        logger.info(`❌ No tests found in ${config.test_directory}`);
         return this.buildEmptyResult(startTime, new Date());
       }
 
-      console.log(`✅ Found ${discoveredTests.length} test suite(s)`);
+      logger.info(`✅ Found ${discoveredTests.length} test suite(s)`);
 
       // 2. Apply filters if configured
       const filteredTests = this.applyFilters(discoveredTests);
       if (filteredTests.length !== discoveredTests.length) {
-        console.log(`🔽 Filtered to ${filteredTests.length} test suite(s)`);
+        logger.info(`🔽 Filtered to ${filteredTests.length} test suite(s)`);
       }
 
       // 3. Ordenar por prioridade
       const orderedTests = this.priorityService.orderTests(filteredTests);
 
       // 4. Executar testes
-      console.log(`\n▶️  Executing tests...`);
+      logger.info(`\n▶️  Executing tests...`);
       const results = await this.executionService.executeTests(
         orderedTests,
         (stats) => this.updateStats(stats)
@@ -408,7 +410,7 @@ export class FlowTestEngine {
         results
       );
 
-      console.log(`\n📊 Generating reports...`);
+      logger.info(`\n📊 Generating reports...`);
       await this.reportingService.generateReports(aggregatedResult);
 
       // 6. Print execution summary
@@ -540,7 +542,7 @@ export class FlowTestEngine {
 
       return suite?.metadata?.tags || [];
     } catch (error) {
-      console.warn(`Warning: Could not read tags from ${filePath}: ${error}`);
+      getLogger().warn(`Warning: Could not read tags from ${filePath}: ${error}`);
       return [];
     }
   }
@@ -632,23 +634,24 @@ export class FlowTestEngine {
    * Imprime resumo da execução
    */
   private printExecutionSummary(result: AggregatedResult): void {
-    console.log(`\n📋 Execution Summary`);
-    console.log(`════════════════════`);
-    console.log(`⏱️  Duration: ${result.total_duration_ms}ms`);
-    console.log(`📊 Success Rate: ${result.success_rate.toFixed(1)}%`);
-    console.log(`✅ Successful: ${result.successful_tests}`);
-    console.log(`❌ Failed: ${result.failed_tests}`);
+    const logger = getLogger();
+    logger.info(`\n📋 Execution Summary`);
+    logger.info(`════════════════════`);
+    logger.info(`⏱️  Duration: ${result.total_duration_ms}ms`);
+    logger.info(`📊 Success Rate: ${result.success_rate.toFixed(1)}%`);
+    logger.info(`✅ Successful: ${result.successful_tests}`);
+    logger.info(`❌ Failed: ${result.failed_tests}`);
 
     if (result.skipped_tests > 0) {
-      console.log(`⏭️  Skipped: ${result.skipped_tests}`);
+      logger.info(`⏭️  Skipped: ${result.skipped_tests}`);
     }
 
     if (result.failed_tests > 0) {
-      console.log(`\n💥 Failed Suites:`);
+      logger.info(`\n💥 Failed Suites:`);
       result.suites_results
         .filter((suite) => suite.status === "failure")
         .forEach((suite) => {
-          console.log(
+          logger.info(
             `   • ${suite.suite_name}: ${
               suite.error_message || "Unknown error"
             }`
@@ -659,15 +662,15 @@ export class FlowTestEngine {
     // Performance summary
     if (result.performance_summary) {
       const perf = result.performance_summary;
-      console.log(`\n🚀 Performance:`);
-      console.log(`   • Requests: ${perf.total_requests}`);
-      console.log(
+      logger.info(`\n🚀 Performance:`);
+      logger.info(`   • Requests: ${perf.total_requests}`);
+      logger.info(
         `   • Avg Response: ${perf.average_response_time_ms.toFixed(0)}ms`
       );
-      console.log(`   • RPS: ${perf.requests_per_second.toFixed(1)}`);
+      logger.info(`   • RPS: ${perf.requests_per_second.toFixed(1)}`);
     }
 
-    console.log(``);
+    logger.info(``);
   }
 
   /**
@@ -800,21 +803,22 @@ export class FlowTestEngine {
    * @public
    */
   async dryRun(): Promise<DiscoveredTest[]> {
-    console.log(`\n🧪 Dry Run Mode - Flow Test Engine v1.0`);
-    console.log(`📊 Project: ${this.configManager.getConfig().project_name}`);
+    const logger = getLogger();
+    logger.info(`\n🧪 Dry Run Mode - Flow Test Engine v1.0`);
+    logger.info(`📊 Project: ${this.configManager.getConfig().project_name}`);
 
     const discoveredTests = await this.discoverTests();
     const filteredTests = this.applyFilters(discoveredTests);
     const orderedTests = this.priorityService.orderTests(filteredTests);
 
-    console.log(`\n📋 Execution Plan:`);
+    logger.info(`\n📋 Execution Plan:`);
     orderedTests.forEach((test, index) => {
-      console.log(
+      logger.info(
         `${(index + 1).toString().padStart(2)}. ${test.suite_name} (${
           test.priority || "medium"
         })`
       );
-      console.log(`    📁 ${test.file_path}`);
+      logger.info(`    📁 ${test.file_path}`);
     });
 
     return orderedTests;

@@ -13,6 +13,7 @@ import fs from "fs";
 import path from "path";
 import fg from "fast-glob";
 import yaml from "js-yaml";
+import { getLogger } from "../services/logger.service";
 import { ConfigManager } from "./config";
 import {
   DiscoveredTest,
@@ -195,7 +196,7 @@ export class TestDiscovery {
             discoveredTests.push(test);
           }
         } catch (error) {
-          console.warn(
+          getLogger().warn(
             `⚠️  Warning: Failed to parse test file ${filePath}: ${error}`
           );
         }
@@ -222,7 +223,7 @@ export class TestDiscovery {
       const suite = yaml.load(fileContent) as TestSuite;
 
       if (!suite || !suite.suite_name || !suite.node_id) {
-        console.warn(
+        getLogger().warn(
           `⚠️  Warning: Invalid test suite in ${filePath} - missing suite_name or node_id`
         );
         return null;
@@ -304,7 +305,7 @@ export class TestDiscovery {
       }
 
       if (!dependency.node_id) {
-        console.warn(
+        getLogger().warn(
           `⚠️  Warning: Dependency without node_id found in ${filePath}. Update the suite to use node_id references.`
         );
         continue;
@@ -372,7 +373,7 @@ export class TestDiscovery {
 
         const exists = knownNodeIds.has(dependency.node_id);
         if (!exists) {
-          console.warn(
+          getLogger().warn(
             `⚠️  Warning: Dependency '${dependency.node_id}' not found for test '${test.node_id}' (${test.suite_name})`
           );
         }
