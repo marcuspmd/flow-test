@@ -13,9 +13,10 @@ base_url: "{{httpbin_url}}"
 exports:
   - jwt_token
   - oauth2_access_token
-  - refresh_token
   - user_permissions
   - auth_flow_results
+exports_optional:
+  - refresh_token
 
 variables:
 

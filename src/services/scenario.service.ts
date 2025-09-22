@@ -1,6 +1,6 @@
 import * as jmespath from "jmespath";
 import { ConditionalScenario, Assertions } from "../types/engine.types";
-import { StepExecutionResult, AssertionResult } from "../types/config.types";
+import { StepExecutionResult } from "../types/config.types";
 import { AssertionService } from "./assertion.service";
 import { CaptureService } from "./capture.service";
 import { getLogger } from "./logger.service";
@@ -170,7 +170,7 @@ export class ScenarioService {
    * Executes a scenario block (then or else).
    */
   private executeScenarioBlock(
-    block: { assert?: Assertions; capture?: Record<string, string> },
+    block: { assert?: Assertions; capture?: Record<string, string>; variables?: Record<string, any> },
     result: StepExecutionResult,
     verbosity: string,
     variableContext?: Record<string, any>
@@ -228,6 +228,22 @@ export class ScenarioService {
       }
       Object.assign(result.captured_variables, capturedVariables);
       capturesAdded = Object.keys(capturedVariables || {}).length;
+    }
+
+    // Executes scenario variables (static variable assignments)
+    if (block.variables) {
+      if (!result.captured_variables) {
+        result.captured_variables = {};
+      }
+
+      // Add static variables to captured variables
+      Object.assign(result.captured_variables, block.variables);
+
+      if (verbosity === "detailed" || verbosity === "verbose") {
+        this.logger.info(
+          `Set ${Object.keys(block.variables).length} scenario variable(s): ${Object.keys(block.variables).join(', ')}`
+        );
+      }
     }
 
     return { assertionsAdded, capturesAdded };

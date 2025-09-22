@@ -18,7 +18,8 @@ variables:
   load_test_range_10: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
   load_test_range_15: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
 
-exports: ["performance_metrics", "response_time_data", "load_test_results"]
+exports: ["performance_metrics", "response_time_data"]
+exports_optional: ["load_test_results"]
 
 steps:
   # 1. Basic Response Time Assertion - Fast Endpoint

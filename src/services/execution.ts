@@ -1279,26 +1279,74 @@ export class ExecutionService {
     test: DiscoveredTest,
     result: SuiteExecutionResult
   ): void {
-    if (!test.exports || test.exports.length === 0) return;
+    const hasRequiredExports = test.exports && test.exports.length > 0;
+    const hasOptionalExports = test.exports_optional && test.exports_optional.length > 0;
 
+    if (!hasRequiredExports && !hasOptionalExports) return;
+
+    // Get variables from multiple sources for comprehensive search
     const runtimeVars = this.globalVariables.getVariablesByScope("runtime");
+    const allCapturedVars = this.getAllCapturedVariables(result);
 
-    for (const exportName of test.exports) {
-      // Look for the variable in runtime (it should be there if it was captured)
-      const value = runtimeVars[exportName];
+    // Merge all sources (runtime takes precedence)
+    const allAvailableVars = { ...allCapturedVars, ...runtimeVars };
 
-      if (value !== undefined) {
-        this.globalRegistry.setExportedVariable(
-          test.node_id,
-          exportName,
-          value
-        );
-      } else {
-        this.logger.warn(
-          `Export '${exportName}' not found in captured variables for suite '${test.suite_name}'`
-        );
+    // Process required exports (with warnings)
+    if (hasRequiredExports) {
+      for (const exportName of test.exports!) {
+        const value = allAvailableVars[exportName];
+
+        if (value !== undefined) {
+          this.globalRegistry.setExportedVariable(
+            test.node_id,
+            exportName,
+            value
+          );
+        } else {
+          this.logger.warn(
+            `Export '${exportName}' not found in captured variables for suite '${test.suite_name}'`
+          );
+        }
       }
     }
+
+    // Process optional exports (no warnings)
+    if (hasOptionalExports) {
+      for (const exportName of test.exports_optional!) {
+        const value = allAvailableVars[exportName];
+
+        if (value !== undefined) {
+          this.globalRegistry.setExportedVariable(
+            test.node_id,
+            exportName,
+            value
+          );
+          // Optional: log successful optional export for debugging
+          this.logger.debug(
+            `Optional export '${exportName}' found and registered for suite '${test.suite_name}'`
+          );
+        }
+        // No warning when optional export is not found
+      }
+    }
+  }
+
+  /**
+   * Collects all captured variables from step results and scenarios
+   */
+  private getAllCapturedVariables(result: SuiteExecutionResult): Record<string, any> {
+    const allCaptured: Record<string, any> = {};
+
+    // Collect from step results
+    if (result.steps_results) {
+      for (const stepResult of result.steps_results) {
+        if (stepResult.captured_variables) {
+          Object.assign(allCaptured, stepResult.captured_variables);
+        }
+      }
+    }
+
+    return allCaptured;
   }
 
   /**

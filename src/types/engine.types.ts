@@ -611,6 +611,8 @@ export interface ReusableFlow {
   steps: TestStep[];
   /** Variables to export to global scope after execution */
   exports?: string[];
+  /** Optional variables to export (no warnings if not found) */
+  exports_optional?: string[];
   /** Flow dependencies that must be executed first */
   depends?: FlowDependency[];
   /** Additional metadata for flow execution */
@@ -677,6 +679,8 @@ export interface TestSuite {
   steps: TestStep[];
   /** Variables to export to global scope */
   exports?: string[];
+  /** Optional variables to export (no warnings if not found) */
+  exports_optional?: string[];
   /** Dependencies that must be satisfied before execution */
   depends?: FlowDependency[];
   /** Extended metadata for suite configuration */

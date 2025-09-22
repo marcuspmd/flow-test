@@ -286,6 +286,11 @@ export class GlobalVariablesService {
       return this.context.environment[name];
     }
 
+    // Provide default fallback values for commonly used variables
+    if (name === 'execution_mode') {
+      return 'sequential';
+    }
+
     return undefined;
   }
 
@@ -563,6 +568,50 @@ export class GlobalVariablesService {
       }
     }
 
+    // Check if it's an environment variable (starts with '$env.') - PRIORITY OVER JS
+    if (expression.startsWith("$env.")) {
+      const envVarName = expression.substring(5); // Remove "$env." to get variable name
+      const envValue = process.env[envVarName];
+      return envValue || null;
+    }
+
+    // Check for expressions containing $env with logical operators (like $env.NODE_ENV || 'default')
+    if (expression.includes("$env.")) {
+      try {
+        // Replace $env variables with their actual values in the expression
+        let resolvedExpression = expression;
+        const envMatches = expression.match(/\$env\.([A-Z_][A-Z0-9_]*)/gi);
+
+        if (envMatches) {
+          for (const envMatch of envMatches) {
+            const envVarName = envMatch.substring(5); // Remove "$env."
+            const envValue = process.env[envVarName];
+            // Replace with quoted string if exists, or undefined if not
+            const replacement = envValue ? `"${envValue}"` : 'undefined';
+            resolvedExpression = resolvedExpression.replace(envMatch, replacement);
+          }
+
+          // Now execute as JavaScript expression
+          const allVars = this.getAllVariables();
+          const context: JavaScriptExecutionContext = {
+            ...this.currentExecutionContext,
+            variables: allVars,
+          };
+          const result = javascriptService.executeExpression(
+            resolvedExpression,
+            context,
+            false
+          );
+          return result;
+        }
+      } catch (error) {
+        console.warn(
+          `Error resolving $env expression '${expression}': ${error}`
+        );
+        return undefined;
+      }
+    }
+
     // Check if it's a JavaScript expression, but NOT if it's a Faker expression
     if (!expression.startsWith("faker.") && !expression.startsWith("$faker.")) {
       const hasLogicalOperators = /\|\||&&|[><=!]==?|\?|:/.test(expression);
@@ -610,13 +659,6 @@ export class GlobalVariablesService {
           return undefined;
         }
       }
-    }
-
-    // Check if it's an environment variable (starts with '$env.')
-    if (expression.startsWith("$env.")) {
-      const envVarName = expression.substring(5); // Remove "$env." to get variable name
-      const envValue = process.env[envVarName];
-      return envValue || null;
     }
 
     // Support for paths like: user.name, config.timeout

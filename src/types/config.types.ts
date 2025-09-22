@@ -337,6 +337,8 @@ export interface DiscoveredTest {
 
   /** Variable names exported by this suite for use by other suites */
   exports?: string[];
+  /** Optional variable names to export (no warnings if not found) */
+  exports_optional?: string[];
 
   /** Estimated execution duration in milliseconds */
   estimated_duration?: number;

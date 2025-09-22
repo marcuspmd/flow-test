@@ -4,6 +4,7 @@ globals:
   variables:
     api_base_url: http://localhost:8080
     httpbin_url: http://localhost:8080
+    execution_mode: sequential
     default_timeout: 30000
   timeouts:
     default: 60000
