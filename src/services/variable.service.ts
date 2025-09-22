@@ -337,24 +337,44 @@ export class VariableService {
       return this.context.runtime[variablePath];
     }
 
-    // Checks if it's a global exported variable (ex: auth.token)
-    if (variablePath.includes(".") && this.globalRegistry) {
-      const globalValue = this.globalRegistry.getExportedVariable(variablePath);
-      if (globalValue !== undefined) {
-        return globalValue;
-      }
-    }
-
-    // Checks if it's an imported flow variable (legacy support)
+    // Handle path navigation for local variables first
     if (variablePath.includes(".")) {
-      const [flowName, ...pathParts] = variablePath.split(".");
-      const flowVariables = this.context.imported[flowName];
-      if (flowVariables) {
-        return this.getNestedValue(flowVariables, pathParts.join("."));
+      const parts = variablePath.split(".");
+      const baseName = parts[0];
+
+      // Check in hierarchy for base variable
+      const baseValue =
+        this.context.runtime[baseName] ??
+        this.context.suite[baseName] ??
+        this.findInImported(baseName) ??
+        this.context.global[baseName];
+
+      // If base variable found, navigate through the path
+      if (baseValue !== undefined) {
+        const pathResult = this.getNestedValue(baseValue, parts.slice(1).join("."));
+        if (pathResult !== undefined) {
+          return pathResult;
+        }
       }
+
+      // If local path navigation failed, try global exported variable (ex: auth.token)
+      if (this.globalRegistry) {
+        const globalValue = this.globalRegistry.getExportedVariable(variablePath);
+        if (globalValue !== undefined) {
+          return globalValue;
+        }
+      }
+
+      // Try imported flow variable (legacy support)
+      const flowVariables = this.context.imported[baseName];
+      if (flowVariables) {
+        return this.getNestedValue(flowVariables, parts.slice(1).join("."));
+      }
+
+      return undefined;
     }
 
-    // Resolution hierarchy: runtime > suite > imported > global
+    // Resolution hierarchy for simple variables: runtime > suite > imported > global
     const value =
       this.context.suite[variablePath] ??
       this.findInImported(variablePath) ??

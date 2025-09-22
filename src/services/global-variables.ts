@@ -667,46 +667,62 @@ export class GlobalVariablesService {
 
     let value = this.getVariable(baseName);
 
-    // If not found in local scopes, try to resolve as exported variable (suite.variable)
-    if (
-      value === undefined &&
-      expression.includes(".") &&
-      this.globalRegistry
-    ) {
+    // If found locally, navigate through the path first
+    if (value !== undefined && parts.length > 1) {
+      for (let i = 1; i < parts.length && value !== undefined; i++) {
+        if (typeof value === "object" && value !== null) {
+          value = value[parts[i]];
+        } else {
+          value = undefined;
+          break;
+        }
+      }
+
+      // If successfully navigated the full path, return the result
+      if (value !== undefined) {
+        return value;
+      }
+    }
+
+    // If base variable found but path navigation failed, return the base value for single-part expressions
+    if (parts.length === 1 && value !== undefined) {
+      return value;
+    }
+
+    // Only try exports if local variable was not found OR path navigation failed
+    if (expression.includes(".") && this.globalRegistry) {
+      // Try to resolve as exported variable (suite.variable)
       const exportedValue = this.globalRegistry.getExportedVariable(expression);
       if (exportedValue !== undefined) {
         return exportedValue;
       }
-    }
 
-    // If not found in regular scopes, try to resolve from dependent flows' exports
-    if (
-      value === undefined &&
-      this.globalRegistry &&
-      this.dependencies.length > 0
-    ) {
-      for (const dependencyNodeId of this.dependencies) {
-        const exportedValue = this.globalRegistry.getExportedVariable(
-          `${dependencyNodeId}.${baseName}`
-        );
-        if (exportedValue !== undefined) {
-          value = exportedValue;
-          break;
+      // Try to resolve from dependent flows' exports
+      if (this.dependencies.length > 0) {
+        for (const dependencyNodeId of this.dependencies) {
+          const exportedValue = this.globalRegistry.getExportedVariable(
+            `${dependencyNodeId}.${baseName}`
+          );
+          if (exportedValue !== undefined) {
+            // For dependency exports, also navigate through remaining path
+            let depValue = exportedValue;
+            for (let i = 1; i < parts.length && depValue !== undefined; i++) {
+              if (typeof depValue === "object" && depValue !== null) {
+                depValue = depValue[parts[i]];
+              } else {
+                depValue = undefined;
+                break;
+              }
+            }
+            if (depValue !== undefined) {
+              return depValue;
+            }
+          }
         }
       }
     }
 
-    // Navigates through path if it exists
-    for (let i = 1; i < parts.length && value !== undefined; i++) {
-      if (typeof value === "object" && value !== null) {
-        value = value[parts[i]];
-      } else {
-        value = undefined;
-        break;
-      }
-    }
-
-    return value;
+    return undefined;
   }
 
   /**
