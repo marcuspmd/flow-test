@@ -325,21 +325,39 @@ async function main() {
         const testData = yaml.load(fileContent);
 
         if (testData && testData.node_id) {
+          // Auto-discover dependencies for single file execution
+          const dependencyNodeIds = await autoDiscoverDependencies(testData, tempDir);
+          const nodeIdsToExecute = [...dependencyNodeIds, testData.node_id];
+
+          getLogger().info(`🔍 Auto-discovered ${dependencyNodeIds.length} dependencies`);
+          if (dependencyNodeIds.length > 0) {
+            getLogger().info(`📋 Execution order: ${nodeIdsToExecute.join(' → ')}`);
+          }
+
           engineOptions = {
             ...options,
             test_directory: tempDir,
             filters: {
               ...options.filters,
-              node_ids: [testData.node_id],
+              node_ids: nodeIdsToExecute,
             },
           };
         } else if (testData && testData.suite_name) {
+          // Auto-discover dependencies for single file execution
+          const dependencyNodeIds = await autoDiscoverDependencies(testData, tempDir);
+          const suiteNamesToExecute = [...dependencyNodeIds, testData.suite_name];
+
+          getLogger().info(`🔍 Auto-discovered ${dependencyNodeIds.length} dependencies`);
+          if (dependencyNodeIds.length > 0) {
+            getLogger().info(`📋 Execution order: ${suiteNamesToExecute.join(' → ')}`);
+          }
+
           engineOptions = {
             ...options,
             test_directory: tempDir,
             filters: {
               ...options.filters,
-              suite_names: [testData.suite_name],
+              suite_names: suiteNamesToExecute,
             },
           };
         } else {
@@ -459,6 +477,112 @@ async function main() {
 
     process.exit(1);
   }
+}
+
+/**
+ * Auto-discovers dependencies for a test suite by analyzing its depends field
+ * and searching for corresponding files in the test directory.
+ *
+ * @param testData - The parsed YAML test data
+ * @param testDirectory - The directory to search for dependency files
+ * @returns Array of node_ids that need to be executed before the main test
+ */
+async function autoDiscoverDependencies(testData: any, testDirectory: string): Promise<string[]> {
+  const fs = require("fs");
+  const path = require("path");
+  const yaml = require("js-yaml");
+  const fg = require("fast-glob");
+
+  const dependencyNodeIds: string[] = [];
+
+  // Check if the test has dependencies
+  if (!testData.depends || !Array.isArray(testData.depends)) {
+    return dependencyNodeIds;
+  }
+
+  // Search for YAML files in the test directory
+  const yamlFiles = await fg(['**/*.yaml', '**/*.yml'], {
+    cwd: testDirectory,
+    absolute: true,
+    ignore: ['node_modules/**', '.git/**']
+  });
+
+  // Create a map of node_id to file path for quick lookup
+  const nodeIdToFileMap: Map<string, string> = new Map();
+
+  for (const filePath of yamlFiles) {
+    try {
+      const fileContent = fs.readFileSync(filePath, 'utf8');
+      const fileData = yaml.load(fileContent);
+
+      if (fileData && fileData.node_id) {
+        nodeIdToFileMap.set(fileData.node_id, filePath);
+      }
+    } catch (error) {
+      // Skip invalid YAML files
+      getLogger().debug(`⚠️ Could not parse YAML file: ${filePath}`);
+    }
+  }
+
+  // Process each dependency
+  for (const dependency of testData.depends) {
+    let resolvedNodeId: string | null = null;
+
+    if (dependency.node_id) {
+      // Direct node_id reference
+      resolvedNodeId = dependency.node_id;
+    } else if (dependency.path) {
+      // Try to resolve by path
+      const dependencyPath = path.resolve(testDirectory, dependency.path);
+
+      if (fs.existsSync(dependencyPath)) {
+        try {
+          const depFileContent = fs.readFileSync(dependencyPath, 'utf8');
+          const depData = yaml.load(depFileContent);
+
+          if (depData && depData.node_id) {
+            resolvedNodeId = depData.node_id;
+          }
+        } catch (error) {
+          getLogger().warn(`⚠️ Could not read dependency file: ${dependency.path}`);
+        }
+      } else {
+        // Try to find file by partial path match
+        for (const [nodeId, filePath] of nodeIdToFileMap) {
+          if (filePath.includes(dependency.path) || dependency.path.includes(path.basename(filePath, path.extname(filePath)))) {
+            resolvedNodeId = nodeId;
+            break;
+          }
+        }
+      }
+    }
+
+    if (resolvedNodeId && nodeIdToFileMap.has(resolvedNodeId)) {
+      // Recursively resolve dependencies of dependencies
+      const depFilePath = nodeIdToFileMap.get(resolvedNodeId)!;
+      const depFileContent = fs.readFileSync(depFilePath, 'utf8');
+      const depData = yaml.load(depFileContent);
+
+      const transitiveDependencies = await autoDiscoverDependencies(depData, testDirectory);
+
+      // Add transitive dependencies first
+      for (const transitiveDep of transitiveDependencies) {
+        if (!dependencyNodeIds.includes(transitiveDep)) {
+          dependencyNodeIds.push(transitiveDep);
+        }
+      }
+
+      // Add direct dependency
+      if (!dependencyNodeIds.includes(resolvedNodeId)) {
+        dependencyNodeIds.push(resolvedNodeId);
+        getLogger().info(`✅ Found dependency: ${resolvedNodeId} (${path.basename(nodeIdToFileMap.get(resolvedNodeId)!)})`);
+      }
+    } else {
+      getLogger().warn(`⚠️ Could not resolve dependency: ${JSON.stringify(dependency)}`);
+    }
+  }
+
+  return dependencyNodeIds;
 }
 
 /**

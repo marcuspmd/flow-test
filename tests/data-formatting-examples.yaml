@@ -1,0 +1,268 @@
+suite_name: "Data Formatting and Transformation Examples"
+node_id: "data-formatting-examples"
+description: "Demonstrates various data formatting and transformation techniques using JMESPath projections and extractions"
+base_url: "{{httpbin_url}}"
+
+metadata:
+  priority: "medium"
+  tags: ["formatting", "transformation", "jmespath", "data-manipulation"]
+  estimated_duration_ms: 8000
+
+variables:
+  # Simulated data for testing formatting capabilities
+  sample_users:
+    - id: 1
+      name: "Alice Johnson"
+      email: "alice@example.com"
+      status: "active"
+      role: "admin"
+      last_login: "2024-01-15T10:30:00Z"
+      profile:
+        department: "Engineering"
+        level: "senior"
+        salary: 95000
+    - id: 2
+      name: "Bob Smith"
+      email: "bob@example.com"
+      status: "active"
+      role: "user"
+      last_login: "2024-01-14T15:45:00Z"
+      profile:
+        department: "Sales"
+        level: "junior"
+        salary: 65000
+    - id: 3
+      name: "Charlie Brown"
+      email: "charlie@example.com"
+      status: "inactive"
+      role: "moderator"
+      last_login: "2023-12-20T09:15:00Z"
+      profile:
+        department: "Marketing"
+        level: "mid"
+        salary: 75000
+
+  sample_products:
+    - id: "PROD-001"
+      title: "Premium Laptop"
+      price: 1299.99
+      category: "electronics"
+      brand: "TechCorp"
+      tags: ["premium", "laptop", "gaming"]
+      inventory:
+        stock: 25
+        warehouse: "US-WEST"
+    - id: "PROD-002"
+      title: "Basic Mouse"
+      price: 19.99
+      category: "accessories"
+      brand: "BasicTech"
+      tags: ["basic", "mouse", "office"]
+      inventory:
+        stock: 150
+        warehouse: "US-EAST"
+
+exports: ["formatted_data", "transformation_results"]
+
+steps:
+  # 1. Get raw data to format
+  - name: "Get user data for formatting"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        users: "{{sample_users}}"
+        metadata:
+          total_count: 3
+          timestamp: "2024-01-15T12:00:00Z"
+          source: "user_management_system"
+    assert:
+      status_code: 200
+    capture:
+      raw_users_data: "body.json.users"
+      response_metadata: "body.json.metadata"
+
+  # 2. Format user data - Extract only essential fields
+  - name: "Format users - Essential fields only"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        operation: "format_users_essential"
+        raw_data: "{{raw_users_data}}"
+    assert:
+      status_code: 200
+    capture:
+      # Extract only id, name, and email using JMESPath projection
+      essential_users: "body.json.raw_data[*].{user_id: id, full_name: name, email_address: email}"
+      # Extract just the names as simple array
+      user_names_only: "body.json.raw_data[*].name"
+      # Extract just active user emails
+      active_user_emails: "body.json.raw_data[?status == 'active'].email"
+
+  # 3. Format user data - Create summary report
+  - name: "Format users - Summary report"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        operation: "format_users_summary"
+        users: "{{raw_users_data}}"
+    assert:
+      status_code: 200
+    capture:
+      # Create a summary object with formatted data
+      user_summary: "body.json.{total_users: length(users), active_count: length(users[?status == 'active']), department_list: users[*].profile.department}"
+      # Extract salary information formatted
+      salary_report: "body.json.users[*].{name: name, department: profile.department, salary_formatted: profile.salary}"
+      # Create role-based grouping
+      admin_users: "body.json.users[?role == 'admin'].{name: name, email: email}"
+      regular_users: "body.json.users[?role == 'user'].{name: name, department: profile.department}"
+
+  # 4. Get product data for complex formatting
+  - name: "Get product data for formatting"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        products: "{{sample_products}}"
+        catalog_info:
+          total_items: 2
+          last_updated: "2024-01-15T10:00:00Z"
+    assert:
+      status_code: 200
+    capture:
+      raw_products_data: "body.json.products"
+
+  # 5. Format product data - Create catalog views
+  - name: "Format products - Multiple catalog views"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        operation: "format_product_catalog"
+        products: "{{raw_products_data}}"
+    assert:
+      status_code: 200
+    capture:
+      # Simple product list for display
+      product_catalog_simple: "body.json.products[*].{id: id, name: title, price: price, available: inventory.stock}"
+      # Price-focused view
+      price_list: "body.json.products[*].{product: title, price_usd: price, category: category}"
+      # Inventory report
+      inventory_status: "body.json.products[*].{item_code: id, stock_level: inventory.stock, location: inventory.warehouse}"
+      # Tag-based organization
+      product_tags_flat: "body.json.products[*].tags[]"
+      # Brand summary
+      brand_catalog: "body.json.products[*].{brand: brand, products: title, category: category}"
+
+  # 6. Advanced formatting - Nested data transformation
+  - name: "Advanced formatting - Complex transformations"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        operation: "advanced_formatting"
+        users: "{{raw_users_data}}"
+        products: "{{raw_products_data}}"
+    assert:
+      status_code: 200
+    capture:
+      # Create hierarchical department view
+      department_hierarchy: "body.json.users[*].profile.{department: department, employees: [{name: name, level: level, role: role}]}"
+      # Calculate aggregated salary by department (using available data)
+      salary_by_department: "body.json.users[*].{dept: profile.department, salary: profile.salary}"
+      # Create user-product cross reference (simulated)
+      user_product_matrix: "body.json.{user_count: length(users), product_count: length(products), active_users: users[?status == 'active'][*].name}"
+
+  # 7. Format for different output formats
+  - name: "Format for CSV-style output"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        operation: "csv_format"
+        users: "{{raw_users_data}}"
+    assert:
+      status_code: 200
+    capture:
+      # CSV-like structure (array of arrays)
+      csv_headers: "body.json.['ID', 'Name', 'Email', 'Department', 'Status']"
+      csv_data: "body.json.users[*].[id, name, email, profile.department, status]"
+      # JSON structure optimized for table display
+      table_data: "body.json.users[*].{col1: id, col2: name, col3: email, col4: profile.department, col5: status}"
+
+  # 8. Format for API responses
+  - name: "Format for API response structure"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        operation: "api_response_format"
+        data: "{{raw_users_data}}"
+    assert:
+      status_code: 200
+    capture:
+      # Standard API response format
+      api_response_format: "body.json.{success: `true`, data: data[*].{id: id, attributes: {name: name, email: email, profile: profile}}, meta: {count: length(data), timestamp: '2024-01-15T12:00:00Z'}}"
+      # Paginated response format
+      paginated_format: "body.json.{page: `1`, per_page: `10`, total: length(data), items: data[*].{id: id, name: name, email: email}}"
+
+  # 9. Format with conditional logic
+  - name: "Conditional formatting based on data values"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        operation: "conditional_formatting"
+        users: "{{raw_users_data}}"
+        products: "{{raw_products_data}}"
+    assert:
+      status_code: 200
+    capture:
+      # Format users with status indicators
+      users_with_indicators: "body.json.users[*].{name: name, email: email, status_icon: status == 'active' && '✓' || '✗', priority: profile.level == 'senior' && 'high' || 'normal'}"
+      # Format products with price categories
+      products_with_categories: "body.json.products[*].{name: title, price: price, price_category: price > `1000` && 'premium' || price > `100` && 'standard' || 'budget'}"
+
+  # 10. Final summary - Collect all formatted data
+  - name: "Collect formatting results summary"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        test_summary: "data_formatting_examples"
+        transformations_applied:
+          - "essential_field_extraction"
+          - "summary_reports"
+          - "catalog_views"
+          - "hierarchical_transformation"
+          - "csv_formatting"
+          - "api_response_formatting"
+          - "conditional_formatting"
+        total_examples: 9
+    assert:
+      status_code: 200
+    capture:
+      formatted_data: "body.json"
+      transformation_results: "body.json.transformations_applied"

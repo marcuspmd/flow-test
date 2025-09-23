@@ -1,0 +1,357 @@
+suite_name: "Array Filtering and Query Examples"
+node_id: "array-filtering-examples"
+description: "Comprehensive examples of filtering arrays using JMESPath queries, including object arrays, simple arrays, and complex conditional filtering"
+base_url: "{{httpbin_url}}"
+
+metadata:
+  priority: "medium"
+  tags: ["filtering", "arrays", "jmespath", "queries", "conditions"]
+  estimated_duration_ms: 10000
+
+variables:
+  # Test data: Users with various statuses and attributes
+  test_users:
+    - id: 1
+      name: "Alice Johnson"
+      email: "alice@example.com"
+      status: "active"
+      role: "admin"
+      age: 28
+      department: "Engineering"
+      salary: 95000
+      skills: ["JavaScript", "Python", "Docker"]
+      last_login: "2024-01-15T10:30:00Z"
+    - id: 2
+      name: "Bob Smith"
+      email: "bob@example.com"
+      status: "active"
+      role: "user"
+      age: 34
+      department: "Sales"
+      salary: 65000
+      skills: ["Sales", "CRM", "Excel"]
+      last_login: "2024-01-14T15:45:00Z"
+    - id: 3
+      name: "Charlie Brown"
+      email: "charlie@example.com"
+      status: "inactive"
+      role: "moderator"
+      age: 29
+      department: "Marketing"
+      salary: 75000
+      skills: ["Marketing", "SEO", "Analytics"]
+      last_login: "2023-12-20T09:15:00Z"
+    - id: 4
+      name: "Diana Prince"
+      email: "diana@example.com"
+      status: "pending"
+      role: "admin"
+      age: 31
+      department: "Engineering"
+      salary: 120000
+      skills: ["JavaScript", "DevOps", "Kubernetes"]
+      last_login: "2024-01-16T08:00:00Z"
+    - id: 5
+      name: "Eve Wilson"
+      email: "eve@example.com"
+      status: "active"
+      role: "user"
+      age: 26
+      department: "Design"
+      salary: 70000
+      skills: ["Design", "Figma", "Photoshop"]
+      last_login: "2024-01-15T14:20:00Z"
+
+  # Test data: Products with different categories and prices
+  test_products:
+    - id: "PROD-001"
+      name: "Premium Laptop"
+      price: 1299.99
+      category: "electronics"
+      brand: "TechCorp"
+      stock: 25
+      rating: 4.8
+      tags: ["premium", "laptop", "gaming", "high-performance"]
+    - id: "PROD-002"
+      name: "Basic Mouse"
+      price: 19.99
+      category: "accessories"
+      brand: "BasicTech"
+      stock: 150
+      rating: 4.2
+      tags: ["basic", "mouse", "office"]
+    - id: "PROD-003"
+      name: "Gaming Keyboard"
+      price: 129.99
+      category: "accessories"
+      brand: "GameTech"
+      stock: 50
+      rating: 4.6
+      tags: ["gaming", "keyboard", "rgb", "mechanical"]
+    - id: "PROD-004"
+      name: "Professional Monitor"
+      price: 799.99
+      category: "electronics"
+      brand: "DisplayPro"
+      stock: 15
+      rating: 4.9
+      tags: ["professional", "monitor", "4k", "design"]
+    - id: "PROD-005"
+      name: "Budget Headphones"
+      price: 39.99
+      category: "audio"
+      brand: "SoundBasic"
+      stock: 0
+      rating: 3.8
+      tags: ["budget", "headphones", "basic"]
+
+  # Simple arrays for basic filtering
+  simple_numbers: [1, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50]
+  simple_strings: ["apple", "banana", "cherry", "date", "elderberry", "fig", "grape"]
+  mixed_statuses: ["active", "inactive", "pending", "active", "suspended", "active", "pending"]
+
+exports: ["filtering_results", "query_examples"]
+
+steps:
+  # 1. Basic filtering - Active users only
+  - name: "Filter active users"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        operation: "filter_active_users"
+        users: "{{test_users}}"
+    assert:
+      status_code: 200
+    capture:
+      # Filter users with status 'active'
+      active_users: "body.json.users[?status == 'active']"
+      # Get just names of active users
+      active_user_names: "body.json.users[?status == 'active'].name"
+      # Count active users
+      active_user_count: "body.json.users[?status == 'active'] | length(@)"
+
+  # 2. Numeric filtering - Salary ranges
+  - name: "Filter users by salary ranges"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        operation: "filter_by_salary"
+        users: "{{test_users}}"
+    assert:
+      status_code: 200
+    capture:
+      # High earners (salary > 80000)
+      high_earners: "body.json.users[?salary > `80000`]"
+      # Mid-range earners (salary between 60000-90000)
+      mid_range_earners: "body.json.users[?salary >= `60000` && salary <= `90000`]"
+      # Entry level (salary < 70000)
+      entry_level: "body.json.users[?salary < `70000`].{name: name, salary: salary, department: department}"
+
+  # 3. String filtering - Department and name searches
+  - name: "Filter by department and name patterns"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        operation: "filter_by_strings"
+        users: "{{test_users}}"
+    assert:
+      status_code: 200
+    capture:
+      # Engineering department only
+      engineering_users: "body.json.users[?department == 'Engineering']"
+      # Names starting with specific letters
+      names_starting_with_a: "body.json.users[?starts_with(name, 'A')].name"
+      # Names containing specific substring
+      names_containing_o: "body.json.users[?contains(name, 'o')].name"
+      # Email domains
+      gmail_users: "body.json.users[?contains(email, '@example.com')].email"
+
+  # 4. Array content filtering - Skills-based filtering
+  - name: "Filter by array contents (skills)"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        operation: "filter_by_skills"
+        users: "{{test_users}}"
+    assert:
+      status_code: 200
+    capture:
+      # Users with JavaScript skills
+      javascript_users: "body.json.users[?contains(skills, 'JavaScript')]"
+      # Users with design-related skills
+      design_users: "body.json.users[?contains(skills, 'Design') || contains(skills, 'Figma')]"
+      # Extract skills from engineering users
+      engineering_skills: "body.json.users[?department == 'Engineering'][*].skills[]"
+
+  # 5. Product filtering - Category and price filtering
+  - name: "Filter products by category and price"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        operation: "filter_products"
+        products: "{{test_products}}"
+    assert:
+      status_code: 200
+    capture:
+      # Electronics category only
+      electronics: "body.json.products[?category == 'electronics']"
+      # Expensive items (price > 500)
+      expensive_items: "body.json.products[?price > `500`]"
+      # In-stock items only
+      in_stock_items: "body.json.products[?stock > `0`]"
+      # High-rated and in-stock
+      quality_available: "body.json.products[?rating >= `4.5` && stock > `0`]"
+
+  # 6. Complex multi-condition filtering
+  - name: "Complex multi-condition filters"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        operation: "complex_filtering"
+        users: "{{test_users}}"
+        products: "{{test_products}}"
+    assert:
+      status_code: 200
+    capture:
+      # Senior active admins
+      senior_admins: "body.json.users[?status == 'active' && role == 'admin' && age > `25`]"
+      # Young high earners
+      young_high_earners: "body.json.users[?age < `30` && salary > `70000`]"
+      # Premium electronics in stock
+      premium_electronics: "body.json.products[?category == 'electronics' && price > `1000` && stock > `0`]"
+      # Gaming accessories under 200
+      gaming_accessories: "body.json.products[?category == 'accessories' && contains(tags, 'gaming') && price < `200`]"
+
+  # 7. Tag-based filtering for products
+  - name: "Filter products by tags"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        operation: "filter_by_tags"
+        products: "{{test_products}}"
+    assert:
+      status_code: 200
+    capture:
+      # Products with 'gaming' tag
+      gaming_products: "body.json.products[?contains(tags, 'gaming')]"
+      # Products with 'premium' or 'professional' tags
+      high_end_products: "body.json.products[?contains(tags, 'premium') || contains(tags, 'professional')]"
+      # Products with multiple specific tags
+      professional_design: "body.json.products[?contains(tags, 'design') && contains(tags, '4k')]"
+
+  # 8. Simple array filtering
+  - name: "Filter simple arrays"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        operation: "simple_array_filtering"
+        numbers: "{{simple_numbers}}"
+        strings: "{{simple_strings}}"
+        statuses: "{{mixed_statuses}}"
+    assert:
+      status_code: 200
+    capture:
+      # Numbers greater than 20
+      numbers_gt_20: "body.json.numbers[?@ > `20`]"
+      # Numbers between 10 and 30
+      numbers_10_to_30: "body.json.numbers[?@ >= `10` && @ <= `30`]"
+      # Strings starting with specific letter
+      fruits_starting_with_a: "body.json.strings[?starts_with(@, 'a')]"
+      # Strings containing 'e'
+      strings_with_e: "body.json.strings[?contains(@, 'e')]"
+      # Count of each status
+      unique_statuses: "body.json.statuses[?@ == 'active'] | length(@)"
+
+  # 9. Filtering with projections and transformations
+  - name: "Filter with data transformation"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        operation: "filter_and_transform"
+        users: "{{test_users}}"
+        products: "{{test_products}}"
+    assert:
+      status_code: 200
+    capture:
+      # Active users with formatted output
+      active_users_formatted: "body.json.users[?status == 'active'].{employee_id: id, full_name: name, contact: email, dept: department}"
+      # High-value products summary
+      premium_products_summary: "body.json.products[?price > `100`].{product_code: id, title: name, price_usd: price, availability: stock > `0` && 'In Stock' || 'Out of Stock'}"
+      # Department user counts
+      dept_summary: "body.json.users[?status == 'active'] | group_by(@, &department)"
+
+  # 10. Advanced filtering scenarios
+  - name: "Advanced filtering scenarios"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        operation: "advanced_scenarios"
+        users: "{{test_users}}"
+        products: "{{test_products}}"
+    assert:
+      status_code: 200
+    capture:
+      # Users with recent activity (mock recent date filtering)
+      recent_users: "body.json.users[?contains(last_login, '2024-01')]"
+      # Cross-reference: Engineering users with JavaScript skills
+      eng_js_users: "body.json.users[?department == 'Engineering' && contains(skills, 'JavaScript')].{name: name, skills: skills}"
+      # Products by brand with stock status
+      products_by_brand: "body.json.products[?brand == 'TechCorp' || brand == 'GameTech'].{brand: brand, product: name, stock_status: stock}"
+      # Complex availability check
+      available_quality_products: "body.json.products[?stock > `10` && rating > `4.0` && price < `1000`].{name: name, price: price, rating: rating}"
+
+  # 11. Final summary
+  - name: "Filtering examples summary"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        test_summary: "array_filtering_examples"
+        filter_types_demonstrated:
+          - "status_filtering"
+          - "numeric_range_filtering"
+          - "string_pattern_filtering"
+          - "array_content_filtering"
+          - "multi_condition_filtering"
+          - "tag_based_filtering"
+          - "simple_array_filtering"
+          - "transformation_filtering"
+          - "advanced_scenarios"
+        total_examples: 10
+    assert:
+      status_code: 200
+    capture:
+      filtering_results: "body.json"
+      query_examples: "body.json.filter_types_demonstrated"

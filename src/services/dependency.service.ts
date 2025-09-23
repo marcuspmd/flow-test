@@ -222,16 +222,37 @@ export class DependencyService {
       }
     }
 
-    // Fallback: try to extract nodeId from filename
-    // This is a heuristic - in real usage, the YAML file should specify the nodeId
-    const filename = path.basename(
-      dependencyPath,
-      path.extname(dependencyPath)
-    );
-    const possibleNodeId = filename.replace(/-flow$/, "").replace(/-/g, "-");
+    // Enhanced fallback: try multiple naming conventions
+    const filename = path.basename(dependencyPath, path.extname(dependencyPath));
 
-    if (this.graph.has(possibleNodeId)) {
-      return possibleNodeId;
+    // Try exact filename match
+    if (this.graph.has(filename)) {
+      return filename;
+    }
+
+    // Try filename with common suffixes removed
+    const possibleIds = [
+      filename.replace(/-flow$/, "").replace(/-test$/, "").replace(/-spec$/, ""),
+      filename.replace(/-flow$/, ""),
+      filename.replace(/-test$/, ""),
+      filename.replace(/-spec$/, ""),
+      filename.replace(/\./g, "-"),
+      filename.replace(/_/g, "-"),
+    ];
+
+    for (const possibleId of possibleIds) {
+      if (this.graph.has(possibleId)) {
+        getLogger().debug(`✅ Resolved dependency path '${dependencyPath}' to node_id '${possibleId}'`);
+        return possibleId;
+      }
+    }
+
+    // Try partial matches with existing node IDs
+    for (const [nodeId] of this.graph) {
+      if (nodeId.includes(filename) || filename.includes(nodeId)) {
+        getLogger().debug(`✅ Resolved dependency path '${dependencyPath}' to node_id '${nodeId}' via partial match`);
+        return nodeId;
+      }
     }
 
     return null;

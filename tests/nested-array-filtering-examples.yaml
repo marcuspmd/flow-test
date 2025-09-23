@@ -1,0 +1,373 @@
+suite_name: "Nested Array Filtering and Flatten Projections"
+node_id: "nested-array-filtering"
+description: "Comprehensive examples of filtering and manipulating nested arrays (arrays of arrays) using JMESPath flatten projections and advanced queries"
+base_url: "{{httpbin_url}}"
+
+metadata:
+  priority: "medium"
+  tags: ["nested-arrays", "flatten", "jmespath", "matrix", "advanced-filtering"]
+  estimated_duration_ms: 12000
+
+variables:
+  # Simple nested arrays (arrays of arrays)
+  number_matrix:
+    - [1, 2, 3]
+    - [4, 5, 6]
+    - [7, 8, 9]
+    - [10, 11, 12]
+
+  coordinate_pairs:
+    - [10, 20]
+    - [30, 40]
+    - [50, 60]
+    - [70, 80]
+    - [90, 100]
+
+  # Nested string arrays
+  category_groups:
+    - ["electronics", "phones", "tablets"]
+    - ["clothing", "shirts", "pants", "shoes"]
+    - ["books", "fiction", "non-fiction"]
+    - ["sports", "football", "basketball"]
+
+  # Complex nested structure - Users with multiple permission arrays
+  users_with_permissions:
+    - id: 1
+      name: "Alice Admin"
+      department: "IT"
+      permission_groups:
+        - ["user:read", "user:write", "user:delete"]
+        - ["system:admin", "system:config"]
+        - ["reports:view", "reports:create"]
+      skill_categories:
+        - ["programming", "javascript", "python"]
+        - ["devops", "docker", "kubernetes"]
+    - id: 2
+      name: "Bob Manager"
+      department: "Sales"
+      permission_groups:
+        - ["user:read", "user:write"]
+        - ["sales:view", "sales:edit"]
+        - ["reports:view"]
+      skill_categories:
+        - ["management", "team-lead", "strategy"]
+        - ["sales", "crm", "negotiation"]
+    - id: 3
+      name: "Carol Developer"
+      department: "Engineering"
+      permission_groups:
+        - ["user:read"]
+        - ["code:read", "code:write"]
+        - ["deploy:staging"]
+      skill_categories:
+        - ["programming", "java", "spring"]
+        - ["database", "sql", "mongodb"]
+
+  # Product catalog with nested categories and tags
+  product_catalog:
+    - id: "PROD-001"
+      name: "Smartphone"
+      price: 599.99
+      category_hierarchy: ["electronics", "mobile", "smartphones"]
+      tag_groups:
+        - ["premium", "flagship"]
+        - ["5g", "wireless-charging"]
+        - ["camera", "photography"]
+      feature_matrix:
+        - ["display", "6.1inch", "oled"]
+        - ["camera", "triple", "48mp"]
+        - ["battery", "4000mah", "fast-charge"]
+    - id: "PROD-002"
+      name: "Laptop"
+      price: 1299.99
+      category_hierarchy: ["electronics", "computers", "laptops"]
+      tag_groups:
+        - ["professional", "business"]
+        - ["performance", "gaming"]
+        - ["portable", "lightweight"]
+      feature_matrix:
+        - ["processor", "intel-i7", "8-cores"]
+        - ["memory", "16gb", "ddr4"]
+        - ["storage", "512gb", "ssd"]
+
+  # Time series data (nested arrays representing data points)
+  time_series_data:
+    - name: "CPU Usage"
+      data_points:
+        - [1640995200, 45.2]  # [timestamp, value]
+        - [1640995260, 52.1]
+        - [1640995320, 48.7]
+        - [1640995380, 61.3]
+    - name: "Memory Usage"
+      data_points:
+        - [1640995200, 68.5]
+        - [1640995260, 71.2]
+        - [1640995320, 69.8]
+        - [1640995380, 74.1]
+
+exports: ["nested_filtering_results", "flatten_examples"]
+
+steps:
+  # 1. Basic flatten operations on simple nested arrays
+  - name: "Basic flatten operations"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        operation: "basic_flatten"
+        number_matrix: "{{number_matrix}}"
+        coordinates: "{{coordinate_pairs}}"
+        categories: "{{category_groups}}"
+    assert:
+      status_code: 200
+    capture:
+      # Flatten number matrix into single array
+      flattened_numbers: "body.json.number_matrix[]"
+      # Flatten coordinates
+      all_coordinates: "body.json.coordinates[]"
+      # Flatten all categories
+      all_categories: "body.json.categories[]"
+      # Count total elements after flatten
+      total_numbers: "body.json.number_matrix[] | length(@)"
+
+  # 2. Filter sub-arrays based on conditions
+  - name: "Filter sub-arrays by conditions"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        operation: "filter_subarrays"
+        matrix: "{{number_matrix}}"
+        coordinates: "{{coordinate_pairs}}"
+    assert:
+      status_code: 200
+    capture:
+      # Filter sub-arrays where first element > 5
+      rows_starting_gt5: "body.json.matrix[?[0] > `5`]"
+      # Filter coordinates where X coordinate > 50
+      high_x_coordinates: "body.json.coordinates[?[0] > `50`]"
+      # Filter coordinates where Y coordinate is even (simulated with mod logic)
+      even_y_coordinates: "body.json.coordinates[?[1] == `20` || [1] == `40` || [1] == `60` || [1] == `80` || [1] == `100`]"
+      # Get second element of each sub-array
+      second_elements: "body.json.matrix[*][1]"
+
+  # 3. Complex filtering with nested object arrays
+  - name: "Filter nested arrays in objects"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        operation: "filter_nested_objects"
+        users: "{{users_with_permissions}}"
+    assert:
+      status_code: 200
+    capture:
+      # Flatten all permissions from all users
+      all_permissions: "body.json.users[*].permission_groups[][]"
+      # Get all skills flattened
+      all_skills: "body.json.users[*].skill_categories[][]"
+      # Find users with admin permissions
+      users_with_admin: "body.json.users[?contains(permission_groups[][], 'system:admin')]"
+      # Find programming skills across all users
+      programming_skills: "body.json.users[*].skill_categories[?contains(@, 'programming')][]"
+      # Get IT department permissions only
+      it_permissions: "body.json.users[?department == 'IT'][*].permission_groups[][]"
+
+  # 4. Product catalog nested filtering
+  - name: "Product catalog nested array filtering"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        operation: "product_nested_filtering"
+        products: "{{product_catalog}}"
+    assert:
+      status_code: 200
+    capture:
+      # All category hierarchies flattened
+      all_categories: "body.json.products[*].category_hierarchy[]"
+      # All tags flattened
+      all_tags: "body.json.products[*].tag_groups[][]"
+      # Find electronics products
+      electronics_products: "body.json.products[?contains(category_hierarchy, 'electronics')]"
+      # Products with premium tags
+      premium_products: "body.json.products[?contains(tag_groups[][], 'premium')]"
+      # Feature specifications flattened
+      all_features: "body.json.products[*].feature_matrix[][]"
+      # Camera-related features
+      camera_features: "body.json.products[*].feature_matrix[?contains(@, 'camera')]"
+
+  # 5. Advanced matrix operations
+  - name: "Advanced matrix filtering and operations"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        operation: "matrix_operations"
+        matrix: "{{number_matrix}}"
+        products: "{{product_catalog}}"
+    assert:
+      status_code: 200
+    capture:
+      # Get diagonal elements (simulated)
+      first_column: "body.json.matrix[*][0]"
+      # Get last element of each row
+      last_elements: "body.json.matrix[*][-1]"
+      # Filter rows where sum > 15 (simulated by checking if any element > 5)
+      high_sum_rows: "body.json.matrix[?[0] > `5` || [1] > `5` || [2] > `5`]"
+      # Product feature matrix operations
+      processor_specs: "body.json.products[*].feature_matrix[?[0] == 'processor']"
+      memory_specs: "body.json.products[*].feature_matrix[?[0] == 'memory']"
+
+  # 6. Time series nested array filtering
+  - name: "Time series data filtering"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        operation: "time_series_filtering"
+        series: "{{time_series_data}}"
+    assert:
+      status_code: 200
+    capture:
+      # All timestamps flattened
+      all_timestamps: "body.json.series[*].data_points[*][0]"
+      # All values flattened
+      all_values: "body.json.series[*].data_points[*][1]"
+      # CPU usage data points only
+      cpu_data: "body.json.series[?name == 'CPU Usage'].data_points[]"
+      # High value data points (value > 60)
+      high_values: "body.json.series[*].data_points[?[1] > `60`]"
+      # Recent timestamps (simulated by checking specific timestamps)
+      recent_data: "body.json.series[*].data_points[?[0] > `1640995300`]"
+
+  # 7. Multi-level filtering combinations
+  - name: "Multi-level filtering combinations"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        operation: "multi_level_filtering"
+        users: "{{users_with_permissions}}"
+        products: "{{product_catalog}}"
+    assert:
+      status_code: 200
+    capture:
+      # Engineering users with specific skills
+      eng_programming_skills: "body.json.users[?department == 'Engineering'][*].skill_categories[?contains(@, 'programming')][]"
+      # Admin permissions from IT users
+      it_admin_permissions: "body.json.users[?department == 'IT'][*].permission_groups[?contains(@, 'admin')][]"
+      # Electronics with camera features
+      electronics_camera: "body.json.products[?contains(category_hierarchy, 'electronics')][*].feature_matrix[?contains(@, 'camera')]"
+      # Premium electronics tags
+      premium_electronics_tags: "body.json.products[?contains(category_hierarchy, 'electronics') && contains(tag_groups[][], 'premium')][*].tag_groups[][]"
+
+  # 8. Conditional nested filtering
+  - name: "Conditional nested array filtering"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        operation: "conditional_nested_filtering"
+        matrix: "{{number_matrix}}"
+        users: "{{users_with_permissions}}"
+    assert:
+      status_code: 200
+    capture:
+      # Rows with all elements > 5
+      all_gt5_rows: "body.json.matrix[?[0] > `5` && [1] > `5` && [2] > `5`]"
+      # Users with both read and write permissions
+      read_write_users: "body.json.users[?contains(permission_groups[][], 'user:read') && contains(permission_groups[][], 'user:write')]"
+      # Users with programming AND devops skills
+      fullstack_users: "body.json.users[?contains(skill_categories[][], 'programming') && contains(skill_categories[][], 'devops')]"
+
+  # 9. Array transformation and reshaping
+  - name: "Array transformation with nested structures"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        operation: "array_transformation"
+        coordinates: "{{coordinate_pairs}}"
+        users: "{{users_with_permissions}}"
+    assert:
+      status_code: 200
+    capture:
+      # Transform coordinates to objects
+      coordinate_objects: "body.json.coordinates[*].{x: [0], y: [1]}"
+      # Create user permission summary
+      user_permission_summary: "body.json.users[*].{name: name, total_permissions: length(permission_groups[][]), admin_access: contains(permission_groups[][], 'system:admin')}"
+      # Skill count by user
+      user_skill_counts: "body.json.users[*].{name: name, skill_count: length(skill_categories[][])}"
+
+  # 10. Performance with large nested arrays
+  - name: "Performance testing with nested arrays"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        operation: "performance_nested_arrays"
+        large_matrix: "{{number_matrix}}"
+        test_metadata:
+          total_arrays: 4
+          total_elements: 12
+          flatten_operations: 8
+    assert:
+      status_code: 200
+    capture:
+      # Performance metrics
+      flatten_performance: "body.json.large_matrix[] | length(@)"
+      processing_summary: "body.json.test_metadata"
+
+  # 11. Final summary
+  - name: "Nested array filtering summary"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        test_summary: "nested_array_filtering_examples"
+        techniques_demonstrated:
+          - "basic_flatten_projections"
+          - "subarray_conditional_filtering"
+          - "multi_level_object_array_filtering"
+          - "product_catalog_nested_filtering"
+          - "matrix_operations"
+          - "time_series_filtering"
+          - "multi_level_combinations"
+          - "conditional_nested_filtering"
+          - "array_transformations"
+          - "performance_testing"
+        jmespath_features_used:
+          - "flatten_projection_[]"
+          - "double_flatten_[][]"
+          - "conditional_filtering_with_nested"
+          - "array_element_access_[0]_[1]"
+          - "contains_with_flattened_arrays"
+        total_examples: 10
+    assert:
+      status_code: 200
+    capture:
+      nested_filtering_results: "body.json"
+      flatten_examples: "body.json.techniques_demonstrated"
