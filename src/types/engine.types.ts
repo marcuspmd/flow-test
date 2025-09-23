@@ -327,6 +327,131 @@ export interface RangeIterationConfig {
 export type IterationConfig = ArrayIterationConfig | RangeIterationConfig;
 
 /**
+ * Interactive input configuration for user prompts during test execution.
+ *
+ * @remarks
+ * Enables test flows to pause execution and request user input, making tests interactive
+ * and dynamic. Input steps can only be used in sequential execution mode as they block
+ * execution until user provides input.
+ *
+ * **Key Features:**
+ * - **Multiple Input Types**: text, password, number, email, select, confirm, etc.
+ * - **Dynamic Prompts**: Use response data and variables in prompts
+ * - **Validation**: Built-in and custom validation rules
+ * - **Conditional Execution**: Only show input when conditions are met
+ * - **Timeout Support**: Automatic fallback after timeout
+ * - **Styling Options**: Different visual presentations
+ *
+ * @example Basic text input
+ * ```typescript
+ * const input: InputConfig = {
+ *   prompt: "Enter your API key:",
+ *   variable: "api_key",
+ *   type: "password",
+ *   required: true,
+ *   validation: {
+ *     min_length: 20,
+ *     pattern: "^sk-[a-zA-Z0-9]+"
+ *   }
+ * };
+ * ```
+ *
+ * @example Select with dynamic options from response
+ * ```typescript
+ * const input: InputConfig = {
+ *   prompt: "Found {{users | length(@)}} users. Select one:",
+ *   variable: "selected_user_id",
+ *   type: "select",
+ *   options: "{{users[*].{value: id, label: name}}}",
+ *   description: "User will be used for subsequent API calls"
+ * };
+ * ```
+ *
+ * @public
+ */
+export interface InputConfig {
+  /** The prompt message displayed to the user */
+  prompt: string;
+  /** Variable name to store the input value */
+  variable: string;
+  /** Type of input control to display */
+  type: "text" | "password" | "number" | "email" | "url" | "select" | "confirm" | "multiline";
+  /** Optional detailed description */
+  description?: string;
+  /** Default value if user doesn't provide input */
+  default?: any;
+  /** Placeholder text shown in input field */
+  placeholder?: string;
+  /** Whether input is required (cannot be empty) */
+  required?: boolean;
+  /** Visual style for the prompt */
+  style?: "simple" | "boxed" | "highlighted";
+  /** Timeout in seconds before using default value */
+  timeout_seconds?: number;
+  /** JMESPath condition - input only shown if condition is true */
+  condition?: string;
+  /** Value to use automatically in CI/non-interactive environments */
+  ci_default?: any;
+  /** Validation rules for the input */
+  validation?: {
+    /** Minimum length for text inputs */
+    min_length?: number;
+    /** Maximum length for text inputs */
+    max_length?: number;
+    /** Regex pattern for validation */
+    pattern?: string;
+    /** Minimum value for number inputs */
+    min?: number | string;
+    /** Maximum value for number inputs */
+    max?: number | string;
+    /** Valid options for select inputs */
+    options?: Array<{value: any, label: string}> | string;
+    /** Custom JavaScript validation expression */
+    custom_validation?: string;
+  };
+  /** For select type: array of options or JMESPath expression */
+  options?: Array<{value: any, label: string}> | string;
+}
+
+/**
+ * Input execution result containing the captured value and metadata.
+ *
+ * @remarks
+ * Contains the result of an interactive input operation, including the value
+ * provided by the user, timing information, and any validation results.
+ *
+ * @example Input result
+ * ```typescript
+ * const result: InputResult = {
+ *   variable: "api_key",
+ *   value: "sk-abc123def456",
+ *   input_time_ms: 15000,
+ *   validation_passed: true,
+ *   used_default: false,
+ *   timed_out: false
+ * };
+ * ```
+ *
+ * @public
+ */
+export interface InputResult {
+  /** Variable name that was set */
+  variable: string;
+  /** The value provided by user or default */
+  value: any;
+  /** Time taken for user to provide input in milliseconds */
+  input_time_ms: number;
+  /** Whether validation passed */
+  validation_passed: boolean;
+  /** Whether default value was used */
+  used_default: boolean;
+  /** Whether input timed out */
+  timed_out: boolean;
+  /** Validation error message if validation failed */
+  validation_error?: string;
+}
+
+/**
  * Runtime context for a single iteration execution.
  *
  * @remarks
@@ -490,6 +615,9 @@ export interface TestStep {
 
   /** Iteration configuration for data-driven testing */
   iterate?: IterationConfig;
+
+  /** Interactive input configuration - executed after request/capture but before next step */
+  input?: InputConfig;
 
   /** Whether to continue test suite execution if this step fails */
   continue_on_failure?: boolean;

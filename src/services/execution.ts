@@ -22,6 +22,7 @@ import { AssertionService } from "./assertion.service";
 import { CaptureService } from "./capture.service";
 import { ScenarioService } from "./scenario.service";
 import { IterationService } from "./iteration.service";
+import { InputService } from "./input.service";
 import { getLogger } from "./logger.service";
 import {
   DiscoveredTest,
@@ -139,6 +140,7 @@ export class ExecutionService {
   private captureService: CaptureService;
   private scenarioService: ScenarioService;
   private iterationService: IterationService;
+  private inputService: InputService;
 
   // Performance statistics
   private performanceData: {
@@ -177,6 +179,7 @@ export class ExecutionService {
     this.captureService = new CaptureService();
     this.iterationService = new IterationService();
     this.scenarioService = new ScenarioService();
+    this.inputService = new InputService();
 
     this.performanceData = {
       requests: [],
@@ -203,13 +206,16 @@ export class ExecutionService {
       total_response_time_ms: 0,
     };
 
-    // 1. Builds dependency graph
+    // 1. Validate input compatibility with execution mode
+    this.validateInputCompatibility(tests, config);
+
+    // 2. Builds dependency graph
     this.dependencyService.buildDependencyGraph(tests);
 
-    // 2. Registers suites with exports in global registry
+    // 3. Registers suites with exports in global registry
     this.registerSuitesWithExports(tests);
 
-    // 3. Resolves execution order considering dependencies
+    // 4. Resolves execution order considering dependencies
     const orderedTests = this.dependencyService.resolveExecutionOrder(tests);
 
     this.logger.info(
@@ -222,7 +228,7 @@ export class ExecutionService {
       );
     }
 
-    // 4. Executes tests in resolved order
+    // 5. Executes tests in resolved order
     const results = await this.executeTestsWithDependencies(
       orderedTests,
       stats,
@@ -1199,6 +1205,32 @@ export class ExecutionService {
         }
       }
 
+      // 5. Process interactive input if configured
+      if (step.input) {
+        try {
+          this.logger.info(`📝 Prompting for input: ${step.input.variable}`);
+
+          const currentVariables = this.globalVariables.getAllVariables();
+          const inputResult = await this.inputService.promptUser(step.input, currentVariables);
+
+          if (inputResult.validation_passed) {
+            // Store input result as a variable
+            this.globalVariables.setRuntimeVariable(inputResult.variable, inputResult.value);
+
+            this.logger.info(`✅ Input captured: ${inputResult.variable} = ${inputResult.used_default ? '(default)' : '(user input)'}`);
+
+            // Add input result to captured variables for this step
+            capturedVariables[inputResult.variable] = inputResult.value;
+          } else {
+            this.logger.error(`❌ Input validation failed for ${inputResult.variable}: ${inputResult.validation_error}`);
+            // Continue execution but log the error
+          }
+        } catch (error) {
+          this.logger.error(`❌ Input processing error: ${error}`);
+          // Continue execution - input errors shouldn't fail the entire step
+        }
+      }
+
       const stepEndTime = Date.now();
       const stepDuration = stepEndTime - stepStartTime;
 
@@ -1704,6 +1736,69 @@ export class ExecutionService {
         available_variables: this.globalVariables.getAllVariables(),
         error_message: error.message,
       };
+    }
+  }
+
+  /**
+   * Validates that interactive inputs are only used in sequential execution mode
+   */
+  private validateInputCompatibility(tests: DiscoveredTest[], config: any): void {
+    const hasInputSteps = tests.some(test => {
+      try {
+        // Read the test file to check for input steps
+        const fs = require('fs');
+        const yaml = require('js-yaml');
+        const fileContent = fs.readFileSync(test.file_path, 'utf8');
+        const suite = yaml.load(fileContent) as any;
+
+        return suite.steps?.some((step: any) => step.input);
+      } catch (error) {
+        // If we can't read the file, assume no input steps
+        return false;
+      }
+    });
+
+    if (hasInputSteps) {
+      if (config.execution?.mode === "parallel") {
+        const inputTests = tests.filter(test => {
+          try {
+            const fs = require('fs');
+            const yaml = require('js-yaml');
+            const fileContent = fs.readFileSync(test.file_path, 'utf8');
+            const suite = yaml.load(fileContent) as any;
+            return suite.steps?.some((step: any) => step.input);
+          } catch {
+            return false;
+          }
+        });
+
+        const testNames = inputTests.map(t => t.suite_name).join(', ');
+
+        throw new Error(
+          `❌ Interactive input steps detected in parallel execution mode!\n\n` +
+          `Tests with input steps: ${testNames}\n\n` +
+          `💡 Interactive inputs require sequential execution because:\n` +
+          `   • Input steps block execution waiting for user input\n` +
+          `   • Subsequent steps depend on input values\n` +
+          `   • Parallel execution cannot wait for user interaction\n\n` +
+          `🔧 Solutions:\n` +
+          `   1. Set execution_mode: "sequential" in your config\n` +
+          `   2. Remove input steps from test suites\n` +
+          `   3. Use ci_default values for automated execution`
+        );
+      }
+
+      // Force sequential mode if inputs are detected
+      if (config.execution) {
+        config.execution.mode = "sequential";
+      }
+
+      this.logger.warn(
+        `⚠️  Interactive input steps detected - forcing sequential execution mode`
+      );
+      this.logger.info(
+        `📋 Input steps will pause execution waiting for user interaction`
+      );
     }
   }
 }

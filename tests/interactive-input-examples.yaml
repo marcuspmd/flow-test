@@ -1,0 +1,321 @@
+suite_name: "Interactive Input Examples"
+node_id: "interactive-input-examples"
+description: "Demonstrates interactive input capabilities with various input types and dynamic prompts based on API responses"
+base_url: "{{httpbin_url}}"
+
+# IMPORTANT: Interactive inputs require sequential execution
+execution_mode: "sequential"
+
+metadata:
+  priority: "medium"
+  tags: ["interactive", "inputs", "examples", "sequential"]
+  estimated_duration_ms: null  # Cannot estimate with user input
+  requires_user_input: true
+
+variables:
+  # Default test configuration
+  test_environment: "demo"
+  api_version: "v1"
+
+exports: ["selected_user_data", "user_action_result", "final_config"]
+
+steps:
+  # Step 1: Get available users from API
+  - name: "Get available users"
+    request:
+      method: GET
+      url: "/get"
+      params:
+        simulate: "users_list"
+        count: "5"
+    assert:
+      status_code: 200
+    capture:
+      # Simulate user list data (in real API this would come from response)
+      users_data: "@"
+      request_timestamp: "headers.Date"
+
+    # Interactive input AFTER the API response
+    input:
+      prompt: "Found users in the system. Select a user to work with:"
+      variable: "selected_user_id"
+      type: "select"
+      options:
+        - {value: "user_001", label: "Alice Johnson (Admin)"}
+        - {value: "user_002", label: "Bob Smith (Manager)"}
+        - {value: "user_003", label: "Carol Williams (Developer)"}
+        - {value: "user_004", label: "David Brown (Designer)"}
+        - {value: "user_005", label: "Eve Davis (Tester)"}
+      description: "This user will be used for subsequent API operations"
+      style: "boxed"
+      required: true
+      default: "user_001"
+      ci_default: "user_001"
+
+  # Step 2: Get detailed user information
+  - name: "Get user details"
+    request:
+      method: GET
+      url: "/get"
+      params:
+        user_id: "{{selected_user_id}}"
+        include_details: "true"
+    assert:
+      status_code: 200
+    capture:
+      user_details: "args"
+      user_role: "args.user_id"  # Simulated
+
+    # Input with dynamic prompt using captured data
+    input:
+      prompt: |
+        User Details Retrieved:
+        User ID: {{selected_user_id}}
+        Timestamp: {{request_timestamp}}
+
+        What action would you like to perform?
+      variable: "user_action"
+      type: "select"
+      options:
+        - {value: "update_profile", label: "Update User Profile"}
+        - {value: "reset_password", label: "Reset Password"}
+        - {value: "change_permissions", label: "Change Permissions"}
+        - {value: "disable_account", label: "Disable Account"}
+        - {value: "view_activity", label: "View Activity Logs"}
+      style: "highlighted"
+      description: "Choose the administrative action to perform"
+      default: "view_activity"
+      ci_default: "view_activity"
+
+  # Step 3: Get confirmation for potentially destructive actions
+  - name: "Check action safety"
+    request:
+      method: GET
+      url: "/get"
+      params:
+        action: "{{user_action}}"
+        user_id: "{{selected_user_id}}"
+        safety_check: "true"
+    assert:
+      status_code: 200
+    capture:
+      action_safety: "args.action"
+      safety_warnings: "args"
+
+    # Conditional input - only shown for destructive actions
+    input:
+      condition: "user_action == 'disable_account' || user_action == 'reset_password'"
+      prompt: "⚠️  WARNING: This action is potentially destructive! Are you sure you want to proceed?"
+      variable: "confirm_action"
+      type: "confirm"
+      default: false
+      ci_default: false
+      style: "highlighted"
+      description: "This action cannot be easily undone"
+
+  # Step 4: Get additional parameters for the action
+  - name: "Get action parameters"
+    request:
+      method: GET
+      url: "/get"
+      params:
+        action_type: "{{user_action}}"
+        get_params: "true"
+    assert:
+      status_code: 200
+    capture:
+      param_requirements: "args"
+
+    # # Text input for action reason/comment
+    # input:
+    #   prompt: "Enter a reason or comment for this action:"
+    #   variable: "action_reason"
+    #   type: "multiline"
+    #   placeholder: "Describe why this action is being taken..."
+    #   validation:
+    #     min_length: 10
+    #     max_length: 500
+    #   description: "This will be logged for audit purposes"
+    #   style: "simple"
+
+  # Step 5: Get API key for authentication (password input)
+  - name: "Authenticate administrative action"
+    request:
+      method: GET
+      url: "/get"
+      params:
+        auth_check: "true"
+        action: "{{user_action}}"
+    assert:
+      status_code: 200
+    capture:
+      auth_required: "args.auth_check"
+
+    # Password input for security
+    input:
+      prompt: "Enter your administrator API key:"
+      variable: "admin_api_key"
+      type: "password"
+      required: true
+      validation:
+        min_length: 20
+        pattern: "^sk-[a-zA-Z0-9]+"
+      placeholder: "sk-..."
+      description: "Your API key will not be displayed or logged"
+      ci_default: "sk-demo-admin-key-12345678"  # For CI environments
+
+  # Step 6: Configure execution settings
+  - name: "Get execution settings"
+    request:
+      method: GET
+      url: "/get"
+      params:
+        get_settings: "true"
+    assert:
+      status_code: 200
+    capture:
+      current_settings: "args"
+
+    # Number input for batch size
+    input:
+      prompt: "Enter batch size for processing (1-100):"
+      variable: "batch_size"
+      type: "number"
+      default: 10
+      ci_default: 10
+      validation:
+        min: 1
+        max: 100
+      description: "Number of items to process in each batch"
+
+  # Step 7: Get email for notifications
+  - name: "Setup notifications"
+    request:
+      method: GET
+      url: "/get"
+      params:
+        setup: "notifications"
+    assert:
+      status_code: 200
+    capture:
+      notification_config: "args"
+
+    # Email input with validation
+    input:
+      prompt: "Enter email for completion notification:"
+      variable: "notification_email"
+      type: "email"
+      placeholder: "admin@example.com"
+      validation:
+        pattern: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
+      description: "You'll receive a notification when the action completes"
+      default: "admin@company.com"
+      ci_default: "admin@company.com"
+
+  # Step 8: Get webhook URL
+  - name: "Setup webhook"
+    request:
+      method: GET
+      url: "/get"
+      params:
+        setup: "webhook"
+    assert:
+      status_code: 200
+    capture:
+      webhook_config: "args"
+
+    # URL input with validation
+    input:
+      prompt: "Enter webhook URL for real-time updates (optional):"
+      variable: "webhook_url"
+      type: "url"
+      required: false
+      placeholder: "https://api.example.com/webhooks/status"
+      description: "Leave empty to skip webhook notifications"
+
+  # Step 9: Execute the action with all collected parameters
+  - name: "Execute administrative action"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        Authorization: "Bearer {{admin_api_key}}"
+        X-Admin-Action: "{{user_action}}"
+      body:
+        action: "{{user_action}}"
+        target_user: "{{selected_user_id}}"
+        reason: "{{action_reason}}"
+        confirmed: "{{confirm_action}}"
+        batch_size: "{{batch_size}}"
+        notification_email: "{{notification_email}}"
+        webhook_url: "{{webhook_url}}"
+        execution_timestamp: "2024-01-15T12:00:00Z"
+        environment: "{{test_environment}}"
+    assert:
+      status_code: 200
+      body:
+        json:
+          action: { equals: "{{user_action}}" }
+          target_user: { equals: "{{selected_user_id}}" }
+    capture:
+      execution_result: "body.json"
+      action_id: "body.json.action"
+
+  # Step 10: Final confirmation and summary
+  - name: "Display execution summary"
+    request:
+      method: GET
+      url: "/get"
+      params:
+        summary: "true"
+        action_id: "{{action_id}}"
+    assert:
+      status_code: 200
+    capture:
+      execution_summary: "args"
+
+    # Final confirmation input
+    input:
+      prompt: |
+        ✅ Action completed successfully!
+
+        Summary:
+        - Action: {{user_action}}
+        - User: {{selected_user_id}}
+        - Batch Size: {{batch_size}}
+        - Notification: {{notification_email}}
+
+        Press Enter to continue...
+      variable: "final_confirmation"
+      type: "text"
+      default: "completed"
+      description: "Execution summary displayed above"
+      style: "boxed"
+
+  # Step 11: Export final configuration
+  - name: "Export configuration"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        final_configuration:
+          selected_user: "{{selected_user_id}}"
+          action_performed: "{{user_action}}"
+          batch_size: "{{batch_size}}"
+          notification_settings:
+            email: "{{notification_email}}"
+            webhook: "{{webhook_url}}"
+          execution_metadata:
+            reason: "{{action_reason}}"
+            confirmed: "{{confirm_action}}"
+            timestamp: "2024-01-15T12:00:00Z"
+            test_run: true
+    assert:
+      status_code: 200
+    capture:
+      selected_user_data: "body.json.final_configuration.selected_user"
+      user_action_result: "body.json.final_configuration.action_performed"
+      final_config: "body.json.final_configuration"
