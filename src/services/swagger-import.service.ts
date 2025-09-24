@@ -518,10 +518,10 @@ Este diretório contém testes automaticamente gerados a partir da especificaç�
 
 \`\`\`bash
 # Executar todos os testes
-flow-test --directory .
+fest --directory .
 
 # Executar teste específico
-flow-test suite-name.yaml
+fest suite-name.yaml
 \`\`\`
 
 ### Variáveis

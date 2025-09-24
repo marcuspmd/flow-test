@@ -21,10 +21,14 @@ Use `npx` to try the engine without adding dependencies:
 
 ```bash
 # Initialise configuration and sample suites in the current directory
-npx --yes flow-test init
+npx --yes flow-test-engine init
+# or using the short form:
+npx --yes fest init
 
 # Execute all discovered suites using the generated config
-npx --yes flow-test --config flow-test.config.yml
+npx --yes flow-test-engine --config flow-test.config.yml
+# or using the short form:
+npx --yes fest --config flow-test.config.yml
 ```
 
 The wizard creates:
@@ -41,7 +45,9 @@ mkdir flow-tests
 cd flow-tests
 npm init -y
 npm install --save-dev flow-test-engine
-npx flow-test init
+npx flow-test-engine init
+# or using the short form:
+npx fest init
 ```
 
 This produces a `flow-tests/package.json` similar to:
@@ -51,8 +57,8 @@ This produces a `flow-tests/package.json` similar to:
   "name": "flow-tests",
   "private": true,
   "scripts": {
-    "flow-test": "flow-test --config flow-test.config.yml",
-    "flow-test:verbose": "flow-test --config flow-test.config.yml --verbose"
+    "flow-test": "fest --config flow-test.config.yml",
+    "flow-test:verbose": "fest --config flow-test.config.yml --verbose"
   },
   "devDependencies": {
     "flow-test-engine": "^1.0.2"
@@ -87,18 +93,20 @@ Run it from anywhere in your repo:
 ```bash
 npm --prefix flow-tests run flow-test
 # or, with npx
-npx --yes --package flow-test-engine flow-test --config flow-tests/flow-test.config.yml
+npx --yes --package flow-test-engine flow-test-engine --config flow-tests/flow-test.config.yml
+# or using the short form:
+npx --yes --package flow-test-engine fest --config flow-tests/flow-test.config.yml
 ```
 
 ## 4. Everyday CLI Patterns
 
 ```bash
-flow-test --dry-run --detailed              # Discover tests and show plan
-flow-test --suite auth,checkout             # Run specific suites
-flow-test --priority critical,high          # Focus on high-impact scenarios
-flow-test --tag smoke                       # Filter by YAML tags
-flow-test --config ./flow-tests/staging.yml # Point to another config file
-flow-test --report json,csv                 # Produce multiple report formats
+fest --dry-run --detailed              # Discover tests and show plan
+fest --suite auth,checkout             # Run specific suites
+fest --priority critical,high          # Focus on high-impact scenarios
+fest --tag smoke                       # Filter by YAML tags
+fest --config ./flow-tests/staging.yml # Point to another config file
+fest --report json,csv                 # Produce multiple report formats
 ```
 
 ## 5. Integration Recipes by Ecosystem
@@ -110,14 +118,16 @@ The commands below assume you created the dedicated `flow-tests/` workspace.
 1. Install the engine next to your source:
    ```bash
    npm install --save-dev flow-test-engine
-   npx flow-test init
+   npx flow-test-engine init
+   # or using the short form:
+   npx fest init
    ```
 2. Add scripts to `package.json`:
    ```json
    {
      "scripts": {
-       "flow-test": "flow-test --config flow-test.config.yml",
-       "flow-test:ci": "flow-test --config flow-test.config.yml --report json"
+       "flow-test": "fest --config flow-test.config.yml",
+       "flow-test:ci": "fest --config flow-test.config.yml --report json"
      }
    }
    ```
@@ -171,7 +181,7 @@ The commands below assume you created the dedicated `flow-tests/` workspace.
            <workingDirectory>${project.basedir}/flow-tests</workingDirectory>
            <executable>npx</executable>
            <arguments>
-             <argument>flow-test</argument>
+             <argument>fest</argument>
              <argument>--config</argument>
              <argument>flow-test.config.yml</argument>
            </arguments>
@@ -222,7 +232,7 @@ import 'dart:io';
 Future<void> main() async {
   final result = await Process.start(
     'npx',
-    ['--yes', 'flow-test', '--config', 'flow-tests/flow-test.config.yml'],
+    ['--yes', 'fest', '--config', 'flow-tests/flow-test.config.yml'],
     mode: ProcessStartMode.inheritStdio,
   );
   final exitCode = await result.exitCode;
@@ -260,7 +270,9 @@ npm --prefix flow-tests run flow-test  # execute suites
 Or run ad hoc:
 
 ```bash
-npx --yes flow-test --config flow-tests/flow-test.config.yml
+npx --yes flow-test-engine --config flow-tests/flow-test.config.yml
+# or using the short form:
+npx --yes fest --config flow-tests/flow-test.config.yml
 ```
 
 If you rely on Docker for dependent services, start them before running Flow Test. The sample `docker-compose.yml` in the Flow Test repository spins up httpbin:

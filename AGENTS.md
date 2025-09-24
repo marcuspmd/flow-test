@@ -942,10 +942,10 @@ steps:
 
 ```bash
 # Gerar testes a partir de especificação OpenAPI
-flow-test --swagger-import api-spec.json --swagger-output tests/generated/
+fest --swagger-import api-spec.json --swagger-output tests/generated/
 
 # Especificar base URL e filtros
-flow-test --swagger-import api-spec.yaml --base-url https://api.example.com --tag user-management
+fest --swagger-import api-spec.yaml --base-url https://api.example.com --tag user-management
 ```
 
 ### Exemplo de Teste Gerado
@@ -999,32 +999,32 @@ steps:
 
 ```bash
 # Executar suite padrão
-flow-test
+fest
 
 # Executar arquivo específico
-flow-test tests/user-api-test.yaml
+fest tests/user-api-test.yaml
 
 # Modo desenvolvimento com reload
 npm run dev tests/my-test.yaml
 
 # Dry run (mostrar plano sem executar)
-flow-test --dry-run tests/integration-test.yaml
+fest --dry-run tests/integration-test.yaml
 
 # Executar com prioridade
-flow-test --priority critical,high
+fest --priority critical,high
 
 # Filtrar por tags
-flow-test --tag auth,smoke --verbose
+fest --tag auth,smoke --verbose
 ```
 
 ### Configuração e Reports
 
 ```bash
 # Usar configuração específica
-flow-test --config custom-config.yml
+fest --config custom-config.yml
 
 # Gerar relatório HTML
-flow-test && npm run report:dashboard:build
+fest && npm run report:dashboard:build
 
 # Executar com Docker (httpbin)
 npm run server:docker && npm test

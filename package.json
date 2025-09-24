@@ -6,7 +6,8 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
-    "flow-test": "dist/cli.js"
+    "flow-test-engine": "dist/cli.js",
+    "fest": "dist/cli.js"
   },
   "scripts": {
     "build": "tsc",
