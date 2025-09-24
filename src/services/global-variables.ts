@@ -290,6 +290,15 @@ export class GlobalVariablesService {
     // Check for dependency variables if registry is available
     // Only check for direct dependency names, not dot notation (that's handled in interpolation)
     if (this.globalRegistry && this.dependencies.length > 0 && !name.includes('.')) {
+      // Check if the variable name is a dependency node_id itself
+      if (this.dependencies.includes(name)) {
+        // For dependency node_ids, get all variables from that node directly
+        const nodeVariables = this.globalRegistry.getNodeVariables(name);
+        if (Object.keys(nodeVariables).length > 0) {
+          return nodeVariables;
+        }
+      }
+
       // Check for exported variables from dependencies (simple names only)
       for (const dependencyNodeId of this.dependencies) {
         const exportedValue = this.globalRegistry.getExportedVariable(`${dependencyNodeId}.${name}`);
