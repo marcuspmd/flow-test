@@ -122,13 +122,13 @@ describe("PostmanCollectionService", () => {
     expect(suite.steps).toHaveLength(1);
 
     const [step] = suite.steps;
-    expect(step.request.method).toBe("POST");
-    expect(step.request.url).toBe("/v1/auth");
-    expect(step.request.params).toEqual({ limit: "10" });
-    expect(step.request.headers).toEqual({
+    expect(step.request?.method).toBe("POST");
+    expect(step.request?.url).toBe("/v1/auth");
+    expect(step.request?.params).toEqual({ limit: "10" });
+    expect(step.request?.headers).toEqual({
       "Content-Type": "application/json",
     });
-    expect(step.request.body).toEqual({
+    expect(step.request?.body).toEqual({
       username: "demo",
       password: "secret",
     });

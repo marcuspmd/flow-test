@@ -601,8 +601,8 @@ export interface TestStep {
   /** Descriptive name identifying the purpose of this test step */
   name: string;
 
-  /** HTTP request configuration including method, URL, headers, and body */
-  request: RequestDetails;
+  /** HTTP request configuration including method, URL, headers, and body (optional if step only contains inputs) */
+  request?: RequestDetails;
 
   /** Response validation rules and assertions */
   assert?: Assertions;
@@ -616,8 +616,8 @@ export interface TestStep {
   /** Iteration configuration for data-driven testing */
   iterate?: IterationConfig;
 
-  /** Interactive input configuration - executed after request/capture but before next step */
-  input?: InputConfig;
+  /** Interactive input configuration - can be single input or array of inputs */
+  input?: InputConfig | InputConfig[];
 
   /** Whether to continue test suite execution if this step fails */
   continue_on_failure?: boolean;

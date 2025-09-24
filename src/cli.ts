@@ -229,7 +229,15 @@ async function main() {
 
       case "-v":
       case "--version":
-        getLogger().info("Flow Test Engine v1.0.0");
+        try {
+          const fs = require("fs");
+          const path = require("path");
+          const packagePath = path.join(__dirname, "..", "package.json");
+          const packageJson = JSON.parse(fs.readFileSync(packagePath, "utf8"));
+          getLogger().info(`Flow Test Engine v${packageJson.version}`);
+        } catch (error) {
+          getLogger().info("Flow Test Engine v1.1.12");
+        }
         process.exit(0);
         break;
 
@@ -326,12 +334,19 @@ async function main() {
 
         if (testData && testData.node_id) {
           // Auto-discover dependencies for single file execution
-          const dependencyNodeIds = await autoDiscoverDependencies(testData, tempDir);
+          const dependencyNodeIds = await autoDiscoverDependencies(
+            testData,
+            tempDir
+          );
           const nodeIdsToExecute = [...dependencyNodeIds, testData.node_id];
 
-          getLogger().info(`🔍 Auto-discovered ${dependencyNodeIds.length} dependencies`);
+          getLogger().info(
+            `🔍 Auto-discovered ${dependencyNodeIds.length} dependencies`
+          );
           if (dependencyNodeIds.length > 0) {
-            getLogger().info(`📋 Execution order: ${nodeIdsToExecute.join(' → ')}`);
+            getLogger().info(
+              `📋 Execution order: ${nodeIdsToExecute.join(" → ")}`
+            );
           }
 
           engineOptions = {
@@ -344,12 +359,22 @@ async function main() {
           };
         } else if (testData && testData.suite_name) {
           // Auto-discover dependencies for single file execution
-          const dependencyNodeIds = await autoDiscoverDependencies(testData, tempDir);
-          const suiteNamesToExecute = [...dependencyNodeIds, testData.suite_name];
+          const dependencyNodeIds = await autoDiscoverDependencies(
+            testData,
+            tempDir
+          );
+          const suiteNamesToExecute = [
+            ...dependencyNodeIds,
+            testData.suite_name,
+          ];
 
-          getLogger().info(`🔍 Auto-discovered ${dependencyNodeIds.length} dependencies`);
+          getLogger().info(
+            `🔍 Auto-discovered ${dependencyNodeIds.length} dependencies`
+          );
           if (dependencyNodeIds.length > 0) {
-            getLogger().info(`📋 Execution order: ${suiteNamesToExecute.join(' → ')}`);
+            getLogger().info(
+              `📋 Execution order: ${suiteNamesToExecute.join(" → ")}`
+            );
           }
 
           engineOptions = {
@@ -487,7 +512,10 @@ async function main() {
  * @param testDirectory - The directory to search for dependency files
  * @returns Array of node_ids that need to be executed before the main test
  */
-async function autoDiscoverDependencies(testData: any, testDirectory: string): Promise<string[]> {
+async function autoDiscoverDependencies(
+  testData: any,
+  testDirectory: string
+): Promise<string[]> {
   const fs = require("fs");
   const path = require("path");
   const yaml = require("js-yaml");
@@ -501,10 +529,10 @@ async function autoDiscoverDependencies(testData: any, testDirectory: string): P
   }
 
   // Search for YAML files in the test directory
-  const yamlFiles = await fg(['**/*.yaml', '**/*.yml'], {
+  const yamlFiles = await fg(["**/*.yaml", "**/*.yml"], {
     cwd: testDirectory,
     absolute: true,
-    ignore: ['node_modules/**', '.git/**']
+    ignore: ["node_modules/**", ".git/**"],
   });
 
   // Create a map of node_id to file path for quick lookup
@@ -512,7 +540,7 @@ async function autoDiscoverDependencies(testData: any, testDirectory: string): P
 
   for (const filePath of yamlFiles) {
     try {
-      const fileContent = fs.readFileSync(filePath, 'utf8');
+      const fileContent = fs.readFileSync(filePath, "utf8");
       const fileData = yaml.load(fileContent);
 
       if (fileData && fileData.node_id) {
@@ -537,19 +565,26 @@ async function autoDiscoverDependencies(testData: any, testDirectory: string): P
 
       if (fs.existsSync(dependencyPath)) {
         try {
-          const depFileContent = fs.readFileSync(dependencyPath, 'utf8');
+          const depFileContent = fs.readFileSync(dependencyPath, "utf8");
           const depData = yaml.load(depFileContent);
 
           if (depData && depData.node_id) {
             resolvedNodeId = depData.node_id;
           }
         } catch (error) {
-          getLogger().warn(`⚠️ Could not read dependency file: ${dependency.path}`);
+          getLogger().warn(
+            `⚠️ Could not read dependency file: ${dependency.path}`
+          );
         }
       } else {
         // Try to find file by partial path match
         for (const [nodeId, filePath] of nodeIdToFileMap) {
-          if (filePath.includes(dependency.path) || dependency.path.includes(path.basename(filePath, path.extname(filePath)))) {
+          if (
+            filePath.includes(dependency.path) ||
+            dependency.path.includes(
+              path.basename(filePath, path.extname(filePath))
+            )
+          ) {
             resolvedNodeId = nodeId;
             break;
           }
@@ -560,10 +595,13 @@ async function autoDiscoverDependencies(testData: any, testDirectory: string): P
     if (resolvedNodeId && nodeIdToFileMap.has(resolvedNodeId)) {
       // Recursively resolve dependencies of dependencies
       const depFilePath = nodeIdToFileMap.get(resolvedNodeId)!;
-      const depFileContent = fs.readFileSync(depFilePath, 'utf8');
+      const depFileContent = fs.readFileSync(depFilePath, "utf8");
       const depData = yaml.load(depFileContent);
 
-      const transitiveDependencies = await autoDiscoverDependencies(depData, testDirectory);
+      const transitiveDependencies = await autoDiscoverDependencies(
+        depData,
+        testDirectory
+      );
 
       // Add transitive dependencies first
       for (const transitiveDep of transitiveDependencies) {
@@ -575,10 +613,16 @@ async function autoDiscoverDependencies(testData: any, testDirectory: string): P
       // Add direct dependency
       if (!dependencyNodeIds.includes(resolvedNodeId)) {
         dependencyNodeIds.push(resolvedNodeId);
-        getLogger().info(`✅ Found dependency: ${resolvedNodeId} (${path.basename(nodeIdToFileMap.get(resolvedNodeId)!)})`);
+        getLogger().info(
+          `✅ Found dependency: ${resolvedNodeId} (${path.basename(
+            nodeIdToFileMap.get(resolvedNodeId)!
+          )})`
+        );
       }
     } else {
-      getLogger().warn(`⚠️ Could not resolve dependency: ${JSON.stringify(dependency)}`);
+      getLogger().warn(
+        `⚠️ Could not resolve dependency: ${JSON.stringify(dependency)}`
+      );
     }
   }
 
@@ -599,11 +643,23 @@ async function autoDiscoverDependencies(testData: any, testDirectory: string): P
  * ```
  */
 function printHelp() {
+  let version = "1.1.12";
+  try {
+    const fs = require("fs");
+    const path = require("path");
+    const packagePath = path.join(__dirname, "..", "package.json");
+    const packageJson = JSON.parse(fs.readFileSync(packagePath, "utf8"));
+    version = packageJson.version;
+  } catch (error) {
+    // Fallback version if package.json can't be read
+  }
+
   getLogger().info(`
-🚀 Flow Test Engine v1.0.0
+🚀 Flow Test Engine v${version}
 
 USAGE:
-  flow-test [COMMAND] [TEST_FILE | -c CONFIG_FILE] [OPTIONS]
+  fest [COMMAND] [TEST_FILE | -c CONFIG_FILE] [OPTIONS]
+  flow-test-engine [COMMAND] [TEST_FILE | -c CONFIG_FILE] [OPTIONS]
 
 COMMANDS:
   init                       Initialize configuration file interactively
@@ -657,31 +713,31 @@ OTHER:
 
 EXAMPLES:
   # Configuration
-  flow-test init                               # Interactive configuration setup
-  flow-test init --template basic             # Use basic template
-  flow-test init --template performance       # Use performance template
-  flow-test init --help                       # Show init command help
+  fest init                               # Interactive configuration setup (short form)
+  flow-test-engine init                   # Interactive configuration setup (full form)
+  fest init --template basic             # Use basic template
+  fest init --help                       # Show init command help
 
   # Dashboard Management
-  flow-test dashboard install                  # Install dashboard dependencies
-  flow-test dashboard dev                      # Start dashboard in development mode
-  flow-test dashboard build                    # Build dashboard for production
-  flow-test dashboard preview                  # Preview built dashboard
-  flow-test dashboard serve                    # Build and serve dashboard
+  fest dashboard install                  # Install dashboard dependencies
+  fest dashboard dev                      # Start dashboard in development mode
+  fest dashboard build                    # Build dashboard for production
+  fest dashboard preview                  # Preview built dashboard
+  fest dashboard serve                    # Build and serve dashboard
 
   # Running Tests
-  flow-test                                    # Run with default config
-  flow-test my-test.yaml                       # Run specific test file
-  flow-test -c my-config.yml                   # Run with specific config file
-  flow-test --priority critical,high          # Run only critical and high priority tests
-  flow-test --dry-run                         # Show what would be executed
-  flow-test --directory ./api-tests --verbose # Run from specific directory with verbose output
-  flow-test --environment staging --silent    # Run in staging environment silently
-  flow-test --swagger-import api.json         # Import OpenAPI spec and generate tests
-  flow-test --swagger-import api.yaml --swagger-output ./tests/api # Import with custom output
-  flow-test --postman-export tests/auth-flows-test.yaml --postman-output ./exports/auth.postman_collection.json
-  flow-test --postman-export-from-results results/latest.json --postman-output ./exports/
-  flow-test --postman-import ./postman/collection.json --postman-import-output ./tests/imported-postman
+  fest                                    # Run with default config (short form)
+  fest my-test.yaml                       # Run specific test file
+  fest -c my-config.yml                   # Run with specific config file
+  fest --priority critical,high          # Run only critical and high priority tests
+  fest --dry-run                         # Show what would be executed
+  fest --directory ./api-tests --verbose # Run from specific directory with verbose output
+  fest --environment staging --silent    # Run in staging environment silently
+  fest --swagger-import api.json         # Import OpenAPI spec and generate tests
+  fest --swagger-import api.yaml --swagger-output ./tests/api # Import with custom output
+  fest --postman-export tests/auth-flows-test.yaml --postman-output ./exports/auth.postman_collection.json
+  fest --postman-export-from-results results/latest.json --postman-output ./exports/
+  fest --postman-import ./postman/collection.json --postman-import-output ./tests/imported-postman
 
 CONFIGURATION:
   The engine looks for configuration files in this order:

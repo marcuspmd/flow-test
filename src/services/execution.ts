@@ -1090,6 +1090,10 @@ export class ExecutionService {
     await this.hooks.onStepStart?.(step, context);
 
     try {
+      // Initialize captured variables and assertion results for all steps
+      let capturedVariables: Record<string, any> = {};
+      let assertionResults: any[] = [];
+
       // Check if step has iteration configuration - if so, execute multiple times
       if (step.iterate) {
         return await this.executeIteratedStep(
@@ -1112,122 +1116,174 @@ export class ExecutionService {
         );
       }
 
-      // 1. Interpolates variables in request
-      const rawRequestUrl = step.request?.url;
-      const interpolatedRequest = this.globalVariables.interpolate(
-        step.request
-      );
-
-      // 2. Executes HTTP request
-      const httpResult = await this.httpService.executeRequest(
-        step.name,
-        interpolatedRequest
-      );
-
-      this.attachRawUrlToResult(httpResult, rawRequestUrl);
-
-      // Records performance data
-      this.recordPerformanceData(interpolatedRequest, httpResult);
-
-      // 3. Process scenarios if they exist
-      if (
-        step.scenarios &&
-        Array.isArray(step.scenarios) &&
-        httpResult.response_details
-      ) {
-        // Interpolate variables in scenarios before processing
-        const interpolatedScenarios = this.globalVariables.interpolate(
-          step.scenarios
-        );
-
-        this.scenarioService.processScenarios(
-          interpolatedScenarios,
-          httpResult,
-          "verbose"
-        );
+      // Validate that step has either request or input
+      if (!step.request && !step.input) {
+        throw new Error(`Step '${step.name}' must have either 'request' or 'input' configuration`);
       }
 
-      // 4. Executes assertions
-      let assertionResults: any[] = [];
-      if (step.assert && httpResult.response_details) {
-        // Interpolate assertion values before validation
-        const interpolatedAssertions = this.globalVariables.interpolate(
-          step.assert
+      let httpResult: any = null;
+
+      // 1. Execute HTTP request if present
+      if (step.request) {
+        // Interpolates variables in request
+        const rawRequestUrl = step.request?.url;
+        const interpolatedRequest = this.globalVariables.interpolate(
+          step.request
         );
 
-        assertionResults = this.assertionService.validateAssertions(
-          interpolatedAssertions,
-          httpResult
+        // 2. Executes HTTP request
+        httpResult = await this.httpService.executeRequest(
+          step.name,
+          interpolatedRequest
         );
-        httpResult.assertions_results = assertionResults;
 
-        const failedAssertions = assertionResults.filter((a) => !a.passed);
-        if (failedAssertions.length > 0) {
-          httpResult.status = "failure";
-          httpResult.error_message = `${failedAssertions.length} assertion(s) failed`;
+        this.attachRawUrlToResult(httpResult, rawRequestUrl);
+
+        // Records performance data
+        this.recordPerformanceData(interpolatedRequest, httpResult);
+
+        // 3. Process scenarios if they exist
+        if (
+          step.scenarios &&
+          Array.isArray(step.scenarios) &&
+          httpResult.response_details
+        ) {
+          // Interpolate variables in scenarios before processing
+          const interpolatedScenarios = this.globalVariables.interpolate(
+            step.scenarios
+          );
+
+          this.scenarioService.processScenarios(
+            interpolatedScenarios,
+            httpResult,
+            "verbose"
+          );
         }
+
+        // 4. Executes assertions
+        if (step.assert && httpResult.response_details) {
+          // Interpolate assertion values before validation
+          const interpolatedAssertions = this.globalVariables.interpolate(
+            step.assert
+          );
+
+          assertionResults = this.assertionService.validateAssertions(
+            interpolatedAssertions,
+            httpResult
+          );
+          httpResult.assertions_results = assertionResults;
+
+          const failedAssertions = assertionResults.filter((a) => !a.passed);
+          if (failedAssertions.length > 0) {
+            httpResult.status = "failure";
+            httpResult.error_message = `${failedAssertions.length} assertion(s) failed`;
+          }
+        }
+
+        // 5. Captures variables
+        // First, include any variables captured by scenarios
+        if (httpResult.captured_variables) {
+          capturedVariables = { ...httpResult.captured_variables };
+
+          // Make sure scenario-captured variables are also available globally
+          if (Object.keys(capturedVariables).length > 0) {
+            this.globalVariables.setRuntimeVariables(
+              this.processCapturedVariables(capturedVariables, suite)
+            );
+          }
+        }
+
+        if (step.capture && httpResult.response_details) {
+          // Get current variables for capture context
+          const currentVariables = this.globalVariables.getAllVariables();
+
+          const stepCapturedVariables = this.captureService.captureVariables(
+            step.capture,
+            httpResult,
+            currentVariables
+          );
+
+          // Merge step captures with scenario captures
+          capturedVariables = { ...capturedVariables, ...stepCapturedVariables };
+          httpResult.captured_variables = capturedVariables;
+
+          // Immediately update runtime variables so they're available for next steps
+          if (Object.keys(stepCapturedVariables).length > 0) {
+            this.globalVariables.setRuntimeVariables(
+              this.processCapturedVariables(stepCapturedVariables, suite)
+            );
+          }
+        }
+      } else {
+        // For steps without request, create a mock result
+        httpResult = {
+          status: "success",
+          status_code: 200,
+          response_time: 0,
+          captured_variables: {}
+        };
       }
 
-      // 4. Captures variables
-      let capturedVariables: Record<string, any> = {};
-
-      // First, include any variables captured by scenarios
-      if (httpResult.captured_variables) {
+      // Use captured variables from HTTP execution if available
+      if (step.request && httpResult.captured_variables) {
         capturedVariables = { ...httpResult.captured_variables };
-
-        // Make sure scenario-captured variables are also available globally
-        if (Object.keys(capturedVariables).length > 0) {
-          this.globalVariables.setRuntimeVariables(
-            this.processCapturedVariables(capturedVariables, suite)
-          );
-        }
       }
 
-      if (step.capture && httpResult.response_details) {
-        // Get current variables for capture context
-        const currentVariables = this.globalVariables.getAllVariables();
-
-        const stepCapturedVariables = this.captureService.captureVariables(
-          step.capture,
-          httpResult,
-          currentVariables
-        );
-
-        // Merge step captures with scenario captures
-        capturedVariables = { ...capturedVariables, ...stepCapturedVariables };
-        httpResult.captured_variables = capturedVariables;
-
-        // Immediately update runtime variables so they're available for next steps
-        if (Object.keys(stepCapturedVariables).length > 0) {
-          this.globalVariables.setRuntimeVariables(
-            this.processCapturedVariables(stepCapturedVariables, suite)
-          );
-        }
-      }
-
-      // 5. Process interactive input if configured
+      // 6. Process interactive input(s) if configured
       if (step.input) {
         try {
-          this.logger.info(`📝 Prompting for input: ${step.input.variable}`);
-
           const currentVariables = this.globalVariables.getAllVariables();
           const inputResult = await this.inputService.promptUser(step.input, currentVariables);
 
-          if (inputResult.validation_passed) {
-            // Store input result as a variable
-            this.globalVariables.setRuntimeVariable(inputResult.variable, inputResult.value);
+          // Handle single or multiple input results
+          const inputResults = Array.isArray(inputResult) ? inputResult : [inputResult];
 
-            this.logger.info(`✅ Input captured: ${inputResult.variable} = ${inputResult.used_default ? '(default)' : '(user input)'}`);
-
-            // Add input result to captured variables for this step
-            capturedVariables[inputResult.variable] = inputResult.value;
-          } else {
-            this.logger.error(`❌ Input validation failed for ${inputResult.variable}: ${inputResult.validation_error}`);
-            // Continue execution but log the error
+          if (!httpResult.captured_variables) {
+            httpResult.captured_variables = {};
           }
+
+          let inputProcessedSuccessfully = true;
+
+          for (const result of inputResults) {
+            if (Array.isArray(step.input)) {
+              this.logger.info(`📝 Processing input: ${result.variable}`);
+            } else {
+              this.logger.info(`📝 Prompting for input: ${result.variable}`);
+            }
+
+            if (result.validation_passed) {
+              // Store input result as a variable
+              this.globalVariables.setRuntimeVariable(result.variable, result.value);
+
+              this.logger.info(`✅ Input captured: ${result.variable} = ${result.used_default ? '(default)' : '(user input)'}`);
+
+              // Add input result to captured variables for this step
+              httpResult.captured_variables[result.variable] = result.value;
+            } else {
+              this.logger.error(`❌ Input validation failed for ${result.variable}: ${result.validation_error}`);
+              inputProcessedSuccessfully = false;
+              // Continue processing other inputs but mark as partially failed
+            }
+          }
+
+          // Update the final captured variables reference
+          if (httpResult.captured_variables && Object.keys(httpResult.captured_variables).length > 0) {
+            capturedVariables = { ...capturedVariables, ...httpResult.captured_variables };
+          }
+
+          // If this was an input-only step and inputs failed, mark the step as failed
+          if (!step.request && !inputProcessedSuccessfully) {
+            httpResult.status = "failure";
+            httpResult.error_message = "One or more input validations failed";
+          }
+
         } catch (error) {
           this.logger.error(`❌ Input processing error: ${error}`);
-          // Continue execution - input errors shouldn't fail the entire step
+          // If this was an input-only step and input failed, mark the step as failed
+          if (!step.request) {
+            httpResult.status = "failure";
+            httpResult.error_message = `Input processing error: ${error}`;
+          }
         }
       }
 

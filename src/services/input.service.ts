@@ -66,11 +66,67 @@ export class InputService {
   /**
    * Prompts user for input based on configuration
    *
+   * @param config - Input configuration (single or array)
+   * @param variables - Current variable context for interpolation
+   * @returns Promise resolving to input result(s)
+   */
+  async promptUser(config: InputConfig | InputConfig[], variables: Record<string, any>): Promise<InputResult | InputResult[]> {
+    // Handle array of inputs
+    if (Array.isArray(config)) {
+      return this.promptMultipleInputs(config, variables);
+    }
+
+    // Handle single input (existing logic)
+    return this.promptSingleInput(config, variables);
+  }
+
+  /**
+   * Prompts user for multiple inputs sequentially
+   *
+   * @param configs - Array of input configurations
+   * @param variables - Current variable context for interpolation
+   * @returns Promise resolving to array of input results
+   */
+  async promptMultipleInputs(configs: InputConfig[], variables: Record<string, any>): Promise<InputResult[]> {
+    const results: InputResult[] = [];
+    let updatedVariables = { ...variables };
+
+    for (const config of configs) {
+      try {
+        const result = await this.promptSingleInput(config, updatedVariables);
+        results.push(result);
+
+        // Update variables with the captured input for subsequent inputs
+        if (result.validation_passed && result.value !== undefined) {
+          updatedVariables[result.variable] = result.value;
+        }
+      } catch (error) {
+        this.logger.error(`❌ Error processing input ${config.variable}: ${error}`);
+
+        // Add failed result
+        results.push({
+          variable: config.variable,
+          value: config.default || null,
+          input_time_ms: 0,
+          validation_passed: false,
+          used_default: true,
+          timed_out: false,
+          validation_error: error instanceof Error ? error.message : String(error)
+        });
+      }
+    }
+
+    return results;
+  }
+
+  /**
+   * Prompts user for single input based on configuration
+   *
    * @param config - Input configuration
    * @param variables - Current variable context for interpolation
    * @returns Promise resolving to input result
    */
-  async promptUser(config: InputConfig, variables: Record<string, any>): Promise<InputResult> {
+  private async promptSingleInput(config: InputConfig, variables: Record<string, any>): Promise<InputResult> {
     const startTime = Date.now();
 
     try {
@@ -132,7 +188,7 @@ export class InputService {
       if (!validation.valid) {
         this.logger.error(`❌ Validation failed: ${validation.error}`);
         // Recursive retry on validation failure
-        return this.promptUser(config, variables);
+        return this.promptSingleInput(config, variables);
       }
 
       // Convert type if needed

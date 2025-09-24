@@ -273,6 +273,11 @@ export class PostmanCollectionService {
     suite: TestSuite,
     index: number
   ): PostmanItem {
+    // Skip steps without requests (input-only steps)
+    if (!step.request) {
+      throw new Error(`Cannot convert step '${step.name}' to Postman: step has no request configuration`);
+    }
+
     const request: PostmanRequest = {
       method: step.request.method,
       url: this.buildPostmanUrl(step, suite),
@@ -563,12 +568,16 @@ export class PostmanCollectionService {
   }
 
   private buildPostmanUrl(step: TestStep, suite: TestSuite): PostmanRequest["url"] {
+    if (!step.request) {
+      throw new Error(`Cannot build URL for step '${step.name}': step has no request configuration`);
+    }
+
     const raw = this.combineUrl(suite.base_url || "", step.request.url);
     const url: PostmanRequest["url"] = {
       raw,
     };
 
-    if (step.request.params && Object.keys(step.request.params).length > 0) {
+    if (step.request?.params && Object.keys(step.request.params).length > 0) {
       url.query = Object.entries(step.request.params).map(([key, value]) => ({
         key,
         value: String(value),
@@ -693,7 +702,7 @@ export class PostmanCollectionService {
     const step: TestStep = {
       name: item.name || `Step ${index + 1}`,
       request: {
-        method: (request.method || "GET") as TestStep["request"]["method"],
+        method: (request.method || "GET") as NonNullable<TestStep["request"]>["method"],
         url: this.extractRelativeUrl(urlInfo),
         headers: headers,
         body,
