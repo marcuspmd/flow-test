@@ -41,7 +41,7 @@ export class VariableService {
     }
 
     if (Array.isArray(template)) {
-      return template.map(item => this.interpolate(item, suppressWarnings));
+      return template.map((item) => this.interpolate(item, suppressWarnings));
     }
 
     if (template && typeof template === 'object') {
@@ -55,13 +55,19 @@ export class VariableService {
     return template;
   }
 
-  private interpolateString(template: string, suppressWarnings: boolean): string {
+  private interpolateString(
+    template: string,
+    suppressWarnings: boolean,
+  ): string {
     return template.replace(/\{\{([^}]+)\}\}/g, (match, variableName) => {
       const trimmedName = variableName.trim();
 
       try {
         // Handle Faker.js expressions
-        if (trimmedName.startsWith('faker.') || trimmedName.startsWith('fake.')) {
+        if (
+          trimmedName.startsWith('faker.') ||
+          trimmedName.startsWith('fake.')
+        ) {
           return this.evaluateFakerExpression(trimmedName);
         }
 
@@ -102,22 +108,34 @@ export class VariableService {
 
   private getVariable(name: string): any {
     // Check runtime variables first (highest priority)
-    if (this.context.runtime && this.hasNestedProperty(this.context.runtime, name)) {
+    if (
+      this.context.runtime &&
+      this.hasNestedProperty(this.context.runtime, name)
+    ) {
       return this.getNestedProperty(this.context.runtime, name);
     }
 
     // Check suite variables
-    if (this.context.suite && this.hasNestedProperty(this.context.suite, name)) {
+    if (
+      this.context.suite &&
+      this.hasNestedProperty(this.context.suite, name)
+    ) {
       return this.getNestedProperty(this.context.suite, name);
     }
 
     // Check imported variables
-    if (this.context.imported && this.hasNestedProperty(this.context.imported, name)) {
+    if (
+      this.context.imported &&
+      this.hasNestedProperty(this.context.imported, name)
+    ) {
       return this.getNestedProperty(this.context.imported, name);
     }
 
     // Check global variables (lowest priority)
-    if (this.context.global && this.hasNestedProperty(this.context.global, name)) {
+    if (
+      this.context.global &&
+      this.hasNestedProperty(this.context.global, name)
+    ) {
       return this.getNestedProperty(this.context.global, name);
     }
 
@@ -171,7 +189,11 @@ export class VariableService {
 
       let fakerMethod: any = faker;
       for (const part of pathParts) {
-        if (fakerMethod && typeof fakerMethod === 'object' && part in fakerMethod) {
+        if (
+          fakerMethod &&
+          typeof fakerMethod === 'object' &&
+          part in fakerMethod
+        ) {
           fakerMethod = fakerMethod[part];
         } else {
           throw new Error(`Faker method not found: faker.${methodPath}`);
@@ -212,9 +234,12 @@ export class VariableService {
 
       return typeof result === 'string' ? result : String(result);
     } catch (error) {
-      this.logger.error(`JavaScript expression evaluation failed: ${expression}`, {
-        error: error as Error,
-      });
+      this.logger.error(
+        `JavaScript expression evaluation failed: ${expression}`,
+        {
+          error: error as Error,
+        },
+      );
       return `<js_error:${expression}>`;
     }
   }
@@ -225,7 +250,11 @@ export class VariableService {
     const collectVariables = (obj: Record<string, any>, prefix = ''): void => {
       for (const key in obj) {
         const fullKey = prefix ? `${prefix}.${key}` : key;
-        if (obj[key] && typeof obj[key] === 'object' && !Array.isArray(obj[key])) {
+        if (
+          obj[key] &&
+          typeof obj[key] === 'object' &&
+          !Array.isArray(obj[key])
+        ) {
           collectVariables(obj[key], fullKey);
         } else {
           variables.push(fullKey);
@@ -260,11 +289,13 @@ export class VariableService {
     const variableRefs = this.extractVariableReferences(template);
 
     for (const varRef of variableRefs) {
-      if (!varRef.startsWith('faker.') &&
-          !varRef.startsWith('fake.') &&
-          !varRef.startsWith('js:') &&
-          !varRef.startsWith('env.') &&
-          this.getVariable(varRef) === undefined) {
+      if (
+        !varRef.startsWith('faker.') &&
+        !varRef.startsWith('fake.') &&
+        !varRef.startsWith('js:') &&
+        !varRef.startsWith('env.') &&
+        this.getVariable(varRef) === undefined
+      ) {
         errors.push(`Variable not found: ${varRef}`);
       }
     }
@@ -277,11 +308,15 @@ export class VariableService {
 
     if (typeof template === 'string') {
       const matches = template.match(/\{\{([^}]+)\}\}/g) || [];
-      refs.push(...matches.map(match => match.slice(2, -2).trim()));
+      refs.push(...matches.map((match) => match.slice(2, -2).trim()));
     } else if (Array.isArray(template)) {
-      template.forEach(item => refs.push(...this.extractVariableReferences(item)));
+      template.forEach((item) =>
+        refs.push(...this.extractVariableReferences(item)),
+      );
     } else if (template && typeof template === 'object') {
-      Object.values(template).forEach(value => refs.push(...this.extractVariableReferences(value)));
+      Object.values(template).forEach((value) =>
+        refs.push(...this.extractVariableReferences(value)),
+      );
     }
 
     return [...new Set(refs)]; // Remove duplicates

@@ -59,14 +59,16 @@ export class YamlValidationService {
       }
 
       return result;
-
     } catch (error) {
       result.errors.push(`YAML parsing error: ${error.message}`);
       return result;
     }
   }
 
-  private validateRequiredFields(parsed: any, result: YamlValidationResult): void {
+  private validateRequiredFields(
+    parsed: any,
+    result: YamlValidationResult,
+  ): void {
     const requiredFields = ['suite_name', 'steps'];
 
     for (const field of requiredFields) {
@@ -76,7 +78,10 @@ export class YamlValidationService {
     }
   }
 
-  private validateSuiteStructure(parsed: any, result: YamlValidationResult): void {
+  private validateSuiteStructure(
+    parsed: any,
+    result: YamlValidationResult,
+  ): void {
     // Validate suite_name
     if (parsed.suite_name && typeof parsed.suite_name !== 'string') {
       result.errors.push('suite_name must be a string');
@@ -89,7 +94,10 @@ export class YamlValidationService {
 
     // Validate variables if present
     if (parsed.variables) {
-      if (typeof parsed.variables !== 'object' || Array.isArray(parsed.variables)) {
+      if (
+        typeof parsed.variables !== 'object' ||
+        Array.isArray(parsed.variables)
+      ) {
         result.errors.push('variables must be an object');
       }
     }
@@ -123,8 +131,13 @@ export class YamlValidationService {
     // Validate priority if present
     if (parsed.priority) {
       const validPriorities = ['critical', 'high', 'medium', 'low'];
-      if (typeof parsed.priority !== 'string' || !validPriorities.includes(parsed.priority.toLowerCase())) {
-        result.errors.push(`priority must be one of: ${validPriorities.join(', ')}`);
+      if (
+        typeof parsed.priority !== 'string' ||
+        !validPriorities.includes(parsed.priority.toLowerCase())
+      ) {
+        result.errors.push(
+          `priority must be one of: ${validPriorities.join(', ')}`,
+        );
       }
     }
   }
@@ -145,7 +158,11 @@ export class YamlValidationService {
     });
   }
 
-  private validateStep(step: any, index: number, result: YamlValidationResult): void {
+  private validateStep(
+    step: any,
+    index: number,
+    result: YamlValidationResult,
+  ): void {
     const stepPrefix = `steps[${index}]`;
 
     // Required step fields
@@ -158,9 +175,19 @@ export class YamlValidationService {
 
     // Validate method
     if (step.method) {
-      const validMethods = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS'];
+      const validMethods = [
+        'GET',
+        'POST',
+        'PUT',
+        'DELETE',
+        'PATCH',
+        'HEAD',
+        'OPTIONS',
+      ];
       if (!validMethods.includes(step.method.toUpperCase())) {
-        result.errors.push(`${stepPrefix}: Invalid HTTP method '${step.method}'. Must be one of: ${validMethods.join(', ')}`);
+        result.errors.push(
+          `${stepPrefix}: Invalid HTTP method '${step.method}'. Must be one of: ${validMethods.join(', ')}`,
+        );
       }
     }
 
@@ -177,13 +204,20 @@ export class YamlValidationService {
     }
 
     // Validate timeout if present
-    if (step.timeout && (typeof step.timeout !== 'number' || step.timeout <= 0)) {
+    if (
+      step.timeout &&
+      (typeof step.timeout !== 'number' || step.timeout <= 0)
+    ) {
       result.errors.push(`${stepPrefix}: timeout must be a positive number`);
     }
 
     // Validate assertions if present
     if (step.assertions) {
-      this.validateAssertions(step.assertions, `${stepPrefix}.assertions`, result);
+      this.validateAssertions(
+        step.assertions,
+        `${stepPrefix}.assertions`,
+        result,
+      );
     }
 
     // Validate capture if present
@@ -194,10 +228,14 @@ export class YamlValidationService {
         // Validate capture expressions
         Object.entries(step.capture).forEach(([varName, expression]) => {
           if (typeof varName !== 'string' || !varName) {
-            result.errors.push(`${stepPrefix}.capture: Variable name must be a non-empty string`);
+            result.errors.push(
+              `${stepPrefix}.capture: Variable name must be a non-empty string`,
+            );
           }
           if (typeof expression !== 'string' || !expression) {
-            result.errors.push(`${stepPrefix}.capture.${varName}: Expression must be a non-empty string`);
+            result.errors.push(
+              `${stepPrefix}.capture.${varName}: Expression must be a non-empty string`,
+            );
           }
         });
       }
@@ -212,12 +250,18 @@ export class YamlValidationService {
     if (step.priority) {
       const validPriorities = ['critical', 'high', 'medium', 'low'];
       if (!validPriorities.includes(step.priority.toLowerCase())) {
-        result.errors.push(`${stepPrefix}: priority must be one of: ${validPriorities.join(', ')}`);
+        result.errors.push(
+          `${stepPrefix}: priority must be one of: ${validPriorities.join(', ')}`,
+        );
       }
     }
   }
 
-  private validateAssertions(assertions: any, prefix: string, result: YamlValidationResult): void {
+  private validateAssertions(
+    assertions: any,
+    prefix: string,
+    result: YamlValidationResult,
+  ): void {
     if (typeof assertions !== 'object' || Array.isArray(assertions)) {
       result.errors.push(`${prefix}: assertions must be an object`);
       return;
@@ -225,16 +269,29 @@ export class YamlValidationService {
 
     // Common assertion operators
     const validOperators = [
-      'equals', 'not_equals', 'contains', 'greater_than', 'less_than',
-      'regex', 'not_null', 'type', 'length'
+      'equals',
+      'not_equals',
+      'contains',
+      'greater_than',
+      'less_than',
+      'regex',
+      'not_null',
+      'type',
+      'length',
     ];
 
     Object.entries(assertions).forEach(([field, assertion]) => {
-      if (typeof assertion === 'object' && assertion !== null && !Array.isArray(assertion)) {
+      if (
+        typeof assertion === 'object' &&
+        assertion !== null &&
+        !Array.isArray(assertion)
+      ) {
         // Validate assertion operators
-        Object.keys(assertion as object).forEach(operator => {
+        Object.keys(assertion).forEach((operator) => {
           if (!validOperators.includes(operator)) {
-            result.warnings.push(`${prefix}.${field}: Unknown assertion operator '${operator}'`);
+            result.warnings.push(
+              `${prefix}.${field}: Unknown assertion operator '${operator}'`,
+            );
           }
         });
       }
@@ -242,9 +299,13 @@ export class YamlValidationService {
   }
 
   private extractMetadata(parsed: any, result: YamlValidationResult): void {
-    result.metadata.stepCount = Array.isArray(parsed.steps) ? parsed.steps.length : 0;
-    result.metadata.hasVariables = !!parsed.variables && Object.keys(parsed.variables).length > 0;
-    result.metadata.hasDependencies = !!parsed.dependencies && parsed.dependencies.length > 0;
+    result.metadata.stepCount = Array.isArray(parsed.steps)
+      ? parsed.steps.length
+      : 0;
+    result.metadata.hasVariables =
+      !!parsed.variables && Object.keys(parsed.variables).length > 0;
+    result.metadata.hasDependencies =
+      !!parsed.dependencies && parsed.dependencies.length > 0;
     result.metadata.tags = parsed.tags || [];
     result.metadata.priority = parsed.priority;
   }
@@ -255,8 +316,12 @@ export class YamlValidationService {
       const result = this.validateYamlContent(content);
 
       // Add file index to error messages for identification
-      result.errors = result.errors.map(error => `File ${index + 1}: ${error}`);
-      result.warnings = result.warnings.map(warning => `File ${index + 1}: ${warning}`);
+      result.errors = result.errors.map(
+        (error) => `File ${index + 1}: ${error}`,
+      );
+      result.warnings = result.warnings.map(
+        (warning) => `File ${index + 1}: ${warning}`,
+      );
 
       return result;
     });
@@ -286,7 +351,7 @@ export class YamlValidationService {
     const nameCount: { [name: string]: number } = {};
     const duplicates: string[] = [];
 
-    Object.values(suiteNames).forEach(name => {
+    Object.values(suiteNames).forEach((name) => {
       nameCount[name] = (nameCount[name] || 0) + 1;
       if (nameCount[name] === 2) {
         duplicates.push(name);

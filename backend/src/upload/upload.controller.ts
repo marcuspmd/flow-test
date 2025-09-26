@@ -10,10 +10,19 @@ import {
   HttpCode,
 } from '@nestjs/common';
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
-import { ApiTags, ApiOperation, ApiResponse, ApiConsumes, ApiBody } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiConsumes,
+  ApiBody,
+} from '@nestjs/swagger';
 import { diskStorage } from 'multer';
 import { extname, join } from 'path';
-import { YamlValidationService, YamlValidationResult } from './yaml-validation.service';
+import {
+  YamlValidationService,
+  YamlValidationResult,
+} from './yaml-validation.service';
 import { FlowService } from '../flow/flow.service';
 
 interface UploadResponse {
@@ -48,17 +57,26 @@ export class UploadController {
       storage: diskStorage({
         destination: './uploads',
         filename: (req: any, file: any, callback: any) => {
-          const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-          callback(null, `${file.fieldname}-${uniqueSuffix}${extname(file.originalname)}`);
+          const uniqueSuffix =
+            Date.now() + '-' + Math.round(Math.random() * 1e9);
+          callback(
+            null,
+            `${file.fieldname}-${uniqueSuffix}${extname(file.originalname)}`,
+          );
         },
       }),
       fileFilter: (req: any, file: any, callback: any) => {
-        if (file.mimetype === 'text/yaml' ||
-            file.mimetype === 'application/x-yaml' ||
-            file.originalname.match(/\.(yml|yaml)$/)) {
+        if (
+          file.mimetype === 'text/yaml' ||
+          file.mimetype === 'application/x-yaml' ||
+          file.originalname.match(/\.(yml|yaml)$/)
+        ) {
           callback(null, true);
         } else {
-          callback(new BadRequestException('Only YAML files are allowed'), false);
+          callback(
+            new BadRequestException('Only YAML files are allowed'),
+            false,
+          );
         }
       },
       limits: {
@@ -71,24 +89,29 @@ export class UploadController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Validate YAML content',
-    description: 'Validates YAML content for flow suite structure and syntax'
+    description: 'Validates YAML content for flow suite structure and syntax',
   })
   @ApiResponse({ status: 200, description: 'Validation completed' })
   @ApiBody({
     schema: {
       type: 'object',
       properties: {
-        yamlContent: { type: 'string', description: 'YAML content to validate' }
+        yamlContent: {
+          type: 'string',
+          description: 'YAML content to validate',
+        },
       },
-      required: ['yamlContent']
-    }
+      required: ['yamlContent'],
+    },
   })
   async validateYaml(@Body() dto: ValidateYamlDto): Promise<UploadResponse> {
     if (!dto.yamlContent) {
       throw new BadRequestException('YAML content is required');
     }
 
-    const validation = this.yamlValidationService.validateYamlContent(dto.yamlContent);
+    const validation = this.yamlValidationService.validateYamlContent(
+      dto.yamlContent,
+    );
 
     return {
       success: validation.isValid,
@@ -106,25 +129,32 @@ export class UploadController {
   @UseInterceptors(FileInterceptor('file', {}))
   @ApiOperation({
     summary: 'Validate uploaded YAML file',
-    description: 'Upload and validate a YAML file for flow suite structure'
+    description: 'Upload and validate a YAML file for flow suite structure',
   })
   @ApiConsumes('multipart/form-data')
   @ApiResponse({ status: 200, description: 'File validation completed' })
-  async validateYamlFile(@UploadedFile() file: Express.Multer.File): Promise<UploadResponse> {
+  async validateYamlFile(
+    @UploadedFile() file: Express.Multer.File,
+  ): Promise<UploadResponse> {
     if (!file) {
       throw new BadRequestException('No file uploaded');
     }
 
     if (!file.originalname.match(/\.(yml|yaml)$/)) {
-      throw new BadRequestException('Only YAML files (.yml or .yaml) are allowed');
+      throw new BadRequestException(
+        'Only YAML files (.yml or .yaml) are allowed',
+      );
     }
 
     const yamlContent = file.buffer.toString('utf8');
-    const validation = this.yamlValidationService.validateYamlContent(yamlContent);
+    const validation =
+      this.yamlValidationService.validateYamlContent(yamlContent);
 
     return {
       success: validation.isValid,
-      message: validation.isValid ? 'YAML file is valid' : 'YAML file validation failed',
+      message: validation.isValid
+        ? 'YAML file is valid'
+        : 'YAML file validation failed',
       data: {
         filename: file.originalname,
         size: file.size,
@@ -140,42 +170,54 @@ export class UploadController {
   @UseInterceptors(FilesInterceptor('files', 10, {}))
   @ApiOperation({
     summary: 'Validate multiple YAML files',
-    description: 'Upload and validate multiple YAML files at once'
+    description: 'Upload and validate multiple YAML files at once',
   })
   @ApiConsumes('multipart/form-data')
-  @ApiResponse({ status: 200, description: 'Multiple files validation completed' })
-  async validateMultipleYamlFiles(@UploadedFiles() files: Express.Multer.File[]): Promise<UploadResponse> {
+  @ApiResponse({
+    status: 200,
+    description: 'Multiple files validation completed',
+  })
+  async validateMultipleYamlFiles(
+    @UploadedFiles() files: Express.Multer.File[],
+  ): Promise<UploadResponse> {
     if (!files || files.length === 0) {
       throw new BadRequestException('No files uploaded');
     }
 
     // Validate file types
-    const invalidFiles = files.filter(file => !file.originalname.match(/\.(yml|yaml)$/));
+    const invalidFiles = files.filter(
+      (file) => !file.originalname.match(/\.(yml|yaml)$/),
+    );
     if (invalidFiles.length > 0) {
       throw new BadRequestException(
-        `Invalid file types: ${invalidFiles.map(f => f.originalname).join(', ')}. Only YAML files are allowed.`
+        `Invalid file types: ${invalidFiles.map((f) => f.originalname).join(', ')}. Only YAML files are allowed.`,
       );
     }
 
-    const yamlContents = files.map(file => file.buffer.toString('utf8'));
-    const validations = this.yamlValidationService.validateMultipleYamlFiles(yamlContents);
+    const yamlContents = files.map((file) => file.buffer.toString('utf8'));
+    const validations =
+      this.yamlValidationService.validateMultipleYamlFiles(yamlContents);
 
     // Check for duplicate suite names
-    const duplicateNames = this.yamlValidationService.findDuplicateSuiteNames(yamlContents);
+    const duplicateNames =
+      this.yamlValidationService.findDuplicateSuiteNames(yamlContents);
 
     const allErrors: string[] = [];
     const allWarnings: string[] = [];
 
-    validations.forEach(validation => {
+    validations.forEach((validation) => {
       allErrors.push(...validation.errors);
       allWarnings.push(...validation.warnings);
     });
 
     if (duplicateNames.length > 0) {
-      allErrors.push(`Duplicate suite names found: ${duplicateNames.join(', ')}`);
+      allErrors.push(
+        `Duplicate suite names found: ${duplicateNames.join(', ')}`,
+      );
     }
 
-    const overallSuccess = validations.every(v => v.isValid) && duplicateNames.length === 0;
+    const overallSuccess =
+      validations.every((v) => v.isValid) && duplicateNames.length === 0;
 
     return {
       success: overallSuccess,
@@ -184,8 +226,8 @@ export class UploadController {
         : 'Some YAML files failed validation',
       data: {
         totalFiles: files.length,
-        validFiles: validations.filter(v => v.isValid).length,
-        invalidFiles: validations.filter(v => !v.isValid).length,
+        validFiles: validations.filter((v) => v.isValid).length,
+        invalidFiles: validations.filter((v) => !v.isValid).length,
         duplicateNames,
         files: files.map((file, index) => ({
           filename: file.originalname,
@@ -205,16 +247,20 @@ export class UploadController {
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
     summary: 'Create flow from YAML content',
-    description: 'Create a new flow suite and version from YAML content'
+    description: 'Create a new flow suite and version from YAML content',
   })
   @ApiResponse({ status: 201, description: 'Flow created successfully' })
-  async createFlowFromYaml(@Body() dto: CreateFlowFromYamlDto): Promise<UploadResponse> {
+  async createFlowFromYaml(
+    @Body() dto: CreateFlowFromYamlDto,
+  ): Promise<UploadResponse> {
     if (!dto.yamlContent) {
       throw new BadRequestException('YAML content is required');
     }
 
     // First validate the YAML
-    const validation = this.yamlValidationService.validateYamlContent(dto.yamlContent);
+    const validation = this.yamlValidationService.validateYamlContent(
+      dto.yamlContent,
+    );
 
     if (!validation.isValid) {
       return {
@@ -237,7 +283,9 @@ export class UploadController {
           return {
             success: false,
             message: 'Flow suite already exists',
-            errors: [`Suite with nodeId '${nodeId}' already exists. Set overwrite=true to replace it.`],
+            errors: [
+              `Suite with nodeId '${nodeId}' already exists. Set overwrite=true to replace it.`,
+            ],
           };
         }
       } catch {
@@ -246,7 +294,8 @@ export class UploadController {
           nodeId,
           name: flowSuite.suite_name,
           description: `Imported from YAML upload`,
-          defaultPriority: (flowSuite.priority?.toUpperCase() as any) || 'MEDIUM',
+          defaultPriority:
+            (flowSuite.priority?.toUpperCase() as any) || 'MEDIUM',
           tags: flowSuite.tags || [],
         });
       }
@@ -275,7 +324,6 @@ export class UploadController {
         },
         warnings: validation.warnings,
       };
-
     } catch (error) {
       return {
         success: false,
@@ -289,7 +337,7 @@ export class UploadController {
   @UseInterceptors(FileInterceptor('file', {}))
   @ApiOperation({
     summary: 'Upload YAML file and create flow',
-    description: 'Upload a YAML file and create a flow suite in one step'
+    description: 'Upload a YAML file and create a flow suite in one step',
   })
   @ApiConsumes('multipart/form-data')
   @ApiResponse({ status: 201, description: 'Flow created from uploaded file' })
@@ -303,7 +351,9 @@ export class UploadController {
     }
 
     if (!file.originalname.match(/\.(yml|yaml)$/)) {
-      throw new BadRequestException('Only YAML files (.yml or .yaml) are allowed');
+      throw new BadRequestException(
+        'Only YAML files (.yml or .yaml) are allowed',
+      );
     }
 
     const yamlContent = file.buffer.toString('utf8');
@@ -316,10 +366,13 @@ export class UploadController {
   }
 
   private generateNodeId(suiteName: string): string {
-    return suiteName
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-|-$/g, '')
-      + '-' + Math.random().toString(36).substr(2, 8);
+    return (
+      suiteName
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '') +
+      '-' +
+      Math.random().toString(36).substr(2, 8)
+    );
   }
 }

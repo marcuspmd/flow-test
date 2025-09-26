@@ -1,6 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import * as jmespath from 'jmespath';
-import { Assertions, AssertionChecks, AssertionResult, StepExecutionResult } from '../types/engine.types';
+import {
+  Assertions,
+  AssertionChecks,
+  AssertionResult,
+  StepExecutionResult,
+} from '../types/engine.types';
 import { LoggerService } from './logger.service';
 
 @Injectable()
@@ -27,13 +32,22 @@ export class AssertionService {
     try {
       for (const [field, expected] of Object.entries(assertions)) {
         if (field === 'status_code') {
-          const statusResult = this.validateStatusCode(expected, responseData.status_code);
+          const statusResult = this.validateStatusCode(
+            expected,
+            responseData.status_code,
+          );
           assertionResults.push(...statusResult);
         } else if (field === 'response_time') {
-          const timeResult = this.validateResponseTime(expected, responseData.response_time);
+          const timeResult = this.validateResponseTime(
+            expected,
+            responseData.response_time,
+          );
           assertionResults.push(...timeResult);
         } else if (field === 'headers') {
-          const headerResults = this.validateHeaders(expected, responseData.headers);
+          const headerResults = this.validateHeaders(
+            expected,
+            responseData.headers,
+          );
           assertionResults.push(...headerResults);
         } else if (field === 'body') {
           const bodyResults = this.validateBody(expected, responseData.body);
@@ -45,7 +59,9 @@ export class AssertionService {
         }
       }
     } catch (error) {
-      this.logger.error(`Assertion validation error: ${error.message}`, { error: error as Error });
+      this.logger.error(`Assertion validation error: ${error.message}`, {
+        error: error as Error,
+      });
       assertionResults.push({
         assertion: 'validation_error',
         expected: 'successful validation',
@@ -60,45 +76,66 @@ export class AssertionService {
 
   private validateStatusCode(expected: any, actual: number): AssertionResult[] {
     if (typeof expected === 'number') {
-      return [{
+      return [
+        {
+          assertion: 'status_code',
+          expected,
+          actual,
+          passed: actual === expected,
+          message:
+            actual === expected
+              ? `Status code matches expected value: ${expected}`
+              : `Expected status code ${expected}, but got ${actual}`,
+        },
+      ];
+    }
+
+    if (typeof expected === 'object' && expected !== null) {
+      return this.validateWithChecks(
+        'status_code',
+        expected as AssertionChecks,
+        actual,
+      );
+    }
+
+    return [
+      {
         assertion: 'status_code',
         expected,
         actual,
-        passed: actual === expected,
-        message: actual === expected
-          ? `Status code matches expected value: ${expected}`
-          : `Expected status code ${expected}, but got ${actual}`,
-      }];
-    }
-
-    if (typeof expected === 'object' && expected !== null) {
-      return this.validateWithChecks('status_code', expected as AssertionChecks, actual);
-    }
-
-    return [{
-      assertion: 'status_code',
-      expected,
-      actual,
-      passed: false,
-      message: `Invalid status code assertion format: ${JSON.stringify(expected)}`,
-    }];
+        passed: false,
+        message: `Invalid status code assertion format: ${JSON.stringify(expected)}`,
+      },
+    ];
   }
 
-  private validateResponseTime(expected: any, actual: number): AssertionResult[] {
+  private validateResponseTime(
+    expected: any,
+    actual: number,
+  ): AssertionResult[] {
     if (typeof expected === 'object' && expected !== null) {
-      return this.validateWithChecks('response_time', expected as AssertionChecks, actual);
+      return this.validateWithChecks(
+        'response_time',
+        expected as AssertionChecks,
+        actual,
+      );
     }
 
-    return [{
-      assertion: 'response_time',
-      expected,
-      actual,
-      passed: false,
-      message: `Invalid response time assertion format: ${JSON.stringify(expected)}`,
-    }];
+    return [
+      {
+        assertion: 'response_time',
+        expected,
+        actual,
+        passed: false,
+        message: `Invalid response time assertion format: ${JSON.stringify(expected)}`,
+      },
+    ];
   }
 
-  private validateHeaders(expected: any, actual: Record<string, string>): AssertionResult[] {
+  private validateHeaders(
+    expected: any,
+    actual: Record<string, string>,
+  ): AssertionResult[] {
     const results: AssertionResult[] = [];
 
     if (typeof expected === 'object' && expected !== null) {
@@ -118,9 +155,10 @@ export class AssertionService {
             expected: headerExpected,
             actual: headerValue,
             passed: headerValue === headerExpected,
-            message: headerValue === headerExpected
-              ? `Header ${headerName} matches expected value`
-              : `Expected header ${headerName} to be "${headerExpected}", but got "${headerValue}"`,
+            message:
+              headerValue === headerExpected
+                ? `Header ${headerName} matches expected value`
+                : `Expected header ${headerName} to be "${headerExpected}", but got "${headerValue}"`,
           });
         }
       }
@@ -132,9 +170,17 @@ export class AssertionService {
   private validateBody(expected: any, actual: any): AssertionResult[] {
     const results: AssertionResult[] = [];
 
-    if (typeof expected === 'object' && expected !== null && !Array.isArray(expected)) {
+    if (
+      typeof expected === 'object' &&
+      expected !== null &&
+      !Array.isArray(expected)
+    ) {
       for (const [path, pathExpected] of Object.entries(expected)) {
-        const pathResults = this.validateBodyPath(`body.${path}`, pathExpected, actual);
+        const pathResults = this.validateBodyPath(
+          `body.${path}`,
+          pathExpected,
+          actual,
+        );
         results.push(...pathResults);
       }
     } else {
@@ -143,88 +189,141 @@ export class AssertionService {
         expected,
         actual,
         passed: JSON.stringify(actual) === JSON.stringify(expected),
-        message: JSON.stringify(actual) === JSON.stringify(expected)
-          ? 'Response body matches expected value'
-          : `Expected body to match but got differences`,
+        message:
+          JSON.stringify(actual) === JSON.stringify(expected)
+            ? 'Response body matches expected value'
+            : `Expected body to match but got differences`,
       });
     }
 
     return results;
   }
 
-  private validateBodyPath(path: string, expected: any, responseBody: any): AssertionResult[] {
+  private validateBodyPath(
+    path: string,
+    expected: any,
+    responseBody: any,
+  ): AssertionResult[] {
     try {
-      const actualValue = this.extractValueFromPath(path.replace('body.', ''), responseBody);
+      const actualValue = this.extractValueFromPath(
+        path.replace('body.', ''),
+        responseBody,
+      );
 
-      if (typeof expected === 'object' && expected !== null && !Array.isArray(expected)) {
-        return this.validateWithChecks(path, expected as AssertionChecks, actualValue);
+      if (
+        typeof expected === 'object' &&
+        expected !== null &&
+        !Array.isArray(expected)
+      ) {
+        return this.validateWithChecks(
+          path,
+          expected as AssertionChecks,
+          actualValue,
+        );
       } else {
-        return [{
-          assertion: path,
-          expected,
-          actual: actualValue,
-          passed: JSON.stringify(actualValue) === JSON.stringify(expected),
-          message: JSON.stringify(actualValue) === JSON.stringify(expected)
-            ? `Path ${path} matches expected value`
-            : `Expected ${path} to be ${JSON.stringify(expected)}, but got ${JSON.stringify(actualValue)}`,
-        }];
+        return [
+          {
+            assertion: path,
+            expected,
+            actual: actualValue,
+            passed: JSON.stringify(actualValue) === JSON.stringify(expected),
+            message:
+              JSON.stringify(actualValue) === JSON.stringify(expected)
+                ? `Path ${path} matches expected value`
+                : `Expected ${path} to be ${JSON.stringify(expected)}, but got ${JSON.stringify(actualValue)}`,
+          },
+        ];
       }
     } catch (error) {
-      return [{
-        assertion: path,
-        expected,
-        actual: undefined,
-        passed: false,
-        message: `Failed to extract value from path ${path}: ${error.message}`,
-      }];
+      return [
+        {
+          assertion: path,
+          expected,
+          actual: undefined,
+          passed: false,
+          message: `Failed to extract value from path ${path}: ${error.message}`,
+        },
+      ];
     }
   }
 
-  private validateField(field: string, expected: any, responseData: any): AssertionResult[] {
+  private validateField(
+    field: string,
+    expected: any,
+    responseData: any,
+  ): AssertionResult[] {
     try {
       const actualValue = this.extractValueFromPath(field, responseData);
 
-      if (typeof expected === 'object' && expected !== null && !Array.isArray(expected)) {
-        return this.validateWithChecks(field, expected as AssertionChecks, actualValue);
+      if (
+        typeof expected === 'object' &&
+        expected !== null &&
+        !Array.isArray(expected)
+      ) {
+        return this.validateWithChecks(
+          field,
+          expected as AssertionChecks,
+          actualValue,
+        );
       } else {
-        return [{
-          assertion: field,
-          expected,
-          actual: actualValue,
-          passed: JSON.stringify(actualValue) === JSON.stringify(expected),
-          message: JSON.stringify(actualValue) === JSON.stringify(expected)
-            ? `Field ${field} matches expected value`
-            : `Expected ${field} to be ${JSON.stringify(expected)}, but got ${JSON.stringify(actualValue)}`,
-        }];
+        return [
+          {
+            assertion: field,
+            expected,
+            actual: actualValue,
+            passed: JSON.stringify(actualValue) === JSON.stringify(expected),
+            message:
+              JSON.stringify(actualValue) === JSON.stringify(expected)
+                ? `Field ${field} matches expected value`
+                : `Expected ${field} to be ${JSON.stringify(expected)}, but got ${JSON.stringify(actualValue)}`,
+          },
+        ];
       }
     } catch (error) {
-      return [{
-        assertion: field,
-        expected,
-        actual: undefined,
-        passed: false,
-        message: `Failed to extract value from field ${field}: ${error.message}`,
-      }];
+      return [
+        {
+          assertion: field,
+          expected,
+          actual: undefined,
+          passed: false,
+          message: `Failed to extract value from field ${field}: ${error.message}`,
+        },
+      ];
     }
   }
 
-  private validateWithChecks(field: string, checks: AssertionChecks, actual: any): AssertionResult[] {
+  private validateWithChecks(
+    field: string,
+    checks: AssertionChecks,
+    actual: any,
+  ): AssertionResult[] {
     const results: AssertionResult[] = [];
 
     for (const [operator, expected] of Object.entries(checks)) {
-      const result = this.validateWithOperator(field, operator, expected, actual);
+      const result = this.validateWithOperator(
+        field,
+        operator,
+        expected,
+        actual,
+      );
       results.push(result);
     }
 
     return results;
   }
 
-  private validateWithOperator(field: string, operator: string, expected: any, actual: any): AssertionResult {
+  private validateWithOperator(
+    field: string,
+    operator: string,
+    expected: any,
+    actual: any,
+  ): AssertionResult {
     const assertion = `${field}.${operator}`;
 
     switch (operator) {
       case 'equals':
-        const equalsResult = JSON.stringify(actual) === JSON.stringify(expected);
+        const equalsResult =
+          JSON.stringify(actual) === JSON.stringify(expected);
         return {
           assertion,
           expected,
@@ -236,7 +335,8 @@ export class AssertionService {
         };
 
       case 'not_equals':
-        const notEqualsResult = JSON.stringify(actual) !== JSON.stringify(expected);
+        const notEqualsResult =
+          JSON.stringify(actual) !== JSON.stringify(expected);
         return {
           assertion,
           expected,
@@ -260,7 +360,10 @@ export class AssertionService {
         };
 
       case 'greater_than':
-        const greaterResult = typeof actual === 'number' && typeof expected === 'number' && actual > expected;
+        const greaterResult =
+          typeof actual === 'number' &&
+          typeof expected === 'number' &&
+          actual > expected;
         return {
           assertion,
           expected,
@@ -272,7 +375,10 @@ export class AssertionService {
         };
 
       case 'less_than':
-        const lessResult = typeof actual === 'number' && typeof expected === 'number' && actual < expected;
+        const lessResult =
+          typeof actual === 'number' &&
+          typeof expected === 'number' &&
+          actual < expected;
         return {
           assertion,
           expected,
@@ -296,15 +402,21 @@ export class AssertionService {
         };
 
       case 'not_null':
-        const notNullResult = expected ? (actual !== null && actual !== undefined) : (actual === null || actual === undefined);
+        const notNullResult = expected
+          ? actual !== null && actual !== undefined
+          : actual === null || actual === undefined;
         return {
           assertion,
           expected,
           actual,
           passed: notNullResult,
           message: notNullResult
-            ? expected ? `${field} is not null` : `${field} is null`
-            : expected ? `Expected ${field} to not be null, but it is` : `Expected ${field} to be null, but got ${JSON.stringify(actual)}`,
+            ? expected
+              ? `${field} is not null`
+              : `${field} is null`
+            : expected
+              ? `Expected ${field} to not be null, but it is`
+              : `Expected ${field} to be null, but got ${JSON.stringify(actual)}`,
         };
 
       case 'type':
@@ -320,7 +432,11 @@ export class AssertionService {
         };
 
       case 'length':
-        const lengthResult = this.validateLength(field, expected as AssertionChecks, actual);
+        const lengthResult = this.validateLength(
+          field,
+          expected as AssertionChecks,
+          actual,
+        );
         return lengthResult[0]; // length returns array, but we need single result
 
       default:
@@ -334,7 +450,11 @@ export class AssertionService {
     }
   }
 
-  private validateLength(field: string, checks: AssertionChecks, actual: any): AssertionResult[] {
+  private validateLength(
+    field: string,
+    checks: AssertionChecks,
+    actual: any,
+  ): AssertionResult[] {
     let length = 0;
 
     if (Array.isArray(actual)) {
@@ -358,12 +478,18 @@ export class AssertionService {
       // Simple dot notation
       return path.split('.').reduce((obj, key) => obj?.[key], data);
     } catch (error) {
-      this.logger.debug(`JMESPath extraction failed for ${path}, trying simple path`, { error: error as Error });
+      this.logger.debug(
+        `JMESPath extraction failed for ${path}, trying simple path`,
+        { error: error as Error },
+      );
       return path.split('.').reduce((obj, key) => obj?.[key], data);
     }
   }
 
-  private getHeaderValue(headers: Record<string, string>, headerName: string): string | undefined {
+  private getHeaderValue(
+    headers: Record<string, string>,
+    headerName: string,
+  ): string | undefined {
     const lowerHeaderName = headerName.toLowerCase();
     for (const [key, value] of Object.entries(headers)) {
       if (key.toLowerCase() === lowerHeaderName) {

@@ -37,8 +37,8 @@ export class HttpEngineService {
         validateStatus: () => true, // Don't reject by HTTP status
       };
 
-      const response: AxiosResponse = await this.httpService
-        .axiosRef(axiosConfig);
+      const response: AxiosResponse =
+        await this.httpService.axiosRef(axiosConfig);
 
       const duration = Date.now() - startTime;
       const responseSize = this.calculateResponseSize(response);
@@ -158,7 +158,9 @@ export class HttpEngineService {
     return error.message || 'Unknown error';
   }
 
-  private sanitizeHeaders(headers: Record<string, any>): Record<string, string> {
+  private sanitizeHeaders(
+    headers: Record<string, any>,
+  ): Record<string, string> {
     const sanitized: Record<string, string> = {};
 
     for (const [key, value] of Object.entries(headers)) {

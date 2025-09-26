@@ -24,7 +24,9 @@ export interface LogContext {
 
 @Injectable()
 export class LoggerService implements NestLoggerService {
-  private isVerbose = process.env.NODE_ENV === 'development' || process.env.LOG_LEVEL === 'verbose';
+  private isVerbose =
+    process.env.NODE_ENV === 'development' ||
+    process.env.LOG_LEVEL === 'verbose';
 
   log(message: string, context?: LogContext): void {
     this.info(message, context);
@@ -40,7 +42,10 @@ export class LoggerService implements NestLoggerService {
     };
 
     if (this.isVerbose) {
-      console.error(`[ERROR] ${timestamp} ${message}`, context ? JSON.stringify(context, null, 2) : '');
+      console.error(
+        `[ERROR] ${timestamp} ${message}`,
+        context ? JSON.stringify(context, null, 2) : '',
+      );
     }
 
     // Write to structured log for production
@@ -59,7 +64,10 @@ export class LoggerService implements NestLoggerService {
     };
 
     if (this.isVerbose) {
-      console.warn(`[WARN] ${timestamp} ${message}`, context ? JSON.stringify(context, null, 2) : '');
+      console.warn(
+        `[WARN] ${timestamp} ${message}`,
+        context ? JSON.stringify(context, null, 2) : '',
+      );
     }
 
     if (process.env.NODE_ENV === 'production') {
@@ -71,14 +79,20 @@ export class LoggerService implements NestLoggerService {
     if (!this.isVerbose) return;
 
     const timestamp = new Date().toISOString();
-    console.debug(`[DEBUG] ${timestamp} ${message}`, context ? JSON.stringify(context, null, 2) : '');
+    console.debug(
+      `[DEBUG] ${timestamp} ${message}`,
+      context ? JSON.stringify(context, null, 2) : '',
+    );
   }
 
   verbose(message: string, context?: LogContext): void {
     if (!this.isVerbose) return;
 
     const timestamp = new Date().toISOString();
-    console.log(`[VERBOSE] ${timestamp} ${message}`, context ? JSON.stringify(context, null, 2) : '');
+    console.log(
+      `[VERBOSE] ${timestamp} ${message}`,
+      context ? JSON.stringify(context, null, 2) : '',
+    );
   }
 
   info(message: string, context?: LogContext): void {
@@ -91,7 +105,10 @@ export class LoggerService implements NestLoggerService {
     };
 
     if (this.isVerbose) {
-      console.log(`[INFO] ${timestamp} ${message}`, context ? JSON.stringify(context, null, 2) : '');
+      console.log(
+        `[INFO] ${timestamp} ${message}`,
+        context ? JSON.stringify(context, null, 2) : '',
+      );
     }
 
     if (process.env.NODE_ENV === 'production') {

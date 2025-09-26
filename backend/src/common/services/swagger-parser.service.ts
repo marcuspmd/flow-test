@@ -77,7 +77,10 @@ export class SwaggerParserService {
    * }
    * ```
    */
-  async parseContent(content: string, fileName: string): Promise<SwaggerParseResult> {
+  async parseContent(
+    content: string,
+    fileName: string,
+  ): Promise<SwaggerParseResult> {
     this.logger.log(`Starting parse of ${fileName}`);
     const errors: string[] = [];
     const warnings: string[] = [];
@@ -92,7 +95,9 @@ export class SwaggerParserService {
       warnings.push(...validation.warnings);
 
       if (!validation.isValid) {
-        this.logger.warn(`Validation failed for ${fileName}: ${errors.join(', ')}`);
+        this.logger.warn(
+          `Validation failed for ${fileName}: ${errors.join(', ')}`,
+        );
         return {
           spec,
           endpoints: [],
@@ -107,7 +112,9 @@ export class SwaggerParserService {
       // 4. Store spec for reference resolution
       this.spec = spec;
 
-      this.logger.log(`Successfully parsed ${fileName}: ${endpoints.length} endpoints found`);
+      this.logger.log(
+        `Successfully parsed ${fileName}: ${endpoints.length} endpoints found`,
+      );
 
       return {
         spec,
@@ -116,9 +123,13 @@ export class SwaggerParserService {
         warnings,
       };
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       errors.push(`Error processing ${fileName}: ${errorMessage}`);
-      this.logger.error(`Error parsing ${fileName}: ${errorMessage}`, error.stack);
+      this.logger.error(
+        `Error parsing ${fileName}: ${errorMessage}`,
+        error.stack,
+      );
 
       return {
         spec: {} as OpenAPISpec,
@@ -150,7 +161,10 @@ export class SwaggerParserService {
   /**
    * Detects file type based on extension and content
    */
-  private detectFileType(fileName: string, content: string): 'json' | 'yaml' | null {
+  private detectFileType(
+    fileName: string,
+    content: string,
+  ): 'json' | 'yaml' | null {
     // First, try by extension
     const ext = this.getFileExtension(fileName);
     if (ext === '.json') return 'json';
@@ -171,7 +185,9 @@ export class SwaggerParserService {
    */
   private getFileExtension(fileName: string): string {
     const lastDotIndex = fileName.lastIndexOf('.');
-    return lastDotIndex === -1 ? '' : fileName.substring(lastDotIndex).toLowerCase();
+    return lastDotIndex === -1
+      ? ''
+      : fileName.substring(lastDotIndex).toLowerCase();
   }
 
   /**
@@ -196,7 +212,7 @@ export class SwaggerParserService {
         'options',
         'trace',
       ] as const;
-      const pathItemTyped = pathItem as OpenAPIPath;
+      const pathItemTyped = pathItem;
 
       for (const method of operations) {
         const operation = pathItemTyped[method];
@@ -223,14 +239,18 @@ export class SwaggerParserService {
       }
     }
 
-    this.logger.log(`Extracted ${endpoints.length} endpoints from specification`);
+    this.logger.log(
+      `Extracted ${endpoints.length} endpoints from specification`,
+    );
     return endpoints;
   }
 
   /**
    * Resolve parameter reference (can be a $ref reference or direct parameter)
    */
-  private resolveParameterRef(param: OpenAPIParameter | { $ref: string }): OpenAPIParameter {
+  private resolveParameterRef(
+    param: OpenAPIParameter | { $ref: string },
+  ): OpenAPIParameter {
     if ('$ref' in param && param.$ref) {
       try {
         const resolved = this.resolveRef(param.$ref);

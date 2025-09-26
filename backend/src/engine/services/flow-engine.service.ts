@@ -3,7 +3,7 @@ import {
   FlowSuite,
   FlowStep,
   StepExecutionResult,
-  ExecutionContext
+  ExecutionContext,
 } from '../types/engine.types';
 import { HttpEngineService } from './http-engine.service';
 import { AssertionService } from './assertion.service';
@@ -113,12 +113,17 @@ export class FlowEngineService {
 
         // Broadcast step start
         if (this.executionGateway && runId) {
-          this.executionGateway.broadcastStepStarted(runId, stepIndex, step.name, {
-            method: step.method,
-            url: step.url,
-            step_index: stepIndex + 1,
-            total_steps: flowSuite.steps.length,
-          });
+          this.executionGateway.broadcastStepStarted(
+            runId,
+            stepIndex,
+            step.name,
+            {
+              method: step.method,
+              url: step.url,
+              step_index: stepIndex + 1,
+              total_steps: flowSuite.steps.length,
+            },
+          );
         }
 
         const stepResult = await this.executeStep(
@@ -138,32 +143,52 @@ export class FlowEngineService {
 
         // Update runtime variables with captured variables
         if (Object.keys(stepResult.captured_variables).length > 0) {
-          this.variableService.updateRuntimeVariables(stepResult.captured_variables);
+          this.variableService.updateRuntimeVariables(
+            stepResult.captured_variables,
+          );
         }
 
         // Broadcast step completion
         if (this.executionGateway && runId) {
           if (stepResult.status === 'success') {
-            this.executionGateway.broadcastStepCompleted(runId, stepIndex, step.name, {
-              duration_ms: stepResult.duration_ms,
-              assertions_passed: stepResult.assertions_results.filter(a => a.passed).length,
-              variables_captured: Object.keys(stepResult.captured_variables).length,
-            });
+            this.executionGateway.broadcastStepCompleted(
+              runId,
+              stepIndex,
+              step.name,
+              {
+                duration_ms: stepResult.duration_ms,
+                assertions_passed: stepResult.assertions_results.filter(
+                  (a) => a.passed,
+                ).length,
+                variables_captured: Object.keys(stepResult.captured_variables)
+                  .length,
+              },
+            );
           } else {
-            this.executionGateway.broadcastStepFailed(runId, stepIndex, step.name, {
-              error_message: stepResult.error_message,
-              duration_ms: stepResult.duration_ms,
-            });
+            this.executionGateway.broadcastStepFailed(
+              runId,
+              stepIndex,
+              step.name,
+              {
+                error_message: stepResult.error_message,
+                duration_ms: stepResult.duration_ms,
+              },
+            );
           }
 
           // Broadcast progress update
           this.executionGateway.broadcastProgressUpdate({
             runId,
             totalSteps: flowSuite.steps.length,
-            completedSteps: executionResult.passed_steps + executionResult.failed_steps,
+            completedSteps:
+              executionResult.passed_steps + executionResult.failed_steps,
             currentStep: stepIndex + 1,
             status: stepResult.status === 'success' ? 'running' : 'failed',
-            progressPercentage: Math.round(((executionResult.passed_steps + executionResult.failed_steps) / flowSuite.steps.length) * 100),
+            progressPercentage: Math.round(
+              ((executionResult.passed_steps + executionResult.failed_steps) /
+                flowSuite.steps.length) *
+                100,
+            ),
           });
         }
 
@@ -185,12 +210,15 @@ export class FlowEngineService {
           }
         }
 
-        this.logger.info(`Step ${stepIndex + 1}/${flowSuite.steps.length} completed`, {
-          stepName: step.name,
-          status: stepResult.status,
-          duration: stepResult.duration_ms,
-          suiteId: runId,
-        });
+        this.logger.info(
+          `Step ${stepIndex + 1}/${flowSuite.steps.length} completed`,
+          {
+            stepName: step.name,
+            status: stepResult.status,
+            duration: stepResult.duration_ms,
+            suiteId: runId,
+          },
+        );
       }
 
       const endTime = new Date();
@@ -227,7 +255,6 @@ export class FlowEngineService {
       }
 
       return executionResult;
-
     } catch (error) {
       const endTime = new Date();
       executionResult.end_time = endTime;
@@ -303,11 +330,13 @@ export class FlowEngineService {
         httpResult.assertions_results = assertionResults;
 
         // Check if any assertions failed
-        const failedAssertions = assertionResults.filter(result => !result.passed);
+        const failedAssertions = assertionResults.filter(
+          (result) => !result.passed,
+        );
         if (failedAssertions.length > 0) {
           httpResult.status = 'failure';
           httpResult.error_message = `Assertion failures: ${failedAssertions
-            .map(f => f.message)
+            .map((f) => f.message)
             .join(', ')}`;
         }
       }
@@ -323,7 +352,6 @@ export class FlowEngineService {
       }
 
       return httpResult;
-
     } catch (error) {
       this.logger.error(`Step execution failed: ${step.name}`, {
         stepIndex,
@@ -358,7 +386,9 @@ export class FlowEngineService {
           durationMs: stepResult.duration_ms,
           requestSnapshot: stepResult.request_details as any,
           responseSnapshot: stepResult.response_details as any,
-          errorDetails: stepResult.error_message ? { message: stepResult.error_message } as any : undefined,
+          errorDetails: stepResult.error_message
+            ? ({ message: stepResult.error_message } as any)
+            : undefined,
           captures: stepResult.captured_variables as any,
           assertions: stepResult.assertions_results as any,
           startedAt: new Date(Date.now() - stepResult.duration_ms),
@@ -405,17 +435,27 @@ export class FlowEngineService {
 
       // Validate variable references
       try {
-        const variableErrors = this.variableService.validateVariableReferences(step);
-        errors.push(...variableErrors.map(err => `Step ${index + 1} (${step.name}): ${err}`));
+        const variableErrors =
+          this.variableService.validateVariableReferences(step);
+        errors.push(
+          ...variableErrors.map(
+            (err) => `Step ${index + 1} (${step.name}): ${err}`,
+          ),
+        );
       } catch (validationError) {
-        errors.push(`Step ${index + 1} (${step.name}): Variable validation failed`);
+        errors.push(
+          `Step ${index + 1} (${step.name}): Variable validation failed`,
+        );
       }
     });
 
     return errors;
   }
 
-  async dryRunFlow(flowSuite: FlowSuite, options: FlowExecutionOptions = {}): Promise<any> {
+  async dryRunFlow(
+    flowSuite: FlowSuite,
+    options: FlowExecutionOptions = {},
+  ): Promise<any> {
     const validationErrors = this.validateFlowSuite(flowSuite);
 
     if (validationErrors.length > 0) {
@@ -453,7 +493,8 @@ export class FlowEngineService {
         method: step.method,
         url: interpolatedStep.url,
         skip: step.skip || false,
-        hasAssertions: !!step.assertions && Object.keys(step.assertions).length > 0,
+        hasAssertions:
+          !!step.assertions && Object.keys(step.assertions).length > 0,
         hasCapture: !!step.capture && Object.keys(step.capture).length > 0,
       };
     });
@@ -463,8 +504,8 @@ export class FlowEngineService {
       suite_name: flowSuite.suite_name,
       base_url: options.baseUrl || flowSuite.base_url,
       total_steps: flowSuite.steps.length,
-      active_steps: executionPlan.filter(step => !step.skip).length,
-      skipped_steps: executionPlan.filter(step => step.skip).length,
+      active_steps: executionPlan.filter((step) => !step.skip).length,
+      skipped_steps: executionPlan.filter((step) => step.skip).length,
       execution_plan: executionPlan,
       variables: this.variableService.getAvailableVariables(),
     };

@@ -15,7 +15,23 @@ services:
       - FLOW_TEST_HTTPBIN_URL=http://httpbin
       - HTTPBIN_URL=http://httpbin
     depends_on:
+      - postgres
       - httpbin
+    networks:
+      - flow-test-network
+
+  postgres:
+    image: postgres:16
+    container_name: flow-test-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: flowtest
+      POSTGRES_USER: flowtest
+      POSTGRES_PASSWORD: flowtest
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
     networks:
       - flow-test-network
 
@@ -33,3 +49,6 @@ services:
 networks:
   flow-test-network:
     driver: bridge
+
+volumes:
+  postgres-data:

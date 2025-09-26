@@ -6,16 +6,50 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 
-import * as yaml from 'yaml';
-import { FlowEngineService, FlowExecutionOptions } from '../engine/services/flow-engine.service';
-import { FlowSuite } from '../engine/types/engine.types';
-import { ExecutionEventsGateway } from '../realtime/execution-events.gateway';
-
+import { FlowExecutionOptions } from '../engine/services/flow-engine.service';
 import { FlowService } from '../flow/flow.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { FlowRunQueueService } from '../queue/flow-run-queue.service';
+import { FlowRunJobPayload } from '../queue/flow-run-job.interface';
 import { QueryRunDto } from './dto/query-run.dto';
 import { RetryRunDto } from './dto/retry-run.dto';
 import { TriggerRunDto } from './dto/trigger-run.dto';
+import { RunExecutorService } from './run-executor.service';
+
+type FlowRunListItem = Prisma.FlowRunGetPayload<{
+  include: {
+    version: {
+      include: {
+        suite: true;
+      };
+    };
+  };
+}>;
+
+type FlowRunDetail = Prisma.FlowRunGetPayload<{
+  include: {
+    version: {
+      include: {
+        suite: true;
+      };
+    };
+    stepRuns: {
+      include: {
+        logs: true;
+        variables: true;
+      };
+    };
+    events: true;
+    retryRequests: true;
+    variables: true;
+  };
+}>;
+
+type FlowVersionWithSuite = Prisma.FlowVersionGetPayload<{
+  include: {
+    suite: true;
+  };
+}>;
 
 @Injectable()
 export class RunService {
@@ -25,12 +59,9 @@ export class RunService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly flowService: FlowService,
-    private readonly flowEngine: FlowEngineService,
-    private readonly executionGateway: ExecutionEventsGateway,
-  ) {
-    // Inject the WebSocket gateway into the flow engine
-    this.flowEngine.setExecutionGateway(this.executionGateway);
-  }
+    private readonly queueService: FlowRunQueueService,
+    private readonly runExecutor: RunExecutorService,
+  ) {}
 
   async listRuns(query: QueryRunDto) {
     const take = query.take ?? this.defaultTake;
@@ -67,12 +98,12 @@ export class RunService {
     ]);
 
     return {
-      data: runs,
+      data: runs as FlowRunListItem[],
       meta: { total, skip, take },
     };
   }
 
-  async getRun(id: string) {
+  async getRun(id: string): Promise<FlowRunDetail> {
     const run = await this.prisma.flowRun.findUnique({
       where: { id },
       include: {
@@ -100,7 +131,7 @@ export class RunService {
     return run;
   }
 
-  async triggerRun(dto: TriggerRunDto) {
+  async triggerRun(dto: TriggerRunDto): Promise<FlowRunListItem> {
     const version = await this.resolveVersion(dto);
     const priority = dto.priority ?? version.suite.defaultPriority;
     const triggerSource = dto.triggerSource ?? 'API';
@@ -128,18 +159,33 @@ export class RunService {
 
     const executionOptions = (dto.options ?? {}) as FlowExecutionOptions;
 
-    this.executeRun(run.id, executionOptions, dto.label).catch((error) => {
+    const payload: FlowRunJobPayload = {
+      runId: run.id,
+      options: executionOptions,
+      label: dto.label,
+    };
+
+    try {
+      const jobId = await this.queueService.addRunJob(payload);
+      const queueName = this.queueService.getQueueName();
+      const jobInfo = jobId ? ` (job ${jobId})` : '';
+      this.logger.log(
+        `Run ${run.id} enfileirado na fila ${queueName}${jobInfo}`,
+      );
+    } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
       this.logger.error(
-        `Failed to execute run ${run.id}: ${err.message}`,
+        `Falha ao enfileirar run ${run.id}: ${err.message}. Executando inline.`,
         err.stack,
       );
-    });
+
+      await this.runExecutor.execute(run.id, executionOptions, dto.label);
+    }
 
     return run;
   }
 
-  async retryRun(runId: string, dto: RetryRunDto) {
+  async retryRun(runId: string, dto: RetryRunDto): Promise<FlowRunListItem> {
     const previous = await this.getRun(runId);
 
     const payload: TriggerRunDto = {
@@ -156,7 +202,9 @@ export class RunService {
     return this.triggerRun(payload);
   }
 
-  private async resolveVersion(dto: TriggerRunDto) {
+  private async resolveVersion(
+    dto: TriggerRunDto,
+  ): Promise<FlowVersionWithSuite> {
     if (dto.versionId) {
       return this.flowService.getVersionById(dto.versionId);
     }
@@ -172,74 +220,5 @@ export class RunService {
     }
 
     return this.flowService.getLatestVersion(dto.suiteNodeId);
-  }
-
-  private async executeRun(
-    runId: string,
-    options: FlowExecutionOptions,
-    label?: string,
-  ) {
-    const run = await this.prisma.flowRun.update({
-      where: { id: runId },
-      data: {
-        status: 'RUNNING',
-        startedAt: new Date(),
-      },
-      include: {
-        version: {
-          include: {
-            suite: true,
-          },
-        },
-      },
-    });
-
-    try {
-      this.logger.log(`Run ${runId} started${label ? ` (${label})` : ''}`);
-
-      // Parse YAML flow suite
-      const flowSuite: FlowSuite = yaml.parse(run.version.yamlRaw);
-
-      // Execute flow using our new engine service
-      const result = await this.flowEngine.executeFlow(
-        flowSuite,
-        {
-          ...options,
-          variables: options.variables || {},
-        },
-        runId,
-      );
-
-      // Update run status based on execution result
-      const status = result.status === 'success' ? 'COMPLETED' : 'FAILED';
-      const summary = JSON.parse(JSON.stringify(result)) as Prisma.InputJsonValue;
-
-      await this.prisma.flowRun.update({
-        where: { id: runId },
-        data: {
-          status,
-          finishedAt: new Date(),
-          resultSummary: summary,
-        },
-      });
-
-      this.logger.log(`Run ${runId} finished with status: ${result.status}`);
-
-    } catch (error) {
-      const err = error instanceof Error ? error : new Error(String(error));
-      this.logger.error(`Run ${runId} failed: ${err.message}`, err.stack);
-
-      await this.prisma.flowRun.update({
-        where: { id: runId },
-        data: {
-          status: 'FAILED',
-          finishedAt: new Date(),
-          resultSummary: {
-            error: err.message,
-            stack: err.stack,
-          } as Prisma.InputJsonValue,
-        },
-      });
-    }
   }
 }

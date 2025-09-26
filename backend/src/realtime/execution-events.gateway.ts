@@ -11,7 +11,13 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Server, Socket } from 'socket.io';
 
 export interface FlowExecutionEvent {
-  type: 'flow_started' | 'flow_completed' | 'flow_failed' | 'step_started' | 'step_completed' | 'step_failed';
+  type:
+    | 'flow_started'
+    | 'flow_completed'
+    | 'flow_failed'
+    | 'step_started'
+    | 'step_completed'
+    | 'step_failed';
   runId: string;
   timestamp: Date;
   data: any;
@@ -40,7 +46,9 @@ export interface FlowProgressUpdate {
   },
   namespace: '/execution',
 })
-export class ExecutionEventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
+export class ExecutionEventsGateway
+  implements OnGatewayConnection, OnGatewayDisconnect
+{
   @WebSocketServer()
   server: Server;
 
@@ -133,7 +141,12 @@ export class ExecutionEventsGateway implements OnGatewayConnection, OnGatewayDis
     this.logger.debug(`Broadcasted flow_failed for run ${runId}`);
   }
 
-  broadcastStepStarted(runId: string, stepIndex: number, stepName: string, data: any) {
+  broadcastStepStarted(
+    runId: string,
+    stepIndex: number,
+    stepName: string,
+    data: any,
+  ) {
     const event: StepExecutionEvent = {
       type: 'step_started',
       runId,
@@ -144,10 +157,17 @@ export class ExecutionEventsGateway implements OnGatewayConnection, OnGatewayDis
     };
 
     this.server.to(`run:${runId}`).emit('step_event', event);
-    this.logger.debug(`Broadcasted step_started for run ${runId}, step ${stepIndex}`);
+    this.logger.debug(
+      `Broadcasted step_started for run ${runId}, step ${stepIndex}`,
+    );
   }
 
-  broadcastStepCompleted(runId: string, stepIndex: number, stepName: string, data: any) {
+  broadcastStepCompleted(
+    runId: string,
+    stepIndex: number,
+    stepName: string,
+    data: any,
+  ) {
     const event: StepExecutionEvent = {
       type: 'step_completed',
       runId,
@@ -158,10 +178,17 @@ export class ExecutionEventsGateway implements OnGatewayConnection, OnGatewayDis
     };
 
     this.server.to(`run:${runId}`).emit('step_event', event);
-    this.logger.debug(`Broadcasted step_completed for run ${runId}, step ${stepIndex}`);
+    this.logger.debug(
+      `Broadcasted step_completed for run ${runId}, step ${stepIndex}`,
+    );
   }
 
-  broadcastStepFailed(runId: string, stepIndex: number, stepName: string, data: any) {
+  broadcastStepFailed(
+    runId: string,
+    stepIndex: number,
+    stepName: string,
+    data: any,
+  ) {
     const event: StepExecutionEvent = {
       type: 'step_failed',
       runId,
@@ -172,12 +199,18 @@ export class ExecutionEventsGateway implements OnGatewayConnection, OnGatewayDis
     };
 
     this.server.to(`run:${runId}`).emit('step_event', event);
-    this.logger.debug(`Broadcasted step_failed for run ${runId}, step ${stepIndex}`);
+    this.logger.debug(
+      `Broadcasted step_failed for run ${runId}, step ${stepIndex}`,
+    );
   }
 
   broadcastProgressUpdate(progressUpdate: FlowProgressUpdate) {
-    this.server.to(`run:${progressUpdate.runId}`).emit('progress_update', progressUpdate);
-    this.logger.debug(`Broadcasted progress update for run ${progressUpdate.runId}: ${progressUpdate.progressPercentage}%`);
+    this.server
+      .to(`run:${progressUpdate.runId}`)
+      .emit('progress_update', progressUpdate);
+    this.logger.debug(
+      `Broadcasted progress update for run ${progressUpdate.runId}: ${progressUpdate.progressPercentage}%`,
+    );
   }
 
   // Utility methods

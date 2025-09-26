@@ -58,14 +58,19 @@ export class SwaggerValidatorService {
       result.isValid = result.errors.length === 0;
 
       if (result.isValid) {
-        this.logger.log(`Specification validation successful for ${spec.info?.title || 'unknown'}`);
+        this.logger.log(
+          `Specification validation successful for ${spec.info?.title || 'unknown'}`,
+        );
       } else {
-        this.logger.warn(`Specification validation failed: ${result.errors.join(', ')}`);
+        this.logger.warn(
+          `Specification validation failed: ${result.errors.join(', ')}`,
+        );
       }
 
       return result;
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       result.errors.push(`Validation error: ${errorMessage}`);
       this.logger.error(`Validation error: ${errorMessage}`, error.stack);
       return result;
@@ -91,7 +96,10 @@ export class SwaggerValidatorService {
   /**
    * Validate basic structure common to all versions
    */
-  private validateBasicStructure(spec: OpenAPISpec, result: SwaggerValidationResult): void {
+  private validateBasicStructure(
+    spec: OpenAPISpec,
+    result: SwaggerValidationResult,
+  ): void {
     // Check info object
     if (!spec.info) {
       result.errors.push('Missing required field: info');
@@ -117,7 +125,10 @@ export class SwaggerValidatorService {
   /**
    * Validate OpenAPI 3.x specific requirements
    */
-  private validateOpenAPI3(spec: OpenAPISpec, result: SwaggerValidationResult): void {
+  private validateOpenAPI3(
+    spec: OpenAPISpec,
+    result: SwaggerValidationResult,
+  ): void {
     if (!spec.openapi) {
       result.errors.push('Missing required field for OpenAPI 3.x: openapi');
       return;
@@ -131,7 +142,9 @@ export class SwaggerValidatorService {
 
     // Servers are recommended for OpenAPI 3.x
     if (!spec.servers || spec.servers.length === 0) {
-      result.warnings.push('No servers defined - consider adding server configurations');
+      result.warnings.push(
+        'No servers defined - consider adding server configurations',
+      );
     } else {
       // Validate servers
       spec.servers.forEach((server, index) => {
@@ -150,30 +163,42 @@ export class SwaggerValidatorService {
   /**
    * Validate Swagger 2.0 specific requirements
    */
-  private validateSwagger2(spec: OpenAPISpec, result: SwaggerValidationResult): void {
+  private validateSwagger2(
+    spec: OpenAPISpec,
+    result: SwaggerValidationResult,
+  ): void {
     if (!spec.swagger) {
       result.errors.push('Missing required field for Swagger 2.0: swagger');
       return;
     }
 
     if (spec.swagger !== '2.0') {
-      result.errors.push(`Invalid Swagger version: ${spec.swagger}. Expected '2.0'`);
+      result.errors.push(
+        `Invalid Swagger version: ${spec.swagger}. Expected '2.0'`,
+      );
     }
 
     // Host and schemes are recommended for Swagger 2.0
     if (!spec.host) {
-      result.warnings.push('No host defined - consider adding host information');
+      result.warnings.push(
+        'No host defined - consider adding host information',
+      );
     }
 
     if (!spec.schemes || spec.schemes.length === 0) {
-      result.warnings.push('No schemes defined - consider adding supported schemes (http, https)');
+      result.warnings.push(
+        'No schemes defined - consider adding supported schemes (http, https)',
+      );
     }
   }
 
   /**
    * Validate paths object
    */
-  private validatePaths(spec: OpenAPISpec, result: SwaggerValidationResult): void {
+  private validatePaths(
+    spec: OpenAPISpec,
+    result: SwaggerValidationResult,
+  ): void {
     if (!spec.paths) {
       return;
     }
@@ -195,7 +220,11 @@ export class SwaggerValidatorService {
   /**
    * Validate individual path
    */
-  private validatePath(path: string, pathItem: unknown, result: SwaggerValidationResult): void {
+  private validatePath(
+    path: string,
+    pathItem: unknown,
+    result: SwaggerValidationResult,
+  ): void {
     if (!pathItem || typeof pathItem !== 'object') {
       result.errors.push(`Path '${path}': Must be an object`);
       return;
@@ -204,15 +233,24 @@ export class SwaggerValidatorService {
     const pathObj = pathItem as Record<string, unknown>;
 
     // Check if at least one HTTP method is defined
-    const httpMethods = ['get', 'post', 'put', 'delete', 'patch', 'head', 'options', 'trace'];
-    const hasOperation = httpMethods.some(method => method in pathObj);
+    const httpMethods = [
+      'get',
+      'post',
+      'put',
+      'delete',
+      'patch',
+      'head',
+      'options',
+      'trace',
+    ];
+    const hasOperation = httpMethods.some((method) => method in pathObj);
 
     if (!hasOperation) {
       result.warnings.push(`Path '${path}': No HTTP operations defined`);
     }
 
     // Validate each operation
-    httpMethods.forEach(method => {
+    httpMethods.forEach((method) => {
       if (pathObj[method]) {
         this.validateOperation(path, method, pathObj[method], result);
       }
@@ -229,7 +267,9 @@ export class SwaggerValidatorService {
     result: SwaggerValidationResult,
   ): void {
     if (!operation || typeof operation !== 'object') {
-      result.errors.push(`Path '${path}' ${method.toUpperCase()}: Operation must be an object`);
+      result.errors.push(
+        `Path '${path}' ${method.toUpperCase()}: Operation must be an object`,
+      );
       return;
     }
 
@@ -237,24 +277,32 @@ export class SwaggerValidatorService {
 
     // Responses are required
     if (!op.responses) {
-      result.errors.push(`Path '${path}' ${method.toUpperCase()}: Missing required field 'responses'`);
+      result.errors.push(
+        `Path '${path}' ${method.toUpperCase()}: Missing required field 'responses'`,
+      );
     } else if (typeof op.responses !== 'object') {
-      result.errors.push(`Path '${path}' ${method.toUpperCase()}: responses must be an object`);
+      result.errors.push(
+        `Path '${path}' ${method.toUpperCase()}: responses must be an object`,
+      );
     } else {
       const responses = op.responses as Record<string, unknown>;
       const responseCount = Object.keys(responses).length;
 
       if (responseCount === 0) {
-        result.errors.push(`Path '${path}' ${method.toUpperCase()}: At least one response must be defined`);
+        result.errors.push(
+          `Path '${path}' ${method.toUpperCase()}: At least one response must be defined`,
+        );
       }
 
       // Check for success response
-      const hasSuccessResponse = Object.keys(responses).some(code =>
-        code.startsWith('2') || code === 'default'
+      const hasSuccessResponse = Object.keys(responses).some(
+        (code) => code.startsWith('2') || code === 'default',
       );
 
       if (!hasSuccessResponse) {
-        result.warnings.push(`Path '${path}' ${method.toUpperCase()}: No success response (2xx) defined`);
+        result.warnings.push(
+          `Path '${path}' ${method.toUpperCase()}: No success response (2xx) defined`,
+        );
       }
     }
 
@@ -297,7 +345,14 @@ export class SwaggerValidatorService {
         `Path '${path}' ${method.toUpperCase()} parameter[${index}]: Missing required field 'in'`,
       );
     } else {
-      const validLocations = ['query', 'header', 'path', 'cookie', 'formData', 'body'];
+      const validLocations = [
+        'query',
+        'header',
+        'path',
+        'cookie',
+        'formData',
+        'body',
+      ];
       if (!validLocations.includes(param.in as string)) {
         result.errors.push(
           `Path '${path}' ${method.toUpperCase()} parameter[${index}]: Invalid 'in' value '${param.in}'. Must be one of: ${validLocations.join(', ')}`,
@@ -309,7 +364,10 @@ export class SwaggerValidatorService {
   /**
    * Validate components (OpenAPI 3.x)
    */
-  private validateComponents(components: unknown, result: SwaggerValidationResult): void {
+  private validateComponents(
+    components: unknown,
+    result: SwaggerValidationResult,
+  ): void {
     if (!components || typeof components !== 'object') {
       result.errors.push('components must be an object');
       return;
