@@ -1,0 +1,288 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum PriorityLevel {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum FlowRunStatus {
+  QUEUED
+  RUNNING
+  WAITING_INPUT
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum TriggerSource {
+  CLI
+  API
+  SCHEDULE
+  DEPENDENCY
+}
+
+enum StepRunStatus {
+  PENDING
+  RUNNING
+  WAITING_INPUT
+  SUCCESS
+  WARNING
+  FAILED
+  SKIPPED
+  ABORTED
+}
+
+enum LogLevel {
+  INFO
+  WARN
+  ERROR
+  DEBUG
+}
+
+enum VariableScope {
+  SUITE
+  STEP
+  GLOBAL
+}
+
+enum VariableSource {
+  VARIABLE
+  CAPTURE
+  INPUT
+  EXPORT
+}
+
+enum ManualRetryStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  EXECUTED
+}
+
+enum QueueJobState {
+  WAITING
+  STALLED
+  FAILED
+  COMPLETED
+}
+
+enum AuditAction {
+  CREATE_SUITE
+  UPDATE_SUITE
+  DELETE_SUITE
+  CREATE_VERSION
+  TRIGGER_RUN
+  CANCEL_RUN
+  APPROVE_RETRY
+  REJECT_RETRY
+  EXECUTE_RETRY
+  UPDATE_SETTINGS
+  LOGIN
+  LOGOUT
+}
+
+model FlowSuite {
+  id              String         @id @default(uuid())
+  nodeId          String         @unique
+  name            String
+  description     String?
+  defaultPriority PriorityLevel  @default(MEDIUM)
+  tags            String[]       @default([])
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  versions        FlowVersion[]
+}
+
+model FlowVersion {
+  id                 String        @id @default(uuid())
+  suiteId            String
+  suite              FlowSuite     @relation(fields: [suiteId], references: [id], onDelete: Cascade)
+  version            Int
+  yamlRaw            String
+  yamlHash           String        @unique
+  effectiveVariables Json?
+  compiledConfig     Json?
+  metadata           Json?
+  createdById        String?
+  createdBy          UserAccount?  @relation("FlowVersionCreatedBy", fields: [createdById], references: [id])
+  createdAt          DateTime      @default(now())
+  runs               FlowRun[]
+
+  @@unique([suiteId, version])
+}
+
+model FlowRun {
+  id             String            @id @default(uuid())
+  versionId      String
+  version        FlowVersion       @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  status         FlowRunStatus     @default(QUEUED)
+  triggerSource  TriggerSource     @default(CLI)
+  priority       PriorityLevel     @default(MEDIUM)
+  requestedById  String?
+  requestedBy    UserAccount?      @relation("FlowRunRequestedBy", fields: [requestedById], references: [id])
+  queuedAt       DateTime          @default(now())
+  startedAt      DateTime?
+  finishedAt     DateTime?
+  queueJob       QueueJob?         @relation("FlowRunQueue")
+  inputPayload   Json?
+  resultSummary  Json?
+  stepRuns       StepRun[]
+  events         FlowRunEvent[]
+  retryRequests  ManualRetryRequest[]
+  variables      VariableSnapshot[]
+  auditLogs      AuditLog[]
+}
+
+model StepRun {
+  id               String             @id @default(uuid())
+  flowRunId        String
+  flowRun          FlowRun            @relation(fields: [flowRunId], references: [id], onDelete: Cascade)
+  stepIndex        Int
+  stepName         String
+  status           StepRunStatus      @default(PENDING)
+  requestSnapshot  Json?
+  responseSnapshot Json?
+  assertions       Json?
+  captures         Json?
+  errorDetails     Json?
+  startedAt        DateTime?
+  finishedAt       DateTime?
+  durationMs       Int?
+  logs             StepLog[]
+  variables        VariableSnapshot[]
+  retryRequests    ManualRetryRequest[]
+
+  @@index([flowRunId, stepIndex])
+}
+
+model StepLog {
+  id        BigInt     @id @default(autoincrement())
+  stepRunId String
+  stepRun   StepRun    @relation(fields: [stepRunId], references: [id], onDelete: Cascade)
+  logLevel  LogLevel
+  message   String
+  payload   Json?
+  timestamp DateTime   @default(now())
+
+  @@index([stepRunId, timestamp])
+}
+
+model VariableSnapshot {
+  id         BigInt         @id @default(autoincrement())
+  flowRunId  String
+  flowRun    FlowRun        @relation(fields: [flowRunId], references: [id], onDelete: Cascade)
+  stepRunId  String?
+  stepRun    StepRun?       @relation(fields: [stepRunId], references: [id], onDelete: Cascade)
+  scope      VariableScope
+  key        String
+  value      Json
+  source     VariableSource
+  createdAt  DateTime       @default(now())
+
+  @@index([flowRunId, key])
+}
+
+model ManualRetryRequest {
+  id             String          @id @default(uuid())
+  flowRunId      String
+  flowRun        FlowRun         @relation(fields: [flowRunId], references: [id], onDelete: Cascade)
+  stepRunId      String?
+  stepRun        StepRun?        @relation(fields: [stepRunId], references: [id], onDelete: Cascade)
+  requestedById  String
+  requestedBy    UserAccount     @relation("RequestedRetry", fields: [requestedById], references: [id])
+  reason         String?
+  status         ManualRetryStatus @default(PENDING)
+  resolutionNotes String?
+  resolvedById   String?
+  resolvedBy     UserAccount?     @relation("ResolvedRetry", fields: [resolvedById], references: [id])
+  createdAt      DateTime        @default(now())
+  resolvedAt     DateTime?
+}
+
+model QueueJob {
+  id            String         @id
+  flowRunId     String?        @unique
+  flowRun       FlowRun?       @relation("FlowRunQueue", fields: [flowRunId], references: [id])
+  queueName     String
+  state         QueueJobState  @default(WAITING)
+  attemptsMade  Int            @default(0)
+  maxAttempts   Int            @default(1)
+  lastError     String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
+
+model FlowRunEvent {
+  id         BigInt    @id @default(autoincrement())
+  flowRunId  String
+  flowRun    FlowRun   @relation(fields: [flowRunId], references: [id], onDelete: Cascade)
+  type       String
+  payload    Json?
+  createdAt  DateTime  @default(now())
+
+  @@index([flowRunId, createdAt])
+}
+
+model UserAccount {
+  id            String                @id @default(uuid())
+  email         String                @unique
+  name          String
+  passwordHash  String?
+  roles         String[]              @default([])
+  mfaSecret     String?
+  createdAt     DateTime              @default(now())
+  lastLoginAt   DateTime?
+  retryRequests ManualRetryRequest[]  @relation("RequestedRetry")
+  resolvedRetries ManualRetryRequest[] @relation("ResolvedRetry")
+  apiTokens     ApiToken[]
+  auditLogs     AuditLog[]
+  createdVersions FlowVersion[]       @relation("FlowVersionCreatedBy")
+  requestedRuns FlowRun[]             @relation("FlowRunRequestedBy")
+}
+
+model ApiToken {
+  id         String       @id @default(uuid())
+  userId     String
+  user       UserAccount  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash  String
+  name       String
+  scopes     String[]     @default([])
+  createdAt  DateTime     @default(now())
+  expiresAt  DateTime?
+  revokedAt  DateTime?
+
+  @@index([userId])
+}
+
+model AuditLog {
+  id         BigInt       @id @default(autoincrement())
+  actorId    String?
+  actor      UserAccount? @relation(fields: [actorId], references: [id])
+  action     AuditAction
+  targetType String?
+  targetId   String?
+  metadata   Json?
+  ipAddress  String?
+  userAgent  String?
+  flowRunId  String?
+  flowRun    FlowRun?     @relation(fields: [flowRunId], references: [id])
+  createdAt  DateTime     @default(now())
+
+  @@index([actorId])
+  @@index([flowRunId])
+}
