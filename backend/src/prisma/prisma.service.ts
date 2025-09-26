@@ -16,7 +16,8 @@ export class PrismaService
   }
 
   enableShutdownHooks(app: INestApplication): void {
-    super.$on('beforeExit', () => {
+    // Using type assertion to handle the event type issue
+    (super.$on as any)('beforeExit', () => {
       void app.close();
     });
   }

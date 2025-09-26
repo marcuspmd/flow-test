@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flow Execution WebSocket Test</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .log { background-color: #f5f5f5; padding: 10px; height: 400px; overflow-y: auto; border: 1px solid #ddd; }
+        .controls { margin: 20px 0; }
+        input, button { margin: 5px; padding: 8px; }
+        .event { margin: 5px 0; padding: 5px; border-left: 3px solid #007bff; }
+        .flow-event { border-left-color: #28a745; }
+        .step-event { border-left-color: #ffc107; }
+        .progress-event { border-left-color: #17a2b8; }
+        .error-event { border-left-color: #dc3545; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Flow Execution WebSocket Test</h1>
+
+        <div class="controls">
+            <input type="text" id="runId" placeholder="Enter Run ID" value="">
+            <button onclick="connect()">Connect</button>
+            <button onclick="disconnect()">Disconnect</button>
+            <button onclick="subscribe()">Subscribe to Run</button>
+            <button onclick="unsubscribe()">Unsubscribe from Run</button>
+            <button onclick="clearLog()">Clear Log</button>
+        </div>
+
+        <div class="status">
+            Status: <span id="status">Disconnected</span>
+        </div>
+
+        <div id="log" class="log"></div>
+    </div>
+
+    <script>
+        let socket = null;
+        const logDiv = document.getElementById('log');
+        const statusSpan = document.getElementById('status');
+        const runIdInput = document.getElementById('runId');
+
+        function log(message, className = '') {
+            const timestamp = new Date().toLocaleTimeString();
+            const div = document.createElement('div');
+            div.className = `event ${className}`;
+            div.innerHTML = `<strong>[${timestamp}]</strong> ${message}`;
+            logDiv.appendChild(div);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function connect() {
+            if (socket) {
+                log('Already connected!', 'error-event');
+                return;
+            }
+
+            socket = io('http://localhost:3000/execution', {
+                transports: ['websocket', 'polling']
+            });
+
+            socket.on('connect', () => {
+                statusSpan.textContent = 'Connected';
+                statusSpan.style.color = 'green';
+                log('Connected to WebSocket server', 'flow-event');
+            });
+
+            socket.on('disconnect', () => {
+                statusSpan.textContent = 'Disconnected';
+                statusSpan.style.color = 'red';
+                log('Disconnected from WebSocket server', 'error-event');
+            });
+
+            socket.on('connection_established', (data) => {
+                log(`Connection established: ${JSON.stringify(data)}`, 'flow-event');
+            });
+
+            socket.on('subscribed', (data) => {
+                log(`Subscribed: ${JSON.stringify(data)}`, 'flow-event');
+            });
+
+            socket.on('unsubscribed', (data) => {
+                log(`Unsubscribed: ${JSON.stringify(data)}`, 'flow-event');
+            });
+
+            socket.on('flow_event', (event) => {
+                log(`FLOW EVENT [${event.type}]: ${JSON.stringify(event.data)}`, 'flow-event');
+            });
+
+            socket.on('step_event', (event) => {
+                log(`STEP EVENT [${event.type}] - ${event.stepName} (${event.stepIndex + 1}): ${JSON.stringify(event.data)}`, 'step-event');
+            });
+
+            socket.on('progress_update', (progress) => {
+                log(`PROGRESS: ${progress.progressPercentage}% (${progress.completedSteps}/${progress.totalSteps}) - Status: ${progress.status}`, 'progress-event');
+            });
+
+            socket.on('system_message', (message) => {
+                log(`SYSTEM: ${message.message}`, 'flow-event');
+            });
+
+            socket.on('connect_error', (error) => {
+                log(`Connection error: ${error.message}`, 'error-event');
+            });
+        }
+
+        function disconnect() {
+            if (socket) {
+                socket.disconnect();
+                socket = null;
+                statusSpan.textContent = 'Disconnected';
+                statusSpan.style.color = 'red';
+                log('Manually disconnected', 'error-event');
+            }
+        }
+
+        function subscribe() {
+            if (!socket || !socket.connected) {
+                log('Not connected to server!', 'error-event');
+                return;
+            }
+
+            const runId = runIdInput.value.trim();
+            if (!runId) {
+                log('Please enter a Run ID!', 'error-event');
+                return;
+            }
+
+            socket.emit('subscribe_to_run', { runId });
+            log(`Subscribing to run: ${runId}`, 'flow-event');
+        }
+
+        function unsubscribe() {
+            if (!socket || !socket.connected) {
+                log('Not connected to server!', 'error-event');
+                return;
+            }
+
+            const runId = runIdInput.value.trim();
+            if (!runId) {
+                log('Please enter a Run ID!', 'error-event');
+                return;
+            }
+
+            socket.emit('unsubscribe_from_run', { runId });
+            log(`Unsubscribing from run: ${runId}`, 'flow-event');
+        }
+
+        function clearLog() {
+            logDiv.innerHTML = '';
+        }
+    </script>
+</body>
+</html>

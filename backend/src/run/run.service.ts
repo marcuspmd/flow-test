@@ -5,12 +5,11 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import { promises as fs } from 'node:fs';
-import os from 'node:os';
-import path from 'node:path';
 
-import { FlowTestEngine } from '@flow-test-engine/core/engine';
-import type { EngineExecutionOptions } from '@flow-test-engine/types/config.types';
+import * as yaml from 'yaml';
+import { FlowEngineService, FlowExecutionOptions } from '../engine/services/flow-engine.service';
+import { FlowSuite } from '../engine/types/engine.types';
+import { ExecutionEventsGateway } from '../realtime/execution-events.gateway';
 
 import { FlowService } from '../flow/flow.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -22,15 +21,16 @@ import { TriggerRunDto } from './dto/trigger-run.dto';
 export class RunService {
   private readonly logger = new Logger(RunService.name);
   private readonly defaultTake = 25;
-  private readonly defaultConfigPath = path.resolve(
-    process.cwd(),
-    '../flow-test.config.yml',
-  );
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly flowService: FlowService,
-  ) {}
+    private readonly flowEngine: FlowEngineService,
+    private readonly executionGateway: ExecutionEventsGateway,
+  ) {
+    // Inject the WebSocket gateway into the flow engine
+    this.flowEngine.setExecutionGateway(this.executionGateway);
+  }
 
   async listRuns(query: QueryRunDto) {
     const take = query.take ?? this.defaultTake;
@@ -126,7 +126,7 @@ export class RunService {
       },
     });
 
-    const executionOptions = (dto.options ?? {}) as EngineExecutionOptions;
+    const executionOptions = (dto.options ?? {}) as FlowExecutionOptions;
 
     this.executeRun(run.id, executionOptions, dto.label).catch((error) => {
       const err = error instanceof Error ? error : new Error(String(error));
@@ -176,7 +176,7 @@ export class RunService {
 
   private async executeRun(
     runId: string,
-    options: EngineExecutionOptions,
+    options: FlowExecutionOptions,
     label?: string,
   ) {
     const run = await this.prisma.flowRun.update({
@@ -194,49 +194,37 @@ export class RunService {
       },
     });
 
-    const suite = run.version.suite;
-    const sanitizedNodeId = suite.nodeId.replace(/[^a-zA-Z0-9-_]/g, '-');
-    const baseDir = await fs.mkdtemp(path.join(os.tmpdir(), 'flow-run-'));
-    const yamlPath = path.join(baseDir, `${sanitizedNodeId}.yaml`);
-
-    await fs.writeFile(yamlPath, run.version.yamlRaw, 'utf8');
-
-    const configFilePath = options.config_file ?? this.defaultConfigPath;
-    const executionOptions: EngineExecutionOptions = {
-      ...options,
-      config_file: configFilePath,
-      test_directory: baseDir,
-    };
-
     try {
-      const engine = new FlowTestEngine(executionOptions, {
-        onExecutionStart: () => {
-          this.logger.log(`Run ${runId} started${label ? ` (${label})` : ''}`);
-        },
-        onExecutionEnd: () => {
-          this.logger.log(`Run ${runId} finished successfully`);
-        },
-        onError: (error: Error) => {
-          this.logger.error(
-            `Engine error on run ${runId}: ${error.message}`,
-            error.stack,
-          );
-        },
-      });
+      this.logger.log(`Run ${runId} started${label ? ` (${label})` : ''}`);
 
-      const result = await engine.run();
-      const summary = JSON.parse(
-        JSON.stringify(result),
-      ) as Prisma.InputJsonValue;
+      // Parse YAML flow suite
+      const flowSuite: FlowSuite = yaml.parse(run.version.yamlRaw);
+
+      // Execute flow using our new engine service
+      const result = await this.flowEngine.executeFlow(
+        flowSuite,
+        {
+          ...options,
+          variables: options.variables || {},
+        },
+        runId,
+      );
+
+      // Update run status based on execution result
+      const status = result.status === 'success' ? 'COMPLETED' : 'FAILED';
+      const summary = JSON.parse(JSON.stringify(result)) as Prisma.InputJsonValue;
 
       await this.prisma.flowRun.update({
         where: { id: runId },
         data: {
-          status: 'COMPLETED',
+          status,
           finishedAt: new Date(),
           resultSummary: summary,
         },
       });
+
+      this.logger.log(`Run ${runId} finished with status: ${result.status}`);
+
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
       this.logger.error(`Run ${runId} failed: ${err.message}`, err.stack);
@@ -248,18 +236,10 @@ export class RunService {
           finishedAt: new Date(),
           resultSummary: {
             error: err.message,
+            stack: err.stack,
           } as Prisma.InputJsonValue,
         },
       });
-    } finally {
-      try {
-        await fs.rm(baseDir, { recursive: true, force: true });
-      } catch (cleanupError) {
-        const err = cleanupError as Error;
-        this.logger.warn(
-          `Failed to clean up temp directory for run ${runId}: ${err.message}`,
-        );
-      }
     }
   }
 }

@@ -86,9 +86,9 @@ export class FlowService {
         version: nextVersionNumber,
         yamlRaw: dto.yamlRaw,
         yamlHash,
-        metadata: dto.metadata,
-        compiledConfig: dto.compiledConfig,
-        effectiveVariables: dto.effectiveVariables,
+        metadata: dto.metadata as any,
+        compiledConfig: dto.compiledConfig as any,
+        effectiveVariables: dto.effectiveVariables as any,
         createdById: dto.createdById,
       },
     });
