@@ -1,3 +1,4 @@
+import path from "path";
 import { DependencyService } from "../dependency.service";
 import { DiscoveredTest, DependencyResult } from "../../types/engine.types";
 
@@ -97,6 +98,54 @@ describe("DependencyService", () => {
 
       expect(service.getDirectDependencies("user")).toHaveLength(1);
       expect(service.getDirectDependencies("user")[0].node_id).toBe("auth");
+    });
+
+    it("should resolve dependency paths across directories", () => {
+      const projectRoot = process.cwd();
+      const authPath = path.join(projectRoot, "tests", "auth", "auth.yaml");
+      const chamadaPath = path.join(
+        projectRoot,
+        "tests",
+        "chamada",
+        "test.yaml"
+      );
+      const reportPath = path.join(
+        projectRoot,
+        "tests",
+        "report",
+        "report.yaml"
+      );
+
+      const tests: DiscoveredTest[] = [
+        {
+          node_id: "auth",
+          suite_name: "Auth Flow",
+          file_path: authPath,
+          depends: [],
+        },
+        {
+          node_id: "chamada",
+          suite_name: "Call Flow",
+          file_path: chamadaPath,
+          depends: [{ path: "../auth/auth.yaml" }],
+        },
+        {
+          node_id: "report",
+          suite_name: "Report Flow",
+          file_path: reportPath,
+          depends: [{ path: "tests/auth/auth.yaml" }],
+        },
+      ];
+
+      service.buildDependencyGraph(tests);
+
+      const chamadaDeps = service.getDirectDependencies("chamada");
+      expect(chamadaDeps).toHaveLength(1);
+      expect(chamadaDeps[0].node_id).toBe("auth");
+
+      const reportDeps = service.getDirectDependencies("report");
+      expect(reportDeps).toHaveLength(1);
+      expect(reportDeps[0].node_id).toBe("auth");
     });
 
     it("should warn about missing dependencies", () => {

@@ -166,6 +166,19 @@ const defaultTheme = dashboardConfig?.themes?.default || 'light';
               </a>
             </li>
 
+            <!-- Live Execution -->
+            <li>
+              <a href={withBase('live')} class="flex items-center gap-3 p-3 rounded-lg hover:bg-primary hover:text-primary-content transition-all">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m2 4V9h3m4 7a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <div>
+                  <div class="font-medium">Live Monitor</div>
+                  <div class="text-xs opacity-70">Runs em tempo real</div>
+                </div>
+              </a>
+            </li>
+
             <!-- Test Suites -->
             <li>
               <a href={withBase('suites')} class="flex items-center gap-3 p-3 rounded-lg hover:bg-primary hover:text-primary-content transition-all">

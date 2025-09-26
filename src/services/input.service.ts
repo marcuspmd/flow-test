@@ -258,13 +258,28 @@ export class InputService {
     variableService: VariableService
   ): Array<{value: any, label: string}> {
     if (typeof options === 'string') {
+      // Allow template interpolation ({{ }}, {{$js }}, etc.) before evaluating expression
+      const resolvedOptions = variableService.interpolate(options);
+
+      // If interpolation produced an options array directly, return it
+      if (Array.isArray(resolvedOptions)) {
+        return resolvedOptions;
+      }
+
+      const expression = typeof resolvedOptions === 'string' ? resolvedOptions : options;
+
       // JMESPath expression - evaluate it
       try {
         const jmespath = require('jmespath');
-        const result = jmespath.search(variables, options);
-        return Array.isArray(result) ? result : [];
+        const result = jmespath.search(variables, expression);
+
+        if (Array.isArray(result)) {
+          return result;
+        }
+
+        return result ? [result] : [];
       } catch (error) {
-        this.logger.warn(`⚠️ Failed to evaluate options expression: ${options}`);
+        this.logger.warn(`⚠️ Failed to evaluate options expression: ${expression}`);
         return [];
       }
     }

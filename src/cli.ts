@@ -29,9 +29,10 @@
  * @packageDocumentation
  */
 
+import path from "path";
 import { FlowTestEngine } from "./core/engine";
 import { EngineExecutionOptions, DiscoveredTest } from "./types/config.types";
-import { ExecutionStats, TestSuite } from "./types/engine.types";
+import { EngineHooks, ExecutionStats, TestSuite } from "./types/engine.types";
 import {
   SwaggerImportService,
   ImportOptions,
@@ -43,6 +44,42 @@ import {
   LoggerService,
   getLogger,
 } from "./services/logger.service";
+import { RealtimeReporter } from "./services/realtime-reporter";
+import { createConsoleHooks } from "./services/hook-factory";
+
+const HOOK_KEYS: (keyof EngineHooks)[] = [
+  "onTestDiscovered",
+  "onSuiteStart",
+  "onSuiteEnd",
+  "onStepStart",
+  "onStepEnd",
+  "onExecutionStart",
+  "onExecutionEnd",
+  "onError",
+];
+
+function mergeHooks(...hooks: Array<EngineHooks | undefined>): EngineHooks {
+  const merged: EngineHooks = {};
+
+  for (const hookName of HOOK_KEYS) {
+    const callbacks = hooks
+      .filter(Boolean)
+      .map((hook) => hook![hookName])
+      .filter((callback): callback is (...args: any[]) => any =>
+        typeof callback === "function"
+      );
+
+    if (callbacks.length > 0) {
+      (merged as any)[hookName] = async (...args: any[]) => {
+        for (const callback of callbacks) {
+          await callback(...args);
+        }
+      };
+    }
+  }
+
+  return merged;
+}
 
 /**
  * Main CLI entry point function.
@@ -89,6 +126,7 @@ async function main() {
   let postmanImport: string | undefined;
   let postmanImportOutput: string | undefined;
   let dashboardCommand: string | undefined;
+  let liveEventsPath: string | undefined;
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
@@ -196,6 +234,14 @@ async function main() {
       case "--postman-output":
         if (i + 1 < args.length) {
           postmanExportOutput = args[++i];
+        }
+        break;
+
+      case "--live-events":
+        if (i + 1 < args.length && !args[i + 1].startsWith("-")) {
+          liveEventsPath = args[++i];
+        } else {
+          liveEventsPath = path.join("results", "live-events.jsonl");
         }
         break;
 
@@ -401,61 +447,29 @@ async function main() {
     // Configura logger conforme a verbosidade escolhida
     setupLogger("console", { verbosity: options.verbosity || "simple" });
     const logger = LoggerService.getInstance();
+    const baseHooks = createConsoleHooks(logger);
 
-    // Cria o engine
-    const engine = new FlowTestEngine(engineOptions, {
-      onExecutionStart: (stats: ExecutionStats) => {
-        getLogger().info(
-          `🚀 Starting execution of ${stats.tests_discovered} test(s)`
-        );
-      },
-      onTestDiscovered: (test: DiscoveredTest) => {
-        getLogger().debug(
-          `📋 Discovered: ${test.node_id} - ${test.suite_name} (${test.priority})`
-        );
-      },
-      onSuiteStart: (suite: TestSuite) => {
-        logger.info(`Starting suite`, {
-          metadata: {
-            type: "suite_start",
-            suite_name: suite.suite_name,
-            file_path: suite.node_id,
-          },
-        });
-        getLogger().info(`▶️  Starting: ${suite.suite_name}`);
-      },
-      onSuiteEnd: (suite: TestSuite, result: any) => {
-        logger.info(`Suite completed`, {
-          metadata: {
-            type: "suite_complete",
-            suite_name: suite.suite_name,
-            file_path: suite.node_id,
-            success: result.status === "success",
-          },
-        });
-        const emoji = result.status === "success" ? "✅" : "❌";
-        getLogger().info(
-          `${emoji} Completed: ${suite.suite_name} (${
-            result.duration_ms || 0
-          }ms)`
-        );
-      },
-      onStepEnd: (step: any, result: any, context: any) => {
-        logger.info(`Step completed`, {
-          stepName: step.name,
-          duration: result.duration_ms,
-          metadata: {
-            type: "step_result",
-            success: result.status === "success",
-          },
-        });
-      },
-      onError: (error: Error) => {
-        getLogger().error(`💥 Engine error: ${error.message}`, {
-          error: error,
-        });
-      },
-    });
+    let liveReporter: RealtimeReporter | undefined;
+    let liveReporterRunId: string | null = null;
+    let engineHooks: EngineHooks = baseHooks;
+
+    if (!dryRun && liveEventsPath) {
+      const resolvedPath = path.isAbsolute(liveEventsPath)
+        ? liveEventsPath
+        : path.join(process.cwd(), liveEventsPath);
+
+      liveReporter = new RealtimeReporter(resolvedPath);
+      liveReporterRunId = liveReporter.beginRun({
+        source: "cli",
+        label: "CLI execution",
+        options: engineOptions,
+      });
+
+      const reporterHooks = liveReporter.createHooks(liveReporterRunId);
+      engineHooks = mergeHooks(baseHooks, reporterHooks);
+    }
+
+    const engine = new FlowTestEngine(engineOptions, engineHooks);
 
     if (dryRun) {
       // Execução em modo dry-run

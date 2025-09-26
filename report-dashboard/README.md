@@ -103,7 +103,27 @@ npm run report:dashboard:install    # ✅ Instalar dependências
 npm run report:dashboard:dev        # ✅ Servidor de desenvolvimento
 npm run report:dashboard:build      # ✅ Build para produção
 npm run report:dashboard:serve      # ✅ Build + serve estático
+npm run orchestrator:dev             # ✅ (raiz) Orchestrator com SSE para runs ao vivo
 ```
+
+## 🔌 Integração com o Orchestrator em Tempo Real
+
+O dashboard agora suporta monitoramento ao vivo das execuções através do **Flow Test Orchestrator**.
+
+1. **Suba o orchestrator** a partir da raiz do projeto:
+   ```bash
+   npm run orchestrator:dev
+   ```
+
+2. **Configure a URL** (opcional). Por padrão o dashboard se conecta em `http://localhost:3333`. Para ambientes diferentes, defina a variável de ambiente antes de iniciar o Astro:
+   ```bash
+   PUBLIC_ORCHESTRATOR_URL=https://seu-orchestrator.dev npm run report:dashboard:dev
+   ```
+
+3. Acesse a nova página **Live Monitor** (`/live`) para:
+   - Disparar execuções do Flow Test Engine
+   - Visualizar runs em tempo real via SSE
+   - Consultar histórico e repetir execuções concluídas
 
 ## 📊 Tipos de Componentes Planejados
 

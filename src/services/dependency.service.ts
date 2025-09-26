@@ -183,7 +183,10 @@ export class DependencyService {
           if (dependency.node_id) {
             dependencyNodeId = dependency.node_id;
           } else if (dependency.path) {
-            dependencyNodeId = this.extractNodeIdFromPath(dependency.path);
+            dependencyNodeId = this.extractNodeIdFromPath(
+              dependency.path,
+              test.file_path
+            );
           }
 
           if (dependencyNodeId && this.graph.has(dependencyNodeId)) {
@@ -204,9 +207,64 @@ export class DependencyService {
   /**
    * Extracts the nodeId from the dependency file path
    */
-  private extractNodeIdFromPath(dependencyPath: string): string | null {
+  private extractNodeIdFromPath(
+    dependencyPath: string,
+    currentTestPath?: string
+  ): string | null {
     if (!dependencyPath || typeof dependencyPath !== "string") {
       return null;
+    }
+
+    const normalizedCandidates = new Set<string>();
+
+    // Absolute path provided directly
+    if (path.isAbsolute(dependencyPath)) {
+      normalizedCandidates.add(path.normalize(dependencyPath));
+    }
+
+    // Relative to current test file directory
+    if (currentTestPath) {
+      const baseDir = path.dirname(currentTestPath);
+      const resolved = path.resolve(baseDir, dependencyPath);
+      normalizedCandidates.add(path.normalize(resolved));
+    }
+
+    // Relative to project root (cwd)
+    const fromCwd = path.resolve(process.cwd(), dependencyPath);
+    normalizedCandidates.add(path.normalize(fromCwd));
+
+    // Direct path normalization without resolution (covers patterns like ../)
+    normalizedCandidates.add(path.normalize(dependencyPath));
+
+    const candidateList = Array.from(normalizedCandidates);
+
+    // Attempt exact path matching first
+    for (const candidate of candidateList) {
+      for (const [nodeId, node] of this.graph) {
+        const nodePath = node?.test?.file_path;
+        if (!nodePath) {
+          continue;
+        }
+
+        const normalizedNodePath = path.normalize(nodePath);
+        if (normalizedNodePath === candidate) {
+          getLogger().debug(
+            `✅ Resolved dependency path '${dependencyPath}' to node_id '${nodeId}' using normalized match`
+          );
+          return nodeId;
+        }
+
+        // Handle cases where relative paths collapse to the same file
+        const relativeToNode = path.normalize(
+          path.relative(path.dirname(normalizedNodePath), candidate)
+        );
+        if (relativeToNode === "" || relativeToNode === ".") {
+          getLogger().debug(
+            `✅ Resolved dependency path '${dependencyPath}' to node_id '${nodeId}' using directory-relative match`
+          );
+          return nodeId;
+        }
+      }
     }
 
     // Search for nodeId in map by matching file path

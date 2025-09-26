@@ -57,7 +57,7 @@ const allSteps = reportData.suites_results?.flatMap(suite => suite.steps_results
   </div>
 
   <!-- Quick Actions Grid -->
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
     <a href={withBase('suites')} class="card bg-primary text-primary-content shadow-xl hover:shadow-2xl transition-all transform hover:scale-105">
       <div class="card-body">
         <h2 class="card-title">
@@ -91,6 +91,18 @@ const allSteps = reportData.suites_results?.flatMap(suite => suite.steps_results
           Performance Metrics
         </h2>
         <p>Analyze execution times and performance trends</p>
+      </div>
+    </a>
+
+    <a href={withBase('live')} class="card bg-neutral text-neutral-content shadow-xl hover:shadow-2xl transition-all transform hover:scale-105">
+      <div class="card-body">
+        <h2 class="card-title">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m2 4V9h3m4 7a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+          Live Monitor
+        </h2>
+        <p>Monitor runs in real time and trigger retries instantly</p>
       </div>
     </a>
   </div>

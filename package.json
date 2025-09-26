@@ -1,7 +1,7 @@
 {
   "$schema": "https://json.schemastore.org/package.json",
   "name": "flow-test-engine",
-  "version": "1.1.13",
+  "version": "1.1.14",
   "description": "A comprehensive API testing engine with directory-based execution, global variables, and priority-driven test management.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -24,7 +24,9 @@
     "report:dashboard:dev": "cd report-dashboard && npm run dev",
     "report:dashboard:build": "cd report-dashboard && npm run build",
     "report:dashboard:preview": "cd report-dashboard && npm run preview",
-    "report:dashboard:serve": "npm run report:dashboard:build && cd report-dashboard && npx serve dist --single"
+    "report:dashboard:serve": "npm run report:dashboard:build && cd report-dashboard && npx serve dist --single",
+    "orchestrator": "node dist/server/orchestrator.js",
+    "orchestrator:dev": "ts-node src/server/orchestrator.ts"
   },
   "keywords": [
     "api",
