@@ -285,7 +285,7 @@ docker compose down -v
 
 ## 6. Reporting and Dashboards
 
-Every execution writes a JSON artifact at `flow-tests/results/latest.json`. The Astro dashboard packaged with this repository reads that file directly, so keep it in sync before starting the UI.
+Every execution writes a JSON artifact at `flow-tests/results/latest.json`. When you need a shareable visualization, enable HTML output with the `--html-output` flag (optionally pass a subdirectory name) or by adding `html` to `reporting.formats` in `flow-test.config.yml`. The engine now emits a Postman-inspired HTML experience alongside the JSON, and the Astro dashboard packaged with this repository reads the same data, so keep it in sync before starting the UI.
 
 1. Copy (or symlink) the latest results into the dashboard data folder:
    ```bash

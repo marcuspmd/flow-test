@@ -384,6 +384,29 @@ describe("ConfigManager", () => {
       const verboseConfig = new ConfigManager({ verbosity: "verbose" });
       expect(verboseConfig.getConfig().reporting?.formats).toEqual(["json"]);
     });
+
+    it("should merge reporting overrides for html output", () => {
+      const configManager = new ConfigManager({
+        reporting: {
+          formats: ["html"],
+          html: {
+            output_subdir: "custom-html",
+            aggregate: true,
+            per_suite: false,
+          },
+        },
+      });
+
+      const reporting = configManager.getConfig().reporting!;
+      expect(reporting.formats).toEqual(["json", "html"]);
+      expect(reporting.html).toEqual(
+        expect.objectContaining({
+          output_subdir: "custom-html",
+          aggregate: true,
+          per_suite: false,
+        })
+      );
+    });
   });
 
   describe("error handling", () => {

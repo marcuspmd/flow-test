@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Created `docs/BEST_PRACTICES.md` with naming conventions, patterns, and maintenance guidelines
   - Created `docs/TROUBLESHOOTING.md` with comprehensive debugging and issue resolution guide
   - Updated `README.md` with enhanced examples and documentation references
+- **Postman-Style HTML Reports**: Built-in renderer generates polished run summaries and suite drill-downs when HTML output is enabled via config or `--html-output`
 
 ### Fixed
 - **Global Installation Issue**: Resolved problem where dashboard couldn't find project results when flow-test-engine was installed globally
@@ -26,7 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Preview Command Issue**: Fixed `flow-test dashboard preview` command that was failing because dist directory didn't exist - now automatically builds before preview
 
 ### Changed
-- **Reporting Flow**: O engine agora gera somente `results/latest.json`; a visualização HTML fica exclusiva no projeto `report-dashboard`
+- **Reporting Flow**: The engine now saves a JSON artifact *and* a Postman-inspired HTML experience (`index.html` plus per-suite pages) whenever the html format is enabled
 - **CI/CD**: GitHub Pages agora publica o build do `report-dashboard` sem gerar `docs/`
 
 ### Removed

@@ -264,27 +264,30 @@ async function main() {
         break;
 
       case "--html-output": {
-        const reportingOptions = options.reporting ?? {};
-        const currentFormats = new Set<ReportFormat>(
-          reportingOptions.formats ?? []
-        );
-        currentFormats.add("json");
-        currentFormats.add("html");
-
-        reportingOptions.formats = Array.from(currentFormats);
-
-        const htmlOptions = {
-          aggregate: reportingOptions.html?.aggregate ?? true,
-          per_suite: reportingOptions.html?.per_suite ?? true,
-          output_subdir: reportingOptions.html?.output_subdir,
-        };
-
-        if (i + 1 < args.length && !args[i + 1].startsWith("-")) {
-          htmlOptions.output_subdir = args[++i];
+        const nextArg = args[i + 1];
+        const hasValue = nextArg && !nextArg.startsWith("-");
+        if (hasValue) {
+          i += 1;
         }
 
-        reportingOptions.html = htmlOptions;
-        options.reporting = reportingOptions;
+        if (hasValue) {
+          const reportingOptions = (options.reporting = options.reporting ?? {});
+          reportingOptions.html = {
+            ...reportingOptions.html,
+            output_subdir: nextArg,
+          };
+        }
+
+        const reportingOptions = (options.reporting = options.reporting ?? {});
+        const formats = new Set<ReportFormat>(reportingOptions.formats ?? []);
+        formats.add("json");
+        formats.add("html");
+        reportingOptions.formats = Array.from(formats);
+
+        getLogger().info(
+          "🧾 HTML reporting enabled. A Postman-inspired report will be written alongside the JSON artifacts."
+        );
+
         break;
       }
 
@@ -797,7 +800,7 @@ EXECUTION:
   --no-log               Disable automatic log file generation
 
 REPORTING:
-  --html-output [dir]    Generate per-suite HTML reports (optional subdirectory)
+  --html-output [dir]    Generate Postman-style HTML alongside JSON (optional subdirectory name)
 
 SWAGGER IMPORT:
   --swagger-import <file>    Import OpenAPI/Swagger spec and generate test files
