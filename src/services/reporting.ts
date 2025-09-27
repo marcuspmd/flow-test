@@ -397,9 +397,9 @@ ${suitesMarkup}
       .hero {
         background: linear-gradient(135deg, rgba(17, 24, 39, 0.92), rgba(12, 18, 28, 0.94));
         border: 1px solid var(--border-strong);
-        border-radius: 24px;
-        padding: 32px;
-        box-shadow: 0 30px 60px rgba(8, 15, 26, 0.45);
+        border-radius: 6px;
+        padding: 28px;
+        box-shadow: 0 16px 28px rgba(8, 15, 26, 0.32);
       }
       .hero-badge {
         display: inline-flex;
@@ -418,6 +418,8 @@ ${suitesMarkup}
         font-size: 2.25rem;
         font-weight: 700;
         letter-spacing: -0.01em;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
       }
       .hero-subtitle,
       .hero-meta {
@@ -439,7 +441,7 @@ ${suitesMarkup}
         align-items: center;
         gap: 8px;
         padding: 10px 16px;
-        border-radius: 12px;
+        border-radius: 6px;
         background: var(--surface);
         border: 1px solid var(--border);
         font-size: 0.95rem;
@@ -465,20 +467,20 @@ ${suitesMarkup}
       }
       .metric-card {
         background: var(--surface);
-        border-radius: 18px;
+        border-radius: 6px;
         border: 1px solid var(--border);
-        padding: 20px 22px;
-        box-shadow: 0 20px 40px rgba(8, 15, 26, 0.25);
+        padding: 18px 20px;
+        box-shadow: 0 12px 24px rgba(8, 15, 26, 0.2);
         display: flex;
         flex-direction: column;
         gap: 10px;
       }
       .metric-card--accent {
-        border-color: rgba(255, 108, 55, 0.45);
-        box-shadow: 0 25px 55px rgba(255, 108, 55, 0.25);
+        border-color: rgba(255, 108, 55, 0.35);
+        box-shadow: 0 18px 30px rgba(255, 108, 55, 0.18);
       }
       .metric-card--success {
-        border-color: rgba(45, 212, 191, 0.4);
+        border-color: rgba(45, 212, 191, 0.3);
       }
       .metric-label {
         text-transform: uppercase;
@@ -509,34 +511,24 @@ ${suitesMarkup}
       }
       .suite-card {
         background: var(--surface-alt);
-        border-radius: 20px;
+        border-radius: 6px;
         border: 1px solid var(--border);
-        padding: 22px 24px;
+        padding: 20px 22px;
         display: flex;
         flex-direction: column;
-        gap: 18px;
+        gap: 16px;
         transition: transform 0.2s ease, border-color 0.2s ease;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
       }
       .suite-card:hover {
-        transform: translateY(-4px);
-        border-color: rgba(255, 108, 55, 0.4);
-      }
-      .suite-card__header {
-        display: flex;
-        justify-content: space-between;
-        gap: 16px;
-        align-items: flex-start;
-      }
-      .suite-card__title {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        flex-wrap: wrap;
+        transform: translateY(-2px);
+        border-color: rgba(255, 108, 55, 0.25);
       }
       .suite-index {
-        width: 34px;
-        height: 34px;
-        border-radius: 12px;
+        width: 32px;
+        height: 32px;
+        border-radius: 4px;
         background: var(--surface);
         border: 1px solid var(--border);
         display: inline-flex;
@@ -545,14 +537,10 @@ ${suitesMarkup}
         font-weight: 600;
         color: var(--muted);
       }
-      .suite-name {
-        font-size: 1.05rem;
-        font-weight: 600;
-      }
       .priority-badge {
         padding: 4px 10px;
         border-radius: 999px;
-        border: 1px solid rgba(255, 255, 255, 0.15);
+        border: 1px solid rgba(255, 255, 255, 0.12);
         background: rgba(255, 255, 255, 0.04);
         font-size: 0.75rem;
         text-transform: uppercase;
@@ -574,73 +562,343 @@ ${suitesMarkup}
       }
       .status-failure {
         background: rgba(248, 113, 113, 0.18);
-        color: var(--danger);
+        color: var,--danger);
       }
       .status-skipped {
         background: rgba(250, 204, 21, 0.18);
         color: var(--warning);
       }
-      .suite-card__stats {
+      .steps-section {
+        margin-top: 48px;
+      }
+      .steps-card {
+        background: var(--surface-alt);
+        border-radius: 6px;
+        border: 1px solid var(--border);
+        padding: 20px 22px;
+        box-shadow: 0 16px 28px rgba(8, 15, 26, 0.28);
+        overflow-x: auto;
+      }
+      .steps-card__header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        margin-bottom: 16px;
+      }
+      .steps-card__header h2 {
+        margin: 0;
+        font-size: 1.35rem;
+      }
+      .steps-summary {
+        color: var(--muted);
+        font-size: 0.95rem;
+      }
+      .steps-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-        gap: 14px;
+        gap: 16px;
+        margin-top: 16px;
+      }
+      .step-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        overflow: hidden;
+        transition: all 0.2s ease;
+      }
+      .step-card:hover {
+        border-color: var(--border-strong);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(8, 15, 26, 0.15);
+      }
+      .step-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 16px;
+        border-bottom: 1px solid var(--border);
+        background: var(--surface-alt);
+      }
+      .step-index {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        font-weight: 600;
+        font-size: 0.9rem;
+        color: var(--muted);
+      }
+      .step-info {
+        flex: 1;
+      }
+      .step-status {
+        margin-left: auto;
+      }
+      .step-metrics {
+        display: flex;
+        gap: 16px;
+        padding: 12px 16px;
+        background: var(--surface-soft);
+        border-bottom: 1px solid var(--border);
+      }
+      .metric {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .metric-error {
+        color: var(--danger);
+      }
+      .metric-label {
+        font-size: 0.75rem;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+      .metric-value {
+        font-size: 0.9rem;
+        font-weight: 600;
+      }
+      .step-details {
+        padding: 16px;
+      }
+      .step-name {
+        font-weight: 600;
+        margin-bottom: 4px;
+      }
+      .step-id {
+        color: var(--muted);
+        font-size: 0.8rem;
+      }
+      .step-id--subtle {
+        color: rgba(148, 163, 184, 0.6);
+      }
+      .error-text {
+        color: rgba(248, 113, 113, 0.95);
+      }
+      .muted {
+        color: var(--muted);
+      }
+      .detail-empty {
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+      .detail-tabs {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        overflow: hidden;
+      }
+      .detail-tabs-nav {
+        display: flex;
+        border-bottom: 1px solid var(--border);
+        background: var(--surface-alt);
+      }
+      .tab-btn {
+        padding: 12px 16px;
+        border: none;
+        background: transparent;
+        color: var(--muted);
+        font-size: 0.85rem;
+        font-weight: 500;
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+        transition: all 0.2s ease;
+      }
+      .tab-btn:hover {
+        color: var(--text);
+        background: rgba(255, 255, 255, 0.05);
+      }
+      .tab-btn.active {
+        color: var(--accent);
+        border-bottom-color: var(--accent);
+        background: rgba(255, 108, 55, 0.1);
+      }
+      .detail-tabs-content {
+        padding: 0;
+      }
+      .tab-content {
+        display: none;
+        padding: 16px;
+      }
+      .tab-content.active {
+        display: block;
+      }
+      .code-block {
+        background: var(--surface-soft);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        overflow: hidden;
+      }
+      .code-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 12px;
+        background: var(--surface-alt);
+        border-bottom: 1px solid var(--border);
+      }
+      .code-title {
+        font-size: 0.8rem;
+        color: var(--muted);
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+      .copy-btn {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        padding: 4px 8px;
+        background: transparent;
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        color: var(--muted);
+        font-size: 0.75rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+      .copy-btn:hover {
+        background: var(--surface);
+        color: var(--text);
+        border-color: var(--accent);
+      }
+      .copy-btn.copied {
+        background: var(--success);
+        color: white;
+        border-color: var(--success);
+      }
+      .copy-icon {
+        font-size: 0.7rem;
+      }
+      .code-content {
+        margin: 0;
+        padding: 12px;
+        background: var(--surface-soft);
+        color: var(--text);
+        font-size: 0.8rem;
+        line-height: 1.5;
+        font-family: 'JetBrains Mono', 'Consolas', 'Monaco', monospace;
+        overflow-x: auto;
+        white-space: pre;
+        max-height: 300px;
+        overflow-y: auto;
+      }
+      .assertions-list {
+        padding: 16px;
+        max-height: 400px;
+        overflow-y: auto;
+      }
+      .assertion-item {
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        margin-bottom: 12px;
+        overflow: hidden;
+      }
+      .assertion-passed {
+        border-color: var(--success);
+        background: rgba(45, 212, 191, 0.05);
+      }
+      .assertion-failed {
+        border-color: var(--danger);
+        background: rgba(248, 113, 113, 0.05);
+      }
+      .assertion-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        background: var(--surface-alt);
+        border-bottom: 1px solid var(--border);
+        font-weight: 600;
+        font-size: 0.85rem;
+      }
+      .assertion-passed .assertion-header {
+        background: rgba(45, 212, 191, 0.1);
+        color: var(--success);
+      }
+      .assertion-failed .assertion-header {
+        background: rgba(248, 113, 113, 0.1);
+        color: var(--danger);
+      }
+      .assertion-icon {
+        font-size: 0.9rem;
+      }
+      .assertion-title {
+        flex: 1;
+      }
+      .assertion-status {
+        font-size: 0.75rem;
+        padding: 2px 6px;
+        border-radius: 3px;
+        color: white;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+      .assertion-details {
+        padding: 12px;
+        display: grid;
+        gap: 8px;
+        font-size: 0.85rem;
+      }
+      .assertion-details code {
+        background: var(--surface-soft);
+        padding: 2px 4px;
+        border-radius: 3px;
+        font-family: 'JetBrains Mono', 'Consolas', 'Monaco', monospace;
+        font-size: 0.8rem;
+      }
+      .assertion-error {
+        padding: 8px;
+        background: rgba(248, 113, 113, 0.1);
+        border: 1px solid rgba(248, 113, 113, 0.3);
+        border-radius: 4px;
+        margin-top: 4px;
+      }
+      .empty-state {
+        text-align: center;
+        padding: 48px 32px;
+        color: var(--muted);
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        font-size: 1rem;
+      }
+      .suite-error-banner {
+        margin: 24px 0 0;
+        padding: 16px 18px;
+        border-radius: 4px;
+        border: 1px solid rgba(248, 113, 113, 0.4);
+        background: rgba(248, 113, 113, 0.12);
+        color: rgba(248, 113, 113, 0.95);
+        font-size: 0.95rem;
       }
       .stat {
         background: var(--surface);
-        border-radius: 14px;
+        border-radius: 4px;
         border: 1px solid var(--border);
         padding: 14px;
         display: flex;
         flex-direction: column;
         gap: 6px;
       }
-      .stat-label {
-        font-size: 0.75rem;
-        letter-spacing: 0.06em;
-        text-transform: uppercase;
-        color: var(--muted);
-      }
-      .stat-value {
-        font-size: 1.1rem;
-        font-weight: 600;
-      }
-      .stat-value--code {
-        font-family: 'JetBrains Mono', 'SFMono-Regular', Menlo, monospace;
-        font-size: 0.95rem;
-        word-break: break-all;
-      }
-      .suite-card__meta {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 12px;
-        color: var(--muted);
-        font-size: 0.9rem;
-      }
       .suite-card__alert {
         padding: 6px 12px;
-        border-radius: 999px;
+        border-radius: 4px;
         font-weight: 600;
         font-size: 0.8rem;
         border: 1px solid rgba(248, 113, 113, 0.45);
         color: var(--danger);
         background: rgba(248, 113, 113, 0.12);
       }
-      .suite-card__footer {
-        display: flex;
-        justify-content: flex-end;
-      }
-      .suite-link {
-        font-weight: 600;
-        color: var(--accent);
-      }
-      .suite-link--disabled {
-        color: var(--muted);
-        cursor: not-allowed;
-      }
       .suite-card__error {
         margin: 0;
         padding: 14px 18px;
-        border-radius: 16px;
+        border-radius: 4px;
         background: rgba(248, 113, 113, 0.12);
         border: 1px solid rgba(248, 113, 113, 0.35);
         color: rgba(248, 113, 113, 0.95);
@@ -652,27 +910,10 @@ ${suitesMarkup}
         justify-content: center;
         padding: 48px;
         background: var(--surface);
-        border-radius: 20px;
+        border-radius: 6px;
         border: 1px solid var(--border);
         color: var(--muted);
         font-size: 1rem;
-      }
-      .page-footer {
-        margin-top: 64px;
-        color: var(--muted);
-        font-size: 0.88rem;
-        text-align: center;
-      }
-      @media (max-width: 720px) {
-        .layout {
-          padding: 36px 20px 48px;
-        }
-        .hero {
-          padding: 24px;
-        }
-        .metrics-grid {
-          grid-template-columns: 1fr;
-        }
       }
     </style>
   </head>
@@ -762,98 +1003,324 @@ ${suitesMarkup}
         const assertionsSummary = this.escapeHtml(
           this.formatAssertionsSummary(step.assertions_results)
         );
-        const detailSections: string[] = [];
 
-        if (step.request_details) {
-          detailSections.push(`
-            <section class="detail-section">
-              <h4>Request</h4>
-              <pre>${this.escapeHtml(
-                this.formatJson(step.request_details)
-              )}</pre>
-            </section>
-          `);
-        }
+        const hasDetails =
+          step.request_details ||
+          step.response_details ||
+          (step.captured_variables &&
+            Object.keys(step.captured_variables).length > 0) ||
+          (step.input_results && step.input_results.length > 0) ||
+          (step.dynamic_assignments && step.dynamic_assignments.length > 0) ||
+          (step.iteration_results && step.iteration_results.length > 0) ||
+          step.scenarios_meta ||
+          (step.assertions_results && step.assertions_results.length > 0);
 
-        if (step.response_details) {
-          detailSections.push(`
-            <section class="detail-section">
-              <h4>Response</h4>
-              <pre>${this.escapeHtml(
-                this.formatJson(step.response_details)
-              )}</pre>
-            </section>
-          `);
-        }
-
-        if (
-          step.captured_variables &&
-          Object.keys(step.captured_variables).length > 0
-        ) {
-          detailSections.push(`
-            <section class="detail-section">
-              <h4>Captured Variables</h4>
-              <pre>${this.escapeHtml(
-                this.formatJson(step.captured_variables)
-              )}</pre>
-            </section>
-          `);
-        }
-
-        if (step.input_results && step.input_results.length > 0) {
-          detailSections.push(`
-            <section class="detail-section">
-              <h4>Inputs</h4>
-              <pre>${this.escapeHtml(this.formatJson(step.input_results))}</pre>
-            </section>
-          `);
-        }
-
-        if (step.dynamic_assignments && step.dynamic_assignments.length > 0) {
-          detailSections.push(`
-            <section class="detail-section">
-              <h4>Dynamic Assignments</h4>
-              <pre>${this.escapeHtml(
-                this.formatJson(step.dynamic_assignments)
-              )}</pre>
-            </section>
-          `);
-        }
-
-        if (step.iteration_results && step.iteration_results.length > 0) {
-          detailSections.push(`
-            <section class="detail-section">
-              <h4>Iteration Results (${step.iteration_results.length})</h4>
-              <pre>${this.escapeHtml(
-                this.formatJson(step.iteration_results)
-              )}</pre>
-            </section>
-          `);
-        }
-
-        if (step.scenarios_meta) {
-          detailSections.push(`
-            <section class="detail-section">
-              <h4>Scenario Metadata</h4>
-              <pre>${this.escapeHtml(
-                this.formatJson(step.scenarios_meta)
-              )}</pre>
-            </section>
-          `);
-        }
-
-        const detailContent =
-          detailSections.length > 0
-            ? `<details class="detail-toggle"><summary>Inspect</summary>${detailSections.join(
-                ""
-              )}</details>`
-            : '<span class="detail-empty">None</span>';
-
-        const errorCell = step.error_message
-          ? `<span class="error-text">${this.escapeHtml(
-              step.error_message
-            )}</span>`
-          : '<span class="muted">None</span>';
+        const detailContent = hasDetails
+          ? `<div class="detail-tabs">
+                <div class="detail-tabs-nav">
+                  ${
+                    step.request_details
+                      ? '<button class="tab-btn active" data-tab="request">Request</button>'
+                      : ""
+                  }
+                  ${
+                    step.response_details
+                      ? '<button class="tab-btn" data-tab="response">Response</button>'
+                      : ""
+                  }
+                  ${
+                    step.request_details
+                      ? '<button class="tab-btn" data-tab="curl">cURL</button>'
+                      : ""
+                  }
+                  ${
+                    step.assertions_results &&
+                    step.assertions_results.length > 0
+                      ? '<button class="tab-btn" data-tab="assertions">Assertions</button>'
+                      : ""
+                  }
+                  ${
+                    step.captured_variables &&
+                    Object.keys(step.captured_variables).length > 0
+                      ? '<button class="tab-btn" data-tab="variables">Variables</button>'
+                      : ""
+                  }
+                  ${
+                    step.input_results && step.input_results.length > 0
+                      ? '<button class="tab-btn" data-tab="inputs">Inputs</button>'
+                      : ""
+                  }
+                  ${
+                    step.dynamic_assignments &&
+                    step.dynamic_assignments.length > 0
+                      ? '<button class="tab-btn" data-tab="assignments">Assignments</button>'
+                      : ""
+                  }
+                  ${
+                    step.iteration_results && step.iteration_results.length > 0
+                      ? '<button class="tab-btn" data-tab="iterations">Iterations</button>'
+                      : ""
+                  }
+                  ${
+                    step.scenarios_meta
+                      ? '<button class="tab-btn" data-tab="scenarios">Scenarios</button>'
+                      : ""
+                  }
+                </div>
+                <div class="detail-tabs-content">
+                  ${
+                    step.request_details
+                      ? `<div class="tab-content active" data-tab="request">
+                    <div class="code-block">
+                      <div class="code-header">
+                        <span class="code-title">Request Details</span>
+                        <button class="copy-btn" onclick="copyToClipboard(this)" data-content="${this.escapeHtml(
+                          this.formatJson(step.request_details).replace(
+                            /"/g,
+                            "&quot;"
+                          )
+                        )}">
+                          <span class="copy-icon">📋</span>
+                          <span class="copy-text">Copy</span>
+                        </button>
+                      </div>
+                      <pre class="code-content">${this.escapeHtml(
+                        this.formatJson(step.request_details)
+                      )}</pre>
+                    </div>
+                  </div>`
+                      : ""
+                  }
+                  ${
+                    step.response_details
+                      ? `<div class="tab-content" data-tab="response">
+                    <div class="code-block">
+                      <div class="code-header">
+                        <span class="code-title">Response Details</span>
+                        <button class="copy-btn" onclick="copyToClipboard(this)" data-content="${this.escapeHtml(
+                          this.formatJson(step.response_details).replace(
+                            /"/g,
+                            "&quot;"
+                          )
+                        )}">
+                          <span class="copy-icon">📋</span>
+                          <span class="copy-text">Copy</span>
+                        </button>
+                      </div>
+                      <pre class="code-content">${this.escapeHtml(
+                        this.formatJson(step.response_details)
+                      )}</pre>
+                    </div>
+                  </div>`
+                      : ""
+                  }
+                  ${
+                    step.request_details
+                      ? `<div class="tab-content" data-tab="curl">
+                    <div class="code-block">
+                      <div class="code-header">
+                        <span class="code-title">cURL Command</span>
+                        <button class="copy-btn" onclick="copyToClipboard(this)" data-content="${this.escapeHtml(
+                          this.generateCurlCommand(
+                            step.request_details
+                          ).replace(/"/g, "&quot;")
+                        )}">
+                          <span class="copy-icon">📋</span>
+                          <span class="copy-text">Copy</span>
+                        </button>
+                      </div>
+                      <pre class="code-content">${this.escapeHtml(
+                        this.generateCurlCommand(step.request_details)
+                      )}</pre>
+                    </div>
+                  </div>`
+                      : ""
+                  }
+                  ${
+                    step.assertions_results &&
+                    step.assertions_results.length > 0
+                      ? `<div class="tab-content" data-tab="assertions">
+                    <div class="assertions-list">
+                      ${step.assertions_results
+                        .map(
+                          (assertion, idx) => `
+                        <div class="assertion-item ${
+                          assertion.passed
+                            ? "assertion-passed"
+                            : "assertion-failed"
+                        }">
+                          <div class="assertion-header">
+                            <span class="assertion-icon">${
+                              assertion.passed ? "✅" : "❌"
+                            }</span>
+                            <span class="assertion-title">Assertion ${
+                              idx + 1
+                            }</span>
+                            <span class="assertion-status">${
+                              assertion.passed ? "PASSED" : "FAILED"
+                            }</span>
+                          </div>
+                          <div class="assertion-details">
+                            <div class="assertion-field">
+                              <strong>Field:</strong> <code>${this.escapeHtml(
+                                assertion.field || "N/A"
+                              )}</code>
+                            </div>
+                            <div class="assertion-message">
+                              <strong>Message:</strong> <code>${this.escapeHtml(
+                                assertion.message || "N/A"
+                              )}</code>
+                            </div>
+                            <div class="assertion-expected">
+                              <strong>Expected:</strong> <code>${this.escapeHtml(
+                                String(assertion.expected || "N/A")
+                              )}</code>
+                            </div>
+                            <div class="assertion-actual">
+                              <strong>Actual:</strong> <code>${this.escapeHtml(
+                                String(assertion.actual || "N/A")
+                              )}</code>
+                            </div>
+                            ${
+                              !assertion.passed && assertion.message
+                                ? `<div class="assertion-error">
+                              <strong>Error:</strong> <span class="error-text">${this.escapeHtml(
+                                assertion.message
+                              )}</span>
+                            </div>`
+                                : ""
+                            }
+                          </div>
+                        </div>
+                      `
+                        )
+                        .join("")}
+                    </div>
+                  </div>`
+                      : ""
+                  }
+                  ${
+                    step.captured_variables &&
+                    Object.keys(step.captured_variables).length > 0
+                      ? `<div class="tab-content" data-tab="variables">
+                    <div class="code-block">
+                      <div class="code-header">
+                        <span class="code-title">Captured Variables</span>
+                        <button class="copy-btn" onclick="copyToClipboard(this)" data-content="${this.escapeHtml(
+                          this.formatJson(step.captured_variables).replace(
+                            /"/g,
+                            "&quot;"
+                          )
+                        )}">
+                          <span class="copy-icon">📋</span>
+                          <span class="copy-text">Copy</span>
+                        </button>
+                      </div>
+                      <pre class="code-content">${this.escapeHtml(
+                        this.formatJson(step.captured_variables)
+                      )}</pre>
+                    </div>
+                  </div>`
+                      : ""
+                  }
+                  ${
+                    step.input_results && step.input_results.length > 0
+                      ? `<div class="tab-content" data-tab="inputs">
+                    <div class="code-block">
+                      <div class="code-header">
+                        <span class="code-title">Input Results</span>
+                        <button class="copy-btn" onclick="copyToClipboard(this)" data-content="${this.escapeHtml(
+                          this.formatJson(step.input_results).replace(
+                            /"/g,
+                            "&quot;"
+                          )
+                        )}">
+                          <span class="copy-icon">📋</span>
+                          <span class="copy-text">Copy</span>
+                        </button>
+                      </div>
+                      <pre class="code-content">${this.escapeHtml(
+                        this.formatJson(step.input_results)
+                      )}</pre>
+                    </div>
+                  </div>`
+                      : ""
+                  }
+                  ${
+                    step.dynamic_assignments &&
+                    step.dynamic_assignments.length > 0
+                      ? `<div class="tab-content" data-tab="assignments">
+                    <div class="code-block">
+                      <div class="code-header">
+                        <span class="code-title">Dynamic Assignments</span>
+                        <button class="copy-btn" onclick="copyToClipboard(this)" data-content="${this.escapeHtml(
+                          this.formatJson(step.dynamic_assignments).replace(
+                            /"/g,
+                            "&quot;"
+                          )
+                        )}">
+                          <span class="copy-icon">📋</span>
+                          <span class="copy-text">Copy</span>
+                        </button>
+                      </div>
+                      <pre class="code-content">${this.escapeHtml(
+                        this.formatJson(step.dynamic_assignments)
+                      )}</pre>
+                    </div>
+                  </div>`
+                      : ""
+                  }
+                  ${
+                    step.iteration_results && step.iteration_results.length > 0
+                      ? `<div class="tab-content" data-tab="iterations">
+                    <div class="code-block">
+                      <div class="code-header">
+                        <span class="code-title">Iteration Results (${
+                          step.iteration_results.length
+                        })</span>
+                        <button class="copy-btn" onclick="copyToClipboard(this)" data-content="${this.escapeHtml(
+                          this.formatJson(step.iteration_results).replace(
+                            /"/g,
+                            "&quot;"
+                          )
+                        )}">
+                          <span class="copy-icon">📋</span>
+                          <span class="copy-text">Copy</span>
+                        </button>
+                      </div>
+                      <pre class="code-content">${this.escapeHtml(
+                        this.formatJson(step.iteration_results)
+                      )}</pre>
+                    </div>
+                  </div>`
+                      : ""
+                  }
+                  ${
+                    step.scenarios_meta
+                      ? `<div class="tab-content" data-tab="scenarios">
+                    <div class="code-block">
+                      <div class="code-header">
+                        <span class="code-title">Scenario Metadata</span>
+                        <button class="copy-btn" onclick="copyToClipboard(this)" data-content="${this.escapeHtml(
+                          this.formatJson(step.scenarios_meta).replace(
+                            /"/g,
+                            "&quot;"
+                          )
+                        )}">
+                          <span class="copy-icon">📋</span>
+                          <span class="copy-text">Copy</span>
+                        </button>
+                      </div>
+                      <pre class="code-content">${this.escapeHtml(
+                        this.formatJson(step.scenarios_meta)
+                      )}</pre>
+                    </div>
+                  </div>`
+                      : ""
+                  }
+                </div>
+              </div>`
+          : '<div class="detail-empty">No details available</div>';
 
         const stepIdDisplay = step.step_id
           ? `<div class="step-id">ID: ${this.escapeHtml(step.step_id)}</div>`
@@ -873,27 +1340,48 @@ ${suitesMarkup}
         );
 
         return `
-          <tr>
-            <td>${index + 1}</td>
-            <td>
-              <div class="step-name">${this.escapeHtml(step.step_name)}</div>
-              ${stepIdDisplay}
-              ${qualifiedIdDisplay}
-            </td>
-            <td>${statusBadge}</td>
-            <td>${durationSummary}</td>
-            <td>${assertionsSummary}</td>
-            <td>${errorCell}</td>
-            <td>${detailContent}</td>
-          </tr>
+          <div class="step-card">
+            <div class="step-header">
+              <div class="step-index">${index + 1}</div>
+              <div class="step-info">
+                <div class="step-name">${this.escapeHtml(step.step_name)}</div>
+                ${stepIdDisplay}
+                ${qualifiedIdDisplay}
+              </div>
+              <div class="step-status">${statusBadge}</div>
+            </div>
+            <div class="step-metrics">
+              <div class="metric">
+                <span class="metric-label">Duration</span>
+                <span class="metric-value">${durationSummary}</span>
+              </div>
+              <div class="metric">
+                <span class="metric-label">Assertions</span>
+                <span class="metric-value">${assertionsSummary}</span>
+              </div>
+              ${
+                step.error_message
+                  ? `<div class="metric metric-error">
+                <span class="metric-label">Error</span>
+                <span class="metric-value error-text">${this.escapeHtml(
+                  step.error_message
+                )}</span>
+              </div>`
+                  : ""
+              }
+            </div>
+            <div class="step-details">
+              ${detailContent}
+            </div>
+          </div>
         `;
       })
       .join("\n");
 
-    const tableBody =
+    const stepsContent =
       steps.trim().length > 0
         ? steps
-        : '<tr class="empty-row"><td colspan="7">No steps were executed.</td></tr>';
+        : '<div class="empty-state">No steps were executed.</div>';
 
     return `<!DOCTYPE html>
 <html lang="en">
@@ -939,9 +1427,9 @@ ${suitesMarkup}
       .hero {
         background: linear-gradient(135deg, rgba(17, 24, 39, 0.92), rgba(12, 18, 28, 0.94));
         border: 1px solid var(--border-strong);
-        border-radius: 24px;
-        padding: 32px;
-        box-shadow: 0 30px 60px rgba(8, 15, 26, 0.45);
+        border-radius: 6px;
+        padding: 28px;
+        box-shadow: 0 16px 28px rgba(8, 15, 26, 0.32);
         display: flex;
         flex-direction: column;
         gap: 16px;
@@ -1006,7 +1494,7 @@ ${suitesMarkup}
         display: inline-flex;
         align-items: center;
         padding: 10px 16px;
-        border-radius: 12px;
+        border-radius: 6px;
         background: var(--surface);
         border: 1px solid var(--border);
         font-size: 0.95rem;
@@ -1040,103 +1528,109 @@ ${suitesMarkup}
       }
       .status-failure {
         background: rgba(248, 113, 113, 0.18);
-        color: var(--danger);
+        color: var,--danger);
       }
       .status-skipped {
         background: rgba(250, 204, 21, 0.18);
         color: var(--warning);
-      }
-      .suite-error-banner {
-        margin: 24px 0 0;
-        padding: 16px 18px;
-        border-radius: 18px;
-        border: 1px solid rgba(248, 113, 113, 0.4);
-        background: rgba(248, 113, 113, 0.12);
-        color: rgba(248, 113, 113, 0.95);
-        font-size: 0.95rem;
-      }
-      .metrics-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-        gap: 20px;
-        margin-top: 36px;
-      }
-      .metric-card {
-        background: var(--surface);
-        border-radius: 18px;
-        border: 1px solid var(--border);
-        padding: 20px 22px;
-        box-shadow: 0 20px 40px rgba(8, 15, 26, 0.25);
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-      }
-      .metric-card--accent {
-        border-color: rgba(255, 108, 55, 0.45);
-        box-shadow: 0 25px 55px rgba(255, 108, 55, 0.25);
-      }
-      .metric-card--success {
-        border-color: rgba(45, 212, 191, 0.4);
-      }
-      .metric-label {
-        text-transform: uppercase;
-        font-size: 0.75rem;
-        letter-spacing: 0.08em;
-        color: var(--muted);
-      }
-      .metric-value {
-        font-size: 2rem;
-        font-weight: 700;
-        letter-spacing: -0.02em;
-      }
-      .metric-subtext {
-        font-size: 0.9rem;
-        color: var(--muted);
       }
       .steps-section {
         margin-top: 48px;
       }
       .steps-card {
         background: var(--surface-alt);
-        border-radius: 22px;
+        border-radius: 6px;
         border: 1px solid var(--border);
-        padding: 24px 26px;
-        box-shadow: 0 24px 48px rgba(8, 15, 26, 0.28);
+        padding: 20px 22px;
+        box-shadow: 0 16px 28px rgba(8, 15, 26, 0.28);
+        overflow-x: auto;
       }
       .steps-card__header {
         display: flex;
         justify-content: space-between;
         align-items: center;
         gap: 16px;
-        margin-bottom: 18px;
+        margin-bottom: 16px;
       }
       .steps-card__header h2 {
         margin: 0;
-        font-size: 1.4rem;
+        font-size: 1.35rem;
       }
       .steps-summary {
         color: var(--muted);
         font-size: 0.95rem;
       }
-      .steps-table {
-        width: 100%;
-        border-collapse: collapse;
-        border-radius: 16px;
+      .steps-grid {
+        display: grid;
+        gap: 16px;
+        margin-top: 16px;
+      }
+      .step-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 6px;
         overflow: hidden;
+        transition: all 0.2s ease;
       }
-      .steps-table thead {
-        background: rgba(17, 24, 39, 0.82);
-        color: var(--text);
+      .step-card:hover {
+        border-color: var(--border-strong);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(8, 15, 26, 0.15);
       }
-      .steps-table th,
-      .steps-table td {
-        padding: 14px 18px;
-        text-align: left;
-        border-bottom: 1px solid rgba(148, 163, 184, 0.15);
-        vertical-align: top;
+      .step-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 16px;
+        border-bottom: 1px solid var(--border);
+        background: var(--surface-alt);
       }
-      .steps-table tbody tr:hover {
-        background: rgba(30, 42, 61, 0.35);
+      .step-index {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        font-weight: 600;
+        font-size: 0.9rem;
+        color: var(--muted);
+      }
+      .step-info {
+        flex: 1;
+      }
+      .step-status {
+        margin-left: auto;
+      }
+      .step-metrics {
+        display: flex;
+        gap: 16px;
+        padding: 12px 16px;
+        background: var(--surface-soft);
+        border-bottom: 1px solid var(--border);
+      }
+      .metric {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .metric-error {
+        color: var(--danger);
+      }
+      .metric-label {
+        font-size: 0.75rem;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+      .metric-value {
+        font-size: 0.9rem;
+        font-weight: 600;
+      }
+      .step-details {
+        padding: 16px;
       }
       .step-name {
         font-weight: 600;
@@ -1159,73 +1653,234 @@ ${suitesMarkup}
         color: var(--muted);
         font-size: 0.9rem;
       }
-      .detail-toggle {
+      .detail-tabs {
         background: var(--surface);
-        border-radius: 14px;
         border: 1px solid var(--border);
-        padding: 12px 14px;
+        border-radius: 4px;
+        overflow: hidden;
       }
-      .detail-toggle > summary {
-        cursor: pointer;
-        font-weight: 600;
-        color: var(--accent);
-        outline: none;
+      .detail-tabs-nav {
+        display: flex;
+        border-bottom: 1px solid var(--border);
+        background: var(--surface-alt);
       }
-      .detail-toggle[open] {
-        border-color: rgba(255, 108, 55, 0.4);
-      }
-      .detail-section {
-        margin-top: 14px;
-      }
-      .detail-section h4 {
-        margin: 0 0 8px;
+      .tab-btn {
+        padding: 12px 16px;
+        border: none;
+        background: transparent;
+        color: var(--muted);
         font-size: 0.85rem;
+        font-weight: 500;
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+        transition: all 0.2s ease;
+      }
+      .tab-btn:hover {
+        color: var(--text);
+        background: rgba(255, 255, 255, 0.05);
+      }
+      .tab-btn.active {
+        color: var(--accent);
+        border-bottom-color: var(--accent);
+        background: rgba(255, 108, 55, 0.1);
+      }
+      .detail-tabs-content {
+        padding: 0;
+      }
+      .tab-content {
+        display: none;
+        padding: 16px;
+      }
+      .tab-content.active {
+        display: block;
+      }
+      .code-block {
+        background: var(--surface-soft);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        overflow: hidden;
+      }
+      .code-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 12px;
+        background: var(--surface-alt);
+        border-bottom: 1px solid var(--border);
+      }
+      .code-title {
+        font-size: 0.8rem;
+        color: var(--muted);
+        font-weight: 600;
         text-transform: uppercase;
         letter-spacing: 0.05em;
-        color: var(--muted);
       }
-      .detail-section pre {
+      .copy-btn {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        padding: 4px 8px;
+        background: transparent;
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        color: var(--muted);
+        font-size: 0.75rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+      .copy-btn:hover {
+        background: var(--surface);
+        color: var(--text);
+        border-color: var(--accent);
+      }
+      .copy-btn.copied {
+        background: var(--success);
+        color: white;
+        border-color: var(--success);
+      }
+      .copy-icon {
+        font-size: 0.7rem;
+      }
+      .code-content {
         margin: 0;
+        padding: 12px;
         background: var(--surface-soft);
-        border-radius: 12px;
+        color: var(--text);
+        font-size: 0.8rem;
+        line-height: 1.5;
+        font-family: 'JetBrains Mono', 'Consolas', 'Monaco', monospace;
+        overflow-x: auto;
+        white-space: pre;
+        max-height: 300px;
+        overflow-y: auto;
+      }
+      .assertions-list {
+        padding: 16px;
+        max-height: 400px;
+        overflow-y: auto;
+      }
+      .assertion-item {
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        margin-bottom: 12px;
+        overflow: hidden;
+      }
+      .assertion-passed {
+        border-color: var(--success);
+        background: rgba(45, 212, 191, 0.05);
+      }
+      .assertion-failed {
+        border-color: var(--danger);
+        background: rgba(248, 113, 113, 0.05);
+      }
+      .assertion-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        background: var(--surface-alt);
+        border-bottom: 1px solid var(--border);
+        font-weight: 600;
+        font-size: 0.85rem;
+      }
+      .assertion-passed .assertion-header {
+        background: rgba(45, 212, 191, 0.1);
+        color: var(--success);
+      }
+      .assertion-failed .assertion-header {
+        background: rgba(248, 113, 113, 0.1);
+        color: var(--danger);
+      }
+      .assertion-icon {
+        font-size: 0.9rem;
+      }
+      .assertion-title {
+        flex: 1;
+      }
+      .assertion-status {
+        font-size: 0.75rem;
+        padding: 2px 6px;
+        border-radius: 3px;
+        background: currentColor;
+        color: white;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+      .assertion-details {
+        padding: 12px;
+        display: grid;
+        gap: 8px;
+        font-size: 0.85rem;
+      }
+      .assertion-details code {
+        background: var(--surface-soft);
+        padding: 2px 4px;
+        border-radius: 3px;
+        font-family: 'JetBrains Mono', 'Consolas', 'Monaco', monospace;
+        font-size: 0.8rem;
+      }
+      .assertion-error {
+        padding: 8px;
+        background: rgba(248, 113, 113, 0.1);
+        border: 1px solid rgba(248, 113, 113, 0.3);
+        border-radius: 4px;
+        margin-top: 4px;
+      }
+      .empty-state {
+        text-align: center;
+        padding: 48px 32px;
+        color: var(--muted);
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        font-size: 1rem;
+      }
+      .suite-error-banner {
+        margin: 24px 0 0;
+        padding: 16px 18px;
+        border-radius: 4px;
+        border: 1px solid rgba(248, 113, 113, 0.4);
+        background: rgba(248, 113, 113, 0.12);
+        color: rgba(248, 113, 113, 0.95);
+        font-size: 0.95rem;
+      }
+      .stat {
+        background: var(--surface);
+        border-radius: 4px;
         border: 1px solid var(--border);
         padding: 14px;
-        overflow: auto;
-        font-size: 0.85rem;
-        line-height: 1.55;
-        font-family: 'JetBrains Mono', 'SFMono-Regular', Menlo, monospace;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
       }
-      .empty-row td {
-        text-align: center;
-        padding: 32px 0;
+      .suite-card__alert {
+        padding: 6px 12px;
+        border-radius: 4px;
+        font-weight: 600;
+        font-size: 0.8rem;
+        border: 1px solid rgba(248, 113, 113, 0.45);
+        color: var(--danger);
+        background: rgba(248, 113, 113, 0.12);
+      }
+      .suite-card__error {
+        margin: 0;
+        padding: 14px 18px;
+        border-radius: 4px;
+        background: rgba(248, 113, 113, 0.12);
+        border: 1px solid rgba(248, 113, 113, 0.35);
+        color: rgba(248, 113, 113, 0.95);
+        font-size: 0.92rem;
+      }
+      .empty-state {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 48px;
+        background: var(--surface);
+        border-radius: 6px;
+        border: 1px solid var(--border);
         color: var(--muted);
-      }
-      .page-footer {
-        margin-top: 60px;
-        color: var(--muted);
-        font-size: 0.88rem;
-        text-align: center;
-      }
-      @media (max-width: 720px) {
-        .layout {
-          padding: 36px 20px 48px;
-        }
-        .hero {
-          padding: 24px;
-        }
-        .metrics-grid,
-        .steps-card__header {
-          flex-direction: column;
-          align-items: flex-start;
-          gap: 12px;
-        }
-        .steps-card {
-          padding: 20px;
-        }
-        .steps-table th,
-        .steps-table td {
-          padding: 12px;
-        }
+        font-size: 1rem;
       }
     </style>
   </head>
@@ -1279,31 +1934,94 @@ ${suitesMarkup}
             <h2>Steps</h2>
             <span class="steps-summary">${passedStepsLabel}/${totalStepsLabel} passed</span>
           </div>
-          <table class="steps-table">
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>Step</th>
-                <th>Status</th>
-                <th>Duration</th>
-                <th>Assertions</th>
-                <th>Error</th>
-                <th>Details</th>
-              </tr>
-            </thead>
-            <tbody>
-${tableBody}
-            </tbody>
-          </table>
+          <div class="steps-grid">
+${stepsContent}
+          </div>
         </div>
       </section>
       <footer class="page-footer">
         Generated by Flow Test Engine. Keep the JSON artifact nearby for end-to-end traceability.
       </footer>
     </div>
+    <script>
+      // Tab functionality
+      document.addEventListener('DOMContentLoaded', function() {
+        // Initialize tab functionality
+        const tabContainers = document.querySelectorAll('.detail-tabs');
+
+        tabContainers.forEach(container => {
+          const tabBtns = container.querySelectorAll('.tab-btn');
+          const tabContents = container.querySelectorAll('.tab-content');
+
+          tabBtns.forEach(btn => {
+            btn.addEventListener('click', function() {
+              const targetTab = this.getAttribute('data-tab');
+
+              // Remove active class from all buttons and contents in this container
+              tabBtns.forEach(b => b.classList.remove('active'));
+              tabContents.forEach(c => c.classList.remove('active'));
+
+              // Add active class to clicked button and corresponding content
+              this.classList.add('active');
+              const targetContent = container.querySelector(\`[data-tab="\${targetTab}"].tab-content\`);
+              if (targetContent) {
+                targetContent.classList.add('active');
+              }
+            });
+          });
+        });
+      });
+
+      // Copy to clipboard functionality
+      function copyToClipboard(button) {
+        const content = button.getAttribute('data-content');
+
+        if (!content) return;
+
+        // Decode HTML entities
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = content;
+        const decodedContent = tempDiv.textContent || tempDiv.innerText || '';
+
+        navigator.clipboard.writeText(decodedContent).then(() => {
+          // Visual feedback
+          const originalHTML = button.innerHTML;
+          button.classList.add('copied');
+          button.innerHTML = '<span class="copy-icon">✓</span><span class="copy-text">Copied!</span>';
+
+          setTimeout(() => {
+            button.classList.remove('copied');
+            button.innerHTML = originalHTML;
+          }, 2000);
+        }).catch(err => {
+          console.error('Failed to copy text: ', err);
+
+          // Fallback for older browsers
+          const textArea = document.createElement('textarea');
+          textArea.value = decodedContent;
+          document.body.appendChild(textArea);
+          textArea.select();
+          try {
+            document.execCommand('copy');
+            const originalHTML = button.innerHTML;
+            button.classList.add('copied');
+            button.innerHTML = '<span class="copy-icon">✓</span><span class="copy-text">Copied!</span>';
+
+            setTimeout(() => {
+              button.classList.remove('copied');
+              button.innerHTML = originalHTML;
+            }, 2000);
+          } catch (err) {
+            console.error('Fallback copy failed: ', err);
+          }
+          document.body.removeChild(textArea);
+        });
+      }
+    </script>
   </body>
 </html>`;
   }
+
   private createLatestHtmlSnapshot(
     htmlRoot: string,
     assets: HtmlReportAsset[]
@@ -1401,5 +2119,40 @@ ${tableBody}
       .replace(/\s+/g, "-")
       .replace(/-+/g, "-")
       .replace(/^-|-$/g, "");
+  }
+
+  private generateCurlCommand(requestDetails: any): string {
+    if (!requestDetails) {
+      return "# No request details available";
+    }
+
+    let curlCommand = "curl";
+
+    // Add method
+    if (requestDetails.method && requestDetails.method !== "GET") {
+      curlCommand += ` -X ${requestDetails.method}`;
+    }
+
+    // Add headers
+    if (requestDetails.headers && typeof requestDetails.headers === "object") {
+      Object.entries(requestDetails.headers).forEach(([key, value]) => {
+        curlCommand += ` \\\n  -H "${key}: ${value}"`;
+      });
+    }
+
+    // Add body if present
+    if (requestDetails.body) {
+      const bodyStr =
+        typeof requestDetails.body === "string"
+          ? requestDetails.body
+          : JSON.stringify(requestDetails.body);
+      curlCommand += ` \\\n  -d '${bodyStr}'`;
+    }
+
+    // Add URL (use full_url if available, otherwise url)
+    const url = requestDetails.full_url || requestDetails.url || "";
+    curlCommand += ` \\\n  "${url}"`;
+
+    return curlCommand;
   }
 }
