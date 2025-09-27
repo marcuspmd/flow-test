@@ -305,6 +305,20 @@ export class ConfigManager {
     }
 
     const allowedReportFormats: ReportFormat[] = ["json", "html"];
+
+    // Validate reporting formats before filtering
+    if (Array.isArray(config.reporting?.formats)) {
+      const configuredFormats = config.reporting!.formats as ReportFormat[];
+      const invalidFormats = configuredFormats.filter(
+        (format) => !allowedReportFormats.includes(format)
+      );
+      if (invalidFormats.length > 0) {
+        throw new Error(
+          `Invalid reporting formats: ${invalidFormats.join(", ")}`
+        );
+      }
+    }
+
     const configuredFormats = Array.isArray(config.reporting?.formats)
       ? (config.reporting!.formats as ReportFormat[]).filter((format) =>
           allowedReportFormats.includes(format)
