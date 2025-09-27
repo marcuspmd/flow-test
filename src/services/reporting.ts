@@ -128,9 +128,6 @@ export class ReportingService {
     const htmlRoot = path.join(outputDir, htmlConfig.output_subdir || "html");
     fs.mkdirSync(htmlRoot, { recursive: true });
 
-    const runDir = path.join(htmlRoot, timestamp);
-    fs.mkdirSync(runDir, { recursive: true });
-
     const generatedAt = new Date().toISOString();
     const assets: HtmlReportAsset[] = [];
     const suiteEntries: SuiteHtmlEntry[] = [];
@@ -140,8 +137,8 @@ export class ReportingService {
         const sanitizedName =
           this.sanitizeFileName(suite.node_id || suite.suite_name) ||
           `suite-${index + 1}`;
-        const fileName = `${sanitizedName}.html`;
-        const filePath = path.join(runDir, fileName);
+        const fileName = `${sanitizedName}_${timestamp}.html`;
+        const filePath = path.join(htmlRoot, fileName);
         const suiteHtml = this.renderSuiteHtml(suite, {
           generatedAt,
           projectName: result.project_name,
@@ -168,10 +165,10 @@ export class ReportingService {
 
     if (htmlConfig.aggregate !== false) {
       const summaryFileName = baseName
-        ? `${baseName}-summary.html`
-        : "summary.html";
-      const summaryPath = path.join(runDir, summaryFileName);
-      const indexPath = path.join(runDir, "index.html");
+        ? `${baseName}-summary_${timestamp}.html`
+        : `summary_${timestamp}.html`;
+      const summaryPath = path.join(htmlRoot, summaryFileName);
+      const indexPath = path.join(htmlRoot, `index_${timestamp}.html`);
       const summaryHtml = this.renderSummaryHtml(result, suiteEntries, {
         generatedAt,
         timestamp,
@@ -180,7 +177,7 @@ export class ReportingService {
       fs.writeFileSync(indexPath, summaryHtml, "utf8");
       this.logger.info(`HTML report (summary): ${indexPath}`);
 
-      if (summaryFileName !== "index.html") {
+      if (summaryFileName !== `index_${timestamp}.html`) {
         fs.writeFileSync(summaryPath, summaryHtml, "utf8");
         this.logger.info(`HTML report (summary alias): ${summaryPath}`);
       }
@@ -190,7 +187,7 @@ export class ReportingService {
         scope: "aggregate",
         absolutePath: indexPath,
         relativePath: path.relative(outputDir, indexPath),
-        fileName: "index.html",
+        fileName: `index_${timestamp}.html`,
       };
 
       assets.unshift(aggregateAsset);
@@ -238,9 +235,7 @@ export class ReportingService {
       this.formatDuration(result.total_duration_ms)
     );
     const totalSuitesLabel = this.escapeHtml(result.total_tests.toString());
-    const successRateLabel = this.escapeHtml(
-      result.success_rate.toFixed(2)
-    );
+    const successRateLabel = this.escapeHtml(result.success_rate.toFixed(2));
     const suitesPassedLabel = this.escapeHtml(
       result.successful_tests.toString()
     );
@@ -273,9 +268,7 @@ export class ReportingService {
         const durationSummary = this.escapeHtml(
           this.formatDuration(suite.duration_ms)
         );
-        const successSummary = this.escapeHtml(
-          suite.success_rate.toFixed(2)
-        );
+        const successSummary = this.escapeHtml(suite.success_rate.toFixed(2));
         const failureNotice =
           suite.steps_failed > 0
             ? `<div class="suite-card__alert suite-card__alert--danger">${this.escapeHtml(
@@ -740,13 +733,9 @@ ${suitesMarkup}
     const durationLabel = this.escapeHtml(
       this.formatDuration(suite.duration_ms)
     );
-    const successRateLabel = this.escapeHtml(
-      suite.success_rate.toFixed(2)
-    );
+    const successRateLabel = this.escapeHtml(suite.success_rate.toFixed(2));
     const totalStepsLabel = this.escapeHtml(suite.steps_executed.toString());
-    const passedStepsLabel = this.escapeHtml(
-      suite.steps_successful.toString()
-    );
+    const passedStepsLabel = this.escapeHtml(suite.steps_successful.toString());
     const failedStepsLabel = this.escapeHtml(suite.steps_failed.toString());
     const skippedStepsCount = Math.max(
       0,

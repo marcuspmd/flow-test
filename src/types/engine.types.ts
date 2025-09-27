@@ -1176,6 +1176,18 @@ export interface CacheConfig {
 }
 
 /**
+ * Available report output formats.
+ *
+ * @remarks
+ * Defines the supported formats for test result reports:
+ * - `json`: Machine-readable JSON format
+ * - `html`: Rich HTML summary views generated directly by the engine
+ *
+ * @public
+ */
+export type ReportFormat = "json" | "html";
+
+/**
  * Re-export dos tipos de configuração
  */
 export * from "./config.types";

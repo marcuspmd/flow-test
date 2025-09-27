@@ -42,6 +42,7 @@ execution:
 reporting:
   formats:
     - json
+    - html
   output_dir: ./results
   aggregate: true
   include_performance_metrics: true

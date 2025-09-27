@@ -304,11 +304,11 @@ export class ConfigManager {
       throw new Error("project_name is required in configuration");
     }
 
-    const allowedReportFormats: ReportFormat[] = ["json", "html"];
+    const allowedReportFormats: string[] = ["json", "html"];
 
     // Validate reporting formats before filtering
     if (Array.isArray(config.reporting?.formats)) {
-      const configuredFormats = config.reporting!.formats as ReportFormat[];
+      const configuredFormats = config.reporting!.formats as string[];
       const invalidFormats = configuredFormats.filter(
         (format) => !allowedReportFormats.includes(format)
       );
@@ -320,7 +320,7 @@ export class ConfigManager {
     }
 
     const configuredFormats = Array.isArray(config.reporting?.formats)
-      ? (config.reporting!.formats as ReportFormat[]).filter((format) =>
+      ? (config.reporting!.formats as string[]).filter((format) =>
           allowedReportFormats.includes(format)
         )
       : [];
@@ -376,7 +376,7 @@ export class ConfigManager {
         },
       },
       reporting: {
-        formats: normalizedFormats,
+        formats: normalizedFormats as ReportFormat[],
         output_dir: config.reporting?.output_dir || "./results",
         aggregate: config.reporting?.aggregate !== false,
         include_performance_metrics:
@@ -499,7 +499,7 @@ export class ConfigManager {
     }
 
     // Valida reporting formats
-    const validFormats = ["json"];
+    const validFormats = ["json", "html"];
     const invalidFormats = config.reporting!.formats.filter(
       (format) => !validFormats.includes(format)
     );
