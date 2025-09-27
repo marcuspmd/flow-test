@@ -125,6 +125,24 @@ O dashboard agora suporta monitoramento ao vivo das execuções através do **Fl
    - Visualizar runs em tempo real via SSE
    - Consultar histórico e repetir execuções concluídas
 
+### 📡 Eventos SSE Disponíveis
+
+O orchestrator expõe um endpoint dedicado para streaming de logs em tempo real:
+
+- **URL:** `GET /logs`
+- **Parâmetros opcionais:**
+   - `runId` filtra os eventos de um run específico.
+   - `levels` aceita uma lista separada por vírgula (`info,warn,error`).
+   - `limit` controla o backlog inicial (padrão: 200 eventos mais recentes).
+
+A resposta utiliza Server-Sent Events com os seguintes tipos:
+
+- `runs`: entrega o snapshot inicial de sessões ativas e concluídas.
+- `log`: emite cada log normalizado com metadados, status e contexto sanitizado.
+- `ping`: heartbeat enviado a cada 15s para manter a conexão aberta.
+
+Use essas informações para conectar dashboards externos ou ferramentas de observabilidade ao fluxo de logs do engine.
+
 ## 📊 Tipos de Componentes Planejados
 
 ### ✅ Já Especificados:

@@ -31,7 +31,11 @@
 
 import path from "path";
 import { FlowTestEngine } from "./core/engine";
-import { EngineExecutionOptions, DiscoveredTest } from "./types/config.types";
+import {
+  EngineExecutionOptions,
+  DiscoveredTest,
+  ReportFormat,
+} from "./types/config.types";
 import { EngineHooks, ExecutionStats, TestSuite } from "./types/engine.types";
 import {
   SwaggerImportService,
@@ -46,6 +50,10 @@ import {
 } from "./services/logger.service";
 import { RealtimeReporter } from "./services/realtime-reporter";
 import { createConsoleHooks } from "./services/hook-factory";
+import {
+  LogStreamingService,
+  LogSessionHandle,
+} from "./services/log-streaming.service";
 
 const HOOK_KEYS: (keyof EngineHooks)[] = [
   "onTestDiscovered",
@@ -65,8 +73,9 @@ function mergeHooks(...hooks: Array<EngineHooks | undefined>): EngineHooks {
     const callbacks = hooks
       .filter(Boolean)
       .map((hook) => hook![hookName])
-      .filter((callback): callback is (...args: any[]) => any =>
-        typeof callback === "function"
+      .filter(
+        (callback): callback is (...args: any[]) => any =>
+          typeof callback === "function"
       );
 
     if (callbacks.length > 0) {
@@ -102,6 +111,7 @@ function mergeHooks(...hooks: Array<EngineHooks | undefined>): EngineHooks {
  */
 async function main() {
   const args = process.argv.slice(2);
+  let logSession: LogSessionHandle | undefined;
 
   // Handle init command first
   if (args[0] === "init") {
@@ -190,6 +200,14 @@ async function main() {
         }
         break;
 
+      case "--step":
+      case "--step-id":
+        if (i + 1 < args.length) {
+          const stepIds = args[++i].split(",");
+          options.filters = { ...options.filters, step_ids: stepIds };
+        }
+        break;
+
       case "--tag":
       case "--tags":
         if (i + 1 < args.length) {
@@ -244,6 +262,31 @@ async function main() {
           liveEventsPath = path.join("results", "live-events.jsonl");
         }
         break;
+
+      case "--html-output": {
+        const reportingOptions = options.reporting ?? {};
+        const currentFormats = new Set<ReportFormat>(
+          reportingOptions.formats ?? []
+        );
+        currentFormats.add("json");
+        currentFormats.add("html");
+
+        reportingOptions.formats = Array.from(currentFormats);
+
+        const htmlOptions = {
+          aggregate: reportingOptions.html?.aggregate ?? true,
+          per_suite: reportingOptions.html?.per_suite ?? true,
+          output_subdir: reportingOptions.html?.output_subdir,
+        };
+
+        if (i + 1 < args.length && !args[i + 1].startsWith("-")) {
+          htmlOptions.output_subdir = args[++i];
+        }
+
+        reportingOptions.html = htmlOptions;
+        options.reporting = reportingOptions;
+        break;
+      }
 
       case "--postman-import":
         if (i + 1 < args.length) {
@@ -447,6 +490,7 @@ async function main() {
     // Configura logger conforme a verbosidade escolhida
     setupLogger("console", { verbosity: options.verbosity || "simple" });
     const logger = LoggerService.getInstance();
+    const logStream = LogStreamingService.getInstance();
     const baseHooks = createConsoleHooks(logger);
 
     let liveReporter: RealtimeReporter | undefined;
@@ -471,6 +515,18 @@ async function main() {
 
     const engine = new FlowTestEngine(engineOptions, engineHooks);
 
+    const currentLogSession = logStream.beginSession({
+      runId: liveReporterRunId ?? undefined,
+      source: "cli",
+      label: dryRun ? "CLI dry run" : "CLI execution",
+      metadata: {
+        options: engineOptions,
+        dryRun,
+      },
+      status: "running",
+    });
+    logSession = currentLogSession;
+
     if (dryRun) {
       // Execução em modo dry-run
       const plan = await engine.dryRun();
@@ -481,6 +537,14 @@ async function main() {
           `  ${index + 1}. ${test.suite_name} (${test.priority || "medium"})`
         );
       });
+
+      currentLogSession.update({
+        metadata: {
+          planSize: plan.length,
+          suites: plan.map((test) => test.suite_name),
+        },
+      });
+      currentLogSession.end("completed");
 
       process.exit(0);
     } else {
@@ -507,11 +571,30 @@ async function main() {
         )}% success rate`
       );
 
+      currentLogSession.update({
+        metadata: {
+          summary: {
+            successRate: result.success_rate,
+            failedTests: result.failed_tests,
+            successfulTests: result.successful_tests,
+            totalTests: result.total_tests,
+          },
+        },
+      });
+      currentLogSession.end(result.failed_tests > 0 ? "failed" : "success");
+
       process.exit(exitCode);
     }
   } catch (error) {
     getLogger().error("❌ Fatal error:", {
       error: error as Error,
+    });
+
+    logSession?.end("failed", {
+      error: {
+        message: (error as Error).message,
+        stack: (error as Error).stack,
+      },
     });
 
     process.exit(1);
@@ -703,12 +786,18 @@ FILTERING:
                          Example: --suite "login,checkout"
   --node <ids>           Run only specified test nodes (comma-separated)
                          Example: --node auth-tests,api-tests
+  --step <ids>           Run only specific step IDs (comma-separated).
+                         Accepts simple IDs or qualified values like node_id::step_id
+                         Supports "node_id::step_id" for suite scoping
   --tag <tags>           Run only tests with specified tags (comma-separated)
                          Example: --tag smoke,regression
 
 EXECUTION:
   --dry-run              Show execution plan without running tests
   --no-log               Disable automatic log file generation
+
+REPORTING:
+  --html-output [dir]    Generate per-suite HTML reports (optional subdirectory)
 
 SWAGGER IMPORT:
   --swagger-import <file>    Import OpenAPI/Swagger spec and generate test files

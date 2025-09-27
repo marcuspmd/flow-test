@@ -11,6 +11,7 @@ import {
   TestSuite,
 } from "../types/engine.types";
 import { getLogger } from "./logger.service";
+import { LogStreamingService } from "./log-streaming.service";
 
 export type LiveEventType =
   | "run_registered"
@@ -69,10 +70,13 @@ export class RealtimeReporter extends EventEmitter {
   private runs: Map<string, LiveRunRecord> = new Map();
   private activeRunId: string | null = null;
   private logger = getLogger();
+  private logStream = LogStreamingService.getInstance();
 
   constructor(outputPath?: string) {
     super();
-    this.outputPath = outputPath ? this.resolveOutputPath(outputPath) : undefined;
+    this.outputPath = outputPath
+      ? this.resolveOutputPath(outputPath)
+      : undefined;
   }
 
   /**
@@ -121,6 +125,15 @@ export class RealtimeReporter extends EventEmitter {
       },
     });
 
+    this.logStream.updateSession(runId, {
+      label: metadata.label,
+      source: metadata.source,
+      status: "pending",
+      metadata: {
+        options: metadata.options,
+      },
+    });
+
     return runId;
   }
 
@@ -141,6 +154,14 @@ export class RealtimeReporter extends EventEmitter {
           type: "run_started",
           payload: { stats },
         });
+
+        this.logStream.updateSession(runId, {
+          status: "running",
+          startedAt: new Date().toISOString(),
+          metadata: {
+            stats,
+          },
+        });
       },
 
       onSuiteStart: async (suite: TestSuite) => {
@@ -150,6 +171,13 @@ export class RealtimeReporter extends EventEmitter {
           payload: {
             suite_name: suite.suite_name,
             node_id: suite.node_id,
+          },
+        });
+
+        this.logStream.updateSession(runId, {
+          metadata: {
+            lastSuite: suite.suite_name,
+            lastNodeId: suite.node_id,
           },
         });
       },
@@ -166,21 +194,40 @@ export class RealtimeReporter extends EventEmitter {
             failed_step: result.failed_step,
           },
         });
+
+        this.logStream.updateSession(runId, {
+          metadata: {
+            lastSuite: suite.suite_name,
+            lastSuiteStatus: result.status,
+            lastSuiteDuration: result.duration_ms,
+          },
+        });
       },
 
-      onStepEnd: async (step: TestStep, result: any, context: ExecutionContext) => {
+      onStepEnd: async (
+        step: TestStep,
+        result: any,
+        context: ExecutionContext
+      ) => {
         this.emitEvent({
           runId,
           type: "step_completed",
           payload: {
-            suite_name:
-              context?.suite?.suite_name ?? "unknown",
+            suite_name: context?.suite?.suite_name ?? "unknown",
             node_id: context?.suite?.node_id,
             step_name: step.name,
             status: result.status,
             duration_ms: result.duration_ms,
             assertions: result.assertions_results?.length || 0,
             captured_variables: result.captured_variables,
+          },
+        });
+
+        this.logStream.updateSession(runId, {
+          metadata: {
+            lastSuite: context?.suite?.suite_name,
+            lastStep: step.name,
+            lastStepStatus: result.status,
           },
         });
       },
@@ -213,6 +260,14 @@ export class RealtimeReporter extends EventEmitter {
             result,
           },
         });
+
+        this.logStream.updateSession(runId, {
+          status,
+          finishedAt,
+          metadata: {
+            result,
+          },
+        });
       },
     };
   }
@@ -227,8 +282,8 @@ export class RealtimeReporter extends EventEmitter {
   }
 
   /**
-    * Records a run error manually (used when execution fails outside hooks).
-    */
+   * Records a run error manually (used when execution fails outside hooks).
+   */
   recordRunError(runId: string, error: Error, context?: any): void {
     this.updateRun(runId, {
       status: "failed",
@@ -247,6 +302,17 @@ export class RealtimeReporter extends EventEmitter {
         message: error.message,
         stack: error.stack,
         context,
+      },
+    });
+
+    this.logStream.updateSession(runId, {
+      status: "failed",
+      metadata: {
+        error: {
+          message: error.message,
+          stack: error.stack,
+          context,
+        },
       },
     });
   }

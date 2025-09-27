@@ -10,6 +10,7 @@
  */
 
 import chalk from "chalk";
+import { LogStreamingService, LogLevel } from "./log-streaming.service";
 
 /**
  * Context information for structured logging operations.
@@ -720,9 +721,11 @@ export class JestStyleLoggerAdapter implements Logger {
 export class LoggerService {
   private static instance: LoggerService;
   private logger: Logger;
+  private logStream: LogStreamingService;
 
   private constructor(logger: Logger) {
     this.logger = logger;
+    this.logStream = LogStreamingService.getInstance();
   }
 
   static getInstance(logger?: Logger): LoggerService {
@@ -746,18 +749,39 @@ export class LoggerService {
 
   debug(message: string, context?: LogContext): void {
     this.logger.debug(message, context);
+    this.forward("debug", message, context);
   }
 
   info(message: string, context?: LogContext): void {
     this.logger.info(message, context);
+    this.forward("info", message, context);
   }
 
   warn(message: string, context?: LogContext): void {
     this.logger.warn(message, context);
+    this.forward("warn", message, context);
   }
 
   error(message: string, context?: LogContext): void {
     this.logger.error(message, context);
+    this.forward("error", message, context);
+  }
+
+  private forward(
+    level: LogLevel,
+    message: string,
+    context?: LogContext
+  ): void {
+    try {
+      this.logStream.publish({
+        level,
+        message,
+        context,
+        origin: "logger",
+      });
+    } catch {
+      // Não propagamos erros de streaming para não interromper o fluxo principal de logs
+    }
   }
 
   // Delegate new display methods to the underlying logger if it supports them

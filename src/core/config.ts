@@ -12,7 +12,11 @@
 import fs from "fs";
 import path from "path";
 import yaml from "js-yaml";
-import { EngineConfig, EngineExecutionOptions } from "../types/engine.types";
+import {
+  EngineConfig,
+  EngineExecutionOptions,
+  ReportFormat,
+} from "../types/engine.types";
 
 /**
  * Configuration manager for the Flow Test Engine with comprehensive loading and validation.
@@ -300,6 +304,19 @@ export class ConfigManager {
       throw new Error("project_name is required in configuration");
     }
 
+    const allowedReportFormats: ReportFormat[] = ["json", "html"];
+    const configuredFormats = Array.isArray(config.reporting?.formats)
+      ? (config.reporting!.formats as ReportFormat[]).filter((format) =>
+          allowedReportFormats.includes(format)
+        )
+      : [];
+    const normalizedFormats = Array.from(new Set(configuredFormats));
+    if (normalizedFormats.length === 0) {
+      normalizedFormats.push("json");
+    }
+
+    const htmlReportingConfig = config.reporting?.html || {};
+
     const normalized: EngineConfig = {
       project_name: config.project_name,
       test_directory: config.test_directory || "./tests",
@@ -345,13 +362,18 @@ export class ConfigManager {
         },
       },
       reporting: {
-        formats: config.reporting?.formats || ["json"],
+        formats: normalizedFormats,
         output_dir: config.reporting?.output_dir || "./results",
         aggregate: config.reporting?.aggregate !== false,
         include_performance_metrics:
           config.reporting?.include_performance_metrics !== false,
         include_variables_state:
           config.reporting?.include_variables_state !== false,
+        html: {
+          aggregate: htmlReportingConfig.aggregate !== false,
+          per_suite: htmlReportingConfig.per_suite !== false,
+          output_subdir: htmlReportingConfig.output_subdir || "html",
+        },
       },
     };
 
@@ -370,6 +392,37 @@ export class ConfigManager {
     if (options.filters) {
       // Armazena filtros para uso posterior
       (this.config as any)._runtime_filters = options.filters;
+    }
+
+    if (options.reporting) {
+      const reportingConfig = this.config.reporting;
+      if (reportingConfig) {
+        if (options.reporting.formats && options.reporting.formats.length > 0) {
+          const allowedFormats: ReportFormat[] = ["json", "html"];
+          const merged = new Set<ReportFormat>(reportingConfig.formats);
+
+          options.reporting.formats.forEach((format) => {
+            if (allowedFormats.includes(format)) {
+              merged.add(format);
+            }
+          });
+
+          reportingConfig.formats = allowedFormats.filter((format) =>
+            merged.has(format)
+          );
+
+          if (reportingConfig.formats.length === 0) {
+            reportingConfig.formats = ["json"];
+          }
+        }
+
+        if (options.reporting.html) {
+          reportingConfig.html = {
+            ...reportingConfig.html,
+            ...options.reporting.html,
+          };
+        }
+      }
     }
   }
 

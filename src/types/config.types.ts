@@ -10,7 +10,8 @@
  */
 
 // Import types from engine.types to avoid circular import
-import type { FlowDependency } from "./engine.types";
+import type { FlowDependency, InputResult } from "./engine.types";
+import type { DynamicVariableAssignment } from "./common.types";
 
 /**
  * Global configuration for the Flow Test Engine.
@@ -241,6 +242,9 @@ export interface ReportingConfig {
 
   /** Whether to include final variable state in reports */
   include_variables_state?: boolean;
+
+  /** Additional configuration for HTML report generation */
+  html?: HtmlReportingConfig;
 }
 
 /**
@@ -249,12 +253,44 @@ export interface ReportingConfig {
  * @remarks
  * Defines the supported formats for test result reports:
  * - `json`: Machine-readable JSON format
- * Additional visualizations should be generated through the standalone
- * report dashboard.
+ * - `html`: Rich HTML summary views generated directly by the engine
+ *
+ * Additional visualizations can still be produced through the standalone
+ * report dashboard when more advanced dashboards are required.
  *
  * @public
  */
-export type ReportFormat = "json";
+export type ReportFormat = "json" | "html";
+
+/**
+ * Configuration for HTML report generation options.
+ *
+ * @remarks
+ * Controls how HTML summaries are generated alongside JSON reports, including
+ * whether to emit per-suite detail pages, aggregate summaries, and which
+ * directory structure to use for the generated artifacts.
+ *
+ * @example
+ * ```typescript
+ * const config: HtmlReportingConfig = {
+ *   per_suite: true,
+ *   aggregate: true,
+ *   output_subdir: "html"
+ * };
+ * ```
+ *
+ * @public
+ */
+export interface HtmlReportingConfig {
+  /** Whether to generate an aggregate run summary HTML page */
+  aggregate?: boolean;
+
+  /** Whether to generate detailed HTML reports for each suite */
+  per_suite?: boolean;
+
+  /** Subdirectory (within the reporting output) where HTML files are stored */
+  output_subdir?: string;
+}
 
 /**
  * Hierarchical variable context for test execution.
@@ -374,8 +410,11 @@ export interface SuiteExecutionResult {
   end_time: string;
   duration_ms: number;
   status: "success" | "failure" | "skipped";
+  /** Total number of steps that were processed, including skipped ones */
   steps_executed: number;
+  /** Number of steps that completed successfully */
   steps_successful: number;
+  /** Number of steps that ended in failure */
   steps_failed: number;
   success_rate: number;
   steps_results: StepExecutionResult[];
@@ -390,6 +429,10 @@ export interface SuiteExecutionResult {
  * Resultado de execução de um step individual
  */
 export interface StepExecutionResult {
+  /** Identifier assigned to the executed step */
+  step_id?: string;
+  /** Suite-scoped identifier combining node_id and the normalized step_id */
+  qualified_step_id?: string;
   step_name: string;
   status: "success" | "failure" | "skipped";
   duration_ms: number;
@@ -413,6 +456,8 @@ export interface StepExecutionResult {
   };
   assertions_results?: AssertionResult[];
   captured_variables?: Record<string, any>;
+  input_results?: InputResult[];
+  dynamic_assignments?: DynamicVariableAssignment[];
   available_variables?: Record<string, any>;
   iteration_results?: StepExecutionResult[];
   scenarios_meta?: ScenarioMeta;
@@ -476,9 +521,23 @@ export interface EngineExecutionOptions {
     suite_names?: string[];
     tags?: string[];
     file_patterns?: string[];
+    /**
+     * Optional list of step identifiers to execute.
+     *
+     * @remarks
+     * Accepts either raw step IDs defined in the YAML or fully-qualified values
+     * in the form `node_id::step_id`. Identifiers are normalized by lower-casing
+     * and replacing spaces with hyphens before matching.
+     */
+    step_ids?: string[];
   };
   logging?: {
     enabled?: boolean;
   };
   dry_run?: boolean;
+  /** Runtime reporting overrides including output formats */
+  reporting?: {
+    formats?: ReportFormat[];
+    html?: HtmlReportingConfig;
+  };
 }

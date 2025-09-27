@@ -37,6 +37,7 @@ describe("GlobalVariablesService", () => {
     mockGlobalRegistry = {
       getExportedVariable: jest.fn(),
       getAllExportedVariables: jest.fn().mockReturnValue({}),
+      getNodeVariables: jest.fn().mockReturnValue({}),
     } as unknown as jest.Mocked<GlobalRegistryService>;
 
     // Setup environment variables for testing

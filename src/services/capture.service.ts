@@ -92,6 +92,45 @@ export class CaptureService {
     return capturedVariables;
   }
 
+  captureFromObject(
+    captureConfig: Record<string, string>,
+    source: any,
+    variableContext?: Record<string, any>
+  ): Record<string, any> {
+    const capturedVariables: Record<string, any> = {};
+
+    const context = this.buildGenericContext(source, variableContext);
+
+    for (const [variableName, expression] of Object.entries(captureConfig)) {
+      try {
+        const value = this.extractValue(
+          expression,
+          undefined,
+          variableContext,
+          context
+        );
+
+        if (value !== undefined) {
+          capturedVariables[variableName] = value;
+          this.logger.info(
+            `    [📥] Captured: ${variableName} = ${this.formatValue(value)}`,
+            { metadata: { type: "variable_capture", internal: true } }
+          );
+        } else {
+          this.logger.warn(
+            `Could not capture: ${variableName} (path: ${expression})`
+          );
+        }
+      } catch (error) {
+        this.logger.error(`Error capturing ${variableName}`, {
+          error: error as Error,
+        });
+      }
+    }
+
+    return capturedVariables;
+  }
+
   /**
    * Extracts a value from the response using JMESPath or evaluates expressions
    *
@@ -104,8 +143,9 @@ export class CaptureService {
    */
   private extractValue(
     expression: string,
-    result: StepExecutionResult,
-    variableContext?: Record<string, any>
+    result?: StepExecutionResult,
+    variableContext?: Record<string, any>,
+    customContext?: any
   ): any {
     // Handle different types of expressions
 
@@ -129,7 +169,13 @@ export class CaptureService {
         const jsExpression = innerExpression.slice(3).trim();
         try {
           // Create a safe evaluation context with response data and variables
-          const context = this.buildContext(result);
+          const evaluationContext =
+            customContext ?? (result ? this.buildContext(result) : undefined);
+          if (!evaluationContext) {
+            throw new Error(
+              "Capture context is not available for JavaScript evaluation"
+            );
+          }
           const variables = variableContext || {};
 
           // Use Function constructor for safer evaluation
@@ -142,10 +188,10 @@ export class CaptureService {
             `return ${jsExpression};`
           );
           return evalFunction(
-            context.status_code,
-            context.headers,
-            context.body,
-            context.duration_ms,
+            evaluationContext.status_code,
+            evaluationContext.headers,
+            evaluationContext.body,
+            evaluationContext.duration_ms,
             variables
           );
         } catch (error) {
@@ -161,9 +207,14 @@ export class CaptureService {
     }
 
     // 3. Try as direct JMESPath expression
-    const context = this.buildContext(result);
+    const evaluationContext =
+      customContext ?? (result ? this.buildContext(result) : undefined);
+
+    if (!evaluationContext) {
+      throw new Error("Capture context is not available for evaluation");
+    }
     try {
-      return jmespath.search(context, expression);
+      return jmespath.search(evaluationContext, expression);
     } catch (error) {
       // If JMESPath fails, try to return as literal value or expression
       // This handles cases where the expression might be a plain string or number
@@ -211,6 +262,21 @@ export class CaptureService {
       body: response.body,
       duration_ms: result.duration_ms,
       size_bytes: response.size_bytes,
+    };
+  }
+
+  private buildGenericContext(
+    source: any,
+    variables?: Record<string, any>
+  ): any {
+    const baseContext =
+      source && typeof source === "object" ? { ...source } : { value: source };
+
+    return {
+      value: baseContext.value !== undefined ? baseContext.value : source,
+      input: baseContext.input ?? baseContext,
+      variables: variables || baseContext.variables || {},
+      context: baseContext,
     };
   }
 

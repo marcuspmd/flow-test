@@ -9,6 +9,7 @@ import { AssertionService } from "../assertion.service";
 import { CaptureService } from "../capture.service";
 import { ScenarioService } from "../scenario.service";
 import { IterationService } from "../iteration.service";
+import type { TestStep, TestSuite } from "../../types/engine.types";
 
 // Mock all dependencies
 jest.mock("../../core/config");
@@ -53,7 +54,18 @@ describe("ExecutionService", () => {
       }),
     } as any;
 
-    mockGlobalVariablesService = {} as any;
+    mockGlobalVariablesService = {
+      getAllVariables: jest.fn().mockReturnValue({}),
+      getVariablesByScope: jest.fn().mockReturnValue({}),
+      interpolate: jest.fn((value) => value),
+      interpolateString: jest.fn((value: string) => value),
+      setRuntimeVariable: jest.fn(),
+      setRuntimeVariables: jest.fn(),
+      setSuiteVariables: jest.fn(),
+      setDependencies: jest.fn(),
+      clearAllNonGlobalVariables: jest.fn(),
+      createSnapshot: jest.fn(() => jest.fn()),
+    } as any;
     mockPriorityService = {} as any;
     mockDependencyService = {
       buildDependencyGraph: jest.fn(),
@@ -61,8 +73,15 @@ describe("ExecutionService", () => {
     } as any;
     mockGlobalRegistryService = {
       registerNode: jest.fn(),
+      getAllExportedVariables: jest.fn().mockReturnValue({}),
     } as any;
-    mockHttpService = {} as any;
+    mockHttpService = {
+      executeRequest: jest.fn(),
+      getBaseUrl: jest.fn(),
+    } as any;
+    (HttpService as unknown as jest.Mock).mockImplementation(
+      () => mockHttpService
+    );
     mockAssertionService = {} as any;
     mockCaptureService = {} as any;
     mockScenarioService = {} as any;
@@ -261,6 +280,132 @@ describe("ExecutionService", () => {
         }),
         onStatsUpdate
       );
+    });
+  });
+
+  describe("step filtering", () => {
+    it("normalizes explicit step identifiers", () => {
+      // Arrange
+      const computeStepIdentifiers = (
+        executionService as any
+      ).computeStepIdentifiers.bind(executionService);
+      const suite = {
+        node_id: "AuthSuite",
+        suite_name: "Authentication",
+        steps: [],
+      } as TestSuite;
+      const step = {
+        name: "Login User",
+        step_id: "Login User",
+      } as TestStep;
+
+      // Act
+      const identifiers = computeStepIdentifiers(suite, step, 0);
+
+      // Assert
+      expect(identifiers.stepId).toBe("login-user");
+      expect(identifiers.qualifiedStepId).toBe("AuthSuite::login-user");
+      expect(identifiers.normalizedQualifiedStepId).toBe(
+        "authsuite::login-user"
+      );
+    });
+
+    it("matches normalized simple step filters", () => {
+      // Arrange
+      const compute = (executionService as any).computeStepIdentifiers.bind(
+        executionService
+      );
+      const buildFilter = (executionService as any).buildStepFilter.bind(
+        executionService
+      );
+      const shouldExecute = (
+        executionService as any
+      ).shouldExecuteStepFilter.bind(executionService);
+      const suite = {
+        node_id: "AuthSuite",
+        suite_name: "Authentication",
+        steps: [],
+      } as TestSuite;
+      const step = {
+        name: "Login User",
+        step_id: "Login User",
+      } as TestStep;
+      const identifiers = compute(suite, step, 0);
+
+      // Act
+      const filter = buildFilter([" login user "]);
+      const matches = shouldExecute(identifiers, filter);
+
+      // Assert
+      expect(matches).toBe(true);
+    });
+
+    it("matches qualified step filters with node prefix", () => {
+      // Arrange
+      const compute = (executionService as any).computeStepIdentifiers.bind(
+        executionService
+      );
+      const buildFilter = (executionService as any).buildStepFilter.bind(
+        executionService
+      );
+      const shouldExecute = (
+        executionService as any
+      ).shouldExecuteStepFilter.bind(executionService);
+      const suite = {
+        node_id: "AuthSuite",
+        suite_name: "Authentication",
+        steps: [],
+      } as TestSuite;
+      const step = {
+        name: "Login User",
+        step_id: "Login User",
+      } as TestStep;
+      const identifiers = compute(suite, step, 0);
+
+      // Act
+      const filter = buildFilter(["authsuite::LOGIN USER"]);
+      const matches = shouldExecute(identifiers, filter);
+
+      // Assert
+      expect(matches).toBe(true);
+    });
+
+    it("skips step execution when filter does not match", async () => {
+      // Arrange
+      const compute = (executionService as any).computeStepIdentifiers.bind(
+        executionService
+      );
+      const buildFilter = (executionService as any).buildStepFilter.bind(
+        executionService
+      );
+      const shouldExecute = (
+        executionService as any
+      ).shouldExecuteStepFilter.bind(executionService);
+      const executeStep = (executionService as any).executeStep.bind(
+        executionService
+      );
+      const step: TestStep = {
+        name: "Login User",
+        step_id: "Login User",
+      } as TestStep;
+      const suite = {
+        node_id: "AuthSuite",
+        suite_name: "Authentication",
+        steps: [step],
+      } as unknown as TestSuite;
+      const identifiers = compute(suite, step, 0);
+      const filter = buildFilter(["other-step"]);
+      const matches = shouldExecute(identifiers, filter);
+
+      // Act
+      const result = await executeStep(step, suite, 0, identifiers, matches);
+
+      // Assert
+      expect(matches).toBe(false);
+      expect(result.status).toBe("skipped");
+      expect(result.step_id).toBe("login-user");
+      expect(result.qualified_step_id).toBe("AuthSuite::login-user");
+      expect(result.available_variables).toEqual({});
     });
   });
 });

@@ -2,10 +2,7 @@ import http from "http";
 import { URL } from "url";
 import path from "path";
 import { FlowTestEngine } from "../core/engine";
-import {
-  EngineExecutionOptions,
-  EngineHooks,
-} from "../types/engine.types";
+import { EngineExecutionOptions, EngineHooks } from "../types/engine.types";
 import {
   setupLogger,
   LoggerService,
@@ -13,6 +10,11 @@ import {
 } from "../services/logger.service";
 import { RealtimeReporter, LiveEvent } from "../services/realtime-reporter";
 import { createConsoleHooks } from "../services/hook-factory";
+import {
+  LogStreamingService,
+  LogStreamEvent,
+  LogLevel,
+} from "../services/log-streaming.service";
 
 interface RunRequestBody {
   options?: EngineExecutionOptions;
@@ -20,10 +22,7 @@ interface RunRequestBody {
 }
 
 const PORT = parseInt(process.env.ORCHESTRATOR_PORT || "3333", 10);
-const DEFAULT_LIVE_EVENTS_PATH = path.join(
-  "results",
-  "live-events.jsonl"
-);
+const DEFAULT_LIVE_EVENTS_PATH = path.join("results", "live-events.jsonl");
 
 const liveEventsEnvPath = process.env.LIVE_EVENTS_PATH;
 const liveEventsPath = liveEventsEnvPath
@@ -32,9 +31,12 @@ const liveEventsPath = liveEventsEnvPath
     : path.join(process.cwd(), liveEventsEnvPath)
   : path.join(process.cwd(), DEFAULT_LIVE_EVENTS_PATH);
 
+const LOG_LEVELS: LogLevel[] = ["debug", "info", "warn", "error"];
+
 setupLogger("console", { verbosity: "simple" });
 const logger = LoggerService.getInstance();
 const reporter = new RealtimeReporter(liveEventsPath);
+const logStream = LogStreamingService.getInstance();
 let activeRunId: string | null = null;
 
 async function startRun(
@@ -51,6 +53,16 @@ async function startRun(
     options,
   });
 
+  const logSession = logStream.beginSession({
+    runId,
+    source: "orchestrator",
+    label: label || runId,
+    metadata: {
+      options,
+    },
+    status: "running",
+  });
+
   const reporterHooks = reporter.createHooks(runId);
   const consoleHooks = createConsoleHooks(logger);
   const hooks = mergeHooks(consoleHooks, reporterHooks);
@@ -59,14 +71,38 @@ async function startRun(
 
   // Start execution asynchronously
   (async () => {
+    let sessionStatus: "success" | "failed" | "completed" = "success";
     try {
       const engine = new FlowTestEngine(options, hooks);
-      await engine.run();
+      const result = await engine.run();
+      sessionStatus = result.failed_tests > 0 ? "failed" : "success";
+      logSession.update({
+        metadata: {
+          summary: {
+            successRate: result.success_rate,
+            failedTests: result.failed_tests,
+            successfulTests: result.successful_tests,
+            totalTests: result.total_tests,
+          },
+        },
+      });
     } catch (error) {
       const err = error as Error;
-      getLogger().error(`❌ Orchestrator run error: ${err.message}`, { error: err });
+      getLogger().error(`❌ Orchestrator run error: ${err.message}`, {
+        error: err,
+      });
       reporter.recordRunError(runId, err);
+      sessionStatus = "failed";
+      logSession.update({
+        metadata: {
+          error: {
+            message: err.message,
+            stack: err.stack,
+          },
+        },
+      });
     } finally {
+      logSession.end(sessionStatus);
       activeRunId = null;
     }
   })();
@@ -92,8 +128,9 @@ function mergeHooks(...hooks: Array<EngineHooks | undefined>): EngineHooks {
     const callbacks = hooks
       .filter(Boolean)
       .map((hook) => hook![key])
-      .filter((callback): callback is (...args: any[]) => any =>
-        typeof callback === "function"
+      .filter(
+        (callback): callback is (...args: any[]) => any =>
+          typeof callback === "function"
       );
 
     if (callbacks.length > 0) {
@@ -108,16 +145,28 @@ function mergeHooks(...hooks: Array<EngineHooks | undefined>): EngineHooks {
   return merged;
 }
 
+function parseLevelsParam(value: string | null): LogLevel[] | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  const levels = value
+    .split(",")
+    .map((level) => level.trim().toLowerCase())
+    .filter((level): level is LogLevel =>
+      LOG_LEVELS.includes(level as LogLevel)
+    );
+
+  return levels.length > 0 ? levels : undefined;
+}
+
 function handleCors(res: http.ServerResponse): void {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader(
     "Access-Control-Allow-Headers",
     "Content-Type, Authorization, X-Requested-With"
   );
-  res.setHeader(
-    "Access-Control-Allow-Methods",
-    "GET, POST, OPTIONS"
-  );
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
 }
 
 async function parseJsonBody(req: http.IncomingMessage): Promise<any> {
@@ -143,7 +192,11 @@ async function parseJsonBody(req: http.IncomingMessage): Promise<any> {
   });
 }
 
-function sendJson(res: http.ServerResponse, status: number, data: unknown): void {
+function sendJson(
+  res: http.ServerResponse,
+  status: number,
+  data: unknown
+): void {
   handleCors(res);
   res.writeHead(status, { "Content-Type": "application/json" });
   res.end(JSON.stringify(data));
@@ -163,7 +216,10 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  const url = new URL(req.url, `http://${req.headers.host || `localhost:${PORT}`}`);
+  const url = new URL(
+    req.url,
+    `http://${req.headers.host || `localhost:${PORT}`}`
+  );
 
   if (req.method === "GET" && url.pathname === "/health") {
     sendJson(res, 200, {
@@ -218,6 +274,62 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  if (req.method === "GET" && url.pathname === "/logs") {
+    res.writeHead(200, {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+      "Access-Control-Allow-Origin": "*",
+    });
+
+    res.write("\n");
+
+    const levels = parseLevelsParam(url.searchParams.get("levels"));
+    const runIdFilter = url.searchParams.get("runId") || undefined;
+    const limitParam = url.searchParams.get("limit");
+    let backlogLimit = 200;
+    if (limitParam) {
+      const parsedLimit = Number.parseInt(limitParam, 10);
+      if (Number.isFinite(parsedLimit) && parsedLimit > 0) {
+        backlogLimit = parsedLimit;
+      }
+    }
+
+    const sessions = logStream.listSessions();
+    res.write("event: runs\n");
+    res.write(`data: ${JSON.stringify({ sessions })}\n\n`);
+
+    const writeLogEvent = (event: LogStreamEvent) => {
+      res.write("event: log\n");
+      res.write(`data: ${JSON.stringify(event)}\n\n`);
+    };
+
+    const initialEvents = logStream.getBufferedEvents({
+      levels,
+      runId: runIdFilter,
+      limit: backlogLimit,
+    });
+
+    initialEvents.forEach(writeLogEvent);
+
+    const unsubscribe = logStream.subscribe(writeLogEvent, {
+      levels,
+      runId: runIdFilter,
+    });
+
+    const heartbeat = setInterval(() => {
+      res.write("event: ping\n");
+      res.write("data: {}\n\n");
+    }, 15000);
+
+    req.on("close", () => {
+      clearInterval(heartbeat);
+      unsubscribe();
+    });
+
+    return;
+  }
+
   if (req.method === "POST" && url.pathname === "/run") {
     try {
       const body = (await parseJsonBody(req)) as RunRequestBody;
@@ -239,7 +351,9 @@ const server = http.createServer(async (req, res) => {
     const runId = parts[2];
     const previous = reporter.getRun(runId);
     if (!previous || !previous.options) {
-      sendJson(res, 404, { error: "Original run not found or missing options" });
+      sendJson(res, 404, {
+        error: "Original run not found or missing options",
+      });
       return;
     }
 

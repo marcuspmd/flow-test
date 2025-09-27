@@ -10,6 +10,12 @@
  * @packageDocumentation
  */
 
+import {
+  DynamicVariableAssignment,
+  InputDynamicConfig,
+  InputValidationConfig,
+} from "./common.types";
+
 /**
  * HTTP request details with comprehensive configuration options.
  *
@@ -375,7 +381,15 @@ export interface InputConfig {
   /** Variable name to store the input value */
   variable: string;
   /** Type of input control to display */
-  type: "text" | "password" | "number" | "email" | "url" | "select" | "confirm" | "multiline";
+  type:
+    | "text"
+    | "password"
+    | "number"
+    | "email"
+    | "url"
+    | "select"
+    | "confirm"
+    | "multiline";
   /** Optional detailed description */
   description?: string;
   /** Default value if user doesn't provide input */
@@ -393,24 +407,11 @@ export interface InputConfig {
   /** Value to use automatically in CI/non-interactive environments */
   ci_default?: any;
   /** Validation rules for the input */
-  validation?: {
-    /** Minimum length for text inputs */
-    min_length?: number;
-    /** Maximum length for text inputs */
-    max_length?: number;
-    /** Regex pattern for validation */
-    pattern?: string;
-    /** Minimum value for number inputs */
-    min?: number | string;
-    /** Maximum value for number inputs */
-    max?: number | string;
-    /** Valid options for select inputs */
-    options?: Array<{value: any, label: string}> | string;
-    /** Custom JavaScript validation expression */
-    custom_validation?: string;
-  };
+  validation?: InputValidationConfig;
+  /** Dynamic processing configuration for derived variables */
+  dynamic?: InputDynamicConfig;
   /** For select type: array of options or JMESPath expression */
-  options?: Array<{value: any, label: string}> | string;
+  options?: Array<{ value: any; label: string }> | string;
 }
 
 /**
@@ -449,6 +450,10 @@ export interface InputResult {
   timed_out: boolean;
   /** Validation error message if validation failed */
   validation_error?: string;
+  /** Dynamic variable assignments derived from this input */
+  derived_assignments?: DynamicVariableAssignment[];
+  /** Non-blocking validation warnings */
+  validation_warnings?: string[];
 }
 
 /**
@@ -600,6 +605,9 @@ export interface TestStepMetadata {
 export interface TestStep {
   /** Descriptive name identifying the purpose of this test step */
   name: string;
+
+  /** Optional unique identifier used for targeted execution */
+  step_id?: string;
 
   /** HTTP request configuration including method, URL, headers, and body (optional if step only contains inputs) */
   request?: RequestDetails;

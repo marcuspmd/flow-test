@@ -10,9 +10,12 @@
  */
 
 import * as readline from "readline";
+import * as jmespath from "jmespath";
 import { InputConfig, InputResult } from "../types/engine.types";
+import { InputValidationExpression } from "../types/common.types";
 import { getLogger } from "./logger.service";
 import { VariableService } from "./variable.service";
+import { javascriptService } from "./javascript.service";
 
 /**
  * Service responsible for handling interactive user input during test execution.
@@ -70,7 +73,10 @@ export class InputService {
    * @param variables - Current variable context for interpolation
    * @returns Promise resolving to input result(s)
    */
-  async promptUser(config: InputConfig | InputConfig[], variables: Record<string, any>): Promise<InputResult | InputResult[]> {
+  async promptUser(
+    config: InputConfig | InputConfig[],
+    variables: Record<string, any>
+  ): Promise<InputResult | InputResult[]> {
     // Handle array of inputs
     if (Array.isArray(config)) {
       return this.promptMultipleInputs(config, variables);
@@ -87,7 +93,10 @@ export class InputService {
    * @param variables - Current variable context for interpolation
    * @returns Promise resolving to array of input results
    */
-  async promptMultipleInputs(configs: InputConfig[], variables: Record<string, any>): Promise<InputResult[]> {
+  async promptMultipleInputs(
+    configs: InputConfig[],
+    variables: Record<string, any>
+  ): Promise<InputResult[]> {
     const results: InputResult[] = [];
     let updatedVariables = { ...variables };
 
@@ -101,7 +110,9 @@ export class InputService {
           updatedVariables[result.variable] = result.value;
         }
       } catch (error) {
-        this.logger.error(`❌ Error processing input ${config.variable}: ${error}`);
+        this.logger.error(
+          `❌ Error processing input ${config.variable}: ${error}`
+        );
 
         // Add failed result
         results.push({
@@ -111,7 +122,8 @@ export class InputService {
           validation_passed: false,
           used_default: true,
           timed_out: false,
-          validation_error: error instanceof Error ? error.message : String(error)
+          validation_error:
+            error instanceof Error ? error.message : String(error),
         });
       }
     }
@@ -126,7 +138,10 @@ export class InputService {
    * @param variables - Current variable context for interpolation
    * @returns Promise resolving to input result
    */
-  private async promptSingleInput(config: InputConfig, variables: Record<string, any>): Promise<InputResult> {
+  private async promptSingleInput(
+    config: InputConfig,
+    variables: Record<string, any>
+  ): Promise<InputResult> {
     const startTime = Date.now();
 
     try {
@@ -135,23 +150,28 @@ export class InputService {
 
       // Check condition if specified
       if (interpolatedConfig.condition) {
-        const conditionResult = this.evaluateCondition(interpolatedConfig.condition, variables);
+        const conditionResult = this.evaluateCondition(
+          interpolatedConfig.condition,
+          variables
+        );
         if (!conditionResult) {
-          this.logger.debug(`⏭️ Input skipped - condition not met: ${interpolatedConfig.condition}`);
+          this.logger.debug(
+            `⏭️ Input skipped - condition not met: ${interpolatedConfig.condition}`
+          );
           return {
             variable: config.variable,
             value: interpolatedConfig.default || null,
             input_time_ms: Date.now() - startTime,
             validation_passed: true,
             used_default: true,
-            timed_out: false
+            timed_out: false,
           };
         }
       }
 
       // Handle CI environment
       if (this.isCI) {
-        return this.handleCIInput(interpolatedConfig, startTime);
+        return this.handleCIInput(interpolatedConfig, startTime, variables);
       }
 
       // Display styled prompt
@@ -184,7 +204,11 @@ export class InputService {
       }
 
       // Validate input
-      const validation = this.validateInput(value, interpolatedConfig, variables);
+      const validation = this.validateInput(
+        value,
+        interpolatedConfig,
+        variables
+      );
       if (!validation.valid) {
         this.logger.error(`❌ Validation failed: ${validation.error}`);
         // Recursive retry on validation failure
@@ -200,9 +224,11 @@ export class InputService {
         input_time_ms: Date.now() - startTime,
         validation_passed: true,
         used_default: false,
-        timed_out: false
+        timed_out: false,
+        ...(validation.warnings
+          ? { validation_warnings: validation.warnings }
+          : {}),
       };
-
     } catch (error) {
       this.logger.error(`❌ Input error: ${error}`);
 
@@ -214,7 +240,8 @@ export class InputService {
         validation_passed: false,
         used_default: true,
         timed_out: false,
-        validation_error: error instanceof Error ? error.message : String(error)
+        validation_error:
+          error instanceof Error ? error.message : String(error),
       };
     }
   }
@@ -222,30 +249,45 @@ export class InputService {
   /**
    * Interpolates variables in config strings
    */
-  private interpolateConfig(config: InputConfig, variables: Record<string, any>): InputConfig {
+  private interpolateConfig(
+    config: InputConfig,
+    variables: Record<string, any>
+  ): InputConfig {
     const variableService = new VariableService({
       environment: {},
       global: {},
       suite: {},
       runtime: variables,
-      imported: {}
+      imported: {},
     });
 
     return {
       ...config,
       prompt: variableService.interpolate(config.prompt),
-      description: config.description ? variableService.interpolate(config.description) : undefined,
-      placeholder: config.placeholder ? variableService.interpolate(config.placeholder) : undefined,
+      description: config.description
+        ? variableService.interpolate(config.description)
+        : undefined,
+      placeholder: config.placeholder
+        ? variableService.interpolate(config.placeholder)
+        : undefined,
       // Handle options interpolation
-      options: config.options ? this.interpolateOptions(config.options, variables, variableService) : undefined,
+      options: config.options
+        ? this.interpolateOptions(config.options, variables, variableService)
+        : undefined,
       // Interpolate validation rules
-      validation: config.validation ? {
-        ...config.validation,
-        min: typeof config.validation.min === 'string' ?
-          variableService.interpolate(config.validation.min) : config.validation.min,
-        max: typeof config.validation.max === 'string' ?
-          variableService.interpolate(config.validation.max) : config.validation.max,
-      } : undefined
+      validation: config.validation
+        ? {
+            ...config.validation,
+            min:
+              typeof config.validation.min === "string"
+                ? variableService.interpolate(config.validation.min)
+                : config.validation.min,
+            max:
+              typeof config.validation.max === "string"
+                ? variableService.interpolate(config.validation.max)
+                : config.validation.max,
+          }
+        : undefined,
     };
   }
 
@@ -253,11 +295,11 @@ export class InputService {
    * Interpolates options for select inputs
    */
   private interpolateOptions(
-    options: Array<{value: any, label: string}> | string,
+    options: Array<{ value: any; label: string }> | string,
     variables: Record<string, any>,
     variableService: VariableService
-  ): Array<{value: any, label: string}> {
-    if (typeof options === 'string') {
+  ): Array<{ value: any; label: string }> {
+    if (typeof options === "string") {
       // Allow template interpolation ({{ }}, {{$js }}, etc.) before evaluating expression
       const resolvedOptions = variableService.interpolate(options);
 
@@ -266,11 +308,12 @@ export class InputService {
         return resolvedOptions;
       }
 
-      const expression = typeof resolvedOptions === 'string' ? resolvedOptions : options;
+      const expression =
+        typeof resolvedOptions === "string" ? resolvedOptions : options;
 
       // JMESPath expression - evaluate it
       try {
-        const jmespath = require('jmespath');
+        const jmespath = require("jmespath");
         const result = jmespath.search(variables, expression);
 
         if (Array.isArray(result)) {
@@ -279,24 +322,29 @@ export class InputService {
 
         return result ? [result] : [];
       } catch (error) {
-        this.logger.warn(`⚠️ Failed to evaluate options expression: ${expression}`);
+        this.logger.warn(
+          `⚠️ Failed to evaluate options expression: ${expression}`
+        );
         return [];
       }
     }
 
     // Array of options - interpolate labels
-    return options.map(option => ({
+    return options.map((option) => ({
       value: option.value,
-      label: variableService.interpolate(option.label)
+      label: variableService.interpolate(option.label),
     }));
   }
 
   /**
    * Evaluates condition expression
    */
-  private evaluateCondition(condition: string, variables: Record<string, any>): boolean {
+  private evaluateCondition(
+    condition: string,
+    variables: Record<string, any>
+  ): boolean {
     try {
-      const jmespath = require('jmespath');
+      const jmespath = require("jmespath");
       return !!jmespath.search(variables, condition);
     } catch (error) {
       this.logger.warn(`⚠️ Failed to evaluate condition: ${condition}`);
@@ -307,22 +355,47 @@ export class InputService {
   /**
    * Handles input in CI environment
    */
-  private handleCIInput(config: InputConfig, startTime: number): InputResult {
+  private handleCIInput(
+    config: InputConfig,
+    startTime: number,
+    variables: Record<string, any>
+  ): InputResult {
     const value = config.ci_default ?? config.default;
 
-    if (config.required && (value === undefined || value === null || value === '')) {
-      throw new Error(`Required input '${config.variable}' has no ci_default or default value in CI environment`);
+    if (
+      config.required &&
+      (value === undefined || value === null || value === "")
+    ) {
+      throw new Error(
+        `Required input '${config.variable}' has no ci_default or default value in CI environment`
+      );
     }
 
-    this.logger.info(`🤖 CI Mode: Using ${config.ci_default !== undefined ? 'ci_default' : 'default'} value for '${config.variable}': ${value}`);
+    this.logger.info(
+      `🤖 CI Mode: Using ${
+        config.ci_default !== undefined ? "ci_default" : "default"
+      } value for '${config.variable}': ${value}`
+    );
+    const validation = this.validateInput(value, config, variables);
+
+    if (!validation.valid) {
+      throw new Error(
+        `CI Mode validation failed for '${config.variable}': ${validation.error}`
+      );
+    }
+
+    const convertedValue = this.convertValue(value, config.type);
 
     return {
       variable: config.variable,
-      value: value,
+      value: convertedValue,
       input_time_ms: Date.now() - startTime,
       validation_passed: true,
       used_default: true,
-      timed_out: false
+      timed_out: false,
+      ...(validation.warnings
+        ? { validation_warnings: validation.warnings }
+        : {}),
     };
   }
 
@@ -330,19 +403,29 @@ export class InputService {
    * Displays styled prompt to user
    */
   private displayPrompt(config: InputConfig): void {
-    const chalk = require('chalk');
+    const chalk = require("chalk");
 
     console.log(); // Empty line
 
     switch (config.style) {
       case "boxed":
         const boxWidth = Math.max(config.prompt.length + 4, 40);
-        console.log(chalk.cyan('┌' + '─'.repeat(boxWidth - 2) + '┐'));
-        console.log(chalk.cyan('│ ') + chalk.bold(config.prompt) + ' '.repeat(boxWidth - config.prompt.length - 3) + chalk.cyan('│'));
+        console.log(chalk.cyan("┌" + "─".repeat(boxWidth - 2) + "┐"));
+        console.log(
+          chalk.cyan("│ ") +
+            chalk.bold(config.prompt) +
+            " ".repeat(boxWidth - config.prompt.length - 3) +
+            chalk.cyan("│")
+        );
         if (config.description) {
-          console.log(chalk.cyan('│ ') + chalk.gray(config.description) + ' '.repeat(boxWidth - config.description.length - 3) + chalk.cyan('│'));
+          console.log(
+            chalk.cyan("│ ") +
+              chalk.gray(config.description) +
+              " ".repeat(boxWidth - config.description.length - 3) +
+              chalk.cyan("│")
+          );
         }
-        console.log(chalk.cyan('└' + '─'.repeat(boxWidth - 2) + '┘'));
+        console.log(chalk.cyan("└" + "─".repeat(boxWidth - 2) + "┘"));
         break;
 
       case "highlighted":
@@ -379,14 +462,16 @@ export class InputService {
     return new Promise((resolve) => {
       const rl = readline.createInterface({
         input: process.stdin,
-        output: process.stdout
+        output: process.stdout,
       });
 
-      const prompt = config.required ? '> ' : `> (${config.default || 'empty'}): `;
+      const prompt = config.required
+        ? "> "
+        : `> (${config.default || "empty"}): `;
 
       rl.question(prompt, (answer) => {
         rl.close();
-        resolve(answer || config.default || '');
+        resolve(answer || config.default || "");
       });
     });
   }
@@ -398,25 +483,29 @@ export class InputService {
     return new Promise((resolve) => {
       const rl = readline.createInterface({
         input: process.stdin,
-        output: process.stdout
+        output: process.stdout,
       });
 
-      const prompt = config.required ? '> ' : `> (${config.default ? '***' : 'empty'}): `;
+      const prompt = config.required
+        ? "> "
+        : `> (${config.default ? "***" : "empty"}): `;
 
       // Hide input by overriding _writeToOutput
-      (rl as any)._writeToOutput = function(stringToWrite: string) {
-        if (stringToWrite.charCodeAt(0) === 13) { // Enter key
-          (rl as any).output.write('\n');
-        } else if (stringToWrite.charCodeAt(0) === 8) { // Backspace
-          (rl as any).output.write('\b \b');
+      (rl as any)._writeToOutput = function (stringToWrite: string) {
+        if (stringToWrite.charCodeAt(0) === 13) {
+          // Enter key
+          (rl as any).output.write("\n");
+        } else if (stringToWrite.charCodeAt(0) === 8) {
+          // Backspace
+          (rl as any).output.write("\b \b");
         } else {
-          (rl as any).output.write('*');
+          (rl as any).output.write("*");
         }
       };
 
       rl.question(prompt, (answer) => {
         rl.close();
-        resolve(answer || config.default || '');
+        resolve(answer || config.default || "");
       });
     });
   }
@@ -425,14 +514,14 @@ export class InputService {
    * Prompts for selection from options
    */
   private async promptSelect(config: InputConfig): Promise<any> {
-    const chalk = require('chalk');
+    const chalk = require("chalk");
     const options = config.options || [];
 
     if (!Array.isArray(options) || options.length === 0) {
-      throw new Error('Select input requires options array');
+      throw new Error("Select input requires options array");
     }
 
-    console.log(chalk.gray('   Options:'));
+    console.log(chalk.gray("   Options:"));
     options.forEach((option, index) => {
       console.log(chalk.gray(`   ${index + 1}. ${option.label}`));
     });
@@ -440,10 +529,10 @@ export class InputService {
     return new Promise((resolve) => {
       const rl = readline.createInterface({
         input: process.stdin,
-        output: process.stdout
+        output: process.stdout,
       });
 
-      rl.question('> Select (1-' + options.length + '): ', (answer) => {
+      rl.question("> Select (1-" + options.length + "): ", (answer) => {
         rl.close();
 
         const index = parseInt(answer) - 1;
@@ -452,7 +541,7 @@ export class InputService {
         } else if (config.default !== undefined) {
           resolve(config.default);
         } else {
-          console.log(chalk.red('❌ Invalid selection. Please try again.'));
+          console.log(chalk.red("❌ Invalid selection. Please try again."));
           resolve(this.promptSelect(config));
         }
       });
@@ -466,11 +555,15 @@ export class InputService {
     return new Promise((resolve) => {
       const rl = readline.createInterface({
         input: process.stdin,
-        output: process.stdout
+        output: process.stdout,
       });
 
-      const defaultHint = config.default !== undefined ?
-        (config.default ? ' (Y/n)' : ' (y/N)') : ' (y/N)';
+      const defaultHint =
+        config.default !== undefined
+          ? config.default
+            ? " (Y/n)"
+            : " (y/N)"
+          : " (y/N)";
 
       rl.question(`> ${defaultHint}: `, (answer) => {
         rl.close();
@@ -495,7 +588,7 @@ export class InputService {
       if (config.default !== undefined) {
         return Number(config.default);
       }
-      throw new Error('Invalid number input');
+      throw new Error("Invalid number input");
     }
 
     return num;
@@ -505,22 +598,26 @@ export class InputService {
    * Prompts for multiline input
    */
   private async promptMultiline(config: InputConfig): Promise<string> {
-    const chalk = require('chalk');
-    console.log(chalk.gray('   Enter multiline text (type "END" on a new line to finish):'));
+    const chalk = require("chalk");
+    console.log(
+      chalk.gray(
+        '   Enter multiline text (type "END" on a new line to finish):'
+      )
+    );
 
     return new Promise((resolve) => {
       const rl = readline.createInterface({
         input: process.stdin,
-        output: process.stdout
+        output: process.stdout,
       });
 
       const lines: string[] = [];
 
       const promptLine = () => {
-        rl.question('> ', (line) => {
-          if (line.trim() === 'END') {
+        rl.question("> ", (line) => {
+          if (line.trim() === "END") {
             rl.close();
-            resolve(lines.join('\n'));
+            resolve(lines.join("\n"));
           } else {
             lines.push(line);
             promptLine();
@@ -539,57 +636,75 @@ export class InputService {
     value: any,
     config: InputConfig,
     variables: Record<string, any>
-  ): { valid: boolean; error?: string } {
+  ): { valid: boolean; error?: string; warnings?: string[] } {
     const validation = config.validation;
     if (!validation) return { valid: true };
 
+    const warnings: string[] = [];
+
     // Required check
-    if (config.required && (value === undefined || value === null || value === '')) {
-      return { valid: false, error: 'This field is required' };
+    if (
+      config.required &&
+      (value === undefined || value === null || value === "")
+    ) {
+      return { valid: false, error: "This field is required" };
     }
 
     // Type-specific validation
-    if (typeof value === 'string') {
+    if (typeof value === "string") {
       // Length validation
       if (validation.min_length && value.length < validation.min_length) {
-        return { valid: false, error: `Minimum length is ${validation.min_length}` };
+        return {
+          valid: false,
+          error: `Minimum length is ${validation.min_length}`,
+        };
       }
       if (validation.max_length && value.length > validation.max_length) {
-        return { valid: false, error: `Maximum length is ${validation.max_length}` };
+        return {
+          valid: false,
+          error: `Maximum length is ${validation.max_length}`,
+        };
       }
 
       // Pattern validation
       if (validation.pattern) {
         const regex = new RegExp(validation.pattern);
         if (!regex.test(value)) {
-          return { valid: false, error: 'Value does not match required pattern' };
+          return {
+            valid: false,
+            error: "Value does not match required pattern",
+          };
         }
       }
 
       // Email validation
-      if (config.type === 'email') {
+      if (config.type === "email") {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(value)) {
-          return { valid: false, error: 'Invalid email format' };
+          return { valid: false, error: "Invalid email format" };
         }
       }
 
       // URL validation
-      if (config.type === 'url') {
+      if (config.type === "url") {
         try {
           new URL(value);
         } catch {
-          return { valid: false, error: 'Invalid URL format' };
+          return { valid: false, error: "Invalid URL format" };
         }
       }
     }
 
     // Number validation
-    if (typeof value === 'number') {
-      const min = typeof validation.min === 'string' ?
-        parseFloat(validation.min) : validation.min;
-      const max = typeof validation.max === 'string' ?
-        parseFloat(validation.max) : validation.max;
+    if (typeof value === "number") {
+      const min =
+        typeof validation.min === "string"
+          ? parseFloat(validation.min)
+          : validation.min;
+      const max =
+        typeof validation.max === "string"
+          ? parseFloat(validation.max)
+          : validation.max;
 
       if (min !== undefined && value < min) {
         return { valid: false, error: `Value must be at least ${min}` };
@@ -603,17 +718,92 @@ export class InputService {
     if (validation.custom_validation) {
       try {
         // Simple evaluation - could be enhanced with safer evaluation
-        const evalFunction = new Function('value', 'variables', `return ${validation.custom_validation}`);
+        const evalFunction = new Function(
+          "value",
+          "variables",
+          `return ${validation.custom_validation}`
+        );
         const result = evalFunction(value, variables);
         if (!result) {
-          return { valid: false, error: 'Custom validation failed' };
+          return { valid: false, error: "Custom validation failed" };
         }
       } catch (error) {
-        return { valid: false, error: 'Custom validation error' };
+        return { valid: false, error: "Custom validation error" };
       }
     }
 
-    return { valid: true };
+    if (validation.expressions && validation.expressions.length > 0) {
+      for (const rule of validation.expressions) {
+        const passed = this.evaluateValidationExpression(
+          rule,
+          value,
+          config,
+          variables
+        );
+
+        if (!passed) {
+          const severity = rule.severity ?? "error";
+          const message = rule.message || "Dynamic validation failed";
+
+          if (severity === "warning") {
+            warnings.push(message);
+            this.logger.warn(
+              `⚠️ Validation warning for ${config.variable}: ${message}`
+            );
+          } else {
+            return { valid: false, error: message };
+          }
+        }
+      }
+    }
+
+    return warnings.length > 0 ? { valid: true, warnings } : { valid: true };
+  }
+
+  private evaluateValidationExpression(
+    rule: InputValidationExpression,
+    value: any,
+    config: InputConfig,
+    variables: Record<string, any>
+  ): boolean {
+    const language = (rule.language || "javascript").toLowerCase();
+    try {
+      if (language === "jmespath") {
+        const context = {
+          value,
+          input: {
+            variable: config.variable,
+            prompt: config.prompt,
+            type: config.type,
+          },
+          variables,
+        };
+        return Boolean(jmespath.search(context, rule.expression));
+      }
+
+      const jsVariables = {
+        ...variables,
+        __input_value: value,
+        __input_variable: config.variable,
+        __input_prompt: config.prompt,
+        __input_type: config.type,
+      };
+
+      const evaluation = javascriptService.executeExpression(
+        rule.expression,
+        {
+          variables: jsVariables,
+        },
+        false
+      );
+
+      return Boolean(evaluation);
+    } catch (error) {
+      this.logger.error(
+        `Dynamic validation expression error for ${config.variable}: ${error}`
+      );
+      return false;
+    }
   }
 
   /**

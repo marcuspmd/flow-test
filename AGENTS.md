@@ -640,6 +640,57 @@ scenarios:
       Authorization: "Bearer {{user_api_key}}"
 ```
 
+#### Inputs dinâmicos com captura/computed
+
+- Use o bloco `dynamic` para criar variáveis derivadas a partir do valor digitado.
+- `capture` executa JMESPath sobre um contexto contendo `value`, `input` e `variables` atuais.
+- `computed` executa JavaScript com acesso a `variables.__input_value`, metadados do step e variáveis globais.
+- `persist_to_global` e `exports` controlam quais variáveis entram no registro global automaticamente.
+- Definições dentro de `reevaluate` são executadas novamente quando variáveis listadas em `reevaluateOn` mudam.
+
+```yaml
+- name: "Configurar tenant dinamicamente"
+  input:
+    prompt: "Informe o código do tenant"
+    variable: "tenant_code"
+    type: "text"
+    ci_default: "acme"
+    dynamic:
+      capture:
+        tenant_normalized: "toupper(value)"
+      computed:
+        auth_header: "`Bearer ${variables.api_token}-${variables.__input_value}`"
+      persist_to_global: true
+      reevaluate:
+        - name: "tenant_header"
+          expression:
+            "variables.auth_header + ':' + variables.current_environment"
+          scope: "suite"
+          reevaluateOn: ["current_environment", "auth_header"]
+      exports: ["auth_header"]
+```
+
+Após a coleta, quaisquer variáveis derivadas aparecem em `captured_variables` do step e ficam disponíveis nos escopos `runtime`, `suite` ou `global`, de acordo com a configuração.
+
+#### Validação dinâmica de inputs
+
+- Adicione regras em `validation.expressions` para validar o valor com JMESPath (`language: jmespath`) ou JavaScript.
+- Utilize `severity: warning` para alertas não-bloqueantes; o campo é mantido em `validation_warnings` no resultado.
+- Expressões são avaliadas tanto em modo interativo quanto em CI (`ci_default` passa pelo mesmo pipeline).
+
+```yaml
+validation:
+  expressions:
+    - expression: "contains(value, '@example.com')"
+      language: "jmespath"
+      message: "E-mail deve usar o domínio example.com"
+      severity: "warning"
+    - expression: "variables.__input_value.length >= 8"
+      message: "Senha precisa de pelo menos 8 caracteres"
+```
+
+Mensagens de erro interrompem o fluxo do input; avisos são registrados nos logs e propagados para relatórios sem bloquear o teste.
+
 ### Retry Logic
 
 ```yaml

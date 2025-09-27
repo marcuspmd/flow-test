@@ -20,6 +20,8 @@ import { GlobalRegistryService } from "./global-registry.service";
 import { HttpService } from "./http.service";
 import { AssertionService } from "./assertion.service";
 import { CaptureService } from "./capture.service";
+import { ComputedService } from "./computed.service";
+import { DynamicExpressionService } from "./dynamic-expression.service";
 import { ScenarioService } from "./scenario.service";
 import { IterationService } from "./iteration.service";
 import { InputService } from "./input.service";
@@ -27,6 +29,8 @@ import { getLogger } from "./logger.service";
 import {
   DiscoveredTest,
   TestSuite,
+  TestStep,
+  InputResult,
   SuiteExecutionResult,
   StepExecutionResult,
   ExecutionStats,
@@ -34,6 +38,18 @@ import {
   PerformanceSummary,
   DependencyResult,
 } from "../types/engine.types";
+import { DynamicVariableAssignment } from "../types/common.types";
+
+type StepIdentifiers = {
+  stepId: string;
+  qualifiedStepId: string;
+  normalizedQualifiedStepId: string;
+};
+
+type StepFilterSets = {
+  simple: Set<string>;
+  qualified: Set<string>;
+};
 
 /**
  * Comprehensive test execution service for orchestrating complete test suite execution.
@@ -141,6 +157,8 @@ export class ExecutionService {
   private scenarioService: ScenarioService;
   private iterationService: IterationService;
   private inputService: InputService;
+  private computedService: ComputedService;
+  private dynamicExpressionService: DynamicExpressionService;
 
   // Performance statistics
   private performanceData: {
@@ -180,11 +198,153 @@ export class ExecutionService {
     this.iterationService = new IterationService();
     this.scenarioService = new ScenarioService();
     this.inputService = new InputService();
+    this.computedService = new ComputedService();
+    this.dynamicExpressionService = new DynamicExpressionService(
+      this.captureService,
+      this.computedService
+    );
 
     this.performanceData = {
       requests: [],
       start_time: Date.now(),
     };
+  }
+
+  private buildDynamicContext(
+    suite: TestSuite,
+    step: TestStep,
+    variables: Record<string, any>
+  ) {
+    return {
+      variables,
+      stepName: step.name,
+      suiteNodeId: suite.node_id,
+      suiteName: suite.suite_name,
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  private applyDynamicAssignments(
+    assignments: DynamicVariableAssignment[],
+    suite: TestSuite
+  ): Record<string, any> {
+    const applied: Record<string, any> = {};
+
+    for (const assignment of assignments) {
+      this.globalVariables.setVariable(
+        assignment.name,
+        assignment.value,
+        assignment.scope
+      );
+
+      if (assignment.persist || assignment.scope === "global") {
+        this.globalRegistry.setExportedVariable(
+          suite.node_id,
+          assignment.name,
+          assignment.value
+        );
+      }
+
+      applied[assignment.name] = assignment.value;
+    }
+
+    return applied;
+  }
+
+  private buildStepFilter(stepIds?: string[]): StepFilterSets | undefined {
+    if (!Array.isArray(stepIds) || stepIds.length === 0) {
+      return undefined;
+    }
+
+    const simple = new Set<string>();
+    const qualified = new Set<string>();
+
+    for (const rawValue of stepIds) {
+      if (typeof rawValue !== "string") {
+        continue;
+      }
+
+      const trimmed = rawValue.trim();
+      if (!trimmed) {
+        continue;
+      }
+
+      if (trimmed.includes("::") || trimmed.includes(":")) {
+        const separator = trimmed.includes("::") ? "::" : ":";
+        const [suitePart, stepPart] = trimmed.split(separator);
+        if (!suitePart || !stepPart) {
+          continue;
+        }
+        const normalizedSuite = this.normalizeSuiteId(suitePart);
+        const normalizedStep = this.normalizeStepId(stepPart);
+        qualified.add(`${normalizedSuite}::${normalizedStep}`);
+      } else {
+        simple.add(this.normalizeStepId(trimmed));
+      }
+    }
+
+    if (simple.size === 0 && qualified.size === 0) {
+      return undefined;
+    }
+
+    return { simple, qualified };
+  }
+
+  private shouldExecuteStepFilter(
+    identifiers: StepIdentifiers,
+    filter?: StepFilterSets
+  ): boolean {
+    if (!filter) {
+      return true;
+    }
+
+    if (filter.simple.has(identifiers.stepId)) {
+      return true;
+    }
+
+    if (filter.qualified.has(identifiers.normalizedQualifiedStepId)) {
+      return true;
+    }
+
+    return false;
+  }
+
+  private computeStepIdentifiers(
+    suite: TestSuite,
+    step: TestStep,
+    index: number
+  ): StepIdentifiers {
+    const baseName = step.step_id?.trim() || `step-${index + 1}-${step.name}`;
+    let stepId = this.normalizeStepId(baseName);
+
+    if (!stepId) {
+      stepId = `step-${index + 1}`;
+    }
+
+    const qualifiedStepId = `${suite.node_id}::${stepId}`;
+    const normalizedQualifiedStepId = `${this.normalizeSuiteId(
+      suite.node_id
+    )}::${stepId}`;
+
+    return {
+      stepId,
+      qualifiedStepId,
+      normalizedQualifiedStepId,
+    };
+  }
+
+  private normalizeSuiteId(value: string): string {
+    return this.normalizeStepId(value);
+  }
+
+  private normalizeStepId(value: string): string {
+    return value
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, "-")
+      .replace(/[^a-z0-9_.:-]/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-|-$/g, "");
   }
 
   /**
@@ -531,6 +691,9 @@ export class ExecutionService {
         { metadata: { type: "internal_debug", internal: true } }
       );
 
+      // Reset dynamic definitions registered by previous suites
+      this.dynamicExpressionService.reset();
+
       // Configures suite variables
       if (suite.variables) {
         this.globalVariables.setSuiteVariables(suite.variables);
@@ -555,6 +718,9 @@ export class ExecutionService {
         );
       }
 
+      const runtimeFilters = this.configManager.getRuntimeFilters();
+      const stepFilter = this.buildStepFilter(runtimeFilters.step_ids);
+
       // Executes all steps
       const stepResults: StepExecutionResult[] = [];
       let successfulSteps = 0;
@@ -562,9 +728,20 @@ export class ExecutionService {
 
       for (let i = 0; i < suite.steps.length; i++) {
         const step = suite.steps[i];
+        const identifiers = this.computeStepIdentifiers(suite, step, i);
+        const shouldExecute = this.shouldExecuteStepFilter(
+          identifiers,
+          stepFilter
+        );
 
         try {
-          const stepResult = await this.executeStep(step, suite, i);
+          const stepResult = await this.executeStep(
+            step,
+            suite,
+            i,
+            identifiers,
+            shouldExecute
+          );
           stepResults.push(stepResult);
 
           if (stepResult.status === "success") {
@@ -631,11 +808,16 @@ export class ExecutionService {
           });
 
           const errorStepResult: StepExecutionResult = {
+            step_id: identifiers.stepId,
+            qualified_step_id: identifiers.qualifiedStepId,
             step_name: step.name,
             status: "failure",
             duration_ms: 0,
             error_message: `Step execution error: ${error}`,
             captured_variables: {},
+            available_variables: this.filterAvailableVariables(
+              this.globalVariables.getAllVariables()
+            ),
           };
 
           stepResults.push(errorStepResult);
@@ -652,9 +834,10 @@ export class ExecutionService {
 
       const endTime = new Date();
       const duration = endTime.getTime() - startTime.getTime();
-      const totalSteps = suite.steps.length; // Use the intended number of steps, not just executed ones
+      const processedSteps = stepResults.length;
+      const executedSteps = successfulSteps + failedSteps;
       const successRate =
-        totalSteps > 0 ? (successfulSteps / totalSteps) * 100 : 0;
+        executedSteps === 0 ? 100 : (successfulSteps / executedSteps) * 100;
 
       // Read original YAML content for frontend processing
       let suiteYamlContent: string | undefined;
@@ -677,7 +860,7 @@ export class ExecutionService {
         end_time: endTime.toISOString(),
         duration_ms: duration,
         status: failedSteps === 0 ? "success" : "failure",
-        steps_executed: totalSteps,
+        steps_executed: processedSteps,
         steps_successful: successfulSteps,
         steps_failed: failedSteps,
         success_rate: Math.round(successRate * 100) / 100,
@@ -849,7 +1032,8 @@ export class ExecutionService {
     suite: TestSuite,
     stepIndex: number,
     stepStartTime: number,
-    context: any
+    context: any,
+    identifiers: StepIdentifiers
   ): Promise<StepExecutionResult> {
     try {
       // First, try to find a scenario that matches the current conditions
@@ -960,7 +1144,9 @@ export class ExecutionService {
       if (!executedScenario) {
         // No scenario matched - this is OK, just skip execution
         this.logger.info(`No scenarios matched for step: ${step.name}`);
-        return {
+        const skippedResult: StepExecutionResult = {
+          step_id: identifiers.stepId,
+          qualified_step_id: identifiers.qualifiedStepId,
           step_name: step.name,
           status: "skipped",
           duration_ms: stepDuration,
@@ -975,9 +1161,14 @@ export class ExecutionService {
             evaluations,
           } as any,
         };
+
+        await this.hooks.onStepEnd?.(step, skippedResult, context);
+        return skippedResult;
       }
 
       const stepResult: StepExecutionResult = {
+        step_id: identifiers.stepId,
+        qualified_step_id: identifiers.qualifiedStepId,
         step_name: step.name,
         status: httpResult?.status || "success",
         duration_ms: stepDuration,
@@ -1003,6 +1194,8 @@ export class ExecutionService {
       const stepDuration = stepEndTime - stepStartTime;
 
       const errorResult: StepExecutionResult = {
+        step_id: identifiers.stepId,
+        qualified_step_id: identifiers.qualifiedStepId,
         step_name: step.name,
         status: "failure",
         duration_ms: stepDuration,
@@ -1070,9 +1263,11 @@ export class ExecutionService {
    * Executes an individual step
    */
   private async executeStep(
-    step: any,
+    step: TestStep,
     suite: TestSuite,
-    stepIndex: number
+    stepIndex: number,
+    identifiers: StepIdentifiers,
+    shouldExecute = true
   ): Promise<StepExecutionResult> {
     const stepStartTime = Date.now();
 
@@ -1085,9 +1280,32 @@ export class ExecutionService {
       total_steps: suite.steps.length,
       start_time: new Date(),
       execution_id: `${suite.suite_name}_${stepIndex}`,
+      step_id: identifiers.stepId,
+      qualified_step_id: identifiers.qualifiedStepId,
     };
 
     await this.hooks.onStepStart?.(step, context);
+
+    if (!shouldExecute) {
+      const skippedResult: StepExecutionResult = {
+        step_id: identifiers.stepId,
+        qualified_step_id: identifiers.qualifiedStepId,
+        step_name: step.name,
+        status: "skipped",
+        duration_ms: 0,
+        captured_variables: {},
+        available_variables: this.filterAvailableVariables(
+          this.globalVariables.getAllVariables()
+        ),
+      };
+
+      this.logger.info(
+        `Skipping step '${step.name}' (${identifiers.stepId}) due to step filter`
+      );
+
+      await this.hooks.onStepEnd?.(step, skippedResult, context);
+      return skippedResult;
+    }
 
     try {
       // Initialize captured variables and assertion results for all steps
@@ -1101,7 +1319,8 @@ export class ExecutionService {
           suite,
           stepIndex,
           stepStartTime,
-          context
+          context,
+          identifiers
         );
       }
 
@@ -1112,13 +1331,16 @@ export class ExecutionService {
           suite,
           stepIndex,
           stepStartTime,
-          context
+          context,
+          identifiers
         );
       }
 
       // Validate that step has either request or input
       if (!step.request && !step.input) {
-        throw new Error(`Step '${step.name}' must have either 'request' or 'input' configuration`);
+        throw new Error(
+          `Step '${step.name}' must have either 'request' or 'input' configuration`
+        );
       }
 
       let httpResult: any = null;
@@ -1204,7 +1426,10 @@ export class ExecutionService {
           );
 
           // Merge step captures with scenario captures
-          capturedVariables = { ...capturedVariables, ...stepCapturedVariables };
+          capturedVariables = {
+            ...capturedVariables,
+            ...stepCapturedVariables,
+          };
           httpResult.captured_variables = capturedVariables;
 
           // Immediately update runtime variables so they're available for next steps
@@ -1220,7 +1445,7 @@ export class ExecutionService {
           status: "success",
           status_code: 200,
           response_time: 0,
-          captured_variables: {}
+          captured_variables: {},
         };
       }
 
@@ -1229,22 +1454,38 @@ export class ExecutionService {
         capturedVariables = { ...httpResult.captured_variables };
       }
 
+      let inputResultsForStep: InputResult[] | undefined;
+      const stepDynamicAssignments: DynamicVariableAssignment[] = [];
+
       // 6. Process interactive input(s) if configured
       if (step.input) {
         try {
           const currentVariables = this.globalVariables.getAllVariables();
-          const inputResult = await this.inputService.promptUser(step.input, currentVariables);
+          const inputResult = await this.inputService.promptUser(
+            step.input,
+            currentVariables
+          );
 
           // Handle single or multiple input results
-          const inputResults = Array.isArray(inputResult) ? inputResult : [inputResult];
+          const inputResults = Array.isArray(inputResult)
+            ? inputResult
+            : [inputResult];
+          inputResultsForStep = inputResults;
+          const inputConfigs = Array.isArray(step.input)
+            ? step.input
+            : [step.input];
 
           if (!httpResult.captured_variables) {
             httpResult.captured_variables = {};
           }
 
           let inputProcessedSuccessfully = true;
+          const triggeredVariables = new Set<string>();
+          let lastSuccessfulInput: InputResult | undefined;
 
-          for (const result of inputResults) {
+          inputResults.forEach((result, index) => {
+            const config =
+              inputConfigs[Math.min(index, inputConfigs.length - 1)];
             if (Array.isArray(step.input)) {
               this.logger.info(`📝 Processing input: ${result.variable}`);
             } else {
@@ -1253,22 +1494,102 @@ export class ExecutionService {
 
             if (result.validation_passed) {
               // Store input result as a variable
-              this.globalVariables.setRuntimeVariable(result.variable, result.value);
+              this.globalVariables.setRuntimeVariable(
+                result.variable,
+                result.value
+              );
+              triggeredVariables.add(result.variable);
+              lastSuccessfulInput = result;
 
-              this.logger.info(`✅ Input captured: ${result.variable} = ${result.used_default ? '(default)' : '(user input)'}`);
+              this.logger.info(
+                `✅ Input captured: ${result.variable} = ${
+                  result.used_default ? "(default)" : "(user input)"
+                }`
+              );
 
               // Add input result to captured variables for this step
               httpResult.captured_variables[result.variable] = result.value;
+              capturedVariables[result.variable] = result.value;
+
+              const dynamicContext = this.buildDynamicContext(
+                suite,
+                step,
+                this.globalVariables.getAllVariables()
+              );
+
+              const dynamicOutcome =
+                this.dynamicExpressionService.processInputDynamics(
+                  result,
+                  config.dynamic,
+                  dynamicContext
+                );
+
+              if (dynamicOutcome.assignments.length > 0) {
+                const applied = this.applyDynamicAssignments(
+                  dynamicOutcome.assignments,
+                  suite
+                );
+                stepDynamicAssignments.push(...dynamicOutcome.assignments);
+                result.derived_assignments = dynamicOutcome.assignments;
+                Object.assign(httpResult.captured_variables, applied);
+                Object.assign(capturedVariables, applied);
+                dynamicOutcome.assignments.forEach((assignment) => {
+                  triggeredVariables.add(assignment.name);
+                });
+              }
+
+              if (dynamicOutcome.registeredDefinitions.length > 0) {
+                this.dynamicExpressionService.registerDefinitions(
+                  dynamicOutcome.registeredDefinitions
+                );
+              }
             } else {
-              this.logger.error(`❌ Input validation failed for ${result.variable}: ${result.validation_error}`);
+              this.logger.error(
+                `❌ Input validation failed for ${result.variable}: ${result.validation_error}`
+              );
               inputProcessedSuccessfully = false;
               // Continue processing other inputs but mark as partially failed
+            }
+          });
+
+          if (triggeredVariables.size > 0) {
+            const reevaluatedAssignments =
+              this.dynamicExpressionService.reevaluate(
+                Array.from(triggeredVariables),
+                lastSuccessfulInput,
+                this.buildDynamicContext(
+                  suite,
+                  step,
+                  this.globalVariables.getAllVariables()
+                )
+              );
+
+            if (reevaluatedAssignments.length > 0) {
+              const applied = this.applyDynamicAssignments(
+                reevaluatedAssignments,
+                suite
+              );
+              stepDynamicAssignments.push(...reevaluatedAssignments);
+              if (lastSuccessfulInput) {
+                lastSuccessfulInput.derived_assignments = [
+                  ...(lastSuccessfulInput.derived_assignments ?? []),
+                  ...reevaluatedAssignments,
+                ];
+              }
+              Object.assign(httpResult.captured_variables, applied);
+              Object.assign(capturedVariables, applied);
             }
           }
 
           // Update the final captured variables reference
-          if (httpResult.captured_variables && Object.keys(httpResult.captured_variables).length > 0) {
-            capturedVariables = { ...capturedVariables, ...httpResult.captured_variables };
+          if (
+            httpResult.captured_variables &&
+            Object.keys(httpResult.captured_variables).length > 0
+          ) {
+            capturedVariables = {
+              ...capturedVariables,
+              ...httpResult.captured_variables,
+            };
           }
 
           // If this was an input-only step and inputs failed, mark the step as failed
@@ -1276,7 +1597,6 @@ export class ExecutionService {
             httpResult.status = "failure";
             httpResult.error_message = "One or more input validations failed";
           }
-
         } catch (error) {
           this.logger.error(`❌ Input processing error: ${error}`);
           // If this was an input-only step and input failed, mark the step as failed
@@ -1291,6 +1611,8 @@ export class ExecutionService {
       const stepDuration = stepEndTime - stepStartTime;
 
       const stepResult: StepExecutionResult = {
+        step_id: identifiers.stepId,
+        qualified_step_id: identifiers.qualifiedStepId,
         step_name: step.name,
         status: httpResult.status,
         duration_ms: stepDuration,
@@ -1298,6 +1620,10 @@ export class ExecutionService {
         response_details: httpResult.response_details,
         assertions_results: assertionResults,
         captured_variables: capturedVariables,
+        ...(inputResultsForStep ? { input_results: inputResultsForStep } : {}),
+        ...(stepDynamicAssignments.length > 0
+          ? { dynamic_assignments: stepDynamicAssignments }
+          : {}),
         available_variables: this.filterAvailableVariables(
           this.globalVariables.getAllVariables()
         ),
@@ -1314,6 +1640,8 @@ export class ExecutionService {
       const stepDuration = stepEndTime - stepStartTime;
 
       const errorResult: StepExecutionResult = {
+        step_id: identifiers.stepId,
+        qualified_step_id: identifiers.qualifiedStepId,
         step_name: step.name,
         status: "failure",
         duration_ms: stepDuration,
@@ -1368,7 +1696,8 @@ export class ExecutionService {
     result: SuiteExecutionResult
   ): void {
     const hasRequiredExports = test.exports && test.exports.length > 0;
-    const hasOptionalExports = test.exports_optional && test.exports_optional.length > 0;
+    const hasOptionalExports =
+      test.exports_optional && test.exports_optional.length > 0;
 
     if (!hasRequiredExports && !hasOptionalExports) return;
 
@@ -1422,7 +1751,9 @@ export class ExecutionService {
   /**
    * Collects all captured variables from step results and scenarios
    */
-  private getAllCapturedVariables(result: SuiteExecutionResult): Record<string, any> {
+  private getAllCapturedVariables(
+    result: SuiteExecutionResult
+  ): Record<string, any> {
     const allCaptured: Record<string, any> = {};
 
     // Collect from step results
@@ -1653,7 +1984,8 @@ export class ExecutionService {
     suite: TestSuite,
     stepIndex: number,
     stepStartTime: number,
-    context: any
+    context: any,
+    identifiers: StepIdentifiers
   ): Promise<StepExecutionResult> {
     try {
       // Validate iteration configuration
@@ -1676,6 +2008,8 @@ export class ExecutionService {
       if (iterationContexts.length === 0) {
         this.logger.warn(`No iterations to execute for step "${step.name}"`);
         return {
+          step_id: identifiers.stepId,
+          qualified_step_id: identifiers.qualifiedStepId,
           step_name: step.name,
           status: "success",
           duration_ms: Date.now() - stepStartTime,
@@ -1714,6 +2048,18 @@ export class ExecutionService {
             iterate: undefined, // Remove iterate to prevent infinite recursion
           };
 
+          const iterationIdentifiers: StepIdentifiers = {
+            stepId: `${identifiers.stepId}-iter-${i + 1}`,
+            qualifiedStepId: `${suite.node_id}::${identifiers.stepId}-iter-${
+              i + 1
+            }`,
+            normalizedQualifiedStepId: `${this.normalizeSuiteId(
+              suite.node_id
+            )}::${identifiers.stepId}-iter-${i + 1}`,
+          };
+
+          iterationStep.step_id = iterationIdentifiers.stepId;
+
           this.logger.info(
             `[${iterationStepName}] Starting iteration ${i + 1} of ${
               iterationContexts.length
@@ -1724,7 +2070,9 @@ export class ExecutionService {
           const iterationResult = await this.executeStep(
             iterationStep,
             suite,
-            stepIndex
+            stepIndex,
+            iterationIdentifiers,
+            true
           );
           iterationResults.push(iterationResult);
 
@@ -1764,6 +2112,8 @@ export class ExecutionService {
       });
 
       return {
+        step_id: identifiers.stepId,
+        qualified_step_id: identifiers.qualifiedStepId,
         step_name: step.name,
         status: allIterationsSuccessful ? "success" : "failure",
         duration_ms: totalDuration,
@@ -1782,6 +2132,8 @@ export class ExecutionService {
       );
 
       return {
+        step_id: identifiers.stepId,
+        qualified_step_id: identifiers.qualifiedStepId,
         step_name: step.name,
         status: "failure",
         duration_ms: Date.now() - stepStartTime,
@@ -1798,13 +2150,16 @@ export class ExecutionService {
   /**
    * Validates that interactive inputs are only used in sequential execution mode
    */
-  private validateInputCompatibility(tests: DiscoveredTest[], config: any): void {
-    const hasInputSteps = tests.some(test => {
+  private validateInputCompatibility(
+    tests: DiscoveredTest[],
+    config: any
+  ): void {
+    const hasInputSteps = tests.some((test) => {
       try {
         // Read the test file to check for input steps
-        const fs = require('fs');
-        const yaml = require('js-yaml');
-        const fileContent = fs.readFileSync(test.file_path, 'utf8');
+        const fs = require("fs");
+        const yaml = require("js-yaml");
+        const fileContent = fs.readFileSync(test.file_path, "utf8");
         const suite = yaml.load(fileContent) as any;
 
         return suite.steps?.some((step: any) => step.input);
@@ -1816,11 +2171,11 @@ export class ExecutionService {
 
     if (hasInputSteps) {
       if (config.execution?.mode === "parallel") {
-        const inputTests = tests.filter(test => {
+        const inputTests = tests.filter((test) => {
           try {
-            const fs = require('fs');
-            const yaml = require('js-yaml');
-            const fileContent = fs.readFileSync(test.file_path, 'utf8');
+            const fs = require("fs");
+            const yaml = require("js-yaml");
+            const fileContent = fs.readFileSync(test.file_path, "utf8");
             const suite = yaml.load(fileContent) as any;
             return suite.steps?.some((step: any) => step.input);
           } catch {
@@ -1828,19 +2183,19 @@ export class ExecutionService {
           }
         });
 
-        const testNames = inputTests.map(t => t.suite_name).join(', ');
+        const testNames = inputTests.map((t) => t.suite_name).join(", ");
 
         throw new Error(
           `❌ Interactive input steps detected in parallel execution mode!\n\n` +
-          `Tests with input steps: ${testNames}\n\n` +
-          `💡 Interactive inputs require sequential execution because:\n` +
-          `   • Input steps block execution waiting for user input\n` +
-          `   • Subsequent steps depend on input values\n` +
-          `   • Parallel execution cannot wait for user interaction\n\n` +
-          `🔧 Solutions:\n` +
-          `   1. Set execution_mode: "sequential" in your config\n` +
-          `   2. Remove input steps from test suites\n` +
-          `   3. Use ci_default values for automated execution`
+            `Tests with input steps: ${testNames}\n\n` +
+            `💡 Interactive inputs require sequential execution because:\n` +
+            `   • Input steps block execution waiting for user input\n` +
+            `   • Subsequent steps depend on input values\n` +
+            `   • Parallel execution cannot wait for user interaction\n\n` +
+            `🔧 Solutions:\n` +
+            `   1. Set execution_mode: "sequential" in your config\n` +
+            `   2. Remove input steps from test suites\n` +
+            `   3. Use ci_default values for automated execution`
         );
       }
 

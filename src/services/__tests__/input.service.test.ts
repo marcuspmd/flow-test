@@ -66,9 +66,7 @@ describe("InputService sequential selects", () => {
           {
             id: 2,
             flow: {
-              stages: [
-                { id: "stage-b1", name: "Stage B1", code: "B1" },
-              ],
+              stages: [{ id: "stage-b1", name: "Stage B1", code: "B1" }],
             },
           },
         ],
@@ -86,5 +84,73 @@ describe("InputService sequential selects", () => {
 
     selectSpy.mockRestore();
     displaySpy.mockRestore();
+  });
+});
+
+describe("InputService dynamic validation", () => {
+  let service: InputService;
+
+  beforeEach(() => {
+    jest.resetModules();
+    service = new InputService();
+    (service as any).isCI = true;
+  });
+
+  it("returns validation warnings when expressions evaluate to warning", async () => {
+    const config: InputConfig = {
+      prompt: "Enter user email",
+      variable: "user_email",
+      type: "text",
+      ci_default: "user@external.com",
+      validation: {
+        expressions: [
+          {
+            expression: "contains(value, '@example.com')",
+            language: "jmespath",
+            message: "Email should use example.com domain",
+            severity: "warning",
+          },
+        ],
+      },
+    };
+
+    const result = await service.promptUser(config, {});
+
+    expect(Array.isArray(result)).toBe(false);
+    const singleResult = result as any;
+    expect(singleResult.validation_passed).toBe(true);
+    expect(singleResult.validation_warnings).toEqual([
+      "Email should use example.com domain",
+    ]);
+    expect(singleResult.used_default).toBe(true);
+  });
+
+  it("fails CI input when expressions evaluate to error", async () => {
+    const config: InputConfig = {
+      prompt: "Enter API key",
+      variable: "api_key",
+      type: "text",
+      default: "invalid",
+      ci_default: "invalid",
+      validation: {
+        expressions: [
+          {
+            expression: "contains(value, 'sk-')",
+            language: "jmespath",
+            message: "API key must start with sk-",
+          },
+        ],
+      },
+    };
+
+    const result = await service.promptUser(config, {});
+
+    expect(Array.isArray(result)).toBe(false);
+    const singleResult = result as any;
+    expect(singleResult.validation_passed).toBe(false);
+    expect(singleResult.used_default).toBe(true);
+    expect(singleResult.validation_error).toContain(
+      "CI Mode validation failed"
+    );
   });
 });
