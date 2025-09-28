@@ -172,6 +172,49 @@ describe("DependencyService", () => {
       expect(reportDeps[0].node_id).toBe("auth");
     });
 
+    it("should resolve dependency path when provided node_id does not match", () => {
+      const projectRoot = process.cwd();
+      const authPath = path.join(
+        projectRoot,
+        "tests",
+        "auth",
+        "auth-flow.yaml"
+      );
+      const fixPath = path.join(
+        projectRoot,
+        "tests",
+        "proposal",
+        "fix-agency.yaml"
+      );
+
+      const tests: DiscoveredTest[] = [
+        {
+          node_id: "auth_flow",
+          suite_name: "Auth Flow",
+          file_path: authPath,
+          depends: [],
+        },
+        {
+          node_id: "fix_cip_agency",
+          suite_name: "Fix CIP Agency",
+          file_path: fixPath,
+          depends: [
+            {
+              node_id: "auth",
+              path: "../auth/auth-flow.yaml",
+            },
+          ],
+        },
+      ];
+
+      service.buildDependencyGraph(tests);
+
+      const deps = service.getDirectDependencies("fix_cip_agency");
+      expect(deps).toHaveLength(1);
+      expect(deps[0].node_id).toBe("auth_flow");
+      expect(tests[1].depends?.[0].node_id).toBe("auth_flow");
+    });
+
     it("should warn about missing dependencies", () => {
       const consoleSpy = jest.spyOn(console, "warn").mockImplementation();
 

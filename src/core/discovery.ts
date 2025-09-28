@@ -178,7 +178,23 @@ export class TestDiscovery {
       throw new Error(`Test directory does not exist: ${testDirectory}`);
     }
 
+    const runtimeFilters = this.configManager.getRuntimeFilters();
     const discoveredTests: DiscoveredTest[] = [];
+
+    if (
+      runtimeFilters.file_patterns &&
+      runtimeFilters.file_patterns.length > 0
+    ) {
+      const filteredTests = await this.discoverTestsByFilePatterns(
+        testDirectory,
+        runtimeFilters.file_patterns,
+        runtimeFilters.exclude_patterns || config.discovery!.exclude
+      );
+
+      if (filteredTests.length > 0) {
+        return this.resolveDependencies(this.removeDuplicates(filteredTests));
+      }
+    }
 
     // Para cada padrão de descoberta, encontra arquivos correspondentes
     for (const pattern of config.discovery!.patterns) {
@@ -212,6 +228,93 @@ export class TestDiscovery {
     return testsWithDependencies;
   }
 
+  private async discoverTestsByFilePatterns(
+    testDirectory: string,
+    patterns: string[],
+    excludePatterns: string[]
+  ): Promise<DiscoveredTest[]> {
+    const resolvedTests: DiscoveredTest[] = [];
+    const seenFiles = new Set<string>();
+
+    const resolveAbsolute = (pattern: string): string => {
+      if (path.isAbsolute(pattern)) {
+        return path.normalize(pattern);
+      }
+      return path.resolve(testDirectory, pattern);
+    };
+
+    const normalizedExclude = excludePatterns || [];
+
+    for (const pattern of patterns) {
+      if (!pattern || typeof pattern !== "string") {
+        continue;
+      }
+
+      const trimmedPattern = pattern.trim();
+      if (!trimmedPattern) {
+        continue;
+      }
+
+      if (this.hasGlobCharacters(trimmedPattern)) {
+        try {
+          const files = await fg(trimmedPattern, {
+            cwd: testDirectory,
+            absolute: true,
+            onlyFiles: true,
+            ignore: normalizedExclude,
+          });
+
+          for (const filePath of files) {
+            const normalizedPath = path.normalize(filePath);
+            if (seenFiles.has(normalizedPath)) {
+              continue;
+            }
+
+            seenFiles.add(normalizedPath);
+            const test = await this.parseTestFile(normalizedPath);
+            if (test) {
+              resolvedTests.push(test);
+            }
+          }
+        } catch (error) {
+          getLogger().warn(
+            `⚠️  Warning: Failed to resolve glob pattern '${trimmedPattern}': ${error}`
+          );
+        }
+      } else {
+        const absolutePath = resolveAbsolute(trimmedPattern);
+
+        if (seenFiles.has(absolutePath)) {
+          continue;
+        }
+
+        seenFiles.add(absolutePath);
+
+        try {
+          if (
+            fs.existsSync(absolutePath) &&
+            fs.statSync(absolutePath).isFile()
+          ) {
+            const test = await this.parseTestFile(absolutePath);
+            if (test) {
+              resolvedTests.push(test);
+            }
+          }
+        } catch (error) {
+          getLogger().warn(
+            `⚠️  Warning: Failed to process file pattern '${trimmedPattern}': ${error}`
+          );
+        }
+      }
+    }
+
+    return resolvedTests;
+  }
+
+  private hasGlobCharacters(pattern: string): boolean {
+    return /[*?{}()[\]!+@]/.test(pattern);
+  }
+
   /**
    * Analisa um arquivo de teste individual
    */
@@ -222,7 +325,12 @@ export class TestDiscovery {
       const fileContent = fs.readFileSync(filePath, "utf8");
       const suite = yaml.load(fileContent) as TestSuite;
 
-      if (!suite || !suite.suite_name || !suite.node_id) {
+      if (!this.isLikelyTestSuite(suite)) {
+        // Ignore YAML files that don't resemble Flow Test suites without logging warnings
+        return null;
+      }
+
+      if (!suite.suite_name || !suite.node_id) {
         getLogger().warn(
           `⚠️  Warning: Invalid test suite in ${filePath} - missing suite_name or node_id`
         );
@@ -246,6 +354,50 @@ export class TestDiscovery {
     } catch (error) {
       throw new Error(`Failed to parse test file ${filePath}: ${error}`);
     }
+  }
+
+  private isLikelyTestSuite(candidate: unknown): candidate is TestSuite {
+    if (!candidate || typeof candidate !== "object") {
+      return false;
+    }
+
+    const suite = candidate as Partial<TestSuite>;
+    if (!Array.isArray(suite.steps) || suite.steps.length === 0) {
+      return false;
+    }
+
+    return suite.steps.every((step: any) => {
+      if (!step || typeof step !== "object") {
+        return false;
+      }
+
+      if (typeof step.name !== "string" || step.name.trim().length === 0) {
+        return false;
+      }
+
+      const hasRequest =
+        step.request &&
+        typeof step.request === "object" &&
+        typeof step.request.method === "string" &&
+        step.request.method.trim().length > 0 &&
+        typeof step.request.url === "string" &&
+        step.request.url.trim().length > 0;
+
+      const hasInput = step.input !== undefined && step.input !== null;
+
+      const hasCall =
+        step.call &&
+        typeof step.call === "object" &&
+        typeof step.call.test === "string" &&
+        step.call.test.trim().length > 0;
+
+      const hasScenarioCollection =
+        Array.isArray(step.scenarios) && step.scenarios.length > 0;
+
+      // Steps that only contain metadata (e.g., cleanup with always_run) must still
+      // expose at least one actionable block to be considered valid
+      return hasRequest || hasInput || hasCall || hasScenarioCollection;
+    });
   }
 
   /**

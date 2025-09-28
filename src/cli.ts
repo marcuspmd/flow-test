@@ -42,6 +42,7 @@ import {
   ImportOptions,
 } from "./services/swagger-import.service";
 import { handleInitCommand } from "./commands/init";
+import { handleGraphCommand } from "./commands/graph";
 import { PostmanCollectionService } from "./services/postman-collection.service";
 import {
   setupLogger,
@@ -65,6 +66,165 @@ const HOOK_KEYS: (keyof EngineHooks)[] = [
   "onExecutionEnd",
   "onError",
 ];
+
+function resolveProjectRoot(startDir: string): string {
+  const fs = require("fs");
+  const path = require("path");
+
+  let current = path.resolve(startDir);
+
+  while (true) {
+    if (
+      fs.existsSync(path.join(current, "flow-test.config.yml")) ||
+      fs.existsSync(path.join(current, "flow-test.config.yaml")) ||
+      fs.existsSync(path.join(current, "package.json")) ||
+      fs.existsSync(path.join(current, ".git"))
+    ) {
+      return current;
+    }
+
+    const parent = path.dirname(current);
+    if (parent === current) {
+      return path.resolve(startDir);
+    }
+    current = parent;
+  }
+}
+
+function loadConfiguredTestRoots(projectRoot: string): string[] {
+  const fs = require("fs");
+  const path = require("path");
+  const yaml = require("js-yaml");
+
+  const candidates = [
+    path.join(projectRoot, "flow-test.config.yml"),
+    path.join(projectRoot, "flow-test.config.yaml"),
+    path.join(projectRoot, "flow-test.config.json"),
+  ];
+
+  const roots = new Set<string>();
+
+  const pushRoot = (candidatePath: unknown) => {
+    if (typeof candidatePath !== "string") {
+      return;
+    }
+
+    const trimmed = candidatePath.trim();
+    if (!trimmed) {
+      return;
+    }
+
+    const absolutePath = path.isAbsolute(trimmed)
+      ? path.normalize(trimmed)
+      : path.resolve(projectRoot, trimmed);
+
+    try {
+      if (
+        fs.existsSync(absolutePath) &&
+        fs.statSync(absolutePath).isDirectory()
+      ) {
+        roots.add(absolutePath);
+      }
+    } catch (error) {
+      getLogger().debug(
+        `⚠️  Skipping configured test root '${absolutePath}': ${error}`
+      );
+    }
+  };
+
+  for (const configPath of candidates) {
+    if (!fs.existsSync(configPath)) {
+      continue;
+    }
+
+    try {
+      const raw = fs.readFileSync(configPath, "utf8");
+      const config = configPath.endsWith(".json")
+        ? JSON.parse(raw)
+        : yaml.load(raw);
+
+      if (config) {
+        const directoryLists = [
+          (config as any).testDirectories,
+          (config as any).test_directories,
+          (config as any).tests?.directories,
+        ];
+
+        for (const list of directoryLists) {
+          if (Array.isArray(list)) {
+            list.forEach(pushRoot);
+          }
+        }
+
+        pushRoot((config as any).test_directory);
+        pushRoot((config as any).testDirectory);
+      }
+    } catch (error) {
+      getLogger().debug(
+        `⚠️  Could not load configured test roots from '${configPath}': ${error}`
+      );
+    }
+  }
+
+  return Array.from(roots);
+}
+
+function determineDependencySearchRoots(
+  startDir: string,
+  projectRoot: string,
+  configuredRoots: string[]
+): string[] {
+  const fs = require("fs");
+  const path = require("path");
+
+  const normalizedProjectRoot = path.resolve(projectRoot);
+  const roots = new Set<string>();
+
+  const addIfDir = (candidate: string) => {
+    try {
+      if (fs.existsSync(candidate) && fs.statSync(candidate).isDirectory()) {
+        roots.add(path.resolve(candidate));
+      }
+    } catch (error) {
+      getLogger().debug(
+        `⚠️  Skipping dependency search root '${candidate}': ${error}`
+      );
+    }
+  };
+
+  let current = path.resolve(startDir);
+  addIfDir(current);
+
+  while (true) {
+    const parent = path.dirname(current);
+    if (parent === current) {
+      break;
+    }
+
+    addIfDir(parent);
+
+    if (path.resolve(parent) === normalizedProjectRoot) {
+      break;
+    }
+
+    current = parent;
+  }
+
+  configuredRoots.forEach(addIfDir);
+
+  const result = Array.from(roots);
+
+  if (
+    result.length > 1 &&
+    result.some((root) => path.resolve(root) === normalizedProjectRoot)
+  ) {
+    return result.filter(
+      (root) => path.resolve(root) !== normalizedProjectRoot
+    );
+  }
+
+  return result;
+}
 
 function mergeHooks(...hooks: Array<EngineHooks | undefined>): EngineHooks {
   const merged: EngineHooks = {};
@@ -116,6 +276,11 @@ async function main() {
   // Handle init command first
   if (args[0] === "init") {
     await handleInitCommand(args.slice(1));
+    return;
+  }
+
+  if (args[0] === "graph") {
+    await handleGraphCommand(args.slice(1));
     return;
   }
 
@@ -276,7 +441,8 @@ async function main() {
         }
 
         if (hasValue) {
-          const reportingOptions = (options.reporting = options.reporting ?? {});
+          const reportingOptions = (options.reporting =
+            options.reporting ?? {});
           reportingOptions.html = {
             ...reportingOptions.html,
             output_subdir: nextArg,
@@ -406,7 +572,11 @@ async function main() {
 
     if (configFile) {
       // Modo configuração: -c config.yaml
-      engineOptions = { ...options, config_file: configFile, runner_interactive_mode: runnerInteractiveMode };
+      engineOptions = {
+        ...options,
+        config_file: configFile,
+        runner_interactive_mode: runnerInteractiveMode,
+      };
     } else if (testFile) {
       // Modo teste específico: flow-test nome-teste.yaml
       const path = require("path");
@@ -421,7 +591,7 @@ async function main() {
 
       // Cria um diretório temporário com apenas o arquivo específico
       const tempDir = path.dirname(resolvedPath);
-      const fileName = path.basename(resolvedPath, path.extname(resolvedPath));
+      const projectRoot = resolveProjectRoot(tempDir);
 
       // Para teste específico, vamos ler o arquivo e extrair o node_id
       try {
@@ -429,18 +599,54 @@ async function main() {
         const yaml = require("js-yaml");
         const testData = yaml.load(fileContent);
 
+        const configuredRoots = loadConfiguredTestRoots(projectRoot);
+        const dependencyContext: DependencyDiscoveryContext = {
+          projectRoot,
+          searchRoots: determineDependencySearchRoots(
+            tempDir,
+            projectRoot,
+            configuredRoots
+          ),
+          nodeIdToFileMap: new Map<string, string>(),
+          processedFiles: new Set<string>(),
+          visitedDependencyFiles: new Set<string>(),
+          fallbackSearchPerformed: false,
+        };
+
         if (testData && testData.node_id) {
           // Auto-discover dependencies for single file execution
-          const dependencyNodeIds = await autoDiscoverDependencies(
+          const dependencyDiscovery = await autoDiscoverDependencies(
             testData,
-            tempDir
+            tempDir,
+            dependencyContext
           );
-          const nodeIdsToExecute = [...dependencyNodeIds, testData.node_id];
+          const nodeIdsToExecute = [
+            ...dependencyDiscovery.nodeIds,
+            testData.node_id,
+          ];
+
+          const patternSet = new Set<string>();
+          const normalizePattern = (filePath: string) =>
+            path
+              .relative(projectRoot, path.resolve(filePath))
+              .split(path.sep)
+              .join("/");
+
+          if (options.filters?.file_patterns) {
+            options.filters.file_patterns.forEach((pattern: string) =>
+              patternSet.add(pattern)
+            );
+          }
+
+          patternSet.add(normalizePattern(resolvedPath));
+          dependencyDiscovery.filePaths.forEach((filePath: string) => {
+            patternSet.add(normalizePattern(filePath));
+          });
 
           getLogger().info(
-            `🔍 Auto-discovered ${dependencyNodeIds.length} dependencies`
+            `🔍 Auto-discovered ${dependencyDiscovery.nodeIds.length} dependencies`
           );
-          if (dependencyNodeIds.length > 0) {
+          if (dependencyDiscovery.nodeIds.length > 0) {
             getLogger().info(
               `📋 Execution order: ${nodeIdsToExecute.join(" → ")}`
             );
@@ -448,28 +654,48 @@ async function main() {
 
           engineOptions = {
             ...options,
-            test_directory: tempDir,
+            test_directory: projectRoot,
             filters: {
               ...options.filters,
               node_ids: nodeIdsToExecute,
+              file_patterns: Array.from(patternSet),
             },
             runner_interactive_mode: runnerInteractiveMode,
           };
         } else if (testData && testData.suite_name) {
           // Auto-discover dependencies for single file execution
-          const dependencyNodeIds = await autoDiscoverDependencies(
+          const dependencyDiscovery = await autoDiscoverDependencies(
             testData,
-            tempDir
+            tempDir,
+            dependencyContext
           );
           const suiteNamesToExecute = [
-            ...dependencyNodeIds,
+            ...dependencyDiscovery.nodeIds,
             testData.suite_name,
           ];
 
+          const patternSet = new Set<string>();
+          const normalizePattern = (filePath: string) =>
+            path
+              .relative(projectRoot, path.resolve(filePath))
+              .split(path.sep)
+              .join("/");
+
+          if (options.filters?.file_patterns) {
+            options.filters.file_patterns.forEach((pattern: string) =>
+              patternSet.add(pattern)
+            );
+          }
+
+          patternSet.add(normalizePattern(resolvedPath));
+          dependencyDiscovery.filePaths.forEach((filePath: string) => {
+            patternSet.add(normalizePattern(filePath));
+          });
+
           getLogger().info(
-            `🔍 Auto-discovered ${dependencyNodeIds.length} dependencies`
+            `🔍 Auto-discovered ${dependencyDiscovery.nodeIds.length} dependencies`
           );
-          if (dependencyNodeIds.length > 0) {
+          if (dependencyDiscovery.nodeIds.length > 0) {
             getLogger().info(
               `📋 Execution order: ${suiteNamesToExecute.join(" → ")}`
             );
@@ -477,10 +703,11 @@ async function main() {
 
           engineOptions = {
             ...options,
-            test_directory: tempDir,
+            test_directory: projectRoot,
             filters: {
               ...options.filters,
               suite_names: suiteNamesToExecute,
+              file_patterns: Array.from(patternSet),
             },
             runner_interactive_mode: runnerInteractiveMode,
           };
@@ -494,7 +721,10 @@ async function main() {
       }
     } else {
       // Modo padrão
-      engineOptions = { ...options, runner_interactive_mode: runnerInteractiveMode };
+      engineOptions = {
+        ...options,
+        runner_interactive_mode: runnerInteractiveMode,
+      };
     }
 
     // Configura logger conforme a verbosidade escolhida
@@ -619,178 +849,255 @@ async function main() {
  * @param testDirectory - The directory to search for dependency files
  * @returns Array of node_ids that need to be executed before the main test
  */
+interface DependencyDiscoveryResult {
+  nodeIds: string[];
+  filePaths: string[];
+}
+
+interface DependencyDiscoveryContext {
+  projectRoot: string;
+  searchRoots: string[];
+  nodeIdToFileMap: Map<string, string>;
+  processedFiles: Set<string>;
+  visitedDependencyFiles: Set<string>;
+  fallbackSearchPerformed: boolean;
+}
+
 async function autoDiscoverDependencies(
   testData: any,
-  testDirectory: string
-): Promise<string[]> {
+  testDirectory: string,
+  context?: DependencyDiscoveryContext
+): Promise<DependencyDiscoveryResult> {
   const fs = require("fs");
   const path = require("path");
   const yaml = require("js-yaml");
   const fg = require("fast-glob");
 
-  const resolveProjectRoot = (startDir: string): string => {
-    let current = path.resolve(startDir);
-    while (true) {
-      if (
-        fs.existsSync(path.join(current, "flow-test.config.yml")) ||
-        fs.existsSync(path.join(current, "flow-test.config.yaml")) ||
-        fs.existsSync(path.join(current, "package.json")) ||
-        fs.existsSync(path.join(current, ".git"))
-      ) {
-        return current;
-      }
-
-      const parent = path.dirname(current);
-      if (parent === current) {
-        return path.resolve(startDir);
-      }
-      current = parent;
-    }
-  };
-
-  const determineSearchRoots = (startDir: string): string[] => {
-    const roots = new Set<string>();
-    const normalizedStart = path.resolve(startDir);
-    roots.add(normalizedStart);
-
-    const projectRoot = resolveProjectRoot(startDir);
-    roots.add(projectRoot);
-
-    const testsDir = path.join(projectRoot, "tests");
-    if (fs.existsSync(testsDir) && fs.statSync(testsDir).isDirectory()) {
-      roots.add(testsDir);
-    }
-
-    // Also include parent directory of the current test to cover sibling folders
-    const parentDir = path.dirname(normalizedStart);
-    if (parentDir && parentDir !== normalizedStart) {
-      roots.add(parentDir);
-    }
-
-    return Array.from(roots);
-  };
-
   const dependencyNodeIds: string[] = [];
+  const dependencyFilePaths: string[] = [];
 
-  // Check if the test has dependencies
-  if (!testData.depends || !Array.isArray(testData.depends)) {
-    return dependencyNodeIds;
+  // Check if the test has dependencies early to avoid unnecessary I/O
+  if (!testData?.depends || !Array.isArray(testData.depends)) {
+    return { nodeIds: dependencyNodeIds, filePaths: dependencyFilePaths };
   }
 
-  // Search for YAML files in relevant directories (current, parent, and project root)
-  const yamlFilesSet = new Set<string>();
-  const searchRoots = determineSearchRoots(testDirectory);
+  const normalizedStartDir = path.resolve(testDirectory);
+  let discoveryContext = context;
 
-  for (const root of searchRoots) {
-    try {
-      const files = await fg(["**/*.yaml", "**/*.yml"], {
-        cwd: root,
-        absolute: true,
-        ignore: ["node_modules/**", ".git/**"],
-        followSymbolicLinks: true,
-      });
-      files.forEach((file: string) => yamlFilesSet.add(path.resolve(file)));
-    } catch (error) {
-      getLogger().debug(
-        `⚠️ Skipping dependency discovery in '${root}': ${error}`
-      );
-    }
+  if (!discoveryContext) {
+    const projectRoot = resolveProjectRoot(normalizedStartDir);
+    const configuredRoots = loadConfiguredTestRoots(projectRoot);
+    const searchRoots = determineDependencySearchRoots(
+      normalizedStartDir,
+      projectRoot,
+      configuredRoots
+    );
+
+    discoveryContext = {
+      projectRoot,
+      searchRoots,
+      nodeIdToFileMap: new Map<string, string>(),
+      processedFiles: new Set<string>(),
+      visitedDependencyFiles: new Set<string>(),
+      fallbackSearchPerformed: false,
+    };
   }
 
-  const yamlFiles = Array.from(yamlFilesSet);
-
-  // Create a map of node_id to file path for quick lookup
-  const nodeIdToFileMap: Map<string, string> = new Map();
-
-  for (const filePath of yamlFiles) {
-    try {
-      const fileContent = fs.readFileSync(filePath, "utf8");
-      const fileData = yaml.load(fileContent);
-
-      if (fileData && fileData.node_id) {
-        nodeIdToFileMap.set(fileData.node_id, filePath);
+  const buildDependencyIndex = async (roots: string[]) => {
+    for (const root of roots) {
+      if (!root) {
+        continue;
       }
-    } catch (error) {
-      // Skip invalid YAML files
-      getLogger().debug(`⚠️ Could not parse YAML file: ${filePath}`);
+
+      try {
+        const files = await fg(["**/*.yaml", "**/*.yml"], {
+          cwd: root,
+          absolute: true,
+          ignore: ["node_modules/**", ".git/**", "results/**", "dist/**"],
+          followSymbolicLinks: true,
+        });
+
+        for (const file of files) {
+          const absolutePath = path.resolve(file);
+
+          if (discoveryContext!.processedFiles.has(absolutePath)) {
+            continue;
+          }
+
+          discoveryContext!.processedFiles.add(absolutePath);
+
+          try {
+            const fileContent = fs.readFileSync(absolutePath, "utf8");
+            const fileData = yaml.load(fileContent);
+
+            if (fileData && fileData.node_id) {
+              if (!discoveryContext!.nodeIdToFileMap.has(fileData.node_id)) {
+                discoveryContext!.nodeIdToFileMap.set(
+                  fileData.node_id,
+                  absolutePath
+                );
+              }
+            }
+          } catch (error) {
+            getLogger().debug(
+              `⚠️ Could not parse YAML file during dependency discovery: ${absolutePath}`
+            );
+          }
+        }
+      } catch (error) {
+        getLogger().debug(
+          `⚠️ Skipping dependency discovery in '${root}': ${error}`
+        );
+      }
     }
+  };
+
+  const ensureNodeIndexed = async (nodeId: string) => {
+    if (!nodeId) {
+      return;
+    }
+
+    if (!discoveryContext!.nodeIdToFileMap.has(nodeId)) {
+      if (!discoveryContext!.fallbackSearchPerformed) {
+        discoveryContext!.fallbackSearchPerformed = true;
+        await buildDependencyIndex([discoveryContext!.projectRoot]);
+      }
+    }
+  };
+
+  if (discoveryContext.nodeIdToFileMap.size === 0) {
+    await buildDependencyIndex(discoveryContext.searchRoots);
   }
 
-  // Process each dependency
   for (const dependency of testData.depends) {
-    let resolvedNodeId: string | null = null;
+    let resolvedNodeId: string | null =
+      typeof dependency?.node_id === "string" ? dependency.node_id : null;
+    let dependencyFilePath: string | null = null;
 
-    if (dependency.node_id) {
-      // Direct node_id reference
-      resolvedNodeId = dependency.node_id;
-    } else if (dependency.path) {
-      // Try to resolve by path
-      const dependencyPath = path.resolve(testDirectory, dependency.path);
+    if (resolvedNodeId) {
+      await ensureNodeIndexed(resolvedNodeId);
+      dependencyFilePath =
+        discoveryContext.nodeIdToFileMap.get(resolvedNodeId) ?? null;
+    }
 
-      if (fs.existsSync(dependencyPath)) {
-        try {
-          const depFileContent = fs.readFileSync(dependencyPath, "utf8");
-          const depData = yaml.load(depFileContent);
+    const dependencyPathCandidate =
+      typeof dependency?.path === "string" ? dependency.path.trim() : null;
 
-          if (depData && depData.node_id) {
-            resolvedNodeId = depData.node_id;
-          }
-        } catch (error) {
-          getLogger().warn(
-            `⚠️ Could not read dependency file: ${dependency.path}`
-          );
-        }
+    if (!dependencyFilePath && dependencyPathCandidate) {
+      const dependencyPath = path.resolve(
+        normalizedStartDir,
+        dependencyPathCandidate
+      );
+
+      if (
+        fs.existsSync(dependencyPath) &&
+        fs.statSync(dependencyPath).isFile()
+      ) {
+        dependencyFilePath = dependencyPath;
       } else {
-        // Try to find file by partial path match
-        for (const [nodeId, filePath] of nodeIdToFileMap) {
+        for (const [nodeId, filePath] of discoveryContext.nodeIdToFileMap) {
           if (
-            filePath.includes(dependency.path) ||
-            dependency.path.includes(
+            filePath.includes(dependencyPathCandidate) ||
+            dependencyPathCandidate.includes(
               path.basename(filePath, path.extname(filePath))
             )
           ) {
             resolvedNodeId = nodeId;
+            dependencyFilePath = filePath;
             break;
           }
         }
       }
     }
 
-    if (resolvedNodeId && nodeIdToFileMap.has(resolvedNodeId)) {
-      // Recursively resolve dependencies of dependencies
-      const depFilePath = nodeIdToFileMap.get(resolvedNodeId)!;
-      const depFileContent = fs.readFileSync(depFilePath, "utf8");
+    if (dependencyFilePath && !resolvedNodeId) {
+      try {
+        const depFileContent = fs.readFileSync(dependencyFilePath, "utf8");
+        const depData = yaml.load(depFileContent);
+        if (depData && depData.node_id) {
+          resolvedNodeId = depData.node_id;
+          discoveryContext.nodeIdToFileMap.set(
+            resolvedNodeId as string,
+            dependencyFilePath
+          );
+        }
+      } catch (error) {
+        getLogger().warn(
+          `⚠️ Could not resolve dependency node_id for file: ${dependencyFilePath}`
+        );
+      }
+    }
+
+    if (resolvedNodeId) {
+      await ensureNodeIndexed(resolvedNodeId);
+      dependencyFilePath =
+        dependencyFilePath ??
+        discoveryContext.nodeIdToFileMap.get(resolvedNodeId) ??
+        dependencyFilePath;
+    }
+
+    if (!resolvedNodeId || !dependencyFilePath) {
+      getLogger().warn(
+        `⚠️ Could not resolve dependency: ${JSON.stringify(dependency)}`
+      );
+      continue;
+    }
+
+    if (!discoveryContext.nodeIdToFileMap.has(resolvedNodeId)) {
+      discoveryContext.nodeIdToFileMap.set(
+        resolvedNodeId as string,
+        dependencyFilePath
+      );
+    }
+
+    if (!dependencyNodeIds.includes(resolvedNodeId)) {
+      dependencyNodeIds.push(resolvedNodeId);
+      getLogger().info(
+        `✅ Found dependency: ${resolvedNodeId} (${path.basename(
+          dependencyFilePath
+        )})`
+      );
+    }
+
+    if (!dependencyFilePaths.includes(dependencyFilePath)) {
+      dependencyFilePaths.push(dependencyFilePath);
+    }
+
+    if (discoveryContext.visitedDependencyFiles.has(dependencyFilePath)) {
+      continue;
+    }
+
+    discoveryContext.visitedDependencyFiles.add(dependencyFilePath);
+
+    try {
+      const depFileContent = fs.readFileSync(dependencyFilePath, "utf8");
       const depData = yaml.load(depFileContent);
 
       const transitiveDependencies = await autoDiscoverDependencies(
         depData,
-        testDirectory
+        path.dirname(dependencyFilePath),
+        discoveryContext
       );
 
-      // Add transitive dependencies first
-      for (const transitiveDep of transitiveDependencies) {
+      for (const transitiveDep of transitiveDependencies.nodeIds) {
         if (!dependencyNodeIds.includes(transitiveDep)) {
           dependencyNodeIds.push(transitiveDep);
         }
       }
 
-      // Add direct dependency
-      if (!dependencyNodeIds.includes(resolvedNodeId)) {
-        dependencyNodeIds.push(resolvedNodeId);
-        getLogger().info(
-          `✅ Found dependency: ${resolvedNodeId} (${path.basename(
-            nodeIdToFileMap.get(resolvedNodeId)!
-          )})`
-        );
+      for (const transitivePath of transitiveDependencies.filePaths) {
+        if (!dependencyFilePaths.includes(transitivePath)) {
+          dependencyFilePaths.push(transitivePath);
+        }
       }
-    } else {
+    } catch (error) {
       getLogger().warn(
-        `⚠️ Could not resolve dependency: ${JSON.stringify(dependency)}`
+        `⚠️ Could not read dependency file: ${dependencyFilePath}`
       );
     }
   }
 
-  return dependencyNodeIds;
+  return { nodeIds: dependencyNodeIds, filePaths: dependencyFilePaths };
 }
 
 /**
@@ -828,6 +1135,7 @@ USAGE:
 COMMANDS:
   init                       Initialize configuration file interactively
   dashboard <subcommand>     Manage report dashboard (install, dev, build, preview, serve)
+  graph [format]             Generate discovery graphs (Mermaid) from test discovery
 
   (no command)               Run tests with specified options
 
@@ -877,6 +1185,16 @@ POSTMAN COLLECTIONS:
   --postman-import <file>    Import a Postman collection JSON file and generate Flow Test suite(s)
   --postman-import-output <dir> Output directory for generated suites (default: alongside input)
 
+GRAPH GENERATION:
+  graph mermaid [options]    Print a Mermaid graph of discovered suites to stdout
+    --direction <dir>        Choose layout direction (TD, LR, BT, RL)
+    --priority <list>        Filter suites by priority levels
+    --tag <list>             Filter suites by metadata tags
+    --suite <list>           Filter suites by suite names
+    --node <list>            Filter suites by node IDs
+    --output <file>          Write the generated graph to a file
+    --no-orphans             Disable orphan node highlighting
+
 OTHER:
   -h, --help             Show this help message
   -v, --version          Show version information
@@ -908,6 +1226,7 @@ EXAMPLES:
   fest --postman-export tests/auth-flows-test.yaml --postman-output ./exports/auth.postman_collection.json
   fest --postman-export-from-results results/latest.json --postman-output ./exports/
   fest --postman-import ./postman/collection.json --postman-import-output ./tests/imported-postman
+  fest graph mermaid --output discovery.mmd     # Generate Mermaid graph for documentation
 
 CONFIGURATION:
   The engine looks for configuration files in this order:

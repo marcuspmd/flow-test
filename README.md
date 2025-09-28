@@ -129,6 +129,8 @@ fest --priority critical,high          # Focus on high-impact scenarios
 fest --tag smoke                       # Filter by YAML tags
 fest --config ./flow-tests/staging.yml # Point to another config file
 fest --report json,csv                 # Produce multiple report formats
+fest graph mermaid --output discovery.mmd # Generate Mermaid discovery graph file
+fest graph --direction LR --no-orphans    # Print graph left-to-right skipping orphans
 ```
 
 ## 5. Integration Recipes by Ecosystem

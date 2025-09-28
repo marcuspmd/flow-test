@@ -179,20 +179,41 @@ export class DependencyService {
           }
 
           let dependencyNodeId: string | null = null;
+          const configuredNodeId =
+            typeof dependency.node_id === "string"
+              ? dependency.node_id.trim()
+              : undefined;
+          const dependencyPath =
+            typeof dependency.path === "string"
+              ? dependency.path.trim()
+              : undefined;
 
-          if (dependency.node_id) {
-            dependencyNodeId = dependency.node_id;
-          } else if (dependency.path) {
-            dependencyNodeId = this.extractNodeIdFromPath(
-              dependency.path,
-              test.file_path
-            );
+          if (configuredNodeId && this.graph.has(configuredNodeId)) {
+            dependencyNodeId = configuredNodeId;
+          } else {
+            if (configuredNodeId && !this.graph.has(configuredNodeId)) {
+              getLogger().warn(
+                `⚠️  Dependency node_id '${configuredNodeId}' not found for test '${test.node_id}' (${test.suite_name})`
+              );
+            }
+
+            if (dependencyPath) {
+              const resolvedNodeId = this.extractNodeIdFromPath(
+                dependencyPath,
+                test.file_path
+              );
+
+              if (resolvedNodeId && this.graph.has(resolvedNodeId)) {
+                dependencyNodeId = resolvedNodeId;
+                dependency.node_id = resolvedNodeId;
+                getLogger().debug(
+                  `✅ Resolved dependency path '${dependencyPath}' to node_id '${resolvedNodeId}' for test '${test.node_id}'`
+                );
+              }
+            }
           }
 
           if (dependencyNodeId && this.graph.has(dependencyNodeId)) {
-            if (!dependency.node_id) {
-              dependency.node_id = dependencyNodeId;
-            }
             node.dependencies.add(dependencyNodeId);
             this.graph.get(dependencyNodeId)!.dependents.add(test.node_id);
           } else {
