@@ -297,6 +297,7 @@ export class TestDiscovery {
     }
 
     const seenNodeIds = new Set<string>();
+    const seenPaths = new Set<string>();
     const dependencies: FlowDependency[] = [];
 
     for (const dependency of suite.depends) {
@@ -304,19 +305,55 @@ export class TestDiscovery {
         continue;
       }
 
-      if (!dependency.node_id) {
+      const rawNodeId =
+        typeof dependency.node_id === "string"
+          ? dependency.node_id.trim()
+          : undefined;
+      const rawPath =
+        typeof dependency.path === "string"
+          ? dependency.path.trim()
+          : undefined;
+
+      if (!rawNodeId && !rawPath) {
         getLogger().warn(
-          `⚠️  Warning: Dependency without node_id found in ${filePath}. Update the suite to use node_id references.`
+          `⚠️  Warning: Dependency without node_id or path found in ${filePath}.`
         );
         continue;
       }
 
-      if (seenNodeIds.has(dependency.node_id)) {
+      if (rawNodeId && seenNodeIds.has(rawNodeId) && !rawPath) {
         continue;
       }
 
-      seenNodeIds.add(dependency.node_id);
-      dependencies.push({ ...dependency });
+      if (rawPath) {
+        const normalizedPath = path.normalize(rawPath);
+        if (!rawNodeId && seenPaths.has(normalizedPath)) {
+          continue;
+        }
+        seenPaths.add(normalizedPath);
+      }
+
+      if (rawNodeId) {
+        seenNodeIds.add(rawNodeId);
+      }
+
+      const normalizedDependency: FlowDependency = {
+        ...dependency,
+      };
+
+      if (rawNodeId) {
+        normalizedDependency.node_id = rawNodeId;
+      } else {
+        delete normalizedDependency.node_id;
+      }
+
+      if (rawPath) {
+        normalizedDependency.path = rawPath;
+      } else {
+        delete normalizedDependency.path;
+      }
+
+      dependencies.push(normalizedDependency);
     }
 
     return dependencies;
@@ -367,18 +404,41 @@ export class TestDiscovery {
       }
 
       const validDependencies = test.depends.filter((dependency) => {
-        if (!dependency.node_id) {
+        const nodeId =
+          typeof dependency.node_id === "string"
+            ? dependency.node_id.trim()
+            : undefined;
+        const dependencyPath =
+          typeof dependency.path === "string"
+            ? dependency.path.trim()
+            : undefined;
+
+        if (nodeId) {
+          if (knownNodeIds.has(nodeId)) {
+            return true;
+          }
+
+          if (dependencyPath) {
+            getLogger().warn(
+              `⚠️  Warning: Dependency '${nodeId}' not found for test '${test.node_id}' (${test.suite_name}). Will attempt path resolution via '${dependencyPath}'.`
+            );
+            return true;
+          }
+
+          getLogger().warn(
+            `⚠️  Warning: Dependency '${nodeId}' not found for test '${test.node_id}' (${test.suite_name})`
+          );
           return false;
         }
 
-        const exists = knownNodeIds.has(dependency.node_id);
-        if (!exists) {
-          getLogger().warn(
-            `⚠️  Warning: Dependency '${dependency.node_id}' not found for test '${test.node_id}' (${test.suite_name})`
-          );
+        if (dependencyPath) {
+          return true;
         }
 
-        return exists;
+        getLogger().warn(
+          `⚠️  Warning: Invalid dependency without node_id or path for test '${test.node_id}' (${test.suite_name})`
+        );
+        return false;
       });
 
       return {

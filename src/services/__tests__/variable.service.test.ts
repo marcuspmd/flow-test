@@ -160,10 +160,8 @@ describe("VariableService", () => {
     });
 
     it("should return raw value when template is a single variable", () => {
-      expect(service.interpolate("{{user_id}}"))
-        .toBe(123);
-      expect(service.interpolate("{{auth_token}}"))
-        .toBe("abc123");
+      expect(service.interpolate("{{user_id}}")).toBe(123);
+      expect(service.interpolate("{{auth_token}}")).toBe("abc123");
     });
 
     it("should interpolate with suppressWarnings enabled", () => {
@@ -323,8 +321,8 @@ describe("VariableService", () => {
 
       const serviceWithFalsy = new VariableService(contextWithFalsy);
 
-      expect(serviceWithFalsy.interpolate("{{zero}}")).toBe("0");
-      expect(serviceWithFalsy.interpolate("{{false_val}}")).toBe("false");
+      expect(serviceWithFalsy.interpolate("{{zero}}")).toBe(0);
+      expect(serviceWithFalsy.interpolate("{{false_val}}")).toBe(false);
       expect(serviceWithFalsy.interpolate("{{empty_string}}")).toBe("");
     });
 
@@ -386,7 +384,7 @@ describe("VariableService", () => {
 
       const result = service.interpolate(deepArray);
       expect(result).toEqual([
-        ["123", "integration"],
+        [123, "integration"],
         [["https://api.example.com"]],
       ]);
     });

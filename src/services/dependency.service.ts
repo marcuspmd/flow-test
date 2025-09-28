@@ -190,6 +190,9 @@ export class DependencyService {
           }
 
           if (dependencyNodeId && this.graph.has(dependencyNodeId)) {
+            if (!dependency.node_id) {
+              dependency.node_id = dependencyNodeId;
+            }
             node.dependencies.add(dependencyNodeId);
             this.graph.get(dependencyNodeId)!.dependents.add(test.node_id);
           } else {
@@ -281,7 +284,10 @@ export class DependencyService {
     }
 
     // Enhanced fallback: try multiple naming conventions
-    const filename = path.basename(dependencyPath, path.extname(dependencyPath));
+    const filename = path.basename(
+      dependencyPath,
+      path.extname(dependencyPath)
+    );
 
     // Try exact filename match
     if (this.graph.has(filename)) {
@@ -290,7 +296,10 @@ export class DependencyService {
 
     // Try filename with common suffixes removed
     const possibleIds = [
-      filename.replace(/-flow$/, "").replace(/-test$/, "").replace(/-spec$/, ""),
+      filename
+        .replace(/-flow$/, "")
+        .replace(/-test$/, "")
+        .replace(/-spec$/, ""),
       filename.replace(/-flow$/, ""),
       filename.replace(/-test$/, ""),
       filename.replace(/-spec$/, ""),
@@ -300,7 +309,9 @@ export class DependencyService {
 
     for (const possibleId of possibleIds) {
       if (this.graph.has(possibleId)) {
-        getLogger().debug(`✅ Resolved dependency path '${dependencyPath}' to node_id '${possibleId}'`);
+        getLogger().debug(
+          `✅ Resolved dependency path '${dependencyPath}' to node_id '${possibleId}'`
+        );
         return possibleId;
       }
     }
@@ -308,7 +319,9 @@ export class DependencyService {
     // Try partial matches with existing node IDs
     for (const [nodeId] of this.graph) {
       if (nodeId.includes(filename) || filename.includes(nodeId)) {
-        getLogger().debug(`✅ Resolved dependency path '${dependencyPath}' to node_id '${nodeId}' via partial match`);
+        getLogger().debug(
+          `✅ Resolved dependency path '${dependencyPath}' to node_id '${nodeId}' via partial match`
+        );
         return nodeId;
       }
     }

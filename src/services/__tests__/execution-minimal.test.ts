@@ -10,6 +10,8 @@ import { CaptureService } from "../capture.service";
 import { ScenarioService } from "../scenario.service";
 import { IterationService } from "../iteration.service";
 import type { TestStep, TestSuite } from "../../types/engine.types";
+import type { StepCallExecutionOptions } from "../../types/call.types";
+import path from "path";
 
 // Mock all dependencies
 jest.mock("../../core/config");
@@ -51,6 +53,7 @@ describe("ExecutionService", () => {
         execution: { mode: "sequential" },
         discovery: {},
         reporting: {},
+        test_directory: process.cwd(),
       }),
     } as any;
 
@@ -406,6 +409,257 @@ describe("ExecutionService", () => {
       expect(result.step_id).toBe("login-user");
       expect(result.qualified_step_id).toBe("AuthSuite::login-user");
       expect(result.available_variables).toEqual({});
+    });
+  });
+
+  describe("step call integration", () => {
+    beforeEach(() => {
+      mockGlobalVariablesService.setRuntimeVariables.mockClear();
+      mockGlobalVariablesService.clearAllNonGlobalVariables.mockClear();
+      mockGlobalVariablesService.setSuiteVariables.mockClear();
+      mockGlobalVariablesService.createSnapshot.mockClear();
+    });
+
+    it("should execute step call and propagate variables", async () => {
+      const step: TestStep = {
+        name: "Call remote step",
+        call: {
+          test: "./flows/login.yaml",
+          step: "perform-login",
+        },
+      } as TestStep;
+
+      const suite: TestSuite = {
+        node_id: "main-suite",
+        suite_name: "Main Suite",
+        steps: [step],
+      } as TestSuite;
+
+      const identifiers = (executionService as any).computeStepIdentifiers(
+        suite,
+        step,
+        0
+      );
+
+      const discoveredTest = {
+        file_path: path.join(process.cwd(), "tests", "main.yaml"),
+        node_id: suite.node_id,
+        suite_name: suite.suite_name,
+      };
+
+      const propagatedVariables = {
+        "called-suite.token": "abc123",
+      };
+
+      const callResult = {
+        success: true,
+        status: "success",
+        propagated_variables: propagatedVariables,
+        captured_variables: { token: "abc123" },
+      };
+
+      const callSpy = jest
+        .spyOn((executionService as any).callService, "executeStepCall")
+        .mockResolvedValue(callResult as any);
+
+      mockGlobalVariablesService.setRuntimeVariables.mockClear();
+
+      const result = await (executionService as any).executeStep(
+        step,
+        suite,
+        0,
+        identifiers,
+        true,
+        discoveredTest
+      );
+
+      expect(result.status).toBe("success");
+      expect(result.captured_variables).toEqual(propagatedVariables);
+      expect(
+        mockGlobalVariablesService.setRuntimeVariables
+      ).toHaveBeenCalledWith(propagatedVariables);
+
+      const callOptions = callSpy.mock.calls[0][1] as StepCallExecutionOptions;
+      expect(callOptions.allowedRoot).toBe(path.resolve(process.cwd()));
+      expect(callOptions.callerSuitePath).toBe(discoveredTest.file_path);
+
+      callSpy.mockRestore();
+    });
+
+    it("should respect continue strategy and mark step as skipped", async () => {
+      const step: TestStep = {
+        name: "Optional call",
+        call: {
+          test: "./flows/optional.yaml",
+          step: "optional-step",
+          on_error: "continue",
+        },
+      } as TestStep;
+
+      const suite: TestSuite = {
+        node_id: "main-suite",
+        suite_name: "Main Suite",
+        steps: [step],
+      } as TestSuite;
+
+      const identifiers = (executionService as any).computeStepIdentifiers(
+        suite,
+        step,
+        0
+      );
+
+      const discoveredTest = {
+        file_path: path.join(process.cwd(), "tests", "optional.yaml"),
+        node_id: suite.node_id,
+        suite_name: suite.suite_name,
+      };
+
+      const callResult = {
+        success: false,
+        status: "skipped",
+        error: "Target not available",
+      };
+
+      const callSpy = jest
+        .spyOn((executionService as any).callService, "executeStepCall")
+        .mockResolvedValue(callResult as any);
+
+      mockGlobalVariablesService.setRuntimeVariables.mockClear();
+
+      const result = await (executionService as any).executeStep(
+        step,
+        suite,
+        0,
+        identifiers,
+        true,
+        discoveredTest
+      );
+
+      expect(result.status).toBe("skipped");
+      expect(result.error_message).toBe(callResult.error);
+      expect(
+        mockGlobalVariablesService.setRuntimeVariables
+      ).not.toHaveBeenCalled();
+
+      callSpy.mockRestore();
+    });
+
+    it("should return failure when call path is absolute", async () => {
+      const absolutePath = path.join(process.cwd(), "flows", "target.yaml");
+      const step: TestStep = {
+        name: "Invalid call",
+        call: {
+          test: absolutePath,
+          step: "target-step",
+        },
+      } as TestStep;
+
+      const suite: TestSuite = {
+        node_id: "main-suite",
+        suite_name: "Main Suite",
+        steps: [step],
+      } as TestSuite;
+
+      const identifiers = (executionService as any).computeStepIdentifiers(
+        suite,
+        step,
+        0
+      );
+
+      const discoveredTest = {
+        file_path: path.join(process.cwd(), "tests", "main.yaml"),
+        node_id: suite.node_id,
+        suite_name: suite.suite_name,
+      };
+
+      const result = await (executionService as any).executeStep(
+        step,
+        suite,
+        0,
+        identifiers,
+        true,
+        discoveredTest
+      );
+
+      expect(result.status).toBe("failure");
+      expect(result.error_message).toContain(
+        "Call configuration must use relative paths"
+      );
+    });
+  });
+
+  describe("executeResolvedStepCall", () => {
+    it("should isolate context and namespace captured variables", async () => {
+      const restoreMock = jest.fn();
+      mockGlobalVariablesService.createSnapshot.mockReturnValueOnce(
+        restoreMock
+      );
+      mockGlobalVariablesService.setRuntimeVariables.mockClear();
+      mockGlobalVariablesService.setSuiteVariables.mockClear();
+      mockGlobalVariablesService.clearAllNonGlobalVariables.mockClear();
+
+      const targetStep: TestStep = {
+        name: "Target Step",
+        step_id: "target-step",
+      } as TestStep;
+
+      const resolved = {
+        suite: {
+          node_id: "called-suite",
+          suite_name: "Called Suite",
+          steps: [targetStep],
+          variables: { greeting: "hello" },
+        } as TestSuite,
+        suitePath: "/tmp/called.yaml",
+        step: targetStep,
+        stepIndex: 0,
+        identifier: "/tmp/called.yaml::target-step",
+      };
+
+      const request = {
+        test: "./called.yaml",
+        step: "target-step",
+        variables: { input: "value" },
+        isolate_context: true,
+      };
+
+      const stepResultMock = {
+        step_name: "Target Step",
+        status: "success",
+        duration_ms: 5,
+        captured_variables: { token: "abc" },
+        available_variables: { token: "abc" },
+      };
+
+      const executeSpy = jest
+        .spyOn(executionService as any, "executeStep")
+        .mockResolvedValue(stepResultMock);
+
+      const result = await (executionService as any).executeResolvedStepCall({
+        resolved,
+        request,
+        options: {
+          callerSuitePath: "/tmp/caller.yaml",
+          allowedRoot: process.cwd(),
+          callStack: [],
+        },
+      });
+
+      expect(
+        mockGlobalVariablesService.clearAllNonGlobalVariables
+      ).toHaveBeenCalledTimes(1);
+      expect(
+        mockGlobalVariablesService.setRuntimeVariables
+      ).toHaveBeenCalledWith(request.variables);
+      expect(mockGlobalVariablesService.setSuiteVariables).toHaveBeenCalledWith(
+        resolved.suite.variables
+      );
+      expect(result.propagated_variables).toEqual({
+        "called-suite.token": "abc",
+      });
+      expect(restoreMock).toHaveBeenCalled();
+
+      executeSpy.mockRestore();
     });
   });
 });

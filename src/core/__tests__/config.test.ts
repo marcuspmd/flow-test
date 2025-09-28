@@ -531,15 +531,28 @@ describe("ConfigManager", () => {
       expect(config.reporting?.formats).toEqual(["json"]);
     });
 
+    it("should accept html reporting format", () => {
+      const configWithHtml = {
+        project_name: "Test",
+        reporting: { formats: ["html"] },
+      };
+      mockYaml.load.mockReturnValue(configWithHtml);
+
+      const configManager = new ConfigManager();
+      const config = configManager.getConfig();
+
+      expect(config.reporting?.formats).toEqual(["html"]);
+    });
+
     it("should reject unsupported reporting formats", () => {
       const configWithInvalidFormat = {
         project_name: "Test",
-        reporting: { formats: ["html"] },
+        reporting: { formats: ["pdf"] },
       };
       mockYaml.load.mockReturnValue(configWithInvalidFormat);
 
       expect(() => new ConfigManager()).toThrow(
-        "Invalid reporting formats: html"
+        "Invalid reporting formats: pdf"
       );
     });
 

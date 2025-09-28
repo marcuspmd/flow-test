@@ -33,6 +33,7 @@ import {
  *     "Authorization": "Bearer {{auth_token}}"
  *   },
  *   body: {
+import type { StepCallConfig } from "./call.types";
  *     name: "John Doe",
  *     email: "john@example.com"
  *   },
@@ -153,7 +154,7 @@ export interface AssertionChecks {
  * including status code checks, body field validation, header verification,
  * response time constraints, and custom assertion scripts.
  *
- * @example Complete response validation
+  call?: StepCallConfig;
  * ```yaml
  * assert:
  *   status_code: 200
@@ -487,7 +488,15 @@ export interface InteractiveInputRequest {
   /** Whether to mask input */
   masked: boolean;
   /** Input type */
-  input_type: "text" | "password" | "number" | "confirm" | "select" | "email" | "url" | "multiline";
+  input_type:
+    | "text"
+    | "password"
+    | "number"
+    | "confirm"
+    | "select"
+    | "email"
+    | "url"
+    | "multiline";
   /** Default value */
   default?: any;
   /** Options for select type */
@@ -668,6 +677,9 @@ export interface TestStep {
 
   /** Response validation rules and assertions */
   assert?: Assertions;
+
+  /** Chamada de step externo cross-suite */
+  call?: import("./call.types").StepCallConfig;
 
   /** Data extraction patterns using JMESPath expressions */
   capture?: Record<string, string>;

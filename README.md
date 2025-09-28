@@ -98,6 +98,28 @@ npx --yes --package flow-test-engine flow-test-engine --config flow-tests/flow-t
 npx --yes --package flow-test-engine fest --config flow-tests/flow-test.config.yml
 ```
 
+### Cross-suite step calls (`call`)
+
+Need to reuse an existing step that already lives in another YAML suite? Add a `call` block to the step instead of duplicating the HTTP definition:
+
+```yaml
+steps:
+  - name: "Seed reusable user"
+    call:
+      test: "../shared/setup-user.yaml"   # always relative to the current file
+      step: "create-user"                 # matches step_id or name from the target suite
+      variables:
+        role: "admin"                     # optional values injected into the called step
+      isolate_context: true                # default; restore local variables after the call
+      on_error: "warn"                    # fail | warn | continue (continue marks the step as skipped)
+```
+
+- Paths are sandboxed to the configured `test_directory`; absolute paths or `..` escapes are rejected.
+- `isolate_context` defaults to `true`. When enabled, captured variables from the remote suite are returned with the `node_id.variable` namespace so you can safely consume them without leaking the called suite's runtime state.
+- Set `isolate_context: false` if you want the called step to mutate the current variable scope in place.
+- `call` steps cannot define `request`, `iterate`, `input` or `scenarios`—they delegate entirely to the target step.
+- Recursive chains are blocked (max depth `10`) so you get a friendly error instead of an infinite loop.
+
 ## 4. Everyday CLI Patterns
 
 ```bash

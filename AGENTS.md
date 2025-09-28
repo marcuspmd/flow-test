@@ -159,6 +159,33 @@ Validação de headers de segurança e dados sensíveis:
       secret_key: { exists: false }
 ```
 
+### 6. Step Calls Entre Suites (`call`)
+
+Reutilize passos existentes em outros arquivos YAML evitando duplicação de lógica. Qualquer step pode delegar a execução para outro arquivo usando a chave `call`:
+
+```yaml
+- name: "Preparar estado compartilhado"
+  call:
+    test: "../common/setup-user.yaml"   # Caminho **relativo** ao arquivo atual
+    step: "create-user"                  # Pode ser o step_id ou o name do passo alvo
+    variables:
+      role: "admin"
+      plan: "premium"
+    isolate_context: true                 # (default) restaura o contexto após a chamada
+    on_error: "continue"                 # fail | warn | continue (gera status skipped)
+```
+
+**Regras principais:**
+
+- `call` não pode coexistir com `request`, `iterate`, `input` ou `scenarios` no mesmo passo — o passo se torna apenas um invólucro.
+- O caminho deve ser sempre relativo e permanece confinado ao `test_directory`; tentativas de path traversal são bloqueadas.
+- Com `isolate_context: true` (padrão), todas as variáveis capturadas retornam como `node_id.variavel`, evitando colisões com variáveis locais. Use `false` apenas quando quiser compartilhar o mesmo escopo runtime.
+- Estratégias de erro:
+  - `fail` → lança exceção e interrompe a suíte (padrão).
+  - `warn` → registra aviso e marca o passo como failure.
+  - `continue` → registra em modo informativo e sinaliza o passo como `skipped`.
+- A engine monitora recursão e corta cadeias acima de 10 níveis para impedir loops.
+
 ## ✅ Sistema de Validações (Assertions)
 
 ### Operadores Básicos

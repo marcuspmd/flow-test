@@ -100,6 +100,30 @@ describe("DependencyService", () => {
       expect(service.getDirectDependencies("user")[0].node_id).toBe("auth");
     });
 
+    it("should populate node_id for dependencies declared only by path", () => {
+      const tests: DiscoveredTest[] = [
+        {
+          node_id: "setup",
+          suite_name: "Setup Flow",
+          file_path: "/tests/setup.yaml",
+          depends: [],
+        },
+        {
+          node_id: "main",
+          suite_name: "Main Flow",
+          file_path: "/tests/main.yaml",
+          depends: [{ path: "./setup.yaml" }],
+        },
+      ];
+
+      service.buildDependencyGraph(tests);
+
+      expect(tests[1].depends?.[0].node_id).toBe("setup");
+      expect(service.getDirectDependencies("main")).toEqual([
+        expect.objectContaining({ node_id: "setup" }),
+      ]);
+    });
+
     it("should resolve dependency paths across directories", () => {
       const projectRoot = process.cwd();
       const authPath = path.join(projectRoot, "tests", "auth", "auth.yaml");

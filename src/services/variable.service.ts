@@ -348,7 +348,10 @@ export class VariableService {
 
       // If base variable found, navigate through the path
       if (baseValue !== undefined) {
-        const pathResult = this.getNestedValue(baseValue, parts.slice(1).join("."));
+        const pathResult = this.getNestedValue(
+          baseValue,
+          parts.slice(1).join(".")
+        );
         if (pathResult !== undefined) {
           return pathResult;
         }
@@ -356,7 +359,8 @@ export class VariableService {
 
       // If local path navigation failed, try global exported variable (ex: auth.token)
       if (this.globalRegistry) {
-        const globalValue = this.globalRegistry.getExportedVariable(variablePath);
+        const globalValue =
+          this.globalRegistry.getExportedVariable(variablePath);
         if (globalValue !== undefined) {
           return globalValue;
         }

@@ -75,6 +75,7 @@ describe("TestDiscovery", () => {
     mockPath.join.mockImplementation((...args) => args.join("/"));
     mockPath.dirname.mockReturnValue("/tests/auth");
     mockPath.basename.mockReturnValue("auth");
+    mockPath.normalize.mockImplementation((value: string) => value);
 
     // Setup fs mocks
     mockFs.existsSync.mockReturnValue(true);
@@ -243,9 +244,7 @@ describe("TestDiscovery", () => {
       const authTest = tests.find((t) => t.node_id === "test-001");
       expect(
         authTest?.depends?.map((dep: FlowDependency) => dep.node_id)
-      ).toEqual([
-        "setup-001",
-      ]);
+      ).toEqual(["setup-001"]);
     });
   });
 
@@ -626,45 +625,37 @@ describe("TestDiscovery", () => {
 
       expect(
         result?.depends?.map((dep: FlowDependency) => dep.node_id)
-      ).toEqual([
-        "dep-1",
-        "dep-2",
-      ]);
+      ).toEqual(["dep-1", "dep-2"]);
     });
 
-    it("should handle depends with missing node_id", async () => {
-      const suiteWithInvalidDeps = {
+    it("should keep dependencies referenced only by path", async () => {
+      const suiteWithPathDependency = {
         node_id: "test-003",
-        suite_name: "Test with Invalid Dependencies",
+        suite_name: "Test with Path Dependency",
         steps: [
           {
             name: "Test step",
             request: { method: "GET" as const, url: "/test" },
           },
         ],
-        depends: [
-          { path: "./some-path.yml" }, // missing node_id
-          { node_id: "valid-dep" },
-        ],
+        depends: [{ path: "./some-path.yml" }, { node_id: "valid-dep" }],
       };
 
       mockFs.readFileSync.mockReturnValue("yaml content");
-      mockYaml.load.mockReturnValue(suiteWithInvalidDeps);
+      mockYaml.load.mockReturnValue(suiteWithPathDependency);
 
       const warnSpy = jest.spyOn(console, "warn").mockImplementation();
 
-      // Test parseTestFile directly
       const result = await (testDiscovery as any).parseTestFile(
         "/tests/test.yaml"
       );
 
-      expect(
-        result?.depends?.map((dep: FlowDependency) => dep.node_id)
-      ).toEqual([
-        "valid-dep",
+      expect(result?.depends).toEqual([
+        { path: "./some-path.yml" },
+        { node_id: "valid-dep" },
       ]);
 
-      expect(warnSpy).toHaveBeenCalledWith(
+      expect(warnSpy).not.toHaveBeenCalledWith(
         expect.stringContaining("Dependency without node_id")
       );
 
@@ -698,9 +689,36 @@ describe("TestDiscovery", () => {
 
       expect(
         result?.depends?.map((dep: FlowDependency) => dep.node_id)
-      ).toEqual([
-        "dep-1",
-        "dep-2",
+      ).toEqual(["dep-1", "dep-2"]);
+    });
+
+    it("should deduplicate dependencies declared only by path", async () => {
+      const suiteWithDuplicatePaths = {
+        node_id: "test-005",
+        suite_name: "Test with Duplicate Path Dependencies",
+        steps: [
+          {
+            name: "Test step",
+            request: { method: "GET" as const, url: "/test" },
+          },
+        ],
+        depends: [
+          { path: "./setup.yml" },
+          { path: "./setup.yml" },
+          { path: "../shared/setup.yml" },
+        ],
+      };
+
+      mockFs.readFileSync.mockReturnValue("yaml content");
+      mockYaml.load.mockReturnValue(suiteWithDuplicatePaths);
+
+      const result = await (testDiscovery as any).parseTestFile(
+        "/tests/path/test.yaml"
+      );
+
+      expect(result?.depends).toEqual([
+        { path: "./setup.yml" },
+        { path: "../shared/setup.yml" },
       ]);
     });
 

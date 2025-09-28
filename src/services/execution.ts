@@ -39,7 +39,14 @@ import {
   DependencyResult,
   InputExecutionContext,
 } from "../types/engine.types";
+import type {
+  StepCallExecutionOptions,
+  StepCallRequest,
+  StepCallResult,
+  StepExecutionHandlerInput,
+} from "../types/call.types";
 import { DynamicVariableAssignment } from "../types/common.types";
+import { CallService } from "./call.service";
 import { EngineExecutionOptions } from "../types/config.types";
 
 type StepIdentifiers = {
@@ -161,6 +168,8 @@ export class ExecutionService {
   private inputService: InputService;
   private computedService: ComputedService;
   private dynamicExpressionService: DynamicExpressionService;
+  private callService: CallService;
+  private stepCallStack: string[] = [];
 
   // Performance statistics
   private performanceData: {
@@ -200,12 +209,15 @@ export class ExecutionService {
     this.captureService = new CaptureService();
     this.iterationService = new IterationService();
     this.scenarioService = new ScenarioService();
-    this.inputService = new InputService(executionOptions?.runner_interactive_mode || false);
+    this.inputService = new InputService(
+      executionOptions?.runner_interactive_mode || false
+    );
     this.computedService = new ComputedService();
     this.dynamicExpressionService = new DynamicExpressionService(
       this.captureService,
       this.computedService
     );
+    this.callService = new CallService(this.executeResolvedStepCall.bind(this));
 
     this.performanceData = {
       requests: [],
@@ -1044,7 +1056,7 @@ export class ExecutionService {
   private async executeScenarioStep(
     step: any,
     suite: TestSuite,
-    stepIndex: number,
+    _stepIndex: number,
     stepStartTime: number,
     context: any,
     identifiers: StepIdentifiers
@@ -1323,6 +1335,20 @@ export class ExecutionService {
     }
 
     try {
+      if (step.call) {
+        const callStepResult = await this.executeCallStep(
+          step,
+          suite,
+          stepIndex,
+          identifiers,
+          context,
+          discoveredTest
+        );
+
+        await this.hooks.onStepEnd?.(step, callStepResult, context);
+        return callStepResult;
+      }
+
       // Initialize captured variables and assertion results for all steps
       let capturedVariables: Record<string, any> = {};
       let assertionResults: any[] = [];
@@ -1701,6 +1727,328 @@ export class ExecutionService {
 
       return errorResult;
     }
+  }
+
+  private async executeCallStep(
+    step: TestStep,
+    suite: TestSuite,
+    stepIndex: number,
+    identifiers: StepIdentifiers,
+    _context: Record<string, any>,
+    discoveredTest?: DiscoveredTest
+  ): Promise<StepExecutionResult> {
+    if (!step.call) {
+      throw new Error("Step call configuration not found");
+    }
+
+    const incompatibleFields: string[] = [];
+    if (step.request) incompatibleFields.push("request");
+    if (step.iterate) incompatibleFields.push("iterate");
+    if (step.input) incompatibleFields.push("input");
+    if (step.scenarios && step.scenarios.length > 0)
+      incompatibleFields.push("scenarios");
+
+    if (incompatibleFields.length > 0) {
+      throw new Error(
+        `Step '${
+          step.name
+        }' cannot define 'call' alongside [${incompatibleFields.join(", ")}]`
+      );
+    }
+
+    const callerSuitePath = discoveredTest?.file_path;
+    if (!callerSuitePath) {
+      throw new Error(
+        `Cannot execute step call from suite '${suite.suite_name}' without a caller suite path`
+      );
+    }
+
+    const callConfig = step.call;
+    const callStartTime = Date.now();
+
+    if (
+      callConfig.variables &&
+      (typeof callConfig.variables !== "object" ||
+        Array.isArray(callConfig.variables))
+    ) {
+      throw new Error(
+        `Call variables for step '${step.name}' must be an object with key/value pairs`
+      );
+    }
+
+    if (
+      callConfig.on_error &&
+      !["fail", "continue", "warn"].includes(callConfig.on_error)
+    ) {
+      throw new Error(
+        `Invalid call error strategy '${callConfig.on_error}' in step '${step.name}'. Allowed values: fail, continue, warn`
+      );
+    }
+
+    if (typeof callConfig.test !== "string") {
+      throw new Error(
+        `Call configuration for step '${step.name}' must define 'test' as string`
+      );
+    }
+
+    if (typeof callConfig.step !== "string") {
+      throw new Error(
+        `Call configuration for step '${step.name}' must define 'step' as string`
+      );
+    }
+
+    const resolvedTestPath = this.globalVariables
+      .interpolateString(callConfig.test)
+      .trim();
+    const resolvedStepKey = this.globalVariables
+      .interpolateString(callConfig.step)
+      .trim();
+
+    if (!resolvedTestPath || !resolvedStepKey) {
+      throw new Error(
+        `Invalid call configuration for step '${step.name}': both 'test' and 'step' are required`
+      );
+    }
+
+    const interpolatedVariables = this.interpolateCallVariables(
+      callConfig.variables
+    );
+    const isolateContext = callConfig.isolate_context ?? true;
+
+    const allowedRoot = path.resolve(
+      this.configManager.getConfig().test_directory
+    );
+
+    const callRequest: StepCallRequest = {
+      test: resolvedTestPath,
+      step: resolvedStepKey,
+      variables: interpolatedVariables,
+      isolate_context: isolateContext,
+      timeout: callConfig.timeout,
+      retry: callConfig.retry,
+      on_error: callConfig.on_error,
+    };
+
+    const callOptions: StepCallExecutionOptions = {
+      callerSuitePath,
+      callerNodeId: suite.node_id,
+      callerSuiteName: suite.suite_name,
+      allowedRoot,
+      callStack: this.stepCallStack,
+    };
+
+    const callLabel = `${resolvedTestPath}::${resolvedStepKey}`;
+
+    this.logger.info(
+      `📞 Calling step '${callLabel}' (isolate=${isolateContext})`,
+      {
+        stepName: step.name,
+        metadata: {
+          type: "step_call",
+          internal: true,
+          suite: suite.suite_name,
+        },
+      }
+    );
+
+    const callResult = await this.callService.executeStepCall(
+      callRequest,
+      callOptions
+    );
+
+    const duration = Date.now() - callStartTime;
+    const status =
+      callResult.status ?? (callResult.success ? "success" : "failure");
+
+    if (callResult.success) {
+      this.logger.info(
+        `✅ Step call '${callLabel}' completed in ${duration}ms`,
+        {
+          stepName: step.name,
+          metadata: {
+            type: "step_call",
+            internal: true,
+            suite: suite.suite_name,
+          },
+        }
+      );
+    } else {
+      this.logger.warn(
+        `⚠️ Step call '${callLabel}' finished with status '${status}'`,
+        {
+          stepName: step.name,
+          metadata: {
+            type: "step_call",
+            internal: true,
+            suite: suite.suite_name,
+          },
+        }
+      );
+    }
+
+    const propagatedVariables = callResult.propagated_variables;
+    if (callResult.success && propagatedVariables) {
+      this.globalVariables.setRuntimeVariables(propagatedVariables);
+    }
+
+    const availableVariables = this.filterAvailableVariables(
+      this.globalVariables.getAllVariables()
+    );
+
+    const requestHeaders: Record<string, string> = {
+      "x-step-call-target": resolvedStepKey,
+      "x-step-call-isolation": isolateContext ? "true" : "false",
+    };
+
+    const stepResult: StepExecutionResult = {
+      step_id: identifiers.stepId,
+      qualified_step_id: identifiers.qualifiedStepId,
+      step_name: step.name,
+      status,
+      duration_ms: duration,
+      request_details: {
+        method: "CALL",
+        url: resolvedTestPath,
+        raw_url: callConfig.test,
+        headers: requestHeaders,
+        body: interpolatedVariables,
+        base_url: suite.base_url,
+      },
+      ...(propagatedVariables && Object.keys(propagatedVariables).length > 0
+        ? { captured_variables: propagatedVariables }
+        : {}),
+      available_variables: availableVariables,
+      error_message: callResult.error,
+    };
+
+    return stepResult;
+  }
+
+  private async executeResolvedStepCall({
+    resolved,
+    request,
+  }: StepExecutionHandlerInput): Promise<StepCallResult> {
+    const shouldIsolate = request.isolate_context !== false;
+    const restoreVariables = shouldIsolate
+      ? this.globalVariables.createSnapshot()
+      : undefined;
+    const restoreDynamics = shouldIsolate
+      ? this.dynamicExpressionService.createSnapshot()
+      : undefined;
+
+    const previousHttpService = this.httpService;
+    const callStart = Date.now();
+
+    try {
+      if (shouldIsolate) {
+        this.globalVariables.clearAllNonGlobalVariables();
+      }
+
+      if (request.variables && Object.keys(request.variables).length > 0) {
+        this.globalVariables.setRuntimeVariables(request.variables);
+      }
+
+      if (resolved.suite.variables) {
+        if (shouldIsolate) {
+          this.globalVariables.setSuiteVariables(resolved.suite.variables);
+        } else {
+          const interpolatedSuiteVars = this.globalVariables.interpolate(
+            this.cloneData(resolved.suite.variables)
+          );
+          this.globalVariables.setRuntimeVariables(interpolatedSuiteVars);
+        }
+      }
+
+      const baseUrl = resolved.suite.base_url
+        ? this.globalVariables.interpolateString(resolved.suite.base_url)
+        : previousHttpService.getBaseUrl();
+      const timeout =
+        request.timeout ??
+        this.configManager.getConfig().execution?.timeout ??
+        60000;
+
+      this.httpService = new HttpService(baseUrl, timeout);
+
+      const callDiscovered: DiscoveredTest = {
+        file_path: resolved.suitePath,
+        node_id: resolved.suite.node_id,
+        suite_name: resolved.suite.suite_name,
+        priority: resolved.suite.metadata?.priority,
+        exports: resolved.suite.exports,
+        exports_optional: resolved.suite.exports_optional,
+      };
+
+      const identifiers = this.computeStepIdentifiers(
+        resolved.suite,
+        resolved.step,
+        resolved.stepIndex
+      );
+
+      const stepResult = await this.executeStep(
+        resolved.step,
+        resolved.suite,
+        resolved.stepIndex,
+        identifiers,
+        true,
+        callDiscovered
+      );
+
+      const propagatedVariables =
+        stepResult.captured_variables &&
+        Object.keys(stepResult.captured_variables).length > 0
+          ? this.processCapturedVariables(
+              stepResult.captured_variables,
+              resolved.suite,
+              shouldIsolate
+            )
+          : undefined;
+
+      return {
+        success: stepResult.status === "success",
+        status: stepResult.status,
+        error: stepResult.error_message,
+        captured_variables: stepResult.captured_variables,
+        propagated_variables: propagatedVariables,
+        available_variables: stepResult.available_variables,
+        executionTime: Date.now() - callStart,
+        step_name: stepResult.step_name,
+        suite_name: resolved.suite.suite_name,
+        suite_node_id: resolved.suite.node_id,
+      };
+    } finally {
+      this.httpService = previousHttpService;
+      if (shouldIsolate) {
+        restoreDynamics?.();
+        restoreVariables?.();
+      }
+    }
+  }
+
+  private interpolateCallVariables(
+    variables?: Record<string, any>
+  ): Record<string, any> | undefined {
+    if (!variables) {
+      return undefined;
+    }
+
+    const cloned = this.cloneData(variables);
+    return this.globalVariables.interpolate(cloned);
+  }
+
+  private cloneData<T>(value: T): T {
+    if (value === null || value === undefined) {
+      return value;
+    }
+
+    const structuredCloneFn = (globalThis as any).structuredClone as
+      | ((input: any) => any)
+      | undefined;
+
+    if (typeof structuredCloneFn === "function") {
+      return structuredCloneFn(value);
+    }
+
+    return JSON.parse(JSON.stringify(value));
   }
 
   /**

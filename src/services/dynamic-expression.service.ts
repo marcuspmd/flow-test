@@ -132,6 +132,18 @@ export class DynamicExpressionService {
     }
     this.registeredDefinitions.clear();
   }
+
+  /**
+   * Creates a snapshot/restore function for registered dynamic definitions.
+   * Useful to isolate contexts (e.g., step calls) without leaking state.
+   */
+  createSnapshot(): () => void {
+    const snapshot = new Map(this.registeredDefinitions);
+
+    return () => {
+      this.registeredDefinitions = new Map(snapshot);
+    };
+  }
   /**
    * Re-evaluates dynamic definitions when watched variables are updated.
    *
