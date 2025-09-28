@@ -1,7 +1,7 @@
 {
   "$schema": "https://json.schemastore.org/package.json",
   "name": "flow-test-engine",
-  "version": "1.1.16",
+  "version": "1.1.17",
   "description": "A comprehensive API testing engine with directory-based execution, global variables, and priority-driven test management.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
