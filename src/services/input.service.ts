@@ -11,7 +11,13 @@
 
 import * as readline from "readline";
 import * as jmespath from "jmespath";
-import { InputConfig, InputResult } from "../types/engine.types";
+import {
+  InputConfig,
+  InputResult,
+  InputExecutionContext,
+  InteractiveInputRequest,
+  RunnerInputEvent
+} from "../types/engine.types";
 import { InputValidationExpression } from "../types/common.types";
 import { getLogger } from "./logger.service";
 import { VariableService } from "./variable.service";
@@ -54,8 +60,10 @@ import { javascriptService } from "./javascript.service";
 export class InputService {
   private logger = getLogger();
   private isCI: boolean;
+  private runnerInteractiveMode: boolean;
+  private executionContext?: InputExecutionContext;
 
-  constructor() {
+  constructor(runnerInteractiveMode = false) {
     // Detect CI environment
     this.isCI = !!(
       process.env.CI ||
@@ -64,6 +72,16 @@ export class InputService {
       process.env.GITLAB_CI ||
       process.env.JENKINS_URL
     );
+    this.runnerInteractiveMode = runnerInteractiveMode;
+  }
+
+  /**
+   * Sets the execution context for interactive inputs
+   *
+   * @param context - Execution context with suite and step information
+   */
+  setExecutionContext(context: InputExecutionContext): void {
+    this.executionContext = context;
   }
 
   /**
@@ -172,6 +190,11 @@ export class InputService {
       // Handle CI environment
       if (this.isCI) {
         return this.handleCIInput(interpolatedConfig, startTime, variables);
+      }
+
+      // Handle runner interactive mode
+      if (this.runnerInteractiveMode) {
+        return this.handleRunnerInteractiveInput(interpolatedConfig, startTime, variables);
       }
 
       // Display styled prompt
@@ -397,6 +420,102 @@ export class InputService {
         ? { validation_warnings: validation.warnings }
         : {}),
     };
+  }
+
+  /**
+   * Handles input in runner interactive mode
+   */
+  private async handleRunnerInteractiveInput(
+    config: InputConfig,
+    startTime: number,
+    variables: Record<string, any>
+  ): Promise<InputResult> {
+    // Build the interactive input request
+    const request: InteractiveInputRequest = {
+      variable: config.variable,
+      prompt: config.prompt,
+      required: !!config.required,
+      masked: config.type === "password",
+      input_type: config.type || "text",
+      default: config.default,
+      options: Array.isArray(config.options) ? config.options : undefined,
+      ...(this.executionContext && {
+        suite_name: this.executionContext.suite_name,
+        suite_path: this.executionContext.suite_path,
+        step_name: this.executionContext.step_name,
+        step_id: this.executionContext.step_id,
+        step_index: this.executionContext.step_index,
+        cache_key: this.executionContext.cache_key ||
+          `${this.executionContext.suite_name}::${config.variable}`,
+      }),
+    };
+
+    // Emit the interactive input event
+    const event: RunnerInputEvent = {
+      type: "request",
+      request,
+    };
+
+    console.log(`@@FLOW_INPUT@@${JSON.stringify(event)}`);
+
+    // Wait for input from stdin
+    const userInput = await this.waitForStdinInput();
+
+    // Process the input
+    let value: any = userInput;
+    if (!value && config.default !== undefined) {
+      value = config.default;
+    }
+
+    // Validate input
+    const validation = this.validateInput(value, config, variables);
+    if (!validation.valid) {
+      // For interactive mode, we could retry or throw
+      this.logger.error(`❌ Validation failed: ${validation.error}`);
+      // For now, we'll return a failed result instead of retrying
+      return {
+        variable: config.variable,
+        value: config.default || null,
+        input_time_ms: Date.now() - startTime,
+        validation_passed: false,
+        used_default: true,
+        timed_out: false,
+        validation_error: validation.error,
+      };
+    }
+
+    // Convert type if needed
+    const convertedValue = this.convertValue(value, config.type);
+
+    return {
+      variable: config.variable,
+      value: convertedValue,
+      input_time_ms: Date.now() - startTime,
+      validation_passed: true,
+      used_default: !userInput,
+      timed_out: false,
+      ...(validation.warnings
+        ? { validation_warnings: validation.warnings }
+        : {}),
+    };
+  }
+
+  /**
+   * Waits for input from stdin
+   */
+  private async waitForStdinInput(): Promise<string> {
+    return new Promise((resolve) => {
+      const rl = readline.createInterface({
+        input: process.stdin,
+        output: process.stdout,
+      });
+
+      // Read a single line from stdin
+      rl.question("", (answer) => {
+        rl.close();
+        resolve(answer);
+      });
+    });
   }
 
   /**

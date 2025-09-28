@@ -540,4 +540,6 @@ export interface EngineExecutionOptions {
     formats?: ReportFormat[];
     html?: HtmlReportingConfig;
   };
+  /** Enable runner interactive mode for input prompts */
+  runner_interactive_mode?: boolean;
 }

@@ -137,6 +137,7 @@ async function main() {
   let postmanImportOutput: string | undefined;
   let dashboardCommand: string | undefined;
   let liveEventsPath: string | undefined;
+  let runnerInteractiveMode = false;
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
@@ -261,6 +262,10 @@ async function main() {
         } else {
           liveEventsPath = path.join("results", "live-events.jsonl");
         }
+        break;
+
+      case "--runner-interactive-inputs":
+        runnerInteractiveMode = true;
         break;
 
       case "--html-output": {
@@ -401,7 +406,7 @@ async function main() {
 
     if (configFile) {
       // Modo configuração: -c config.yaml
-      engineOptions = { ...options, config_file: configFile };
+      engineOptions = { ...options, config_file: configFile, runner_interactive_mode: runnerInteractiveMode };
     } else if (testFile) {
       // Modo teste específico: flow-test nome-teste.yaml
       const path = require("path");
@@ -448,6 +453,7 @@ async function main() {
               ...options.filters,
               node_ids: nodeIdsToExecute,
             },
+            runner_interactive_mode: runnerInteractiveMode,
           };
         } else if (testData && testData.suite_name) {
           // Auto-discover dependencies for single file execution
@@ -476,6 +482,7 @@ async function main() {
               ...options.filters,
               suite_names: suiteNamesToExecute,
             },
+            runner_interactive_mode: runnerInteractiveMode,
           };
         } else {
           getLogger().error(`❌ Invalid test file format: ${testFile}`);
@@ -487,7 +494,7 @@ async function main() {
       }
     } else {
       // Modo padrão
-      engineOptions = options;
+      engineOptions = { ...options, runner_interactive_mode: runnerInteractiveMode };
     }
 
     // Configura logger conforme a verbosidade escolhida

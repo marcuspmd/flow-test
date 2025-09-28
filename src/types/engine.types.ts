@@ -457,6 +457,60 @@ export interface InputResult {
 }
 
 /**
+ * Context information for interactive input in runner mode
+ */
+export interface InputExecutionContext {
+  /** Suite name */
+  suite_name?: string;
+  /** Suite file path */
+  suite_path?: string;
+  /** Step name */
+  step_name?: string;
+  /** Step ID */
+  step_id?: string;
+  /** Step index */
+  step_index?: number;
+  /** Cache key for input caching */
+  cache_key?: string;
+}
+
+/**
+ * Interactive input request for runner mode
+ */
+export interface InteractiveInputRequest {
+  /** Variable name to capture */
+  variable: string;
+  /** Prompt text */
+  prompt: string;
+  /** Whether input is required */
+  required: boolean;
+  /** Whether to mask input */
+  masked: boolean;
+  /** Input type */
+  input_type: "text" | "password" | "number" | "confirm" | "select" | "email" | "url" | "multiline";
+  /** Default value */
+  default?: any;
+  /** Options for select type */
+  options?: Array<{ label: string; value: any }>;
+  /** Execution context */
+  suite_name?: string;
+  suite_path?: string;
+  step_name?: string;
+  step_id?: string;
+  step_index?: number;
+  cache_key?: string;
+}
+
+/**
+ * Event emitted to runner for interactive input
+ */
+export interface RunnerInputEvent {
+  type: "request" | "info";
+  request?: InteractiveInputRequest;
+  message?: string;
+}
+
+/**
  * Runtime context for a single iteration execution.
  *
  * @remarks

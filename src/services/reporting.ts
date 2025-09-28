@@ -1801,7 +1801,6 @@ ${suitesMarkup}
         font-size: 0.75rem;
         padding: 2px 6px;
         border-radius: 3px;
-        background: currentColor;
         color: white;
         text-transform: uppercase;
         letter-spacing: 0.05em;

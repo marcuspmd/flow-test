@@ -154,6 +154,9 @@ export class FlowTestEngine {
   /** Real-time execution statistics */
   private stats: ExecutionStats;
 
+  /** Engine execution options */
+  private executionOptions: EngineExecutionOptions;
+
   /**
    * Creates a new FlowTestEngine instance
    *
@@ -250,6 +253,7 @@ export class FlowTestEngine {
 
     this.hooks = hooks;
     this.stats = this.initializeStats();
+    this.executionOptions = options;
 
     // Initialize services in dependency order
     this.configManager = new ConfigManager(options);
@@ -268,7 +272,8 @@ export class FlowTestEngine {
       this.priorityService,
       this.dependencyService,
       this.globalRegistry,
-      this.hooks
+      this.hooks,
+      this.executionOptions
     );
   }
 

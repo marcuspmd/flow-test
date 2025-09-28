@@ -37,8 +37,10 @@ import {
   EngineHooks,
   PerformanceSummary,
   DependencyResult,
+  InputExecutionContext,
 } from "../types/engine.types";
 import { DynamicVariableAssignment } from "../types/common.types";
+import { EngineExecutionOptions } from "../types/config.types";
 
 type StepIdentifiers = {
   stepId: string;
@@ -177,7 +179,8 @@ export class ExecutionService {
     priorityService: PriorityService,
     dependencyService: DependencyService,
     globalRegistry: GlobalRegistryService,
-    hooks: EngineHooks = {}
+    hooks: EngineHooks = {},
+    executionOptions?: EngineExecutionOptions
   ) {
     this.configManager = configManager;
     this.globalVariables = globalVariables;
@@ -197,7 +200,7 @@ export class ExecutionService {
     this.captureService = new CaptureService();
     this.iterationService = new IterationService();
     this.scenarioService = new ScenarioService();
-    this.inputService = new InputService();
+    this.inputService = new InputService(executionOptions?.runner_interactive_mode || false);
     this.computedService = new ComputedService();
     this.dynamicExpressionService = new DynamicExpressionService(
       this.captureService,
@@ -740,7 +743,8 @@ export class ExecutionService {
             suite,
             i,
             identifiers,
-            shouldExecute
+            shouldExecute,
+            discoveredTest
           );
           stepResults.push(stepResult);
 
@@ -1267,7 +1271,8 @@ export class ExecutionService {
     suite: TestSuite,
     stepIndex: number,
     identifiers: StepIdentifiers,
-    shouldExecute = true
+    shouldExecute = true,
+    discoveredTest?: DiscoveredTest
   ): Promise<StepExecutionResult> {
     const stepStartTime = Date.now();
 
@@ -1320,7 +1325,8 @@ export class ExecutionService {
           stepIndex,
           stepStartTime,
           context,
-          identifiers
+          identifiers,
+          discoveredTest
         );
       }
 
@@ -1460,6 +1466,17 @@ export class ExecutionService {
       // 6. Process interactive input(s) if configured
       if (step.input) {
         try {
+          // Set execution context for interactive inputs
+          const executionContext: InputExecutionContext = {
+            suite_name: suite.suite_name,
+            suite_path: discoveredTest?.file_path,
+            step_name: step.name,
+            step_id: step.step_id,
+            step_index: stepIndex,
+            cache_key: `${suite.node_id || suite.suite_name}::${step.name}`,
+          };
+          this.inputService.setExecutionContext(executionContext);
+
           const currentVariables = this.globalVariables.getAllVariables();
           const inputResult = await this.inputService.promptUser(
             step.input,
@@ -1985,7 +2002,8 @@ export class ExecutionService {
     stepIndex: number,
     stepStartTime: number,
     context: any,
-    identifiers: StepIdentifiers
+    identifiers: StepIdentifiers,
+    discoveredTest?: DiscoveredTest
   ): Promise<StepExecutionResult> {
     try {
       // Validate iteration configuration
@@ -2072,7 +2090,8 @@ export class ExecutionService {
             suite,
             stepIndex,
             iterationIdentifiers,
-            true
+            true,
+            discoveredTest
           );
           iterationResults.push(iterationResult);
 
