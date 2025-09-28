@@ -628,6 +628,48 @@ async function autoDiscoverDependencies(
   const yaml = require("js-yaml");
   const fg = require("fast-glob");
 
+  const resolveProjectRoot = (startDir: string): string => {
+    let current = path.resolve(startDir);
+    while (true) {
+      if (
+        fs.existsSync(path.join(current, "flow-test.config.yml")) ||
+        fs.existsSync(path.join(current, "flow-test.config.yaml")) ||
+        fs.existsSync(path.join(current, "package.json")) ||
+        fs.existsSync(path.join(current, ".git"))
+      ) {
+        return current;
+      }
+
+      const parent = path.dirname(current);
+      if (parent === current) {
+        return path.resolve(startDir);
+      }
+      current = parent;
+    }
+  };
+
+  const determineSearchRoots = (startDir: string): string[] => {
+    const roots = new Set<string>();
+    const normalizedStart = path.resolve(startDir);
+    roots.add(normalizedStart);
+
+    const projectRoot = resolveProjectRoot(startDir);
+    roots.add(projectRoot);
+
+    const testsDir = path.join(projectRoot, "tests");
+    if (fs.existsSync(testsDir) && fs.statSync(testsDir).isDirectory()) {
+      roots.add(testsDir);
+    }
+
+    // Also include parent directory of the current test to cover sibling folders
+    const parentDir = path.dirname(normalizedStart);
+    if (parentDir && parentDir !== normalizedStart) {
+      roots.add(parentDir);
+    }
+
+    return Array.from(roots);
+  };
+
   const dependencyNodeIds: string[] = [];
 
   // Check if the test has dependencies
@@ -635,12 +677,27 @@ async function autoDiscoverDependencies(
     return dependencyNodeIds;
   }
 
-  // Search for YAML files in the test directory
-  const yamlFiles = await fg(["**/*.yaml", "**/*.yml"], {
-    cwd: testDirectory,
-    absolute: true,
-    ignore: ["node_modules/**", ".git/**"],
-  });
+  // Search for YAML files in relevant directories (current, parent, and project root)
+  const yamlFilesSet = new Set<string>();
+  const searchRoots = determineSearchRoots(testDirectory);
+
+  for (const root of searchRoots) {
+    try {
+      const files = await fg(["**/*.yaml", "**/*.yml"], {
+        cwd: root,
+        absolute: true,
+        ignore: ["node_modules/**", ".git/**"],
+        followSymbolicLinks: true,
+      });
+      files.forEach((file: string) => yamlFilesSet.add(path.resolve(file)));
+    } catch (error) {
+      getLogger().debug(
+        `⚠️ Skipping dependency discovery in '${root}': ${error}`
+      );
+    }
+  }
+
+  const yamlFiles = Array.from(yamlFilesSet);
 
   // Create a map of node_id to file path for quick lookup
   const nodeIdToFileMap: Map<string, string> = new Map();

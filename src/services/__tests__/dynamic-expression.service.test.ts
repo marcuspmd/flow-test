@@ -133,4 +133,45 @@ describe("DynamicExpressionService", () => {
     expect(assignment.reevaluated).toBe(true);
     expect(assignment.persist).toBe(true);
   });
+
+  it("exposes request/response metadata to capture expressions", () => {
+    const dynamicConfig: InputDynamicConfig = {
+      capture: {
+        status: "response.status_code",
+        header_value: 'response.headers."x-correlation-id"',
+        input_value: "input.value",
+      },
+      computed: {
+        requestInfo: "`${variables.__input_variable}:${response?.status_code}`",
+      },
+    };
+
+    const inputResult = buildInputResult("token-123");
+
+    const outcome = service.processInputDynamics(inputResult, dynamicConfig, {
+      ...baseContext,
+      variables: {},
+      response: {
+        status_code: 201,
+        headers: { "x-correlation-id": "corr-001" },
+        body: { ok: true },
+        size_bytes: 128,
+      },
+      request: {
+        method: "POST",
+        url: "/sessions",
+      },
+      captured: { previous: "value" },
+    } as any);
+
+    expect(outcome.assignments).toHaveLength(4);
+    const byName = Object.fromEntries(
+      outcome.assignments.map((assignment) => [assignment.name, assignment])
+    );
+
+    expect(byName.status.value).toBe(201);
+    expect(byName.header_value.value).toBe("corr-001");
+    expect(byName.input_value.value).toBe("token-123");
+    expect(byName.requestInfo.value).toBe("user_input:201");
+  });
 });

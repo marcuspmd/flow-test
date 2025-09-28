@@ -138,14 +138,14 @@ describe("VariableService", () => {
       expect(result).toEqual({
         url: "https://api.example.com/users/123",
         headers: { Authorization: "Bearer abc123" },
-        nested: { timeout: "5000" },
+        nested: { timeout: 5000 },
       });
     });
 
     it("should interpolate arrays", () => {
       const arr = ["{{user_id}}", "{{test_name}}", "{{api_url}}"];
       const result = service.interpolate(arr);
-      expect(result).toEqual(["123", "integration", "https://api.example.com"]);
+      expect(result).toEqual([123, "integration", "https://api.example.com"]);
     });
 
     it("should keep placeholders for non-existent variables", () => {
@@ -157,6 +157,13 @@ describe("VariableService", () => {
       const obj = { number: 42, boolean: true, null_val: null };
       const result = service.interpolate(obj);
       expect(result).toEqual(obj);
+    });
+
+    it("should return raw value when template is a single variable", () => {
+      expect(service.interpolate("{{user_id}}"))
+        .toBe(123);
+      expect(service.interpolate("{{auth_token}}"))
+        .toBe("abc123");
     });
 
     it("should interpolate with suppressWarnings enabled", () => {

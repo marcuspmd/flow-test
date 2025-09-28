@@ -273,6 +273,7 @@ export class CaptureService {
       source && typeof source === "object" ? { ...source } : { value: source };
 
     return {
+      ...baseContext,
       value: baseContext.value !== undefined ? baseContext.value : source,
       input: baseContext.input ?? baseContext,
       variables: variables || baseContext.variables || {},

@@ -216,7 +216,13 @@ export class ExecutionService {
   private buildDynamicContext(
     suite: TestSuite,
     step: TestStep,
-    variables: Record<string, any>
+    variables: Record<string, any>,
+    contextData?: {
+      captured?: Record<string, any>;
+      response?: StepExecutionResult["response_details"];
+      request?: StepExecutionResult["request_details"];
+      extras?: Record<string, any>;
+    }
   ) {
     return {
       variables,
@@ -224,6 +230,10 @@ export class ExecutionService {
       suiteNodeId: suite.node_id,
       suiteName: suite.suite_name,
       timestamp: new Date().toISOString(),
+      captured: contextData?.captured,
+      response: contextData?.response,
+      request: contextData?.request,
+      extras: contextData?.extras,
     };
   }
 
@@ -1496,6 +1506,20 @@ export class ExecutionService {
             httpResult.captured_variables = {};
           }
 
+          const createDynamicContext = () =>
+            this.buildDynamicContext(
+              suite,
+              step,
+              this.globalVariables.getAllVariables(),
+              {
+                captured: {
+                  ...(httpResult.captured_variables ?? {}),
+                },
+                response: httpResult.response_details,
+                request: httpResult.request_details,
+              }
+            );
+
           let inputProcessedSuccessfully = true;
           const triggeredVariables = new Set<string>();
           let lastSuccessfulInput: InputResult | undefined;
@@ -1528,11 +1552,7 @@ export class ExecutionService {
               httpResult.captured_variables[result.variable] = result.value;
               capturedVariables[result.variable] = result.value;
 
-              const dynamicContext = this.buildDynamicContext(
-                suite,
-                step,
-                this.globalVariables.getAllVariables()
-              );
+              const dynamicContext = createDynamicContext();
 
               const dynamicOutcome =
                 this.dynamicExpressionService.processInputDynamics(
@@ -1574,11 +1594,7 @@ export class ExecutionService {
               this.dynamicExpressionService.reevaluate(
                 Array.from(triggeredVariables),
                 lastSuccessfulInput,
-                this.buildDynamicContext(
-                  suite,
-                  step,
-                  this.globalVariables.getAllVariables()
-                )
+                createDynamicContext()
               );
 
             if (reevaluatedAssignments.length > 0) {

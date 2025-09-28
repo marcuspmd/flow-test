@@ -122,15 +122,11 @@ export class VariableService {
           }
           return template; // Keep the original placeholder
         }
-        // For string templates, always convert to string even for single variables
-        // to maintain consistency with string interpolation behavior
+
         if (value !== null && typeof value === "object") {
-          // Check for circular reference
           if (visitedObjects.has(value)) {
-            return "[Circular Reference]";
+            return value;
           }
-          // For objects/arrays in string templates, we need to convert them to strings
-          // but we should still process them for nested interpolation first
           visitedObjects.add(value);
           const result = this.interpolate(
             value,
@@ -138,9 +134,10 @@ export class VariableService {
             visitedObjects
           );
           visitedObjects.delete(value);
-          return String(result);
+          return result;
         }
-        return String(value);
+
+        return value;
       }
 
       // Handle multiple variables within the string

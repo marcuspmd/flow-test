@@ -284,14 +284,32 @@ export class InputService {
       imported: {},
     });
 
+    const toDisplayString = (value: any): string | undefined => {
+      if (value === undefined || value === null) {
+        return value;
+      }
+      if (typeof value === "string") {
+        return value;
+      }
+      if (typeof value === "number" || typeof value === "boolean") {
+        return String(value);
+      }
+      try {
+        return JSON.stringify(value);
+      } catch {
+        return String(value);
+      }
+    };
+
     return {
       ...config,
-      prompt: variableService.interpolate(config.prompt),
+      prompt: toDisplayString(variableService.interpolate(config.prompt)) ??
+        config.prompt,
       description: config.description
-        ? variableService.interpolate(config.description)
+        ? toDisplayString(variableService.interpolate(config.description))
         : undefined,
       placeholder: config.placeholder
-        ? variableService.interpolate(config.placeholder)
+        ? toDisplayString(variableService.interpolate(config.placeholder))
         : undefined,
       // Handle options interpolation
       options: config.options

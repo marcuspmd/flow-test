@@ -21,6 +21,20 @@ interface DynamicProcessingContext {
   suiteName: string;
   timestamp?: string;
   extras?: Record<string, any>;
+  request?: {
+    method?: string;
+    url?: string;
+    headers?: Record<string, string>;
+    body?: any;
+    full_url?: string;
+  };
+  response?: {
+    status_code?: number;
+    headers?: Record<string, string>;
+    body?: any;
+    size_bytes?: number;
+  };
+  captured?: Record<string, any>;
 }
 
 interface ProcessInputResult {
@@ -178,6 +192,9 @@ export class DynamicExpressionService {
         timestamp: context.timestamp,
       },
       extras: context.extras,
+      request: context.request,
+      response: context.response,
+      captured: context.captured,
     };
 
     for (const definition of definitions) {
@@ -195,13 +212,15 @@ export class DynamicExpressionService {
         } else {
           const computedContext: ComputedEvaluationContext = {
             variables: context.variables,
-            captured: {},
+            captured: context.captured,
             input: {
               variable: inputResult?.variable ?? "",
               value: inputResult?.value,
               used_default: inputResult?.used_default,
               validation_passed: inputResult?.validation_passed,
             },
+            request: context.request,
+            response: context.response,
             extras: {
               stepName: context.stepName,
               suiteNodeId: context.suiteNodeId,
