@@ -75,6 +75,8 @@ export interface PostmanExportResult {
 export interface PostmanImportOptions {
   outputDir?: string;
   defaultPriority?: "low" | "medium" | "high" | "critical";
+  preserveFolderStructure?: boolean; // If true, creates multiple files based on folder structure
+  analyzeDependencies?: boolean; // If true, analyzes and adds 'depends' directives
 }
 
 export interface PostmanImportResult {
@@ -83,6 +85,23 @@ export interface PostmanImportResult {
   warnings: string[];
   generatedSuites: number;
   outputFiles: string[];
+  dependenciesFound?: VariableDependency[];
+  folderStructure?: string; // Visual tree representation
+}
+
+interface VariableDependency {
+  variableName: string;
+  capturedBy: string; // file path where it's captured
+  usedBy: string[]; // file paths where it's used
+}
+
+interface ProcessedFolder {
+  name: string;
+  path: string; // relative path from output dir
+  items: PostmanItem[];
+  suite?: TestSuite;
+  capturedVariables: Set<string>;
+  usedVariables: Set<string>;
 }
 
 export const POSTMAN_SCHEMA_URL =
@@ -241,8 +260,20 @@ export class PostmanCollectionService {
       const raw = fs.readFileSync(collectionPath, "utf-8");
       const parsed = JSON.parse(raw) as PostmanCollection;
 
-      const suite = this.convertCollectionToSuite(parsed, options);
       const outputDir = options.outputDir || path.dirname(collectionPath);
+
+      // Check if we should preserve folder structure
+      if (options.preserveFolderStructure) {
+        return await this.importWithFolderStructure(
+          parsed,
+          outputDir,
+          options,
+          result
+        );
+      }
+
+      // Original behavior: single file import
+      const suite = this.convertCollectionToSuite(parsed, options);
       const fileName = `${this.sanitizeNodeId(suite.suite_name)}.yaml`;
       const outputPath = path.join(outputDir, fileName);
 
@@ -266,6 +297,81 @@ export class PostmanCollectionService {
       result.errors.push(message);
       return result;
     }
+  }
+
+  /**
+   * Import with folder structure preservation, creating multiple YAML files.
+   */
+  private async importWithFolderStructure(
+    collection: PostmanCollection,
+    outputDir: string,
+    options: PostmanImportOptions,
+    result: PostmanImportResult
+  ): Promise<PostmanImportResult> {
+    // Process the folder structure recursively
+    const folders: ProcessedFolder[] = [];
+    this.processFolders(collection.item, [], folders);
+
+    // If no folders, warn and fallback to single file
+    if (folders.length === 0) {
+      result.warnings.push("No folders found in collection, generating single file");
+      const suite = this.convertCollectionToSuite(collection, options);
+      const fileName = `${this.sanitizeNodeId(suite.suite_name)}.yaml`;
+      const outputPath = path.join(outputDir, fileName);
+
+      if (!fs.existsSync(outputDir)) {
+        fs.mkdirSync(outputDir, { recursive: true });
+      }
+
+      fs.writeFileSync(outputPath, yaml.dump(suite, { indent: 2, noRefs: true, lineWidth: 120 }), "utf-8");
+      result.outputFiles.push(outputPath);
+      result.generatedSuites = 1;
+      result.success = true;
+      return result;
+    }
+
+    // Extract global variables used across multiple folders
+    const globalVariables = this.extractGlobalVariables(folders);
+
+    // Convert each folder to a suite
+    for (const folder of folders) {
+      folder.suite = this.convertFolderToSuite(folder, collection, options, globalVariables);
+    }
+
+    // Analyze dependencies if requested
+    if (options.analyzeDependencies) {
+      const dependencies = this.analyzeDependencies(folders);
+      this.addDependenciesToSuites(folders, dependencies);
+      result.dependenciesFound = dependencies;
+    }
+
+    // Write all suites to disk
+    for (const folder of folders) {
+      if (!folder.suite) continue;
+
+      const folderPath = path.join(outputDir, folder.path);
+      if (!fs.existsSync(folderPath)) {
+        fs.mkdirSync(folderPath, { recursive: true });
+      }
+
+      const fileName = `${this.sanitizeNodeId(folder.name)}.yaml`;
+      const outputPath = path.join(folderPath, fileName);
+
+      const yamlContent = yaml.dump(folder.suite, {
+        indent: 2,
+        noRefs: true,
+        lineWidth: 120,
+      });
+
+      fs.writeFileSync(outputPath, yamlContent, "utf-8");
+      result.outputFiles.push(outputPath);
+      result.generatedSuites++;
+    }
+
+    // Generate folder structure tree
+    result.folderStructure = this.generateFolderTree(folders);
+    result.success = true;
+    return result;
   }
 
   private convertStepToItem(
@@ -1128,6 +1234,258 @@ export class PostmanCollectionService {
         raw: fullUrl,
       };
     }
+  }
+
+  /**
+   * Process folders recursively to extract folder structure.
+   */
+  private processFolders(
+    items: PostmanItem[],
+    currentPath: string[],
+    result: ProcessedFolder[]
+  ): void {
+    for (const item of items) {
+      // If item has sub-items, it's a folder
+      if (item.item && item.item.length > 0) {
+        const hasRequests = item.item.some(subItem => subItem.request);
+        const hasSubFolders = item.item.some(subItem => subItem.item && subItem.item.length > 0);
+
+        // If this folder has requests, create a ProcessedFolder for it
+        if (hasRequests) {
+          const folderPath = [...currentPath, this.sanitizeNodeId(item.name)];
+          const folder: ProcessedFolder = {
+            name: item.name,
+            path: folderPath.join(path.sep),
+            items: item.item.filter(i => i.request),
+            capturedVariables: new Set(),
+            usedVariables: new Set(),
+          };
+
+          // Analyze variables in this folder
+          this.analyzeVariablesInItems(folder.items, folder);
+          result.push(folder);
+        }
+
+        // Recursively process sub-folders
+        this.processFolders(item.item, [...currentPath, this.sanitizeNodeId(item.name)], result);
+      }
+    }
+  }
+
+  /**
+   * Analyze variables captured and used in a set of items.
+   */
+  private analyzeVariablesInItems(items: PostmanItem[], folder: ProcessedFolder): void {
+    for (const item of items) {
+      if (!item.request) continue;
+
+      // Check for captured variables in test scripts
+      if (item.event) {
+        for (const event of item.event) {
+          if (event.listen === "test" && event.script?.exec) {
+            for (const line of event.script.exec) {
+              // Match pm.environment.set("VAR_NAME", ...)
+              const captureMatch = line.match(/pm\.(?:environment|collection)\.set\s*\(\s*["']([^"']+)["']/);
+              if (captureMatch) {
+                folder.capturedVariables.add(captureMatch[1]);
+              }
+            }
+          }
+        }
+      }
+
+      // Check for used variables in URL
+      const urlRaw = item.request.url?.raw || "";
+      const urlVars = urlRaw.match(/\{\{([^}]+)\}\}/g);
+      if (urlVars) {
+        urlVars.forEach(v => folder.usedVariables.add(v.replace(/[{}]/g, "")));
+      }
+
+      // Check for used variables in body
+      if (item.request.body?.raw) {
+        const bodyVars = item.request.body.raw.match(/\{\{([^}]+)\}\}/g);
+        if (bodyVars) {
+          bodyVars.forEach(v => folder.usedVariables.add(v.replace(/[{}]/g, "")));
+        }
+      }
+
+      // Check for used variables in headers
+      if (item.request.header) {
+        for (const header of item.request.header) {
+          const headerVars = header.value.match(/\{\{([^}]+)\}\}/g);
+          if (headerVars) {
+            headerVars.forEach(v => folder.usedVariables.add(v.replace(/[{}]/g, "")));
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Extract global variables used across multiple folders.
+   */
+  private extractGlobalVariables(folders: ProcessedFolder[]): Set<string> {
+    const variableUsageCount = new Map<string, number>();
+
+    // Count usage of each variable
+    for (const folder of folders) {
+      for (const variable of folder.usedVariables) {
+        variableUsageCount.set(variable, (variableUsageCount.get(variable) || 0) + 1);
+      }
+    }
+
+    // Variables used in 2+ folders are considered global
+    const globalVars = new Set<string>();
+    for (const [variable, count] of variableUsageCount.entries()) {
+      if (count >= 2) {
+        globalVars.add(variable);
+      }
+    }
+
+    return globalVars;
+  }
+
+  /**
+   * Convert a folder to a TestSuite.
+   */
+  private convertFolderToSuite(
+    folder: ProcessedFolder,
+    collection: PostmanCollection,
+    options: PostmanImportOptions,
+    globalVariables: Set<string>
+  ): TestSuite {
+    const steps = folder.items.map((item, index) => this.convertItemToStep(item, index));
+
+    // Filter used variables to only include globals
+    const suiteVariables: Record<string, string> = {};
+    for (const variable of folder.usedVariables) {
+      if (globalVariables.has(variable)) {
+        suiteVariables[variable] = `{{${variable}}}`; // Placeholder
+      }
+    }
+
+    const suite: TestSuite = {
+      suite_name: folder.name,
+      node_id: this.sanitizeNodeId(folder.name),
+      description: `Imported from Postman collection: ${collection.info?.name}`,
+      metadata: {
+        priority: options.defaultPriority || "medium",
+        tags: ["imported", "postman", ...folder.path.split(path.sep)],
+      },
+      base_url: this.detectBaseUrl(folder.items) || "",
+      variables: suiteVariables,
+      steps,
+    };
+
+    return suite;
+  }
+
+  /**
+   * Analyze dependencies between folders based on variable capture/usage.
+   */
+  private analyzeDependencies(folders: ProcessedFolder[]): VariableDependency[] {
+    const dependencies: VariableDependency[] = [];
+
+    // For each captured variable, find where it's used
+    for (const folder of folders) {
+      for (const capturedVar of folder.capturedVariables) {
+        const usedBy: string[] = [];
+
+        for (const otherFolder of folders) {
+          if (otherFolder === folder) continue;
+          if (otherFolder.usedVariables.has(capturedVar)) {
+            usedBy.push(otherFolder.path);
+          }
+        }
+
+        if (usedBy.length > 0) {
+          dependencies.push({
+            variableName: capturedVar,
+            capturedBy: folder.path,
+            usedBy,
+          });
+        }
+      }
+    }
+
+    return dependencies;
+  }
+
+  /**
+   * Add 'depends' directives to suites based on dependencies.
+   */
+  private addDependenciesToSuites(
+    folders: ProcessedFolder[],
+    dependencies: VariableDependency[]
+  ): void {
+    for (const folder of folders) {
+      if (!folder.suite) continue;
+
+      const dependsOn = new Set<string>();
+
+      // Find which folders this folder depends on
+      for (const dep of dependencies) {
+        if (dep.usedBy.includes(folder.path)) {
+          dependsOn.add(dep.capturedBy);
+        }
+      }
+
+      if (dependsOn.size > 0) {
+        // Add depends to suite metadata
+        if (!folder.suite.metadata) {
+          folder.suite.metadata = {};
+        }
+
+        // Convert paths to relative depends format
+        const depends = Array.from(dependsOn).map(depPath => {
+          // Convert "v1/admin/agreement" to "../agreement" relative path
+          const folderParts = folder.path.split(path.sep);
+          const depParts = depPath.split(path.sep);
+
+          // Find common prefix
+          let commonLength = 0;
+          while (commonLength < folderParts.length &&
+                 commonLength < depParts.length &&
+                 folderParts[commonLength] === depParts[commonLength]) {
+            commonLength++;
+          }
+
+          // Calculate relative path
+          const upLevels = folderParts.length - commonLength;
+          const downPath = depParts.slice(commonLength);
+
+          const relativePath = [
+            ...Array(upLevels).fill(".."),
+            ...downPath,
+            `${this.sanitizeNodeId(folders.find(f => f.path === depPath)?.name || "")}.yaml`
+          ].join("/");
+
+          return relativePath;
+        });
+
+        (folder.suite.metadata as any).depends = depends;
+      }
+    }
+  }
+
+  /**
+   * Generate a visual tree representation of the folder structure.
+   */
+  private generateFolderTree(folders: ProcessedFolder[]): string {
+    const lines: string[] = ["Generated folder structure:"];
+    const sortedFolders = folders.sort((a, b) => a.path.localeCompare(b.path));
+
+    for (const folder of sortedFolders) {
+      const depth = folder.path.split(path.sep).length - 1;
+      const indent = "  ".repeat(depth);
+      const fileName = `${this.sanitizeNodeId(folder.name)}.yaml`;
+      const varInfo = folder.capturedVariables.size > 0
+        ? ` [captures: ${Array.from(folder.capturedVariables).join(", ")}]`
+        : "";
+      lines.push(`${indent}📁 ${folder.path}/${fileName}${varInfo}`);
+    }
+
+    return lines.join("\n");
   }
 
   /**
