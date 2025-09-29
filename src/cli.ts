@@ -300,6 +300,8 @@ async function main() {
   let postmanExportFromResults: string | undefined;
   let postmanImport: string | undefined;
   let postmanImportOutput: string | undefined;
+  let postmanPreserveFolders = false;
+  let postmanAnalyzeDeps = false;
   let dashboardCommand: string | undefined;
   let liveEventsPath: string | undefined;
   let runnerInteractiveMode = false;
@@ -474,6 +476,14 @@ async function main() {
         }
         break;
 
+      case "--postman-preserve-folders":
+        postmanPreserveFolders = true;
+        break;
+
+      case "--postman-analyze-deps":
+        postmanAnalyzeDeps = true;
+        break;
+
       case "dashboard":
         if (i + 1 < args.length) {
           dashboardCommand = args[++i];
@@ -557,7 +567,12 @@ async function main() {
   }
 
   if (postmanImport) {
-    await handlePostmanImport(postmanImport, postmanImportOutput);
+    await handlePostmanImport(
+      postmanImport,
+      postmanImportOutput,
+      postmanPreserveFolders,
+      postmanAnalyzeDeps
+    );
     process.exit(0);
   }
 
@@ -1184,6 +1199,8 @@ POSTMAN COLLECTIONS:
   --postman-output <path>    Output file or directory for the exported collection (default: alongside input)
   --postman-import <file>    Import a Postman collection JSON file and generate Flow Test suite(s)
   --postman-import-output <dir> Output directory for generated suites (default: alongside input)
+  --postman-preserve-folders Preserve folder structure, creating multiple YAML files (one per folder)
+  --postman-analyze-deps     Analyze and add 'depends' directives based on variable dependencies
 
 GRAPH GENERATION:
   graph mermaid [options]    Print a Mermaid graph of discovered suites to stdout
@@ -1226,6 +1243,7 @@ EXAMPLES:
   fest --postman-export tests/auth-flows-test.yaml --postman-output ./exports/auth.postman_collection.json
   fest --postman-export-from-results results/latest.json --postman-output ./exports/
   fest --postman-import ./postman/collection.json --postman-import-output ./tests/imported-postman
+  fest --postman-import ./postman/api.json --postman-preserve-folders --postman-analyze-deps --postman-import-output ./tests/api
   fest graph mermaid --output discovery.mmd     # Generate Mermaid graph for documentation
 
 CONFIGURATION:
@@ -1380,16 +1398,26 @@ async function handlePostmanExport(
 
 async function handlePostmanImport(
   collectionPath: string,
-  outputDir?: string
+  outputDir?: string,
+  preserveFolders = false,
+  analyzeDeps = false
 ): Promise<void> {
+  const mode = preserveFolders ? "multi-file with folder structure" : "single file";
   getLogger().info(
-    `🔄 Importing Postman collection into Flow Test suite(s): ${collectionPath}`
+    `🔄 Importing Postman collection (${mode}): ${collectionPath}`
   );
+
+  if (analyzeDeps && !preserveFolders) {
+    getLogger().warn("⚠️  --postman-analyze-deps requires --postman-preserve-folders, ignoring...");
+    analyzeDeps = false;
+  }
 
   try {
     const service = new PostmanCollectionService();
     const result = await service.importFromFile(collectionPath, {
       outputDir,
+      preserveFolderStructure: preserveFolders,
+      analyzeDependencies: analyzeDeps,
     });
 
     if (!result.success) {
@@ -1404,8 +1432,22 @@ async function handlePostmanImport(
     }
 
     getLogger().info("\n✅ Import completed successfully!");
+    getLogger().info(`📊 Generated ${result.generatedSuites} suite(s)`);
+
+    if (result.folderStructure) {
+      getLogger().info("\n" + result.folderStructure);
+    }
+
+    if (result.dependenciesFound && result.dependenciesFound.length > 0) {
+      getLogger().info(`\n🔗 Dependencies found: ${result.dependenciesFound.length}`);
+      result.dependenciesFound.forEach((dep) => {
+        getLogger().info(`  • ${dep.variableName}: captured in ${dep.capturedBy}, used by ${dep.usedBy.length} suite(s)`);
+      });
+    }
+
+    getLogger().info("\n📄 Generated files:");
     result.outputFiles.forEach((file) =>
-      getLogger().info(`📄 Generated: ${file}`)
+      getLogger().info(`  • ${file}`)
     );
   } catch (error) {
     getLogger().error("❌ Unexpected error during Postman import:", {
