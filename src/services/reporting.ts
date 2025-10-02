@@ -14,6 +14,7 @@ import {
   AssertionResult,
   SuiteExecutionResult,
 } from "../types/engine.types";
+import type { StepExecutionResult } from "../types/config.types";
 import { getLogger } from "./logger.service";
 
 interface HtmlReportAsset {
@@ -31,6 +32,14 @@ interface HtmlReportAsset {
 interface SuiteHtmlEntry {
   suite: SuiteExecutionResult;
   fileName: string;
+}
+
+interface PrettyResponsePayload {
+  type: "json" | "xml" | "html" | "text";
+  label: string;
+  raw: string;
+  formatted: string;
+  iframeContent?: string;
 }
 
 export class ReportingService {
@@ -788,6 +797,33 @@ ${suitesMarkup}
         max-height: 300px;
         overflow-y: auto;
       }
+      .pretty-response {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        width: 100%;
+      }
+      .pretty-response__preview {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        width: 100%;
+      }
+      .pretty-response__label {
+        font-size: 0.75rem;
+        color: var(--muted);
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+      .pretty-response__frame {
+        display: block;
+        width: 100%;
+        min-height: 400px;
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        background: transparent;
+      }
       .assertions-list {
         padding: 16px;
         max-height: 400px;
@@ -1015,6 +1051,8 @@ ${suitesMarkup}
           step.scenarios_meta ||
           (step.assertions_results && step.assertions_results.length > 0);
 
+        const prettyResponseTab = this.buildPrettyResponseTab(step);
+
         const detailContent = hasDetails
           ? `<div class="detail-tabs">
                 <div class="detail-tabs-nav">
@@ -1028,6 +1066,7 @@ ${suitesMarkup}
                       ? '<button class="tab-btn" data-tab="response">Response</button>'
                       : ""
                   }
+                  ${prettyResponseTab ? prettyResponseTab.buttonHtml : ""}
                   ${
                     step.request_details
                       ? '<button class="tab-btn" data-tab="curl">cURL</button>'
@@ -1114,6 +1153,7 @@ ${suitesMarkup}
                   </div>`
                       : ""
                   }
+                  ${prettyResponseTab ? prettyResponseTab.contentHtml : ""}
                   ${
                     step.request_details
                       ? `<div class="tab-content" data-tab="curl">
@@ -1952,6 +1992,23 @@ ${stepsContent}
           const tabBtns = container.querySelectorAll('.tab-btn');
           const tabContents = container.querySelectorAll('.tab-content');
 
+          const hasActive = Array.from(tabBtns).some(btn =>
+            btn.classList.contains('active')
+          );
+
+          if (!hasActive && tabBtns.length > 0) {
+            const firstBtn = tabBtns[0];
+            firstBtn.classList.add('active');
+            const firstTabId = firstBtn.getAttribute('data-tab');
+            if (firstTabId) {
+              const selector = '[data-tab="' + firstTabId + '"].tab-content';
+              const firstContent = container.querySelector(selector);
+              if (firstContent) {
+                firstContent.classList.add('active');
+              }
+            }
+          }
+
           tabBtns.forEach(btn => {
             btn.addEventListener('click', function() {
               const targetTab = this.getAttribute('data-tab');
@@ -2035,6 +2092,373 @@ ${stepsContent}
       const destinationPath = path.join(latestDir, asset.fileName);
       fs.copyFileSync(asset.absolutePath, destinationPath);
     }
+  }
+
+  private buildPrettyResponseTab(
+    step: StepExecutionResult
+  ): { buttonHtml: string; contentHtml: string } | null {
+    const payload = this.getPrettyResponsePayload(step.response_details);
+
+    if (!payload) {
+      return null;
+    }
+
+    const buttonHtml =
+      '<button class="tab-btn" data-tab="pretty-response">Pretty Response</button>';
+    const escapedCopyValue = this.escapeHtml(payload.raw);
+    const escapedLabel = this.escapeHtml(payload.label);
+
+    if (payload.type === "html") {
+      const srcdocValue = this.escapeAttribute(
+        payload.iframeContent ?? payload.formatted
+      );
+
+      return {
+        buttonHtml,
+        contentHtml: `<div class="tab-content" data-tab="pretty-response">
+                    <div class="pretty-response">
+                      <div class="pretty-response__preview">
+                        <iframe allowfullscreen width="100%" height="500px" transparent class="pretty-response__frame" srcdoc="${srcdocValue}"></iframe>
+                      </div>
+                    </div>
+                  </div>`,
+      };
+    }
+
+    const escapedFormatted = this.escapeHtml(payload.formatted);
+
+    return {
+      buttonHtml,
+      contentHtml: `<div class="tab-content" data-tab="pretty-response">
+                    <div class="code-block">
+                      <div class="code-header">
+                        <span class="code-title">${escapedLabel}</span>
+                        <button class="copy-btn" onclick="copyToClipboard(this)" data-content="${escapedCopyValue}">
+                          <span class="copy-icon">📋</span>
+                          <span class="copy-text">Copy</span>
+                        </button>
+                      </div>
+                      <pre class="code-content">${escapedFormatted}</pre>
+                    </div>
+                  </div>`,
+    };
+  }
+
+  private getPrettyResponsePayload(
+    response?: StepExecutionResult["response_details"]
+  ): PrettyResponsePayload | null {
+    if (!response) {
+      return null;
+    }
+
+    const contentType = this.extractContentType(response.headers);
+    const normalizedType = contentType
+      ? contentType.split(";")[0].trim().toLowerCase()
+      : undefined;
+
+    if (this.isJsonLike(response.body, normalizedType)) {
+      let parsedBody = response.body;
+
+      if (typeof response.body === "string") {
+        try {
+          parsedBody = JSON.parse(response.body);
+        } catch {
+          parsedBody = response.body;
+        }
+      }
+
+      const formatted = this.formatJson(parsedBody);
+      return {
+        type: "json",
+        label: "Pretty JSON",
+        raw: formatted,
+        formatted,
+      };
+    }
+
+    const bodyString = this.getBodyString(response);
+
+    if (bodyString === undefined) {
+      return null;
+    }
+
+    if (
+      (normalizedType && normalizedType.includes("html")) ||
+      this.looksLikeHtml(bodyString)
+    ) {
+      return {
+        type: "html",
+        label: "HTML Preview",
+        raw: bodyString,
+        formatted: bodyString,
+        iframeContent: bodyString,
+      };
+    }
+
+    if (
+      (normalizedType && normalizedType.includes("xml")) ||
+      this.looksLikeXml(bodyString)
+    ) {
+      return {
+        type: "xml",
+        label: "Pretty XML",
+        raw: bodyString,
+        formatted: this.formatXml(bodyString),
+      };
+    }
+
+    const label = contentType
+      ? `Response Body (${contentType})`
+      : "Response Body";
+
+    return {
+      type: "text",
+      label,
+      raw: bodyString,
+      formatted: bodyString,
+    };
+  }
+
+  private extractContentType(
+    headers?: Record<string, string>
+  ): string | undefined {
+    if (!headers) {
+      return undefined;
+    }
+
+    for (const [key, value] of Object.entries(headers)) {
+      if (key.toLowerCase() === "content-type") {
+        return value;
+      }
+    }
+
+    return undefined;
+  }
+
+  private looksLikeHtml(value: string): boolean {
+    const trimmed = value.trim();
+
+    if (!trimmed.startsWith("<")) {
+      return false;
+    }
+
+    if (/^<!doctype html/i.test(trimmed) || /^<html[\s>]/i.test(trimmed)) {
+      return true;
+    }
+
+    if (/<body[\s>]/i.test(trimmed)) {
+      return true;
+    }
+
+    const firstTag = trimmed.match(/^<([a-zA-Z0-9-:]+)/);
+    if (!firstTag) {
+      return false;
+    }
+
+    const htmlTags = new Set([
+      "html",
+      "head",
+      "body",
+      "div",
+      "span",
+      "section",
+      "article",
+      "main",
+      "header",
+      "footer",
+      "nav",
+      "p",
+      "a",
+      "ul",
+      "ol",
+      "li",
+      "table",
+      "thead",
+      "tbody",
+      "tr",
+      "td",
+      "th",
+    ]);
+
+    return htmlTags.has(firstTag[1].toLowerCase());
+  }
+
+  private looksLikeXml(value: string): boolean {
+    const trimmed = value.trim();
+
+    if (!trimmed.startsWith("<")) {
+      return false;
+    }
+
+    if (/^<\?xml/i.test(trimmed)) {
+      return true;
+    }
+
+    return (
+      !this.looksLikeHtml(trimmed) && /^<([a-zA-Z_][-\w.:]*)/.test(trimmed)
+    );
+  }
+
+  private isJsonLike(body: unknown, normalizedContentType?: string): boolean {
+    if (normalizedContentType && normalizedContentType.includes("json")) {
+      return true;
+    }
+
+    if (body === null || body === undefined) {
+      return false;
+    }
+
+    if (typeof body === "object") {
+      return !this.isBinaryPayload(body);
+    }
+
+    if (typeof body === "string") {
+      const trimmed = body.trim();
+      if (!trimmed) {
+        return false;
+      }
+
+      if (
+        (trimmed.startsWith("{") && trimmed.endsWith("}")) ||
+        (trimmed.startsWith("[") && trimmed.endsWith("]"))
+      ) {
+        try {
+          JSON.parse(trimmed);
+          return true;
+        } catch {
+          return false;
+        }
+      }
+    }
+
+    return false;
+  }
+
+  private getBodyString(
+    response?: StepExecutionResult["response_details"]
+  ): string | undefined {
+    if (!response) {
+      return undefined;
+    }
+
+    if (response.body === null || response.body === undefined) {
+      if (typeof response.raw_response === "string") {
+        const separator = response.raw_response.indexOf("\r\n\r\n");
+        if (separator !== -1) {
+          return response.raw_response.slice(separator + 4);
+        }
+        return response.raw_response;
+      }
+      return undefined;
+    }
+
+    if (typeof response.body === "string") {
+      return response.body;
+    }
+
+    if (this.isBinaryPayload(response.body)) {
+      try {
+        if (typeof Buffer !== "undefined" && Buffer.isBuffer(response.body)) {
+          return response.body.toString("utf8");
+        }
+
+        if (response.body instanceof ArrayBuffer) {
+          if (typeof Buffer !== "undefined") {
+            return Buffer.from(new Uint8Array(response.body)).toString("utf8");
+          }
+          return undefined;
+        }
+
+        if (ArrayBuffer.isView(response.body)) {
+          if (typeof Buffer !== "undefined") {
+            const view = response.body as ArrayBufferView;
+            return Buffer.from(
+              view.buffer,
+              view.byteOffset,
+              view.byteLength
+            ).toString("utf8");
+          }
+          return undefined;
+        }
+      } catch {
+        return undefined;
+      }
+
+      return undefined;
+    }
+
+    try {
+      return JSON.stringify(response.body, null, 2);
+    } catch {
+      return String(response.body);
+    }
+  }
+
+  private isBinaryPayload(value: unknown): boolean {
+    if (!value) {
+      return false;
+    }
+
+    if (
+      typeof Buffer !== "undefined" &&
+      typeof Buffer.isBuffer === "function" &&
+      Buffer.isBuffer(value)
+    ) {
+      return true;
+    }
+
+    if (value instanceof ArrayBuffer) {
+      return true;
+    }
+
+    return (
+      typeof ArrayBuffer !== "undefined" && ArrayBuffer.isView(value as any)
+    );
+  }
+
+  private formatXml(xml: string): string {
+    try {
+      let formatted = "";
+      const reg = /(>)(<)(\/*)/g;
+      let padding = 0;
+      const PADDING = "  ";
+      const cleaned = xml
+        .replace(/\r?\n/g, "")
+        .replace(reg, "$1\n$2")
+        .split("\n");
+
+      for (const node of cleaned) {
+        const trimmed = node.trim();
+        if (!trimmed) {
+          continue;
+        }
+
+        if (/^<\//.test(trimmed)) {
+          padding = Math.max(padding - 1, 0);
+        }
+
+        const indent = PADDING.repeat(padding);
+        formatted += `${indent}${trimmed}\n`;
+
+        if (
+          /^<[^!?][^>]*[^/]?>$/.test(trimmed) &&
+          !/^<[^>]+>.*<\/[^>]+>$/.test(trimmed)
+        ) {
+          padding += 1;
+        }
+      }
+
+      return formatted.trim();
+    } catch {
+      return xml;
+    }
+  }
+
+  private escapeAttribute(value: string): string {
+    return value
+      .replace(/&/g, "&amp;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
   }
 
   private escapeHtml(value: unknown): string {
