@@ -1,0 +1,80 @@
+suite_name: "Input Capture - JMESPath and JavaScript"
+node_id: "input-capture-jmespath"
+description: "Tests both JMESPath and JavaScript expressions in input capture"
+
+metadata:
+  priority: "high"
+  tags: ["input", "capture", "jmespath", "javascript"]
+
+variables:
+  test_mode: true
+
+steps:
+  # Test 1: JMESPath - extract from variable context
+  - name: "Email input with JMESPath capture"
+    input:
+      prompt: "Enter email:"
+      variable: user_email
+      type: email
+      default: "test@example.com"
+      ci_default: "test@example.com"
+    capture:
+      # JMESPath: access variable directly from context
+      email_copy: "user_email"
+
+  # Test 2: JavaScript expression
+  - name: "Email with JavaScript transformation"
+    input:
+      prompt: "Enter another email:"
+      variable: user_email_2
+      type: email
+      default: "Admin@Company.COM"
+      ci_default: "Admin@Company.COM"
+    capture:
+      # JavaScript: transform the value
+      email_lower: "{{js: user_email_2.toLowerCase()}}"
+      email_upper: "{{js: user_email_2.toUpperCase()}}"
+
+  # Test 3: Mix JMESPath and JavaScript
+  - name: "Age input with mixed capture"
+    input:
+      prompt: "Enter age:"
+      variable: age
+      type: number
+      default: 30
+      ci_default: 30
+    capture:
+      # JMESPath: direct access
+      age_copy: "age"
+      # JavaScript: calculations
+      birth_year: "{{js: 2025 - age}}"
+      is_adult: "{{js: age >= 18}}"
+      age_doubled: "{{js: age * 2}}"
+
+  # Test 4: JMESPath with nested variable references
+  - name: "Test with variable interpolation"
+    input:
+      prompt: "Confirm email is {{email_copy}}"
+      variable: confirmed
+      type: confirm
+      default: true
+      ci_default: true
+    capture:
+      # Direct value
+      confirmation: "confirmed"
+      # Reference to other captured variable using JMESPath
+      original_email: "email_copy"
+
+  # Test 5: JavaScript with multiple variables
+  - name: "Summary calculation"
+    input:
+      prompt: "Enter comment:"
+      variable: comment
+      type: text
+      default: "test comment"
+      ci_default: "test comment"
+    capture:
+      # JavaScript accessing multiple captured variables
+      email_summary: "{{js: `${email_copy} (normalized: ${email_lower})`}}"
+      age_summary: "{{js: `Age: ${age}, Born: ${birth_year}`}}"
+      comment_upper: "{{js: comment.toUpperCase()}}"

@@ -311,6 +311,10 @@ export class InputService {
       placeholder: config.placeholder
         ? toDisplayString(variableService.interpolate(config.placeholder))
         : undefined,
+      // Handle default value interpolation with support for Faker, JMESPath, etc.
+      default: config.default !== undefined
+        ? this.interpolateValue(config.default, variables, variableService)
+        : undefined,
       // Handle options interpolation
       options: config.options
         ? this.interpolateOptions(config.options, variables, variableService)
@@ -375,6 +379,43 @@ export class InputService {
       value: option.value,
       label: variableService.interpolate(option.label),
     }));
+  }
+
+  /**
+   * Interpolates a single value with support for variables, Faker, JavaScript, and JMESPath
+   */
+  private interpolateValue(
+    value: any,
+    variables: Record<string, any>,
+    variableService: VariableService
+  ): any {
+    if (typeof value !== "string") {
+      return value; // Return non-string values unchanged
+    }
+
+    // Try interpolation first ({{var}}, {{$faker.*}}, {{$js:...}}, etc.)
+    const resolvedValue = variableService.interpolate(value);
+
+    // If interpolation returned something other than string, use it directly
+    if (typeof resolvedValue !== "string") {
+      return resolvedValue;
+    }
+
+    // If the value contains template syntax ({{}}), interpolation already attempted
+    // Don't try JMESPath on template values that failed to resolve
+    if (value.includes("{{") && value.includes("}}")) {
+      return resolvedValue;
+    }
+
+    // If still a string and doesn't contain templates, try as JMESPath expression
+    try {
+      const jmespath = require("jmespath");
+      const result = jmespath.search(variables, resolvedValue);
+      return result !== null ? result : resolvedValue;
+    } catch (error) {
+      // If JMESPath fails, return the interpolated value
+      return resolvedValue;
+    }
   }
 
   /**

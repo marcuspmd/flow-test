@@ -1666,6 +1666,38 @@ export class ExecutionService {
         }
       }
 
+      // 7. Process step.capture after input (similar to request capture)
+      // This allows capturing/transforming input values, just like we do with request responses
+      if (step.input && step.capture) {
+        try {
+          const currentVariables = this.globalVariables.getAllVariables();
+
+          // Use captureFromObject which supports both JMESPath and JavaScript expressions
+          // Context includes all current variables (including the input that was just captured)
+          const stepCapturedVariables = this.captureService.captureFromObject(
+            step.capture,
+            currentVariables,  // source object for JMESPath
+            currentVariables   // variable context for {{js:...}} and {{...}}
+          );
+
+          // Merge with existing captured variables
+          capturedVariables = {
+            ...capturedVariables,
+            ...stepCapturedVariables,
+          };
+
+          // Update runtime variables immediately so they're available for next steps
+          if (Object.keys(stepCapturedVariables).length > 0) {
+            this.globalVariables.setRuntimeVariables(
+              this.processCapturedVariables(stepCapturedVariables, suite)
+            );
+          }
+        } catch (error) {
+          this.logger.error(`❌ Error processing step.capture after input: ${error}`);
+          // Don't fail the step, just log the error
+        }
+      }
+
       const stepEndTime = Date.now();
       const stepDuration = stepEndTime - stepStartTime;
 

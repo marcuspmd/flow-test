@@ -1,1195 +1,863 @@
-# Flow Test Engine - Guia Completo de Capacidades
+# Flow Test Engine - Expert Development Agent
 
-Este guia fornece uma documentação abrangente sobre o Flow Test Engine, um sistema TypeScript para testes de API que permite criar testes complexos usando arquivos YAML declarativos.
+You are a **Flow Test Engine Expert Developer** with deep knowledge of the TypeScript-based Flow Test Engine framework. Your role is to help users create, debug, optimize, and maintain API test flows using YAML configuration files.
 
-## 📋 Visão Geral
+---
 
-O Flow Test Engine é uma ferramenta poderosa para automação de testes de API que combina:
+## 🎯 Core Mission
 
-- **Configuração Declarativa**: Testes definidos em YAML limpo e legível
-- **Engine TypeScript**: Execução robusta com strict type checking
-- **JMESPath Integration**: Queries avançadas para manipulação de dados
-- **Faker.js Support**: Geração de dados realísticos
-- **Sistema Modular**: Arquitetura extensível e organizadas em services
+Transform user requirements into production-ready, maintainable YAML test flows that leverage the full capabilities of the Flow Test Engine. Be proactive, precise, and always provide working, validated examples.
 
-### Arquitetura Principal
+---
 
-```
-src/
-├── core/           # Engine principal e descoberta de testes
-├── services/       # Serviços especializados (HTTP, Assertions, etc.)
-├── types/          # Definições TypeScript
-└── cli.ts         # Interface de linha de comando
-```
+## 📚 Framework Architecture Knowledge
 
-## 🚀 Tipos de Testes Suportados
+### Runtime & Execution
+- **Runtime**: Node.js 18+ with TypeScript (strict mode)
+- **Execution**: Via `npx flow-test-engine` or `npm start`
+- **Config File**: `flow-test.config.yml` defines discovery patterns, timeouts, retry logic
+- **Results**: JSON/HTML reports in `results/` directory
 
-### 1. Testes de API REST
-Suporte completo para todos os métodos HTTP:
+### Core Components
+- **Engine** (`src/core/engine.ts`): Orchestrates discovery → execution → reporting
+- **Services** (`src/services/`):
+  - `execution.ts`: Main test orchestrator
+  - `http.service.ts`: HTTP requests with axios
+  - `assertion.service.ts`: Validation engine
+  - `variable.service.ts`: Interpolation (Faker.js, env vars, JavaScript)
+  - `capture.service.ts`: Data extraction via JMESPath
+  - `global-registry.service.ts`: Cross-suite variable sharing
 
-```yaml
-# Exemplo básico de teste GET
-- name: "Get user profile"
-  request:
-    method: GET
-    url: "/users/{{user_id}}"
-    headers:
-      Authorization: "Bearer {{auth_token}}"
-  assert:
-    status_code: 200
-    body:
-      id: { type: "number" }
-      name: { type: "string", exists: true }
-```
+### Type System (`src/types/common.types.ts`)
+Key interfaces you must understand:
+- `TestSuite`: Root YAML structure
+- `TestStep`: Individual test step definition
+- `RequestDetails`: HTTP request configuration
+- `Assertions`: Validation rules
+- `DynamicVariableDefinition`: Runtime variable handling
+- `InputDynamicConfig`: Interactive input metadata
 
-```yaml
-# Exemplo de teste POST com validação completa
-- name: "Create new user"
-  request:
-    method: POST
-    url: "/users"
-    headers:
-      Content-Type: "application/json"
-    body:
-      name: "{{faker.person.fullName}}"
-      email: "{{faker.internet.email}}"
-      age: "{{faker.number.int}}"
-  assert:
-    status_code: 201
-    body:
-      id: { exists: true, type: "number" }
-      email: { regex: "^[\\w-\\.]+@([\\w-]+\\.)+[\\w-]{2,4}$" }
-  capture:
-    created_user_id: "body.id"
-    user_email: "body.email"
-```
+---
 
-### 2. Testes de Autenticação
-Fluxos de login e gerenciamento de tokens:
+## 📝 YAML Structure Reference
+
+### Suite Root Properties
 
 ```yaml
-# Login e captura de token
-- name: "User authentication"
-  request:
-    method: POST
-    url: "/auth/login"
-    body:
-      email: "admin@example.com"
-      password: "secure_password"
-  assert:
-    status_code: 200
-    body:
-      token: { exists: true, type: "string" }
-      expires_in: { type: "number", greater_than: 0 }
-  capture:
-    auth_token: "body.token"
-    token_expiry: "body.expires_in"
-
-# Uso do token em requisições subsequentes
-- name: "Access protected resource"
-  request:
-    method: GET
-    url: "/admin/dashboard"
-    headers:
-      Authorization: "Bearer {{auth_token}}"
-  assert:
-    status_code: 200
-```
-
-### 3. Testes de Performance
-Validação de tempo de resposta e throughput:
-
-```yaml
-- name: "Performance critical endpoint"
-  request:
-    method: GET
-    url: "/api/search"
-    params:
-      q: "performance test"
-    timeout: 5000
-  assert:
-    status_code: 200
-    response_time_ms:
-      less_than: 500
-      greater_than: 10
-    body:
-      results: { type: "array", length: { greater_than: 0 } }
-```
-
-### 4. Testes de Integração com Dependências
-Execução sequencial com dependências entre flows:
-
-```yaml
-# Flow principal com dependências
-depends:
-  - path: "./setup-database.yaml"
-    required: true
-    cache: 300  # Cache por 5 minutos
-  - path: "./create-test-data.yaml"
-    condition: "environment == 'test'"
-
-steps:
-  - name: "Test with pre-configured data"
-    request:
-      method: GET
-      url: "/api/reports"
-    assert:
-      status_code: 200
-```
-
-### 5. Testes de Segurança
-Validação de headers de segurança e dados sensíveis:
-
-```yaml
-- name: "Security headers validation"
-  request:
-    method: GET
-    url: "/secure-endpoint"
-    headers:
-      Authorization: "Bearer {{secure_token}}"
-  assert:
-    status_code: 200
-    headers:
-      "x-frame-options": { exists: true }
-      "x-content-type-options": { equals: "nosniff" }
-      "strict-transport-security": { exists: true }
-    # Validar que dados sensíveis não estão expostos
-    body:
-      password: { exists: false }
-      secret_key: { exists: false }
-```
-
-### 6. Step Calls Entre Suites (`call`)
-
-Reutilize passos existentes em outros arquivos YAML evitando duplicação de lógica. Qualquer step pode delegar a execução para outro arquivo usando a chave `call`:
-
-```yaml
-- name: "Preparar estado compartilhado"
-  call:
-    test: "../common/setup-user.yaml"   # Caminho **relativo** ao arquivo atual
-    step: "create-user"                  # Pode ser o step_id ou o name do passo alvo
-    variables:
-      role: "admin"
-      plan: "premium"
-    isolate_context: true                 # (default) restaura o contexto após a chamada
-    on_error: "continue"                 # fail | warn | continue (gera status skipped)
-```
-
-**Regras principais:**
-
-- `call` não pode coexistir com `request`, `iterate`, `input` ou `scenarios` no mesmo passo — o passo se torna apenas um invólucro.
-- O caminho deve ser sempre relativo e permanece confinado ao `test_directory`; tentativas de path traversal são bloqueadas.
-- Com `isolate_context: true` (padrão), todas as variáveis capturadas retornam como `node_id.variavel`, evitando colisões com variáveis locais. Use `false` apenas quando quiser compartilhar o mesmo escopo runtime.
-- Estratégias de erro:
-  - `fail` → lança exceção e interrompe a suíte (padrão).
-  - `warn` → registra aviso e marca o passo como failure.
-  - `continue` → registra em modo informativo e sinaliza o passo como `skipped`.
-- A engine monitora recursão e corta cadeias acima de 10 níveis para impedir loops.
-
-## ✅ Sistema de Validações (Assertions)
-
-### Operadores Básicos
-
-```yaml
-assert:
-  status_code: 200                    # Comparação direta
-  body:
-    name:
-      equals: "John Doe"              # Igualdade exata
-      not_equals: "Jane Doe"          # Desigualdade
-      contains: "John"                # Contém substring
-      exists: true                    # Campo existe
-```
-
-### Validações Numéricas
-
-```yaml
-assert:
-  body:
-    age:
-      greater_than: 18               # Maior que
-      less_than: 65                  # Menor que
-      type: "number"                 # Tipo correto
-    salary:
-      greater_than: 50000
-      less_than: 150000
-```
-
-### Validações de Texto
-
-```yaml
-assert:
-  body:
-    email:
-      regex: "^[\\w-\\.]+@([\\w-]+\\.)+[\\w-]{2,4}$"  # Pattern regex
-      type: "string"
-      length: { greater_than: 5, less_than: 100 }      # Comprimento
-    phone:
-      pattern: "^\\+?[1-9]\\d{1,14}$"                  # Pattern alternativo
-      minLength: 10                                     # Comprimento mínimo
-    description:
-      notEmpty: true                                    # Não vazio
-```
-
-### Validações de Arrays
-
-```yaml
-assert:
-  body:
-    items:
-      type: "array"
-      length:
-        equals: 5                    # Exatamente 5 itens
-      # OU
-      length:
-        greater_than: 0              # Pelo menos 1 item
-        less_than: 100               # Máximo 99 itens
-    tags:
-      contains: "premium"            # Array contém valor
-```
-
-### Validações de Performance
-
-```yaml
-assert:
-  status_code: 200
-  response_time_ms:
-    less_than: 1000                  # Máximo 1 segundo
-    greater_than: 50                 # Mínimo 50ms
-```
-
-### Assertions Customizadas com JavaScript
-
-```yaml
-assert:
-  status_code: 200
-  custom:
-    - name: "Valid user ID format"
-      condition: "body.user_id && typeof body.user_id === 'number' && body.user_id > 0"
-      message: "User ID must be a positive number"
-
-    - name: "Email domain check"
-      condition: "body.email.endsWith('@company.com')"
-      message: "Email must be from company domain"
-
-    - name: "Array not empty"
-      condition: "Array.isArray(body.items) && body.items.length > 0"
-      message: "Items array must not be empty"
-```
-
-## 🔄 Sistema de Iteração
-
-### Iteração sobre Arrays
-
-```yaml
-# Definir dados de teste
-variables:
-  test_users:
-    - { id: 1, name: "Alice", role: "admin" }
-    - { id: 2, name: "Bob", role: "user" }
-    - { id: 3, name: "Carol", role: "moderator" }
-
-steps:
-  - name: "Test user {{current_user.name}}"
-    iterate:
-      over: "{{test_users}}"         # Array para iterar
-      as: "current_user"             # Nome da variável do item atual
-    request:
-      method: GET
-      url: "/users/{{current_user.id}}"
-    assert:
-      status_code: 200
-      body:
-        name: { equals: "{{current_user.name}}" }
-        role: { equals: "{{current_user.role}}" }
-    capture:
-      user_{{current_user.id}}_data: "body"
-```
-
-### Iteração sobre Ranges Numéricos
-
-```yaml
-- name: "Test pagination page {{page_num}}"
-  iterate:
-    range: "1..5"                    # Páginas 1 a 5
-    as: "page_num"                   # Variável para número atual
-  request:
-    method: GET
-    url: "/api/items"
-    params:
-      page: "{{page_num}}"
-      limit: 10
-  assert:
-    status_code: 200
-    body:
-      page: { equals: "{{page_num}}" }
-      items: { type: "array" }
-```
-
-### Contexto de Iteração
-
-Durante a iteração, você tem acesso às seguintes propriedades:
-- `{{item}}` - O valor atual (para ranges: o número atual)
-- `index` - Índice da iteração (0-based)
-- `isFirst` - Boolean indicando se é a primeira iteração
-- `isLast` - Boolean indicando se é a última iteração
-
-## 🔍 JMESPath para Captura e Filtragem
-
-### Sintaxe Básica
-
-```yaml
-capture:
-  # Navegação simples de objeto
-  user_id: "body.user.id"
-  user_name: "body.user.profile.name"
-
-  # Acesso a arrays por índice
-  first_item: "body.items[0]"
-  last_item: "body.items[-1]"
-
-  # Informações da resposta
-  response_status: "status_code"
-  response_time: "duration_ms"
-  response_size: "size_bytes"
-```
-
-### Filtragem de Arrays
-
-```yaml
-capture:
-  # Filtrar por condição simples
-  active_users: "body.users[?status == 'active']"
-
-  # Filtrar por múltiplas condições
-  senior_admins: "body.users[?status == 'active' && role == 'admin' && age > 25]"
-
-  # Filtrar arrays numéricos
-  high_scores: "body.scores[?@ > 80]"
-
-  # Filtrar por substring
-  gmail_users: "body.users[?contains(email, 'gmail.com')]"
-
-  # Filtrar por padrão de início
-  names_starting_a: "body.users[?starts_with(name, 'A')]"
-```
-
-### Projeções e Transformações
-
-```yaml
-capture:
-  # Extrair campos específicos
-  user_names: "body.users[*].name"
-  user_emails: "body.users[*].email"
-
-  # Criar novos objetos
-  user_summary: "body.users[*].{id: id, name: name, active: status == 'active'}"
-
-  # Combinar filtro com projeção
-  active_user_names: "body.users[?status == 'active'].name"
-
-  # Contar elementos
-  total_users: "body.users | length(@)"
-  active_user_count: "body.users[?status == 'active'] | length(@)"
-```
-
-### Flatten Operations (Arrays Aninhados)
-
-```yaml
-capture:
-  # Flatten simples - arrays dentro de objetos
-  all_tags: "body.products[*].tags[]"
-
-  # Double flatten - arrays de arrays
-  all_permissions: "body.users[*].permission_groups[][]"
-
-  # Filtrar arrays aninhados
-  admin_permissions: "body.users[?contains(permission_groups[][], 'admin')]"
-
-  # Matriz de números
-  all_coordinates: "body.coordinate_matrix[]"  # [[1,2], [3,4]] → [1,2,3,4]
-```
-
-### Queries Complexas
-
-```yaml
-capture:
-  # Filtrar e transformar em uma expressão
-  premium_product_info: "body.products[?price > 100].{name: name, price: price, available: stock > 0}"
-
-  # Análise de dados aninhados
-  engineering_skills: "body.users[?department == 'Engineering'][*].skills[]"
-
-  # Operações condicionais complexas
-  user_classification: "body.users[*].{name: name, level: salary > 100000 && 'senior' || salary > 50000 && 'mid' || 'junior'}"
-
-  # Filtros com múltiplas condições em arrays
-  gaming_electronics: "body.products[?category == 'electronics' && contains(tags, 'gaming') && price < 500]"
-```
-
-## 🔧 Sistema de Variáveis
-
-### Interpolação Básica
-
-```yaml
-variables:
-  api_base: "https://api.example.com"
+# Required/Recommended Fields
+suite_name: "Human-readable suite name"          # REQUIRED
+node_id: "unique-suite-identifier"               # REQUIRED (kebab-case)
+base_url: "{{httpbin_url}}"                      # Base URL for relative paths
+description: "Detailed suite purpose"            # Helps with documentation
+
+# Execution Control
+execution_mode: "sequential"                     # sequential|parallel (default: sequential)
+
+# Metadata
+metadata:
+  priority: "critical"                           # critical|high|medium|low
+  tags: ["smoke", "auth", "api"]                # Array of tags for filtering
+  estimated_duration_ms: 5000                    # Expected duration
+  requires_user_input: false                     # Flag for interactive tests
+
+# Variables & Exports
+variables:                                       # Local variables (suite scope)
   user_id: 123
-  test_email: "test@example.com"
+  api_key: "{{$env.API_KEY}}"                   # Environment variable
+  random_email: "{{$faker.internet.email}}"     # Faker.js
 
+exports:                                         # Variables to export globally
+  - auth_token                                   # Becomes: suite-name.auth_token
+  - user_data
+
+# Dependencies
+depends_on:                                      # Suites to run first
+  - suite: "auth/setup.yaml"
+    cache: true                                  # Cache results
+    retry: 2                                     # Retry on failure
+
+# Test Steps
+steps: []                                        # Array of TestStep objects
+```
+
+### Step Structure
+
+```yaml
 steps:
-  - name: "Get user data"
+  - name: "Descriptive step name"                # REQUIRED
+    id: "unique-step-id"                         # REQUIRED for `call` directive
+
+    # HTTP Request (when step performs HTTP call)
     request:
-      method: GET
-      url: "{{api_base}}/users/{{user_id}}"
+      method: GET                                # GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS
+      url: "/api/endpoint"                       # Relative (uses base_url) or absolute
       headers:
-        X-Test-Email: "{{test_email}}"
-```
-
-### Captura de Dados (JMESPath)
-
-```yaml
-- name: "Login and capture token"
-  request:
-    method: POST
-    url: "/auth/login"
-    body:
-      email: "admin@example.com"
-      password: "password123"
-  capture:
-    # Captura simples
-    auth_token: "body.token"
-    user_id: "body.user.id"
-
-    # Captura com transformação
-    user_full_name: "body.user.first_name + ' ' + body.user.last_name"
-
-    # Captura de arrays
-    user_roles: "body.user.roles[*].name"
-
-    # Informações de resposta
-    login_time: "duration_ms"
-    server_version: "headers.\"x-api-version\""
-```
-
-### Faker.js Integration
-
-```yaml
-variables:
-  # Dados pessoais
-  test_user:
-    name: "{{faker.person.fullName}}"
-    email: "{{faker.internet.email}}"
-    phone: "{{faker.phone.number}}"
-    birth_date: "{{faker.date.birthdate}}"
-
-  # Dados comerciais
-  product:
-    name: "{{faker.commerce.productName}}"
-    price: "{{faker.commerce.price}}"
-    description: "{{faker.commerce.productDescription}}"
-
-  # Dados técnicos
-  system:
-    uuid: "{{faker.string.uuid}}"
-    ip_address: "{{faker.internet.ip}}"
-    user_agent: "{{faker.internet.userAgent}}"
-
-  # Arrays e seleções
-  priority: "{{faker.helpers.arrayElement(['high', 'medium', 'low'])}}"
-  is_active: "{{faker.datatype.boolean}}"
-```
-
-### JavaScript Expressions
-
-```yaml
-variables:
-  # Cálculos matemáticos
-  calculated_price: "{{$js.return base_price * 1.20}}"  # 20% markup
-
-  # Manipulação de strings
-  formatted_name: "{{$js.return user_name.toUpperCase()}}"
-
-  # Data/hora atual
-  current_timestamp: "{{$js.return Date.now()}}"
-  current_date: "{{$js.return new Date().toISOString().split('T')[0]}}"
-
-  # Lógica condicional
-  user_type: "{{$js.return age >= 18 ? 'adult' : 'minor'}}"
-
-  # Arrays e objetos
-  random_item: "{{$js.return ['item1', 'item2', 'item3'][Math.floor(Math.random() * 3)]}}"
-
-  # Usando variáveis capturadas
-  welcome_message: "{{$js.return `Welcome, ${captured_user_name}!`}}"
-```
-
-### Variáveis de Ambiente
-
-```yaml
-variables:
-  api_key: "{{$env.API_KEY}}"
-  database_url: "{{$env.DATABASE_URL}}"
-  environment: "{{$env.NODE_ENV}}"
-
-steps:
-  - name: "Environment-specific test"
-    request:
-      method: GET
-      url: "/api/config"
-      headers:
-        X-API-Key: "{{api_key}}"
-        X-Environment: "{{environment}}"
-```
-
-## 🎯 Cenários Condicionais
-
-### Condições Básicas com JMESPath
-
-```yaml
-- name: "User profile test"
-  request:
-    method: GET
-    url: "/users/{{user_id}}"
-  assert:
-    status_code: 200
-  scenarios:
-    # Cenário para usuários admin
-    - name: "Admin user validation"
-      condition: "body.role == 'admin'"
-      then:
-        assert:
-          body:
-            permissions: { type: "array", length: { greater_than: 5 } }
-            admin_panel_access: { equals: true }
-        capture:
-          admin_permissions: "body.permissions"
-
-    # Cenário para usuários regulares
-    - name: "Regular user validation"
-      condition: "body.role == 'user'"
-      then:
-        assert:
-          body:
-            permissions: { type: "array", length: { less_than: 3 } }
-        capture:
-          basic_permissions: "body.permissions"
-```
-
-### Condições com JavaScript
-
-```yaml
-scenarios:
-  # Validação de idade
-  - name: "Adult user scenario"
-    condition: "{{$js.return body.age >= 18}}"
-    then:
-      assert:
-        body:
-          can_purchase_alcohol: { equals: true }
-
-  # Condições complexas
-  - name: "Premium user scenario"
-    condition: "{{$js.return body.subscription_type === 'premium' && body.account_balance > 100}}"
-    then:
-      assert:
-        body:
-          premium_features: { exists: true }
-          priority_support: { equals: true }
-```
-
-### Cenários com Then/Else
-
-```yaml
-scenarios:
-  - name: "Payment validation"
-    condition: "body.payment_status == 'completed'"
-    then:
-      # Sucesso no pagamento
-      assert:
-        body:
-          order_status: { equals: "confirmed" }
-          tracking_number: { exists: true }
-      capture:
-        order_id: "body.order_id"
-        tracking_code: "body.tracking_number"
-    else:
-      # Falha no pagamento
-      assert:
-        body:
-          order_status: { equals: "pending" }
-          error_message: { exists: true }
-      capture:
-        error_reason: "body.error_message"
-```
-
-### Skip Logic (Pular Testes)
-
-```yaml
-- name: "Production-only test"
-  metadata:
-    skip: "{{environment}} !== 'production'"
-    description: "Only run in production environment"
-  request:
-    method: GET
-    url: "/admin/production-metrics"
-
-- name: "Feature flag dependent test"
-  metadata:
-    skip: "{{feature_flags.new_api}} !== 'true'"
-  request:
-    method: GET
-    url: "/api/v2/new-feature"
-```
-
-## 🎨 Funcionalidades Avançadas
-
-### Input Interativo
-
-```yaml
-- name: "Interactive API key setup"
-  input:
-    prompt: "Enter your API key:"
-    variable: "user_api_key"
-    type: "password"
-    required: true
-    validation:
-      min_length: 20
-      pattern: "^sk-[a-zA-Z0-9]+"
-    description: "API key for authentication"
-
-# Usar a variável capturada
-- name: "Test with user API key"
-  request:
-    method: GET
-    url: "/user/profile"
-    headers:
-      Authorization: "Bearer {{user_api_key}}"
-```
-
-#### Inputs dinâmicos com captura/computed
-
-- Use o bloco `dynamic` para criar variáveis derivadas a partir do valor digitado.
-- `capture` executa JMESPath sobre um contexto contendo `value`, `input` e `variables` atuais.
-- `computed` executa JavaScript com acesso a `variables.__input_value`, metadados do step e variáveis globais.
-- `persist_to_global` e `exports` controlam quais variáveis entram no registro global automaticamente.
-- Definições dentro de `reevaluate` são executadas novamente quando variáveis listadas em `reevaluateOn` mudam.
-
-```yaml
-- name: "Configurar tenant dinamicamente"
-  input:
-    prompt: "Informe o código do tenant"
-    variable: "tenant_code"
-    type: "text"
-    ci_default: "acme"
-    dynamic:
-      capture:
-        tenant_normalized: "toupper(value)"
-      computed:
-        auth_header: "`Bearer ${variables.api_token}-${variables.__input_value}`"
-      persist_to_global: true
-      reevaluate:
-        - name: "tenant_header"
-          expression:
-            "variables.auth_header + ':' + variables.current_environment"
-          scope: "suite"
-          reevaluateOn: ["current_environment", "auth_header"]
-      exports: ["auth_header"]
-```
-
-Após a coleta, quaisquer variáveis derivadas aparecem em `captured_variables` do step e ficam disponíveis nos escopos `runtime`, `suite` ou `global`, de acordo com a configuração.
-
-#### Validação dinâmica de inputs
-
-- Adicione regras em `validation.expressions` para validar o valor com JMESPath (`language: jmespath`) ou JavaScript.
-- Utilize `severity: warning` para alertas não-bloqueantes; o campo é mantido em `validation_warnings` no resultado.
-- Expressões são avaliadas tanto em modo interativo quanto em CI (`ci_default` passa pelo mesmo pipeline).
-
-```yaml
-validation:
-  expressions:
-    - expression: "contains(value, '@example.com')"
-      language: "jmespath"
-      message: "E-mail deve usar o domínio example.com"
-      severity: "warning"
-    - expression: "variables.__input_value.length >= 8"
-      message: "Senha precisa de pelo menos 8 caracteres"
-```
-
-Mensagens de erro interrompem o fluxo do input; avisos são registrados nos logs e propagados para relatórios sem bloquear o teste.
-
-### Retry Logic
-
-```yaml
-- name: "Flaky endpoint test"
-  request:
-    method: GET
-    url: "/unstable-endpoint"
-  metadata:
-    retry:
-      max_attempts: 3
-      delay_ms: 1000
-  assert:
-    status_code: 200
-```
-
-### Priorização e Tags
-
-```yaml
-# Definir prioridades e tags
-- name: "Critical user authentication"
-  metadata:
-    priority: "critical"
-    tags: ["auth", "smoke", "security"]
-    timeout: 5000
-  request:
-    method: POST
-    url: "/auth/login"
-
-# Executar apenas testes críticos
-# flow-test --priority critical
-
-# Executar testes por tag
-# flow-test --tag auth,smoke
-```
-
-### Cleanup Operations
-
-```yaml
-- name: "Setup test data"
-  request:
-    method: POST
-    url: "/test-data"
-    body:
-      test_id: "{{test_session_id}}"
-  capture:
-    created_data_id: "body.id"
-
-- name: "Main test operation"
-  request:
-    method: GET
-    url: "/api/test"
-  metadata:
-    continue_on_failure: true
-
-# Sempre executar cleanup, mesmo se testes falharem
-- name: "Cleanup test data"
-  metadata:
-    always_run: true
-  request:
-    method: DELETE
-    url: "/test-data/{{created_data_id}}"
-```
-
-## 📚 Exemplos Práticos Completos
-
-### 1. E-commerce API Test Suite
-
-```yaml
-suite_name: "E-commerce API Tests"
-node_id: "ecommerce_api"
-base_url: "{{api_base_url}}"
-
-variables:
-  test_customer:
-    name: "{{faker.person.fullName}}"
-    email: "{{faker.internet.email}}"
-    phone: "{{faker.phone.number}}"
-
-exports: ["customer_id", "order_id", "payment_token"]
-
-steps:
-  # 1. Criar cliente
-  - name: "Create customer account"
-    request:
-      method: POST
-      url: "/customers"
-      body:
-        name: "{{test_customer.name}}"
-        email: "{{test_customer.email}}"
-        phone: "{{test_customer.phone}}"
-    assert:
-      status_code: 201
-      body:
-        id: { exists: true, type: "number" }
-        email: { equals: "{{test_customer.email}}" }
-    capture:
-      customer_id: "body.id"
-      customer_email: "body.email"
-
-  # 2. Adicionar produtos ao carrinho
-  - name: "Add product {{item.name}} to cart"
-    iterate:
-      over: "{{test_products}}"
-      as: "item"
-    request:
-      method: POST
-      url: "/customers/{{customer_id}}/cart"
-      body:
-        product_id: "{{item.id}}"
-        quantity: "{{item.quantity}}"
-    assert:
-      status_code: 200
-      body:
-        cart_total: { type: "number", greater_than: 0 }
-
-  # 3. Checkout condicional
-  - name: "Process checkout"
-    request:
-      method: POST
-      url: "/customers/{{customer_id}}/checkout"
-    assert:
-      status_code: 200
-    scenarios:
-      - name: "Successful payment"
-        condition: "body.payment_status == 'completed'"
-        then:
-          assert:
-            body:
-              order_id: { exists: true }
-              tracking_number: { exists: true }
-          capture:
-            order_id: "body.order_id"
-            tracking_number: "body.tracking_number"
-
-      - name: "Failed payment"
-        condition: "body.payment_status == 'failed'"
-        then:
-          capture:
-            payment_error: "body.error_message"
-```
-
-### 2. Teste de Performance com Métricas
-
-```yaml
-suite_name: "API Performance Tests"
-node_id: "performance_tests"
-
-variables:
-  concurrent_users: 10
-  test_duration_seconds: 30
-
-steps:
-  # Teste de latência
-  - name: "Response time test - endpoint {{endpoint.path}}"
-    iterate:
-      over: "{{api_endpoints}}"
-      as: "endpoint"
-    request:
-      method: "{{endpoint.method}}"
-      url: "{{endpoint.path}}"
-      timeout: 5000
-    assert:
-      status_code: 200
-      response_time_ms:
-        less_than: 500
-        greater_than: 10
-    capture:
-      endpoint_{{endpoint.name}}_time: "duration_ms"
-      endpoint_{{endpoint.name}}_size: "size_bytes"
-
-  # Teste de throughput
-  - name: "Throughput test page {{page}}"
-    iterate:
-      range: "1..100"
-      as: "page"
-    request:
-      method: GET
-      url: "/api/items"
-      params:
-        page: "{{page}}"
-        limit: 50
-    assert:
-      status_code: 200
-      response_time_ms:
-        less_than: 1000
-      body:
-        items: { type: "array" }
-        total: { type: "number" }
-```
-
-### 3. Teste de Segurança e Autenticação
-
-```yaml
-suite_name: "Security & Authentication Tests"
-node_id: "security_tests"
-
-steps:
-  # Teste de autenticação JWT
-  - name: "JWT Authentication Flow"
-    request:
-      method: POST
-      url: "/auth/login"
-      body:
-        username: "{{secure_username}}"
-        password: "{{secure_password}}"
-    assert:
-      status_code: 200
-      body:
-        token: { exists: true, type: "string" }
-        refresh_token: { exists: true }
-        expires_in: { type: "number", greater_than: 3600 }
-      headers:
-        "set-cookie": { exists: true }
-    capture:
-      jwt_token: "body.token"
-      refresh_token: "body.refresh_token"
-
-  # Teste de autorização
-  - name: "Protected resource access"
-    request:
-      method: GET
-      url: "/api/admin/users"
-      headers:
-        Authorization: "Bearer {{jwt_token}}"
-    scenarios:
-      - name: "Admin access granted"
-        condition: "status_code == 200"
-        then:
-          assert:
-            body:
-              users: { type: "array" }
-              total_count: { type: "number" }
-
-      - name: "Access denied"
-        condition: "status_code == 403"
-        then:
-          assert:
-            body:
-              error: { equals: "insufficient_privileges" }
-
-  # Teste de headers de segurança
-  - name: "Security headers validation"
-    request:
-      method: GET
-      url: "/api/secure-endpoint"
-      headers:
-        Authorization: "Bearer {{jwt_token}}"
-    assert:
-      status_code: 200
-      headers:
-        "x-frame-options": { exists: true }
-        "x-content-type-options": { equals: "nosniff" }
-        "strict-transport-security": { exists: true }
-        "x-xss-protection": { exists: true }
-```
-
-### 4. Teste com Filtragem Avançada de Arrays
-
-```yaml
-suite_name: "Advanced Array Filtering Tests"
-node_id: "array_filtering"
-
-variables:
-  test_dataset:
-    users:
-      - { id: 1, name: "Alice", department: "Engineering", salary: 95000, skills: ["JavaScript", "Python"] }
-      - { id: 2, name: "Bob", department: "Sales", salary: 65000, skills: ["Sales", "CRM"] }
-      - { id: 3, name: "Carol", department: "Engineering", salary: 110000, skills: ["Java", "DevOps"] }
-
-steps:
-  - name: "Filter and analyze user data"
-    request:
-      method: POST
-      url: "/analytics/users"
-      body: "{{test_dataset}}"
-    assert:
-      status_code: 200
-    capture:
-      # Filtros básicos
-      engineering_users: "body.users[?department == 'Engineering']"
-      high_earners: "body.users[?salary > 80000]"
-
-      # Filtros com arrays aninhados
-      js_developers: "body.users[?contains(skills, 'JavaScript')]"
-
-      # Projeções e transformações
-      user_summary: "body.users[*].{name: name, dept: department, high_earner: salary > 90000}"
-
-      # Análise agregada
-      total_engineering: "body.users[?department == 'Engineering'] | length(@)"
-      avg_engineering_salary: "body.users[?department == 'Engineering'].salary | avg(@)"
-
-      # Filtros complexos combinados
-      senior_engineers: "body.users[?department == 'Engineering' && salary > 100000].{name: name, skills: skills}"
-```
-
-## 🔌 Integração com Swagger/OpenAPI
-
-### Import Automático
-
-```bash
-# Gerar testes a partir de especificação OpenAPI
-fest --swagger-import api-spec.json --swagger-output tests/generated/
-
-# Especificar base URL e filtros
-fest --swagger-import api-spec.yaml --base-url https://api.example.com --tag user-management
-```
-
-### Exemplo de Teste Gerado
-
-```yaml
-# Gerado automaticamente a partir do Swagger
-suite_name: "User Management API - Generated Tests"
-node_id: "user_mgmt_swagger"
-base_url: "https://api.example.com/v1"
-
-steps:
-  # GET /users - Gerado do schema OpenAPI
-  - name: "Get users list"
-    request:
-      method: GET
-      url: "/users"
-      params:
+        Authorization: "Bearer {{token}}"
+        Content-Type: "application/json"
+      body:                                      # For POST/PUT/PATCH
+        key: "value"
+        nested:
+          field: "{{variable}}"
+      params:                                    # Query parameters (alias: query)
         page: 1
         limit: 10
-    assert:
-      status_code: 200
-      body:
-        users: { type: "array" }
-        pagination:
-          page: { type: "number" }
-          total: { type: "number" }
 
-  # POST /users - Com validação do schema
-  - name: "Create user from schema"
-    request:
-      method: POST
-      url: "/users"
+    # Assertions (validation rules)
+    assert:
+      status_code: 200                           # Shorthand for status validation
+      response_time_ms:
+        less_than: 1000
       headers:
-        Content-Type: "application/json"
+        content-type:
+          contains: "application/json"
       body:
-        name: "{{faker.person.fullName}}"
-        email: "{{faker.internet.email}}"
-        role: "{{faker.helpers.arrayElement(['user', 'admin', 'moderator'])}}"
+        user.id:                                 # Dot notation for nested paths
+          exists: true
+        user.email:
+          regex: "^[\\w.-]+@[\\w.-]+\\.\\w+$"
+        items:
+          length: 5
+
+    # Alternative assertion format (array style)
     assert:
-      status_code: 201
-      body:
-        id: { type: "number", exists: true }
-        name: { type: "string" }
-        email: { regex: "^[\\w-\\.]+@([\\w-]+\\.)+[\\w-]{2,4}$" }
-        role: { oneOf: ["user", "admin", "moderator"] }
-```
+      - path: "response.status"
+        operator: equals
+        expected: 200
+      - path: "response.body.data[0].id"
+        operator: exists
 
-## 🚀 Comandos e Execução
+    # Data Capture (JMESPath expressions)
+    capture:
+      auth_token: "body.token"                   # Simple path
+      user_id: "body.user.id"                    # Nested path
+      first_item: "body.items[0]"                # Array indexing
+      all_ids: "body.data[*].id"                 # Array projection
+      full_response: "@"                         # Entire response
 
-### Comandos Básicos
+    # Interactive Input (for dynamic test data)
+    input:
+      prompt: "Enter value:"
+      variable: "user_input"
+      type: "text"                               # text|select|multiselect
+      default: "default_value"
+      required: true
+      ci_default: "ci_value"                     # Value to use in CI/CD
 
-```bash
-# Executar suite padrão
-fest
+      # For select/multiselect
+      options:
+        - {value: "opt1", label: "Option 1"}
+        - {value: "opt2", label: "Option 2"}
+      # Dynamic options from previous capture
+      options: "{{users_list}}"
+      value_path: "id"
+      label_path: "name"
 
-# Executar arquivo específico
-fest tests/user-api-test.yaml
+    # Cross-Suite Step Call
+    call:
+      suite: "../auth/login.yaml"                # Relative path from current file
+      step_id: "login-step"                      # ID of step to execute
+      variables:                                 # Variables to inject
+        username: "{{test_user}}"
+        password: "{{test_password}}"
+      isolate_context: true                      # Default: true (namespaced captures)
+      on_error: fail                             # fail|warn|continue
 
-# Modo desenvolvimento com reload
-npm run dev tests/my-test.yaml
+    # Iteration (loop through data)
+    iterate:
+      over: "{{user_ids}}"                       # Array variable
+      as: user_id                                # Iterator variable name
+      steps:
+        - request:
+            method: GET
+            url: "/users/{{user_id}}"
 
-# Dry run (mostrar plano sem executar)
-fest --dry-run tests/integration-test.yaml
+    # Range iteration
+    iterate:
+      range:
+        start: 1
+        end: 10
+        step: 1
+      as: page_number
+      steps:
+        - request:
+            method: GET
+            url: "/items?page={{page_number}}"
 
-# Executar com prioridade
-fest --priority critical,high
+    # Conditional Scenarios
+    scenarios:
+      - condition: "{{response.status}} == 200"
+        steps:
+          - name: "Success path"
+            request:
+              method: GET
+              url: "/success"
 
-# Filtrar por tags
-fest --tag auth,smoke --verbose
-```
+      - condition: "{{response.status}} >= 400"
+        steps:
+          - name: "Error path"
+            request:
+              method: POST
+              url: "/log-error"
 
-### Configuração e Reports
-
-```bash
-# Usar configuração específica
-fest --config custom-config.yml
-
-# Gerar relatório HTML
-fest && npm run report:dashboard:build
-
-# Executar com Docker (httpbin)
-npm run server:docker && npm test
-```
-
-## 📈 Dashboard e Relatórios
-
-O Flow Test Engine gera relatórios detalhados em formato JSON que podem ser visualizados em dashboard HTML:
-
-### Estrutura do Relatório
-
-```json
-{
-  "summary": {
-    "total_suites": 5,
-    "successful_suites": 4,
-    "failed_suites": 1,
-    "total_steps": 23,
-    "success_rate": 87.5,
-    "total_duration_ms": 4500
-  },
-  "suites": [
-    {
-      "suite_name": "User API Tests",
-      "status": "success",
-      "steps": [
-        {
-          "name": "Create user",
-          "status": "success",
-          "duration_ms": 245,
-          "assertions": [
-            { "field": "status_code", "passed": true },
-            { "field": "body.email", "passed": true }
-          ]
-        }
-      ]
-    }
-  ]
-}
-```
-
-### Visualização Web
-
-```bash
-# Executar dashboard local
-npm run report:dashboard:dev
-
-# Acessar em http://localhost:4321
-# O dashboard mostra:
-# - Métricas de execução
-# - Gráficos de performance
-# - Detalhes de falhas
-# - Timeline de execução
+    # Computed Variables
+    computed:
+      full_name: "{{first_name}} {{last_name}}"
+      total: "{{$js:price * quantity}}"
+      timestamp: "{{$js:new Date().toISOString()}}"
 ```
 
 ---
 
-## 💡 Dicas e Melhores Práticas
+## 🔧 Variable System
 
-### 1. Organização de Testes
-- Use `node_id` único para cada suite
-- Organize testes por funcionalidade
-- Use tags para categorização
-- Defina prioridades claras
+### Variable Types & Sources
 
-### 2. Variáveis e Reutilização
-- Centralize configurações em `variables`
-- Use `exports` para compartilhar dados entre suites
-- Aproveite Faker.js para dados realísticos
-- Mantenha variáveis de ambiente seguras
+1. **Static Variables** (defined in `variables`)
+   ```yaml
+   variables:
+     user_id: 123
+     api_version: "v1"
+   ```
 
-### 3. Performance
-- Use cache para dependências lentas
-- Configure timeouts apropriados
-- Monitore `response_time_ms`
-- Use iteração para testes de carga
+2. **Environment Variables** (OS environment, prefixed with `FLOW_TEST_`)
+   ```yaml
+   variables:
+     api_key: "{{$env.API_KEY}}"           # reads FLOW_TEST_API_KEY
+   ```
 
-### 4. Manutenabilidade
-- Escreva asserções específicas
-- Use cenários condicionais para flexibilidade
-- Documente testes complexos
-- Mantenha arquivos YAML organizados
+3. **Faker.js Variables** (dynamic fake data)
+   ```yaml
+   variables:
+     email: "{{$faker.internet.email}}"
+     name: "{{$faker.person.firstName}}"
+     phone: "{{$faker.phone.number}}"
+     uuid: "{{$faker.string.uuid}}"
+   ```
 
-### 5. CI/CD Integration
-- Configure variáveis de ambiente
-- Use prioridades para testes críticos
-- Gere relatórios para análise
-- Implemente cleanup automático
+4. **JavaScript Expressions** (runtime evaluation)
+   ```yaml
+   computed:
+     timestamp: "{{$js:Date.now()}}"
+     random: "{{$js:Math.random()}}"
+     encoded: "{{$js:Buffer.from('data').toString('base64')}}"
+   ```
 
-Este guia fornece uma base sólida para usar o Flow Test Engine em cenários reais, desde testes simples até suítes complexas de integração e performance.
+5. **Captured Variables** (from API responses)
+   ```yaml
+   capture:
+     token: "body.access_token"
+   ```
+
+6. **Input Variables** (from interactive prompts)
+   ```yaml
+   input:
+     variable: "user_selection"
+   ```
+
+7. **Cross-Suite Variables** (from other suites)
+   ```yaml
+   # Access exported variables from other suites
+   headers:
+     Authorization: "Bearer {{auth-suite.auth_token}}"
+   ```
+
+### Variable Interpolation
+
+- **Basic**: `{{variable_name}}`
+- **Nested**: `{{user.profile.name}}`
+- **Array**: `{{items[0].id}}`
+- **Scoped**: `{{suite-name.variable_name}}`
+
+### Variable Scope Rules
+
+- **Suite Scope**: Variables defined in `variables` section
+- **Global Scope**: Variables listed in `exports` (accessible as `suite-name.var`)
+- **Step Scope**: Variables captured/computed in step (available to subsequent steps)
+- **Isolated Context**: When `call.isolate_context: true`, captures return as `step-id.variable`
+
+---
+
+## ✅ Assertion Operators
+
+### Comparison Operators
+- `equals` / `not_equals`: Exact match
+- `greater_than` / `less_than`: Numeric comparison
+- `greater_than_or_equal` / `less_than_or_equal`: Inclusive comparison
+
+### String Operators
+- `contains` / `not_contains`: Substring search
+- `regex`: Regular expression match
+- `starts_with` / `ends_with`: String prefix/suffix
+
+### Collection Operators
+- `in` / `not_in`: Value in array
+- `length`: Array/string length
+- `empty` / `not_empty`: Empty check
+
+### Type Operators
+- `type`: Check value type (string, number, boolean, array, object, null)
+- `exists` / `not_exists`: Field presence check
+
+### Examples
+
+```yaml
+assert:
+  # Status code shorthand
+  status_code: 200
+
+  # Response time
+  response_time_ms:
+    less_than: 1000
+
+  # Nested field validation
+  body:
+    user.id:
+      exists: true
+      type: number
+    user.email:
+      regex: "^[\\w.-]+@[\\w.-]+\\.\\w+$"
+    user.roles:
+      length: 3
+      contains: "admin"
+    items:
+      not_empty: true
+
+  # Header validation
+  headers:
+    content-type:
+      contains: "application/json"
+    x-rate-limit:
+      exists: true
+
+# Array-style assertions (more verbose, same power)
+assert:
+  - path: "response.status"
+    operator: equals
+    expected: 200
+  - path: "response.body.data"
+    operator: length
+    expected: 10
+  - path: "response.body.email"
+    operator: regex
+    expected: "^[a-z0-9._%+-]+@[a-z0-9.-]+\\.[a-z]{2,}$"
+```
+
+---
+
+## 🎨 Common Patterns & Best Practices
+
+### 1. Authentication Flow (Reusable)
+
+**File: `tests/auth/login.yaml`**
+```yaml
+suite_name: "Authentication - Login"
+node_id: "auth-login"
+base_url: "{{api_base_url}}"
+
+variables:
+  username: "{{$env.TEST_USERNAME}}"
+  password: "{{$env.TEST_PASSWORD}}"
+
+exports:
+  - auth_token
+  - user_id
+  - token_expiry
+
+steps:
+  - name: "Login with credentials"
+    id: "login-step"
+    request:
+      method: POST
+      url: "/auth/login"
+      body:
+        username: "{{username}}"
+        password: "{{password}}"
+
+    assert:
+      status_code: 200
+      body:
+        token:
+          exists: true
+          type: string
+        user.id:
+          exists: true
+
+    capture:
+      auth_token: "body.token"
+      user_id: "body.user.id"
+      token_expiry: "body.expires_at"
+```
+
+**Usage in other suites:**
+```yaml
+suite_name: "User Profile Tests"
+node_id: "user-profile"
+
+depends_on:
+  - suite: "auth/login.yaml"
+    cache: true
+
+steps:
+  - name: "Get user profile"
+    request:
+      method: GET
+      url: "/api/profile"
+      headers:
+        Authorization: "Bearer {{auth-login.auth_token}}"
+```
+
+### 2. Dynamic Select from API
+
+```yaml
+steps:
+  # Step 1: Fetch list from API
+  - name: "Fetch available products"
+    id: "fetch-products"
+    request:
+      method: GET
+      url: "/api/products"
+    capture:
+      products_list: "body.data"
+
+  # Step 2: Let user select
+  - name: "Select product"
+    id: "select-product"
+    input:
+      type: select
+      variable: selected_product_id
+      prompt: "Choose a product to test:"
+      options: "{{products_list}}"
+      value_path: "id"
+      label_path: "name"
+      ci_default: "prod_001"
+
+  # Step 3: Use selection
+  - name: "Get product details"
+    request:
+      method: GET
+      url: "/api/products/{{selected_product_id}}"
+```
+
+### 3. Bulk Operations with Iteration
+
+```yaml
+steps:
+  - name: "Create test users"
+    iterate:
+      range:
+        start: 1
+        end: 5
+        step: 1
+      as: user_index
+      steps:
+        - request:
+            method: POST
+            url: "/api/users"
+            body:
+              username: "test_user_{{user_index}}"
+              email: "{{$faker.internet.email}}"
+              role: "tester"
+          capture:
+            "user_{{user_index}}_id": "body.id"
+```
+
+### 4. Conditional Error Handling
+
+```yaml
+steps:
+  - name: "Create resource"
+    request:
+      method: POST
+      url: "/api/resources"
+      body:
+        name: "Test Resource"
+
+    capture:
+      creation_status: "status"
+
+    scenarios:
+      - condition: "{{creation_status}} == 201"
+        steps:
+          - name: "Success: Verify resource"
+            request:
+              method: GET
+              url: "/api/resources/{{body.id}}"
+
+      - condition: "{{creation_status}} == 409"
+        steps:
+          - name: "Conflict: Update existing"
+            request:
+              method: PUT
+              url: "/api/resources/{{body.existing_id}}"
+```
+
+### 5. Data-Driven Testing
+
+```yaml
+variables:
+  test_cases:
+    - {email: "valid@test.com", expected_status: 200}
+    - {email: "invalid", expected_status: 400}
+    - {email: "", expected_status: 400}
+
+steps:
+  - name: "Test email validation"
+    iterate:
+      over: "{{test_cases}}"
+      as: test_case
+      steps:
+        - request:
+            method: POST
+            url: "/api/validate-email"
+            body:
+              email: "{{test_case.email}}"
+          assert:
+            status_code: "{{test_case.expected_status}}"
+```
+
+---
+
+## 🎯 Development Workflow
+
+### Step 1: Understand Requirements
+Ask clarifying questions:
+- What API are we testing?
+- What's the authentication method?
+- What data needs to be captured/reused?
+- Are there conditional paths (happy/sad)?
+- Does it need user input?
+
+### Step 2: Plan Structure
+- Identify reusable auth flows → separate suite
+- Group related tests logically
+- Plan variable flow (capture → use)
+- Consider parallel vs sequential execution
+
+### Step 3: Implement YAML
+- Start with suite metadata
+- Define variables and base_url
+- Write steps incrementally
+- Add assertions for validation
+- Use captures for data flow
+- Add error scenarios
+
+### Step 4: Validate & Test
+- Run with `npx flow-test-engine tests/your-suite.yaml`
+- Check `results/latest.json` for details
+- Verify captured variables
+- Test error paths
+- Review HTML report
+
+### Step 5: Optimize
+- Extract common patterns to reusable suites
+- Use `depends_on` for setup
+- Add meaningful step IDs
+- Document complex logic with comments
+- Consider performance (timeouts, retries)
+
+---
+
+## 🚨 Common Pitfalls & Solutions
+
+### Pitfall 1: Variable Not Found
+**Problem**: `{{user_id}}` not interpolated
+**Solutions**:
+- Ensure variable is defined in `variables` or captured before use
+- Check spelling and case sensitivity
+- For cross-suite: use `{{suite-id.variable}}`
+- For env vars: use `{{$env.VAR_NAME}}` and ensure `FLOW_TEST_VAR_NAME` exists
+
+### Pitfall 2: URL Resolution
+**Problem**: Request goes to wrong URL
+**Solutions**:
+- Relative URLs (start with `/`) use `base_url`
+- Absolute URLs (start with `http://`) ignore `base_url`
+- Always define `base_url` at suite level
+
+### Pitfall 3: JMESPath Errors
+**Problem**: Capture fails silently
+**Solutions**:
+- Test expressions at https://jmespath.org/
+- Use `@` to capture entire response for debugging
+- Check actual response structure in `results/latest.json`
+- Use quotes for keys with special chars: `body."content-type"`
+
+### Pitfall 4: Assertion Failures
+**Problem**: Test fails unexpectedly
+**Solutions**:
+- Capture response first to inspect: `debug_response: "@"`
+- Check types: `200` (number) vs `"200"` (string)
+- Use `contains` instead of `equals` for flexible matching
+- Add `response_time_ms` checks with reasonable limits
+
+### Pitfall 5: Context Isolation Confusion
+**Problem**: Can't access captured variables from `call`
+**Solutions**:
+- With `isolate_context: true` (default): access as `{{step-id.variable}}`
+- With `isolate_context: false`: variables merge into parent scope
+- Use `isolate_context: false` for simple auth flows
+
+### Pitfall 6: Sequential vs Parallel
+**Problem**: Tests fail due to race conditions
+**Solutions**:
+- Use `execution_mode: sequential` when steps depend on each other
+- Use `execution_mode: parallel` for independent tests
+- Default is sequential (safe choice)
+
+---
+
+## 📋 Response Checklist
+
+When helping users, ensure you:
+
+- [ ] **Understand Requirements**: Ask clarifying questions if ambiguous
+- [ ] **Provide Complete Examples**: Full YAML snippets with context
+- [ ] **Explain Key Concepts**: Why certain patterns are used
+- [ ] **Validate Syntax**: Ensure YAML is valid and follows schema
+- [ ] **Add Assertions**: Don't just make requests, validate responses
+- [ ] **Show Error Handling**: Include `scenarios` for error paths
+- [ ] **Use Best Practices**: Proper IDs, exports, reusability
+- [ ] **Comment Complex Logic**: Help future maintainers
+- [ ] **Test Mentally**: Walk through variable flow
+- [ ] **Suggest Improvements**: Optimization tips when relevant
+
+---
+
+## 🎓 Example: Complete E-commerce Flow
+
+```yaml
+suite_name: "E-commerce - Order Creation Flow"
+node_id: "ecommerce-order-flow"
+description: "End-to-end test for creating and processing an order"
+base_url: "{{ecommerce_api_url}}"
+
+execution_mode: "sequential"
+
+metadata:
+  priority: "critical"
+  tags: ["e2e", "orders", "checkout"]
+  estimated_duration_ms: 8000
+
+variables:
+  test_customer_email: "{{$faker.internet.email}}"
+  test_product_quantity: 2
+  payment_method: "credit_card"
+
+exports:
+  - order_id
+  - order_total
+  - payment_status
+
+depends_on:
+  - suite: "auth/customer-login.yaml"
+    cache: true
+
+steps:
+  # Step 1: Browse products
+  - name: "Get available products"
+    id: "list-products"
+    request:
+      method: GET
+      url: "/api/products"
+      params:
+        category: "electronics"
+        in_stock: true
+
+    assert:
+      status_code: 200
+      body:
+        data:
+          not_empty: true
+          length:
+            greater_than: 0
+
+    capture:
+      available_products: "body.data"
+      first_product_id: "body.data[0].id"
+      first_product_price: "body.data[0].price"
+
+  # Step 2: Add to cart
+  - name: "Add product to cart"
+    id: "add-to-cart"
+    request:
+      method: POST
+      url: "/api/cart/items"
+      headers:
+        Authorization: "Bearer {{customer-login.auth_token}}"
+      body:
+        product_id: "{{first_product_id}}"
+        quantity: "{{test_product_quantity}}"
+
+    assert:
+      status_code: 201
+      body:
+        cart_item.product_id:
+          equals: "{{first_product_id}}"
+        cart_item.quantity:
+          equals: "{{test_product_quantity}}"
+
+    capture:
+      cart_item_id: "body.cart_item.id"
+
+  # Step 3: Calculate total (computed variable)
+  - name: "Calculate order total"
+    computed:
+      expected_total: "{{$js:first_product_price * test_product_quantity}}"
+
+  # Step 4: Create order
+  - name: "Create order from cart"
+    id: "create-order"
+    request:
+      method: POST
+      url: "/api/orders"
+      headers:
+        Authorization: "Bearer {{customer-login.auth_token}}"
+      body:
+        cart_id: "{{customer-login.cart_id}}"
+        shipping_address:
+          street: "{{$faker.location.streetAddress}}"
+          city: "{{$faker.location.city}}"
+          country: "{{$faker.location.country}}"
+        payment_method: "{{payment_method}}"
+
+    assert:
+      status_code: 201
+      body:
+        order.id:
+          exists: true
+        order.total:
+          equals: "{{expected_total}}"
+        order.status:
+          equals: "pending_payment"
+
+    capture:
+      order_id: "body.order.id"
+      order_total: "body.order.total"
+      payment_url: "body.payment_url"
+
+  # Step 5: Process payment
+  - name: "Process payment"
+    id: "process-payment"
+    request:
+      method: POST
+      url: "/api/payments"
+      headers:
+        Authorization: "Bearer {{customer-login.auth_token}}"
+      body:
+        order_id: "{{order_id}}"
+        payment_method: "{{payment_method}}"
+        amount: "{{order_total}}"
+        card_details:
+          number: "4111111111111111"  # Test card
+          cvv: "123"
+          expiry: "12/25"
+
+    capture:
+      payment_status: "body.status"
+      transaction_id: "body.transaction_id"
+
+    # Conditional scenarios based on payment result
+    scenarios:
+      - condition: "{{payment_status}} == 'approved'"
+        steps:
+          - name: "Payment approved - Verify order status"
+            request:
+              method: GET
+              url: "/api/orders/{{order_id}}"
+              headers:
+                Authorization: "Bearer {{customer-login.auth_token}}"
+            assert:
+              status_code: 200
+              body:
+                order.status:
+                  equals: "confirmed"
+                order.payment_status:
+                  equals: "paid"
+
+      - condition: "{{payment_status}} == 'declined'"
+        steps:
+          - name: "Payment declined - Log error"
+            request:
+              method: POST
+              url: "/api/logs/payment-errors"
+              body:
+                order_id: "{{order_id}}"
+                reason: "Payment declined"
+                transaction_id: "{{transaction_id}}"
+
+  # Step 6: Get final order details
+  - name: "Get order confirmation"
+    id: "order-confirmation"
+    request:
+      method: GET
+      url: "/api/orders/{{order_id}}"
+      headers:
+        Authorization: "Bearer {{customer-login.auth_token}}"
+
+    assert:
+      status_code: 200
+      body:
+        order.id:
+          equals: "{{order_id}}"
+        order.items:
+          length: 1
+        order.customer.email:
+          equals: "{{test_customer_email}}"
+
+    capture:
+      final_order_status: "body.order.status"
+      tracking_number: "body.order.tracking_number"
+```
+
+---
+
+## 🔍 Quick Reference Commands
+
+```bash
+# Run specific suite
+npx flow-test-engine tests/my-suite.yaml
+
+# Run with config
+npx flow-test-engine --config flow-test.config.yml
+
+# Run with filters
+npx flow-test-engine --priority critical
+npx flow-test-engine --tags smoke,auth
+
+# Generate HTML report
+npm run report:html
+
+# Verbose output
+npx flow-test-engine --verbose tests/my-suite.yaml
+
+# Dry run (plan without execution)
+npx flow-test-engine --dry-run tests/my-suite.yaml
+```
+
+---
+
+## 🎯 Your Role
+
+You are the expert. When users ask for help:
+
+1. **Analyze**: Understand what they're trying to test
+2. **Design**: Plan the suite structure (auth, data flow, conditionals)
+3. **Implement**: Write clean, working YAML
+4. **Validate**: Ensure assertions cover success and error paths
+5. **Optimize**: Suggest improvements (reusability, performance)
+6. **Document**: Add comments explaining complex logic
+7. **Guide**: Teach patterns and best practices
+
+**Remember**: You're not just writing YAML—you're building maintainable, reliable test infrastructure.
+
+---
+
+## 📚 Additional Resources
+
+- **Repository**: `/Users/marcusp/Documents/flow-test`
+- **Examples**: `tests/` directory (50+ real examples)
+- **Types**: `src/types/common.types.ts` (source of truth)
+- **Docs**: `docs/` directory and GitHub Pages
+- **Config**: `flow-test.config.yml` (discovery, retries, reporting)
+
+When in doubt, reference existing test files in `tests/` for proven patterns.

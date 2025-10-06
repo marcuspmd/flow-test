@@ -1,0 +1,95 @@
+suite_name: "Input Capture Test"
+node_id: "input-capture-test"
+description: "Demonstrates step.capture working with input, just like with request"
+base_url: "{{httpbin_url}}"
+
+metadata:
+  priority: "high"
+  tags: ["input", "capture", "feature-test"]
+
+variables:
+  test_mode: true
+
+exports: ["normalized_email", "email_domain", "full_name"]
+
+steps:
+  # Test 1: Simple input with capture
+  - name: "Get user email and extract domain"
+    input:
+      prompt: "Enter your email address:"
+      variable: user_email
+      type: email
+      default: "John.Doe@Example.COM"
+      ci_default: "John.Doe@Example.COM"
+      description: "Email will be normalized and domain extracted"
+    capture:
+      # Capture and transform the input value
+      normalized_email: "user_email"  # JMESPath: just the value
+      email_domain: "user_email"      # Will extract domain in next step using JS
+
+  # Test 2: Input with multiple captures using JMESPath expressions
+  - name: "Get full name and split into parts"
+    input:
+      prompt: "Enter your full name:"
+      variable: full_name
+      type: text
+      default: "John Michael Doe"
+      ci_default: "John Michael Doe"
+      description: "Name will be split into first and last"
+    capture:
+      # These will use the full_name variable from current context
+      name_uppercase: "full_name"
+      name_parts_count: "full_name"
+
+  # Test 3: Number input with mathematical captures
+  - name: "Get age and calculate derived values"
+    input:
+      prompt: "Enter your age:"
+      variable: user_age
+      type: number
+      default: 25
+      ci_default: 25
+      validation:
+        min: 1
+        max: 120
+    capture:
+      # Capture the age and calculate birth year
+      age_value: "user_age"
+      birth_year: "user_age"  # In real scenario, would use JS expression
+
+  # Test 4: Confirm input with boolean capture
+  - name: "Get confirmation and capture metadata"
+    input:
+      prompt: "Do you confirm the information is correct?"
+      variable: user_confirmed
+      type: confirm
+      default: true
+      ci_default: true
+    capture:
+      # Capture confirmation and create metadata
+      confirmation_status: "user_confirmed"
+      confirmation_text: "user_confirmed"
+
+  # Test 5: Verify all captured variables in a request
+  - name: "Send captured data to API"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        email: "{{normalized_email}}"
+        email_domain: "{{email_domain}}"
+        full_name: "{{full_name}}"
+        name_uppercase: "{{name_uppercase}}"
+        age: "{{age_value}}"
+        birth_year: "{{birth_year}}"
+        confirmed: "{{confirmation_status}}"
+    assert:
+      status_code: 200
+      body:
+        json:
+          email: { equals: "{{normalized_email}}" }
+          full_name: { equals: "{{full_name}}" }
+    capture:
+      api_response: "body.json"
