@@ -305,6 +305,7 @@ async function main() {
   let dashboardCommand: string | undefined;
   let liveEventsPath: string | undefined;
   let runnerInteractiveMode = false;
+  let disableReporting = false;
   let inlineYamlArg: string | undefined;
   let inlineBaseDir: string | undefined;
   let inlineRelativePath: string | undefined;
@@ -389,6 +390,10 @@ async function main() {
 
       case "--no-log":
         options.logging = { enabled: false };
+        break;
+
+      case "--no-report":
+        disableReporting = true;
         break;
 
       case "--dry-run":
@@ -573,6 +578,14 @@ async function main() {
   if (showHelp) {
     printHelp();
     process.exit(0);
+  }
+
+  if (disableReporting) {
+    options.reporting = {
+      ...(options.reporting || {}),
+      enabled: false,
+      formats: [],
+    };
   }
 
   let inlineYamlContent: string | undefined;
@@ -1145,16 +1158,26 @@ async function handleInlineYamlExecution(
       ? path.resolve(options.test_directory)
       : projectRoot;
 
-    const existingFormats =
-      inlineOptions.reporting && Array.isArray(inlineOptions.reporting.formats)
-        ? [...(inlineOptions.reporting.formats as ReportFormat[])]
-        : [];
-    const reportingFormats = new Set<ReportFormat>(existingFormats);
-    reportingFormats.add("json");
-    inlineOptions.reporting = {
-      ...(inlineOptions.reporting || {}),
-      formats: Array.from(reportingFormats),
-    };
+    if (inlineOptions.reporting?.enabled === false) {
+      inlineOptions.reporting = {
+        ...(inlineOptions.reporting || {}),
+        enabled: false,
+        formats: [],
+      };
+    } else {
+      const existingFormats =
+        inlineOptions.reporting &&
+        Array.isArray(inlineOptions.reporting.formats)
+          ? [...(inlineOptions.reporting.formats as ReportFormat[])]
+          : [];
+      const reportingFormats = new Set<ReportFormat>(existingFormats);
+      reportingFormats.add("json");
+      inlineOptions.reporting = {
+        ...(inlineOptions.reporting || {}),
+        enabled: true,
+        formats: Array.from(reportingFormats),
+      };
+    }
 
     setupLogger("console", { verbosity: "silent" });
 
@@ -1508,6 +1531,7 @@ INLINE EXECUTION:
 
 REPORTING:
   --html-output [dir]    Generate Postman-style HTML alongside JSON (optional subdirectory name)
+  --no-report           Skip generating report artifacts (JSON/HTML)
 
 SWAGGER IMPORT:
   --swagger-import <file>    Import OpenAPI/Swagger spec and generate test files

@@ -304,29 +304,36 @@ export class ConfigManager {
       throw new Error("project_name is required in configuration");
     }
 
+    const reportingEnabled = config.reporting?.enabled !== false;
     const allowedReportFormats: string[] = ["json", "html"];
 
-    // Validate reporting formats before filtering
-    if (Array.isArray(config.reporting?.formats)) {
-      const configuredFormats = config.reporting!.formats as string[];
-      const invalidFormats = configuredFormats.filter(
-        (format) => !allowedReportFormats.includes(format)
-      );
-      if (invalidFormats.length > 0) {
-        throw new Error(
-          `Invalid reporting formats: ${invalidFormats.join(", ")}`
-        );
-      }
-    }
+    let normalizedFormats: ReportFormat[] = [];
 
-    const configuredFormats = Array.isArray(config.reporting?.formats)
-      ? (config.reporting!.formats as string[]).filter((format) =>
-          allowedReportFormats.includes(format)
-        )
-      : [];
-    const normalizedFormats = Array.from(new Set(configuredFormats));
-    if (normalizedFormats.length === 0) {
-      normalizedFormats.push("json");
+    if (reportingEnabled) {
+      // Validate reporting formats before filtering
+      if (Array.isArray(config.reporting?.formats)) {
+        const configuredFormats = config.reporting!.formats as string[];
+        const invalidFormats = configuredFormats.filter(
+          (format) => !allowedReportFormats.includes(format)
+        );
+        if (invalidFormats.length > 0) {
+          throw new Error(
+            `Invalid reporting formats: ${invalidFormats.join(", ")}`
+          );
+        }
+      }
+
+      const configuredFormats = Array.isArray(config.reporting?.formats)
+        ? (config.reporting!.formats as string[]).filter((format) =>
+            allowedReportFormats.includes(format)
+          )
+        : [];
+      normalizedFormats = Array.from(
+        new Set(configuredFormats)
+      ) as ReportFormat[];
+      if (normalizedFormats.length === 0) {
+        normalizedFormats.push("json");
+      }
     }
 
     const htmlReportingConfig = config.reporting?.html || {};
@@ -376,7 +383,8 @@ export class ConfigManager {
         },
       },
       reporting: {
-        formats: normalizedFormats as ReportFormat[],
+        enabled: reportingEnabled,
+        formats: normalizedFormats,
         output_dir: config.reporting?.output_dir || "./results",
         aggregate: config.reporting?.aggregate !== false,
         include_performance_metrics:
@@ -411,7 +419,20 @@ export class ConfigManager {
     if (options.reporting) {
       const reportingConfig = this.config.reporting;
       if (reportingConfig) {
-        if (options.reporting.formats && options.reporting.formats.length > 0) {
+        if (typeof options.reporting.enabled === "boolean") {
+          reportingConfig.enabled = options.reporting.enabled;
+          if (options.reporting.enabled === false) {
+            reportingConfig.formats = [];
+          } else if (reportingConfig.formats.length === 0) {
+            reportingConfig.formats = ["json"] as ReportFormat[];
+          }
+        }
+
+        if (
+          reportingConfig.enabled !== false &&
+          options.reporting.formats &&
+          options.reporting.formats.length > 0
+        ) {
           const allowedFormats: ReportFormat[] = ["json", "html"];
           const merged = new Set<ReportFormat>(reportingConfig.formats);
 
@@ -430,7 +451,7 @@ export class ConfigManager {
           }
         }
 
-        if (options.reporting.html) {
+        if (options.reporting.html && reportingConfig.enabled !== false) {
           reportingConfig.html = {
             ...reportingConfig.html,
             ...options.reporting.html,
@@ -498,24 +519,26 @@ export class ConfigManager {
       );
     }
 
-    // Valida reporting formats
-    const validFormats = ["json", "html"];
-    const invalidFormats = config.reporting!.formats.filter(
-      (format) => !validFormats.includes(format)
-    );
-    if (invalidFormats.length > 0) {
-      throw new Error(
-        `Invalid reporting formats: ${invalidFormats.join(", ")}`
+    if (config.reporting && config.reporting.enabled !== false) {
+      // Valida reporting formats
+      const validFormats = ["json", "html"];
+      const invalidFormats = config.reporting!.formats.filter(
+        (format) => !validFormats.includes(format)
       );
-    }
+      if (invalidFormats.length > 0) {
+        throw new Error(
+          `Invalid reporting formats: ${invalidFormats.join(", ")}`
+        );
+      }
 
-    if (config.reporting!.formats.length === 0) {
-      throw new Error("At least one reporting format must be configured");
-    }
+      if (config.reporting!.formats.length === 0) {
+        throw new Error("At least one reporting format must be configured");
+      }
 
-    // Cria output directory se não existir
-    if (!fs.existsSync(config.reporting!.output_dir)) {
-      fs.mkdirSync(config.reporting!.output_dir, { recursive: true });
+      // Cria output directory se não existir
+      if (!fs.existsSync(config.reporting!.output_dir)) {
+        fs.mkdirSync(config.reporting!.output_dir, { recursive: true });
+      }
     }
   }
 

@@ -228,6 +228,9 @@ export interface ExecutionConfig {
  * @public
  */
 export interface ReportingConfig {
+  /** Whether reporting is enabled (defaults to true) */
+  enabled?: boolean;
+
   /** Report output formats to generate */
   formats: ReportFormat[];
 
@@ -537,6 +540,7 @@ export interface EngineExecutionOptions {
   dry_run?: boolean;
   /** Runtime reporting overrides including output formats */
   reporting?: {
+    enabled?: boolean;
     formats?: ReportFormat[];
     html?: HtmlReportingConfig;
   };

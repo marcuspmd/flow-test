@@ -413,6 +413,14 @@ export class ConsoleLoggerAdapter implements Logger {
     });
   }
 
+  displayRawHttpResponse(raw: string, context?: LogContext): void {
+    if (this.verbosity === "silent") {
+      return;
+    }
+    console.log(chalk.gray("\n🔍 Raw HTTP Response:"));
+    console.log(chalk.gray(raw));
+  }
+
   /**
    * Format value for display
    */
@@ -479,6 +487,7 @@ export class ConsoleLoggerAdapter implements Logger {
         return chalk.white;
     }
   }
+
 }
 
 /**
@@ -844,6 +853,12 @@ export class LoggerService {
   ): void {
     if (typeof (this.logger as any).displayScenarioSummary === "function") {
       (this.logger as any).displayScenarioSummary(captures);
+    }
+  }
+
+  displayRawHttpResponse(raw: string, context?: LogContext): void {
+    if (typeof (this.logger as any).displayRawHttpResponse === "function") {
+      (this.logger as any).displayRawHttpResponse(raw, context);
     }
   }
 }

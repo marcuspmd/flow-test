@@ -183,6 +183,13 @@ export class HttpService {
         metadata: { type: "http_response", internal: true },
       });
 
+      const rawResponse = this.generateRawResponse(response);
+
+      this.logger.displayRawHttpResponse(rawResponse, {
+        stepName,
+        metadata: { type: "http_response_raw", internal: true },
+      });
+
       return {
         step_name: stepName,
         status: "success",
@@ -199,7 +206,7 @@ export class HttpService {
           headers: this.normalizeHeaders(response.headers),
           body: response.data,
           size_bytes: responseSize,
-          raw_response: this.generateRawResponse(response),
+          raw_response: rawResponse,
         },
         captured_variables: {},
         assertions_results: [],

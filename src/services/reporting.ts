@@ -56,6 +56,19 @@ export class ReportingService {
   async generateReports(result: AggregatedResult): Promise<void> {
     const config = this.configManager.getConfig();
     const reportingConfig = config.reporting!;
+
+    if (
+      !reportingConfig ||
+      reportingConfig.enabled === false ||
+      !reportingConfig.formats ||
+      reportingConfig.formats.length === 0
+    ) {
+      this.logger.debug("Reporting disabled or no formats configured", {
+        metadata: { type: "reporting_skipped" },
+      });
+      return;
+    }
+
     const outputDir = reportingConfig.output_dir;
 
     if (!fs.existsSync(outputDir)) {
