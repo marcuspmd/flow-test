@@ -305,6 +305,9 @@ async function main() {
   let dashboardCommand: string | undefined;
   let liveEventsPath: string | undefined;
   let runnerInteractiveMode = false;
+  let inlineYamlArg: string | undefined;
+  let inlineBaseDir: string | undefined;
+  let inlineRelativePath: string | undefined;
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
@@ -435,6 +438,33 @@ async function main() {
         runnerInteractiveMode = true;
         break;
 
+      case "--inline-yaml":
+        if (i + 1 < args.length) {
+          inlineYamlArg = args[++i];
+        } else {
+          getLogger().error("❌ Missing value for --inline-yaml");
+          showHelp = true;
+        }
+        break;
+
+      case "--inline-base":
+        if (i + 1 < args.length) {
+          inlineBaseDir = args[++i];
+        } else {
+          getLogger().error("❌ Missing value for --inline-base");
+          showHelp = true;
+        }
+        break;
+
+      case "--inline-path":
+        if (i + 1 < args.length) {
+          inlineRelativePath = args[++i];
+        } else {
+          getLogger().error("❌ Missing value for --inline-path");
+          showHelp = true;
+        }
+        break;
+
       case "--html-output": {
         const nextArg = args[i + 1];
         const hasValue = nextArg && !nextArg.startsWith("-");
@@ -545,6 +575,20 @@ async function main() {
     process.exit(0);
   }
 
+  let inlineYamlContent: string | undefined;
+  if (inlineYamlArg !== undefined) {
+    if (inlineYamlArg === "-" || inlineYamlArg === "--") {
+      inlineYamlContent = await readFromStdin();
+    } else {
+      inlineYamlContent = inlineYamlArg;
+    }
+
+    if (!inlineYamlContent || !inlineYamlContent.trim()) {
+      getLogger().error("❌ Provided inline YAML content is empty.");
+      process.exit(1);
+    }
+  }
+
   // Handle dashboard commands if requested
   if (dashboardCommand) {
     await handleDashboardCommand(dashboardCommand);
@@ -579,6 +623,32 @@ async function main() {
   if (swaggerImport) {
     await handleSwaggerImport(swaggerImport, swaggerOutput);
     process.exit(0);
+  }
+
+  if (inlineYamlContent !== undefined) {
+    if (dryRun) {
+      getLogger().error(
+        "❌ Inline YAML execution does not support --dry-run mode."
+      );
+      process.exit(1);
+    }
+
+    if (postmanExport || postmanImport || postmanExportFromResults) {
+      getLogger().error(
+        "❌ Inline YAML execution cannot be combined with Postman import/export commands."
+      );
+      process.exit(1);
+    }
+
+    const exitCode = await handleInlineYamlExecution({
+      yamlContent: inlineYamlContent,
+      baseDir: inlineBaseDir,
+      relativePath: inlineRelativePath,
+      options,
+      configFile,
+      runnerInteractiveMode,
+    });
+    process.exit(exitCode);
   }
 
   try {
@@ -864,6 +934,15 @@ async function main() {
  * @param testDirectory - The directory to search for dependency files
  * @returns Array of node_ids that need to be executed before the main test
  */
+interface InlineExecutionParams {
+  yamlContent: string;
+  baseDir?: string;
+  relativePath?: string;
+  options: EngineExecutionOptions;
+  configFile?: string;
+  runnerInteractiveMode: boolean;
+}
+
 interface DependencyDiscoveryResult {
   nodeIds: string[];
   filePaths: string[];
@@ -876,6 +955,230 @@ interface DependencyDiscoveryContext {
   processedFiles: Set<string>;
   visitedDependencyFiles: Set<string>;
   fallbackSearchPerformed: boolean;
+}
+
+async function handleInlineYamlExecution(
+  params: InlineExecutionParams
+): Promise<number> {
+  const fs = require("fs");
+  const path = require("path");
+  const yaml = require("js-yaml");
+
+  const {
+    yamlContent,
+    baseDir,
+    relativePath,
+    options,
+    configFile,
+    runnerInteractiveMode,
+  } = params;
+
+  let parsedSuite: any;
+  try {
+    parsedSuite = yaml.load(yamlContent);
+  } catch (error) {
+    console.error(
+      `❌ Failed to parse inline YAML: ${(error as Error).message}`
+    );
+    return 1;
+  }
+
+  if (!parsedSuite || typeof parsedSuite !== "object") {
+    console.error("❌ Inline YAML must define a valid test suite object.");
+    return 1;
+  }
+
+  const inlineNodeId =
+    typeof parsedSuite.node_id === "string"
+      ? parsedSuite.node_id.trim()
+      : undefined;
+
+  if (!inlineNodeId) {
+    console.error("❌ Inline YAML must include a 'node_id' property.");
+    return 1;
+  }
+
+  let baseDirectory: string | undefined;
+
+  if (baseDir) {
+    baseDirectory = path.resolve(baseDir);
+  } else if (options.test_directory) {
+    baseDirectory = path.resolve(options.test_directory);
+  } else {
+    let configContextDir: string | undefined;
+
+    if (configFile) {
+      const configPath = path.isAbsolute(configFile)
+        ? configFile
+        : path.resolve(configFile);
+      if (fs.existsSync(configPath)) {
+        configContextDir = path.dirname(configPath);
+      }
+    }
+
+    if (!configContextDir) {
+      configContextDir = resolveProjectRoot(process.cwd());
+    }
+
+    const configuredRoots = loadConfiguredTestRoots(configContextDir);
+    if (configuredRoots.length > 0) {
+      baseDirectory = configuredRoots.find(
+        (dir) => fs.existsSync(dir) && fs.statSync(dir).isDirectory()
+      );
+    }
+
+    baseDirectory = baseDirectory || configContextDir;
+  }
+
+  if (!baseDirectory) {
+    console.error(
+      "❌ Unable to determine base directory for inline execution."
+    );
+    return 1;
+  }
+
+  if (
+    !fs.existsSync(baseDirectory) ||
+    !fs.statSync(baseDirectory).isDirectory()
+  ) {
+    console.error(`❌ Inline base directory not found: ${baseDirectory}`);
+    return 1;
+  }
+
+  const sanitizedBaseName =
+    inlineNodeId.replace(/[^A-Za-z0-9_-]+/g, "-") || "inline-suite";
+  const uniqueSuffix = Date.now().toString(36);
+  const defaultRelativePath = path.join(
+    ".flow-inline",
+    `${sanitizedBaseName}-${uniqueSuffix}.yaml`
+  );
+  const normalizedRelativePath = (relativePath || defaultRelativePath)
+    .replace(/\\/g, "/")
+    .replace(/^\//, "");
+  const targetFilePath = path.join(baseDirectory, normalizedRelativePath);
+  const targetDir = path.dirname(targetFilePath);
+
+  try {
+    fs.mkdirSync(targetDir, { recursive: true });
+    fs.writeFileSync(targetFilePath, yamlContent, "utf8");
+  } catch (error) {
+    console.error(
+      `❌ Failed to prepare inline suite file: ${(error as Error).message}`
+    );
+    return 1;
+  }
+
+  let exitCode = 1;
+
+  try {
+    const projectRoot = resolveProjectRoot(baseDirectory);
+    const configuredRoots = loadConfiguredTestRoots(projectRoot);
+    const searchRootSet = new Set<string>(
+      determineDependencySearchRoots(
+        baseDirectory,
+        projectRoot,
+        configuredRoots
+      )
+    );
+    searchRootSet.add(path.resolve(baseDirectory));
+    searchRootSet.add(path.resolve(targetDir));
+
+    const dependencyContext: DependencyDiscoveryContext = {
+      projectRoot,
+      searchRoots: Array.from(searchRootSet),
+      nodeIdToFileMap: new Map<string, string>(),
+      processedFiles: new Set<string>(),
+      visitedDependencyFiles: new Set<string>(),
+      fallbackSearchPerformed: false,
+    };
+
+    const dependencyDiscovery = await autoDiscoverDependencies(
+      parsedSuite,
+      baseDirectory,
+      dependencyContext
+    );
+
+    const normalizePattern = (filePath: string) =>
+      path
+        .relative(projectRoot, path.resolve(filePath))
+        .split(path.sep)
+        .join("/");
+
+    const existingPatterns =
+      options.filters && Array.isArray(options.filters.file_patterns)
+        ? [...options.filters.file_patterns]
+        : [];
+    const patternSet = new Set<string>(existingPatterns);
+    patternSet.add(normalizePattern(targetFilePath));
+    dependencyDiscovery.filePaths.forEach((filePath: string) => {
+      patternSet.add(normalizePattern(filePath));
+    });
+
+    const nodeIdsToExecute = new Set<string>(dependencyDiscovery.nodeIds);
+    nodeIdsToExecute.add(inlineNodeId);
+
+    const baseFilters = { ...(options.filters || {}) };
+    const existingNodeIds = Array.isArray(baseFilters.node_ids)
+      ? [...baseFilters.node_ids]
+      : [];
+    const mergedNodeIds = Array.from(
+      new Set([...existingNodeIds, ...Array.from(nodeIdsToExecute)])
+    );
+
+    const inlineFilters = {
+      ...baseFilters,
+      node_ids: mergedNodeIds,
+      file_patterns: Array.from(patternSet),
+    };
+    delete inlineFilters.suite_names;
+
+    const inlineOptions: EngineExecutionOptions = {
+      ...options,
+      filters: inlineFilters,
+      reporting: options.reporting ? { ...options.reporting } : undefined,
+      runner_interactive_mode: runnerInteractiveMode,
+      config_file: configFile,
+    };
+
+    inlineOptions.verbosity = "silent";
+    inlineOptions.test_directory = options.test_directory
+      ? path.resolve(options.test_directory)
+      : projectRoot;
+
+    const existingFormats =
+      inlineOptions.reporting && Array.isArray(inlineOptions.reporting.formats)
+        ? [...(inlineOptions.reporting.formats as ReportFormat[])]
+        : [];
+    const reportingFormats = new Set<ReportFormat>(existingFormats);
+    reportingFormats.add("json");
+    inlineOptions.reporting = {
+      ...(inlineOptions.reporting || {}),
+      formats: Array.from(reportingFormats),
+    };
+
+    setupLogger("console", { verbosity: "silent" });
+
+    const engine = new FlowTestEngine(inlineOptions, {});
+    const result = await engine.run();
+
+    exitCode = result.success_rate === 100 ? 0 : 1;
+    process.stdout.write(`${JSON.stringify(result)}\n`);
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : String(error ?? "Unknown");
+    console.error(`❌ Failed to execute inline YAML: ${message}`);
+    if (error instanceof Error && error.stack) {
+      console.error(error.stack);
+    }
+  } finally {
+    try {
+      fs.unlinkSync(targetFilePath);
+    } catch {
+      // Ignore cleanup errors
+    }
+  }
+
+  return exitCode;
 }
 
 async function autoDiscoverDependencies(
@@ -1115,6 +1418,18 @@ async function autoDiscoverDependencies(
   return { nodeIds: dependencyNodeIds, filePaths: dependencyFilePaths };
 }
 
+async function readFromStdin(): Promise<string> {
+  const chunks: Buffer[] = [];
+
+  return new Promise((resolve, reject) => {
+    process.stdin.on("data", (chunk) => chunks.push(Buffer.from(chunk)));
+    process.stdin.on("end", () =>
+      resolve(Buffer.concat(chunks).toString("utf8"))
+    );
+    process.stdin.on("error", (error) => reject(error));
+  });
+}
+
 /**
  * Exibe a mensagem de ajuda do CLI
  *
@@ -1185,6 +1500,11 @@ FILTERING:
 EXECUTION:
   --dry-run              Show execution plan without running tests
   --no-log               Disable automatic log file generation
+
+INLINE EXECUTION:
+  --inline-yaml <string|->  Execute a suite from an inline YAML string (use '-' to read from stdin)
+  --inline-base <dir>       Base directory used to resolve dependencies for inline execution
+  --inline-path <path>      Relative path (inside base dir) for the temporary inline YAML file
 
 REPORTING:
   --html-output [dir]    Generate Postman-style HTML alongside JSON (optional subdirectory name)
@@ -1402,13 +1722,17 @@ async function handlePostmanImport(
   preserveFolders = false,
   analyzeDeps = false
 ): Promise<void> {
-  const mode = preserveFolders ? "multi-file with folder structure" : "single file";
+  const mode = preserveFolders
+    ? "multi-file with folder structure"
+    : "single file";
   getLogger().info(
     `🔄 Importing Postman collection (${mode}): ${collectionPath}`
   );
 
   if (analyzeDeps && !preserveFolders) {
-    getLogger().warn("⚠️  --postman-analyze-deps requires --postman-preserve-folders, ignoring...");
+    getLogger().warn(
+      "⚠️  --postman-analyze-deps requires --postman-preserve-folders, ignoring..."
+    );
     analyzeDeps = false;
   }
 
@@ -1439,16 +1763,18 @@ async function handlePostmanImport(
     }
 
     if (result.dependenciesFound && result.dependenciesFound.length > 0) {
-      getLogger().info(`\n🔗 Dependencies found: ${result.dependenciesFound.length}`);
+      getLogger().info(
+        `\n🔗 Dependencies found: ${result.dependenciesFound.length}`
+      );
       result.dependenciesFound.forEach((dep) => {
-        getLogger().info(`  • ${dep.variableName}: captured in ${dep.capturedBy}, used by ${dep.usedBy.length} suite(s)`);
+        getLogger().info(
+          `  • ${dep.variableName}: captured in ${dep.capturedBy}, used by ${dep.usedBy.length} suite(s)`
+        );
       });
     }
 
     getLogger().info("\n📄 Generated files:");
-    result.outputFiles.forEach((file) =>
-      getLogger().info(`  • ${file}`)
-    );
+    result.outputFiles.forEach((file) => getLogger().info(`  • ${file}`));
   } catch (error) {
     getLogger().error("❌ Unexpected error during Postman import:", {
       error: error as Error,

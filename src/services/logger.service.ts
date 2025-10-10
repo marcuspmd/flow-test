@@ -269,6 +269,9 @@ export class ConsoleLoggerAdapter implements Logger {
     variables: Record<string, any>,
     context?: LogContext
   ): void {
+    if (this.verbosity === "silent") {
+      return;
+    }
     if (Object.keys(variables).length === 0) return;
 
     console.log(chalk.blue("\n📥 Variables Captured:"));
@@ -282,6 +285,9 @@ export class ConsoleLoggerAdapter implements Logger {
    * Display test metadata in a formatted way
    */
   displayTestMetadata(suite: any): void {
+    if (this.verbosity === "silent") {
+      return;
+    }
     console.log(chalk.yellow("\n📋 Test Metadata:"));
 
     if (suite.suite_name) {
@@ -321,6 +327,9 @@ export class ConsoleLoggerAdapter implements Logger {
       assertion?: any;
     }
   ): void {
+    if (this.verbosity === "silent") {
+      return;
+    }
     console.log(chalk.red("\n❌ Error Details:"));
 
     if (context.stepName) {
@@ -358,6 +367,9 @@ export class ConsoleLoggerAdapter implements Logger {
    * Display test results in Jest-like format
    */
   displayJestStyle(result: any): void {
+    if (this.verbosity === "silent") {
+      return;
+    }
     const passed = result.steps_successful || 0;
     const failed = result.steps_failed || 0;
     const total = result.steps_executed || 0;
@@ -387,6 +399,9 @@ export class ConsoleLoggerAdapter implements Logger {
       timestamp: number;
     }>
   ): void {
+    if (this.verbosity === "silent") {
+      return;
+    }
     if (captures.length === 0) return;
 
     console.log(chalk.magenta("\n🎭 Scenario Captures Summary:"));
