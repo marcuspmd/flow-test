@@ -276,7 +276,8 @@ export class ConsoleLoggerAdapter implements Logger {
 
     console.log(chalk.blue("\n📥 Variables Captured:"));
     Object.entries(variables).forEach(([key, value]) => {
-      const formattedValue = this.formatValue(value);
+      const maskedValue = this.maskSensitiveValue(key, value);
+      const formattedValue = this.formatValue(maskedValue);
       console.log(chalk.cyan(`   ${key}: ${formattedValue}`));
     });
   }
@@ -450,6 +451,48 @@ export class ConsoleLoggerAdapter implements Logger {
     }
 
     return chalk.gray(String(value));
+  }
+
+  private maskSensitiveValue(key: string, value: any): any {
+    if (!key) {
+      return value;
+    }
+
+    const lowered = key.toLowerCase();
+    const patterns: RegExp[] = [
+      /password/,
+      /passphrase/,
+      /secret/,
+      /sensitive/,
+      /token/,
+      /api[-_]?key/,
+      /access[-_]?key/,
+      /secret[-_]?key/,
+      /client[-_]?secret/,
+      /credential/,
+    ];
+    const isSensitive = patterns.some((pattern) => pattern.test(lowered));
+
+    if (!isSensitive) {
+      return value;
+    }
+
+    if (typeof value === "string") {
+      return "***";
+    }
+
+    if (Array.isArray(value)) {
+      return value.map(() => "***");
+    }
+
+    if (typeof value === "object" && value !== null) {
+      return Object.keys(value).reduce((masked, currentKey) => {
+        masked[currentKey] = this.maskSensitiveValue(currentKey, value[currentKey]);
+        return masked;
+      }, {} as Record<string, any>);
+    }
+
+    return "***";
   }
 
   /**
