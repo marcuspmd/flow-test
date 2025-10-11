@@ -396,6 +396,15 @@ async function main() {
         disableReporting = true;
         break;
 
+      case "-f":
+      case "--format":
+        if (i + 1 < args.length) {
+          const formats = args[++i].split(",").map(f => f.trim()) as ReportFormat[];
+          const reportingOptions = (options.reporting = options.reporting ?? {});
+          reportingOptions.formats = formats;
+        }
+        break;
+
       case "--dry-run":
         dryRun = true;
         break;
@@ -1530,6 +1539,8 @@ INLINE EXECUTION:
   --inline-path <path>      Relative path (inside base dir) for the temporary inline YAML file
 
 REPORTING:
+  -f, --format <formats> Report formats to generate (comma-separated: json,html,qa)
+                         Example: --format qa or --format json,html,qa
   --html-output [dir]    Generate Postman-style HTML alongside JSON (optional subdirectory name)
   --no-report           Skip generating report artifacts (JSON/HTML)
 
@@ -1582,6 +1593,8 @@ EXAMPLES:
   fest --dry-run                         # Show what would be executed
   fest --directory ./api-tests --verbose # Run from specific directory with verbose output
   fest --environment staging --silent    # Run in staging environment silently
+  fest --format qa                       # Generate QA-friendly report
+  fest --format json,html,qa             # Generate all report formats
   fest --swagger-import api.json         # Import OpenAPI spec and generate tests
   fest --swagger-import api.yaml --swagger-output ./tests/api # Import with custom output
   fest --postman-export tests/auth-flows-test.yaml --postman-output ./exports/auth.postman_collection.json
