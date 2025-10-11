@@ -86,7 +86,8 @@ export class CallService {
     const absoluteSuitePath = this.resolveSuitePath(
       options.callerSuitePath,
       request.test,
-      options.allowedRoot
+      options.allowedRoot,
+      request.path_type
     );
 
     const identifier = this.buildCallIdentifier(
@@ -112,7 +113,8 @@ export class CallService {
   private resolveSuitePath(
     callerPath: string,
     targetPath: string,
-    allowedRoot?: string
+    allowedRoot?: string,
+    pathType: "relative" | "absolute" = "relative"
   ): string {
     if (!callerPath) {
       throw new Error("Caller suite path is required to resolve step call");
@@ -122,14 +124,35 @@ export class CallService {
       throw new Error("Call configuration must include the 'test' path");
     }
 
-    if (path.isAbsolute(targetPath)) {
-      throw new Error(
-        `Call configuration must use relative paths. Received absolute path: ${targetPath}`
-      );
-    }
+    let resolved: string;
 
-    const callerDir = path.dirname(callerPath);
-    const resolved = path.resolve(callerDir, targetPath);
+    // Handle absolute path type (relative to allowedRoot/test_directory)
+    if (pathType === "absolute") {
+      if (!allowedRoot) {
+        throw new Error(
+          `Cannot use path_type 'absolute' without a configured test_directory`
+        );
+      }
+
+      // Resolve from allowedRoot
+      resolved = path.resolve(allowedRoot, targetPath);
+
+      this.logger.debug(
+        `Resolving absolute path '${targetPath}' from test_directory: ${resolved}`
+      );
+    } else {
+      // Default: relative path type (relative to caller's directory)
+
+      // Reject absolute paths when using "relative" mode
+      if (path.isAbsolute(targetPath)) {
+        throw new Error(
+          `Call configuration with path_type 'relative' must use relative paths. Received absolute path: ${targetPath}`
+        );
+      }
+
+      const callerDir = path.dirname(callerPath);
+      resolved = path.resolve(callerDir, targetPath);
+    }
 
     if (allowedRoot) {
       const normalizedRoot = path.resolve(allowedRoot);

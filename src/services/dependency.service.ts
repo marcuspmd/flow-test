@@ -144,10 +144,12 @@ export class DependencyService {
   private graph: Map<string, DependencyNode> = new Map();
   private cache: Map<string, DependencyResult> = new Map();
   private cacheEnabled: boolean = true;
+  private testDirectory?: string;
 
-  constructor() {
+  constructor(testDirectory?: string) {
     this.graph = new Map();
     this.cache = new Map();
+    this.testDirectory = testDirectory;
   }
 
   /**
@@ -200,7 +202,8 @@ export class DependencyService {
             if (dependencyPath) {
               const resolvedNodeId = this.extractNodeIdFromPath(
                 dependencyPath,
-                test.file_path
+                test.file_path,
+                dependency.path_type
               );
 
               if (resolvedNodeId && this.graph.has(resolvedNodeId)) {
@@ -233,7 +236,8 @@ export class DependencyService {
    */
   private extractNodeIdFromPath(
     dependencyPath: string,
-    currentTestPath?: string
+    currentTestPath?: string,
+    pathType: "relative" | "absolute" = "relative"
   ): string | null {
     if (!dependencyPath || typeof dependencyPath !== "string") {
       return null;
@@ -241,13 +245,22 @@ export class DependencyService {
 
     const normalizedCandidates = new Set<string>();
 
+    // Handle absolute path type (relative to test_directory)
+    if (pathType === "absolute" && this.testDirectory) {
+      const absolutePath = path.resolve(this.testDirectory, dependencyPath);
+      normalizedCandidates.add(path.normalize(absolutePath));
+      getLogger().debug(
+        `Resolving absolute path '${dependencyPath}' from test_directory: ${absolutePath}`
+      );
+    }
+
     // Absolute path provided directly
     if (path.isAbsolute(dependencyPath)) {
       normalizedCandidates.add(path.normalize(dependencyPath));
     }
 
-    // Relative to current test file directory
-    if (currentTestPath) {
+    // Relative to current test file directory (default for "relative" type)
+    if (pathType === "relative" && currentTestPath) {
       const baseDir = path.dirname(currentTestPath);
       const resolved = path.resolve(baseDir, dependencyPath);
       normalizedCandidates.add(path.normalize(resolved));

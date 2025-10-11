@@ -12,11 +12,13 @@
 import fs from "fs";
 import path from "path";
 import yaml from "js-yaml";
+import * as dotenv from "dotenv";
 import {
   EngineConfig,
   EngineExecutionOptions,
   ReportFormat,
 } from "../types/engine.types";
+import { getLogger } from "../services/logger.service";
 
 /**
  * Configuration manager for the Flow Test Engine with comprehensive loading and validation.
@@ -149,6 +151,7 @@ export class ConfigManager {
   constructor(options: EngineExecutionOptions = {}) {
     this.configFilePath = this.resolveConfigFile(options.config_file);
     this.config = this.loadConfig();
+    this.loadEnvFiles(this.config.globals?.env_files);
     this.applyOptionsOverrides(options);
   }
 
@@ -342,6 +345,7 @@ export class ConfigManager {
       project_name: config.project_name,
       test_directory: config.test_directory || "./tests",
       globals: {
+        env_files: config.globals?.env_files,
         variables: config.globals?.variables || {},
         timeouts: {
           default: config.globals?.timeouts?.default || 30000,
@@ -476,6 +480,41 @@ export class ConfigManager {
     });
 
     return envVars;
+  }
+
+  /**
+   * Loads environment variables from .env files
+   *
+   * @param envFiles - Array of .env file paths to load
+   * @private
+   */
+  private loadEnvFiles(envFiles?: string[]): void {
+    const logger = getLogger();
+
+    if (!envFiles || envFiles.length === 0) {
+      return;
+    }
+
+    for (const envFile of envFiles) {
+      const envPath = path.resolve(envFile);
+
+      if (!fs.existsSync(envPath)) {
+        logger.warn(`Environment file not found: ${envFile} (resolved to ${envPath})`);
+        continue;
+      }
+
+      try {
+        const result = dotenv.config({ path: envPath });
+
+        if (result.error) {
+          logger.warn(`Failed to load environment file ${envFile}: ${result.error.message}`);
+        } else {
+          logger.debug(`Loaded environment variables from ${envFile}`);
+        }
+      } catch (error) {
+        logger.warn(`Error loading environment file ${envFile}: ${error}`);
+      }
+    }
   }
 
   /**

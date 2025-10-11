@@ -258,7 +258,9 @@ export class FlowTestEngine {
     // Initialize services in dependency order
     this.configManager = new ConfigManager(options);
     this.testDiscovery = new TestDiscovery(this.configManager);
-    this.dependencyService = new DependencyService();
+    this.dependencyService = new DependencyService(
+      this.configManager.getConfig().test_directory
+    );
     this.globalRegistry = new GlobalRegistryService();
     this.globalVariables = new GlobalVariablesService(
       this.configManager,

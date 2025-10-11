@@ -67,11 +67,13 @@ export interface EngineConfig {
  * @remarks
  * Defines global settings that apply across all test suites, including
  * environment variables, timeout configurations, and base URLs for requests.
+ * Supports loading environment variables from .env files.
  *
  * @example
  * ```typescript
  * const globals: GlobalConfig = {
  *   base_url: "https://api.example.com",
+ *   env_files: [".env", ".env.local", ".env.test"],
  *   variables: {
  *     api_key: "{{$env.API_KEY}}",
  *     user_id: "12345"
@@ -86,6 +88,22 @@ export interface EngineConfig {
  * @public
  */
 export interface GlobalConfig {
+  /**
+   * Paths to .env files to load before test execution.
+   * Files are loaded in order, with later files overriding earlier ones.
+   * Paths are relative to the project root.
+   *
+   * @example
+   * ```yaml
+   * globals:
+   *   env_files:
+   *     - .env
+   *     - .env.local
+   *     - .env.test
+   * ```
+   */
+  env_files?: string[];
+
   /** Global variables available to all test suites */
   variables?: Record<string, any>;
 
@@ -257,13 +275,14 @@ export interface ReportingConfig {
  * Defines the supported formats for test result reports:
  * - `json`: Machine-readable JSON format
  * - `html`: Rich HTML summary views generated directly by the engine
+ * - `qa`: QA/tester-friendly JSON format designed for documentation and HTML/PDF generation
  *
  * Additional visualizations can still be produced through the standalone
  * report dashboard when more advanced dashboards are required.
  *
  * @public
  */
-export type ReportFormat = "json" | "html";
+export type ReportFormat = "json" | "html" | "qa";
 
 /**
  * Configuration for HTML report generation options.

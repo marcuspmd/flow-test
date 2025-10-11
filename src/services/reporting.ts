@@ -16,6 +16,7 @@ import {
 } from "../types/engine.types";
 import type { StepExecutionResult } from "../types/config.types";
 import { getLogger } from "./logger.service";
+import { QAReportService } from "./qa-report.service";
 
 interface HtmlReportAsset {
   type: "html";
@@ -45,6 +46,7 @@ interface PrettyResponsePayload {
 export class ReportingService {
   private configManager: ConfigManager;
   private logger = getLogger();
+  private qaReportService = new QAReportService();
 
   constructor(configManager: ConfigManager) {
     this.configManager = configManager;
@@ -97,6 +99,10 @@ export class ReportingService {
         assets
       );
     }
+
+    if (formats.includes("qa")) {
+      await this.generateQAReport(result, outputDir, baseName, timestamp);
+    }
   }
 
   /**
@@ -138,6 +144,43 @@ export class ReportingService {
 
     fs.writeFileSync(latestPath, jsonContent, "utf8");
     this.logger.info(`Latest JSON: ${latestPath}`);
+  }
+
+  /**
+   * Generates QA/tester-friendly report in JSON format
+   */
+  private async generateQAReport(
+    result: AggregatedResult,
+    outputDir: string,
+    baseName: string,
+    timestamp: string
+  ): Promise<void> {
+    const fileName = `${baseName}_qa_${timestamp}.json`;
+    const filePath = path.join(outputDir, fileName);
+    const latestPath = path.join(outputDir, "latest-qa.json");
+
+    // Transform aggregated result to QA-friendly format
+    const qaReport = this.qaReportService.transformToQAReport(result);
+
+    const qaReportData = {
+      ...qaReport,
+      report_metadata: {
+        generated_at: new Date().toISOString(),
+        format: "qa",
+        version: "1.0.0",
+        run_id: timestamp,
+        description:
+          "QA/Tester-friendly report format designed for documentation and HTML/PDF generation",
+      },
+    };
+
+    const jsonContent = JSON.stringify(qaReportData, null, 2);
+
+    fs.writeFileSync(filePath, jsonContent, "utf8");
+    this.logger.info(`QA report: ${filePath}`);
+
+    fs.writeFileSync(latestPath, jsonContent, "utf8");
+    this.logger.info(`Latest QA report: ${latestPath}`);
   }
 
   private generateHtmlReports(

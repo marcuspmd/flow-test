@@ -7,8 +7,14 @@ import type { TestStep, TestSuite } from "./engine.types";
 export type StepCallErrorStrategy = "fail" | "continue" | "warn";
 
 export interface StepCallConfig {
-  /** Caminho relativo para o arquivo de teste alvo */
+  /** Caminho para o arquivo de teste alvo */
   test: string;
+  /**
+   * Path resolution strategy
+   * - "relative": Path is relative to the current file (default)
+   * - "absolute": Path is relative to test_directory root
+   */
+  path_type?: "relative" | "absolute";
   /** Nome do step a ser chamado no arquivo alvo */
   step: string;
   /** Variáveis a serem passadas para o contexto do step chamado */
@@ -28,6 +34,7 @@ export interface StepCallConfig {
 
 export interface StepCallRequest {
   test: string;
+  path_type?: "relative" | "absolute";
   step: string;
   variables?: Record<string, any>;
   isolate_context?: boolean;

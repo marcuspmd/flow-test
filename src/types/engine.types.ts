@@ -703,7 +703,7 @@ export interface TestStep {
 /**
  * Flow dependency configuration
  *
- * @example
+ * @example Relative path (default)
  * ```typescript
  * const dependency: FlowDependency = {
  *   path: "./auth/setup-auth.yaml",
@@ -719,10 +719,25 @@ export interface TestStep {
  *   }
  * };
  * ```
+ *
+ * @example Absolute path from test directory
+ * ```typescript
+ * const dependency: FlowDependency = {
+ *   path: "common/auth/setup-auth.yaml",
+ *   path_type: "absolute",  // resolve from test_directory
+ *   required: true
+ * };
+ * ```
  */
 export interface FlowDependency {
   /** Path to the dependency flow or node_id for direct reference */
   path?: string;
+  /**
+   * Path resolution strategy
+   * - "relative": Path is relative to the current file (default)
+   * - "absolute": Path is relative to test_directory root
+   */
+  path_type?: "relative" | "absolute";
   /** Node ID for direct reference to another test suite */
   node_id?: string;
   /** Whether this dependency is required for execution */
@@ -1248,10 +1263,11 @@ export interface CacheConfig {
  * Defines the supported formats for test result reports:
  * - `json`: Machine-readable JSON format
  * - `html`: Rich HTML summary views generated directly by the engine
+ * - `qa`: QA/tester-friendly JSON format designed for documentation and HTML/PDF generation
  *
  * @public
  */
-export type ReportFormat = "json" | "html";
+export type ReportFormat = "json" | "html" | "qa";
 
 /**
  * Re-export dos tipos de configuração
