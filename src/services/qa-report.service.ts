@@ -27,9 +27,6 @@ export interface QAReport {
   /** Failed tests and issues */
   issues: QAIssue[];
 
-  /** Test environment and configuration */
-  environment: QAEnvironment;
-
   /** Performance analysis */
   performance: QAPerformance;
 }
@@ -224,18 +221,6 @@ export interface QAIssue {
   file_path: string;
 }
 
-export interface QAEnvironment {
-  /** Test configuration */
-  test_directory?: string;
-  config_file?: string;
-
-  /** Execution mode */
-  execution_mode?: string;
-
-  /** Global variables used */
-  global_variables?: Record<string, any>;
-}
-
 export interface QAPerformance {
   /** HTTP performance metrics */
   total_requests?: number;
@@ -256,6 +241,16 @@ export interface QAPerformance {
 }
 
 export class QAReportService {
+  private readonly redactedValue = "[REDACTED]";
+  private readonly sensitiveKeyPatterns: RegExp[] = [
+    /password/i,
+    /secret/i,
+    /sensitive/i,
+    /token/i,
+    /api[-_]?key/i,
+    /authorization/i,
+  ];
+
   /**
    * Transforms aggregated test results into QA-friendly report format
    */
@@ -264,17 +259,17 @@ export class QAReportService {
     const testCases = this.buildTestCases(result);
     const metrics = this.buildMetrics(result, testCases);
     const issues = this.buildIssues(result);
-    const environment = this.buildEnvironment(result);
     const performance = this.buildPerformance(result);
 
-    return {
+    const report: QAReport = {
       executive_summary: executiveSummary,
       test_cases: testCases,
       metrics,
       issues,
-      environment,
       performance,
     };
+
+    return this.sanitizeReport(report);
   }
 
   private buildExecutiveSummary(result: AggregatedResult): ExecutiveSummary {
@@ -560,12 +555,6 @@ export class QAReportService {
     }
   }
 
-  private buildEnvironment(result: AggregatedResult): QAEnvironment {
-    return {
-      global_variables: result.global_variables_final_state,
-    };
-  }
-
   private buildPerformance(result: AggregatedResult): QAPerformance {
     if (!result.performance_summary) {
       return {};
@@ -597,6 +586,97 @@ export class QAReportService {
     } else {
       return "POOR";
     }
+  }
+
+  private sanitizeReport<T>(data: T): T {
+    if (data === null || data === undefined) {
+      return data;
+    }
+
+    if (Array.isArray(data)) {
+      return data.map((item) => this.sanitizeReport(item)) as unknown as T;
+    }
+
+    if (typeof data === "string") {
+      return this.sanitizeString(data) as unknown as T;
+    }
+
+    if (typeof data === "object") {
+      const sanitized: Record<string, any> = {};
+      for (const [key, value] of Object.entries(data as Record<string, any>)) {
+        if (this.isSensitiveKey(key)) {
+          sanitized[key] = this.redactedValue;
+        } else {
+          sanitized[key] = this.sanitizeReport(value);
+        }
+      }
+      return sanitized as T;
+    }
+
+    return data;
+  }
+
+  private isSensitiveKey(key: string): boolean {
+    return this.sensitiveKeyPatterns.some((pattern) => pattern.test(key));
+  }
+
+  private sanitizeString(value: string): string {
+    let sanitized = value;
+
+    sanitized = sanitized.replace(
+      /(password\s*[:=]\s*)([^\n\r,&]*)/gi,
+      `$1${this.redactedValue}`
+    );
+    sanitized = sanitized.replace(
+      /("password"\s*:\s*)"([^"]*)"/gi,
+      `$1"${this.redactedValue}"`
+    );
+    sanitized = sanitized.replace(
+      /(secret\s*[:=]\s*)([^\n\r,&]*)/gi,
+      `$1${this.redactedValue}`
+    );
+    sanitized = sanitized.replace(
+      /("secret[^"]*"\s*:\s*)"([^"]*)"/gi,
+      `$1"${this.redactedValue}"`
+    );
+    sanitized = sanitized.replace(
+      /(sensitive\s*[:=]\s*)([^\n\r,&]*)/gi,
+      `$1${this.redactedValue}`
+    );
+    sanitized = sanitized.replace(
+      /("sensitive[^"]*"\s*:\s*)"([^"]*)"/gi,
+      `$1"${this.redactedValue}"`
+    );
+    sanitized = sanitized.replace(
+      /(token\s*[:=]\s*)([^\n\r,&]*)/gi,
+      `$1${this.redactedValue}`
+    );
+    sanitized = sanitized.replace(
+      /("token"\s*:\s*)"([^"]*)"/gi,
+      `$1"${this.redactedValue}"`
+    );
+    sanitized = sanitized.replace(
+      /(api[-_]?key\s*[:=]\s*)([^\n\r,&]*)/gi,
+      `$1${this.redactedValue}`
+    );
+    sanitized = sanitized.replace(
+      /("api[-_]?key"\s*:\s*)"([^"]*)"/gi,
+      `$1"${this.redactedValue}"`
+    );
+    sanitized = sanitized.replace(
+      /(bearer\s+)([^\s"'`]+)/gi,
+      `$1${this.redactedValue}`
+    );
+    sanitized = sanitized.replace(
+      /(authorization\s*[:=]\s*)([^\n\r,&]*)/gi,
+      `$1${this.redactedValue}`
+    );
+    sanitized = sanitized.replace(
+      /("authorization"\s*:\s*)"([^"]*)"/gi,
+      `$1"${this.redactedValue}"`
+    );
+
+    return sanitized;
   }
 
   private mapStatus(status: string): "PASSED" | "FAILED" | "SKIPPED" {

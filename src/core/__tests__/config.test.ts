@@ -544,6 +544,19 @@ describe("ConfigManager", () => {
       expect(config.reporting?.formats).toEqual(["html"]);
     });
 
+    it("should accept qa reporting format", () => {
+      const configWithQa = {
+        project_name: "Test",
+        reporting: { formats: ["qa"] },
+      };
+      mockYaml.load.mockReturnValue(configWithQa);
+
+      const configManager = new ConfigManager();
+      const config = configManager.getConfig();
+
+      expect(config.reporting?.formats).toEqual(["qa"]);
+    });
+
     it("should reject unsupported reporting formats", () => {
       const configWithInvalidFormat = {
         project_name: "Test",

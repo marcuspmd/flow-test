@@ -768,6 +768,8 @@ async function main() {
               file_patterns: Array.from(patternSet),
             },
             runner_interactive_mode: runnerInteractiveMode,
+            // Preserve reporting options from CLI
+            reporting: options.reporting ? { ...options.reporting } : undefined,
           };
         } else if (testData && testData.suite_name) {
           // Auto-discover dependencies for single file execution
@@ -817,6 +819,8 @@ async function main() {
               file_patterns: Array.from(patternSet),
             },
             runner_interactive_mode: runnerInteractiveMode,
+            // Preserve reporting options from CLI
+            reporting: options.reporting ? { ...options.reporting } : undefined,
           };
         } else {
           getLogger().error(`❌ Invalid test file format: ${testFile}`);

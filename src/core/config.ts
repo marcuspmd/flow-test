@@ -308,7 +308,7 @@ export class ConfigManager {
     }
 
     const reportingEnabled = config.reporting?.enabled !== false;
-    const allowedReportFormats: string[] = ["json", "html"];
+    const allowedReportFormats: string[] = ["json", "html", "qa"];
 
     let normalizedFormats: ReportFormat[] = [];
 
@@ -437,7 +437,7 @@ export class ConfigManager {
           options.reporting.formats &&
           options.reporting.formats.length > 0
         ) {
-          const allowedFormats: ReportFormat[] = ["json", "html"];
+          const allowedFormats: ReportFormat[] = ["json", "html", "qa"];
           const merged = new Set<ReportFormat>(reportingConfig.formats);
 
           options.reporting.formats.forEach((format) => {
@@ -560,7 +560,7 @@ export class ConfigManager {
 
     if (config.reporting && config.reporting.enabled !== false) {
       // Valida reporting formats
-      const validFormats = ["json", "html"];
+      const validFormats = ["json", "html", "qa"];
       const invalidFormats = config.reporting!.formats.filter(
         (format) => !validFormats.includes(format)
       );
