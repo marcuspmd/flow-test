@@ -280,13 +280,17 @@ export class VariableService {
 
       if (
         variablePath.startsWith("js:") ||
+        variablePath.startsWith("$js:") ||
         variablePath.startsWith("$js.") ||
         hasLogicalOperators
       ) {
         try {
           let jsExpression: string | null = null;
 
-          if (variablePath.startsWith("js:")) {
+          if (
+            variablePath.startsWith("js:") ||
+            variablePath.startsWith("$js:")
+          ) {
             jsExpression =
               javascriptService.parseJavaScriptExpression(variablePath);
           } else if (variablePath.startsWith("$js.")) {

@@ -465,8 +465,8 @@ export class AssertionService {
 
         // Handle js: prefix if present
         let condition = customAssertion.condition;
-        if (condition.startsWith("js:")) {
-          condition = condition.slice(3).trim();
+        if (condition.startsWith("js:") || condition.startsWith("$js:")) {
+          condition = condition.replace(/^\$?js:/, "").trim();
         }
 
         // Evaluate the condition using Function constructor for safety

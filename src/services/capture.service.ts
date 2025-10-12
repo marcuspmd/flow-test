@@ -165,8 +165,11 @@ export class CaptureService {
       const innerExpression = expression.slice(2, -2).trim();
 
       // Check if it's a JavaScript expression
-      if (innerExpression.startsWith("js:")) {
-        const jsExpression = innerExpression.slice(3).trim();
+      if (
+        innerExpression.startsWith("js:") ||
+        innerExpression.startsWith("$js:")
+      ) {
+        const jsExpression = innerExpression.replace(/^\$?js:/, "").trim();
         try {
           // Create a safe evaluation context with response data and variables
           const evaluationContext =

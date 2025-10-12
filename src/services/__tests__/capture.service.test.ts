@@ -611,6 +611,18 @@ describe("CaptureService", () => {
       });
     });
 
+    test("deve processar expressões JavaScript {{$js:...}}", () => {
+      const captures = {
+        calculated: "{{$js: status_code + 1}}",
+      };
+
+      const result = captureService.captureVariables(captures, mockResult);
+
+      expect(result).toEqual({
+        calculated: 201,
+      });
+    });
+
     test("deve processar expressões JavaScript com variáveis", () => {
       const captures = {
         with_vars: '{{js: variables.base_url + "/users/" + body.id}}',

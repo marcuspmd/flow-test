@@ -640,13 +640,17 @@ export class GlobalVariablesService {
 
       if (
         expression.startsWith("js:") ||
+        expression.startsWith("$js:") ||
         expression.startsWith("$js.") ||
         hasLogicalOperators
       ) {
         try {
           let jsExpression: string | null = null;
 
-          if (expression.startsWith("js:")) {
+          if (
+            expression.startsWith("js:") ||
+            expression.startsWith("$js:")
+          ) {
             jsExpression =
               javascriptService.parseJavaScriptExpression(expression);
           } else if (expression.startsWith("$js.")) {

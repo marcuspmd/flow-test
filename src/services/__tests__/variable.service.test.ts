@@ -201,6 +201,24 @@ describe("VariableService", () => {
       ).toHaveBeenCalledWith("js:Math.max(1,2)");
     });
 
+    it("should process $js: expressions", () => {
+      mockJavaScriptService.parseJavaScriptExpression.mockReturnValue(
+        "Date.now()"
+      );
+      mockJavaScriptService.executeExpression.mockReturnValue(1700);
+
+      const result = service.interpolate("Now: {{$js: Date.now()}}");
+      expect(result).toBe("Now: 1700");
+      expect(
+        mockJavaScriptService.parseJavaScriptExpression
+      ).toHaveBeenCalledWith("$js: Date.now()");
+      expect(mockJavaScriptService.executeExpression).toHaveBeenCalledWith(
+        "Date.now()",
+        expect.objectContaining({ variables: expect.any(Object) }),
+        false
+      );
+    });
+
     it("should process $js. expressions", () => {
       mockJavaScriptService.executeExpression.mockReturnValue(true);
 

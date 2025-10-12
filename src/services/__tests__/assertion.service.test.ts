@@ -966,6 +966,29 @@ describe("AssertionService", () => {
         });
       });
 
+      it("should validate custom assertion with $js: prefix", () => {
+        const assertions = {
+          custom: [
+            {
+              name: "age_check",
+              condition: "$js: body.age > 18",
+              message: "Age must be greater than 18",
+            },
+          ],
+        };
+
+        const result = createMockResult(200, {}, { age: 25, name: "John" });
+        const results = assertionService.validateAssertions(assertions, result);
+
+        expect(results[0]).toEqual({
+          field: "custom.age_check",
+          expected: true,
+          actual: true,
+          passed: true,
+          message: "Age must be greater than 18",
+        });
+      });
+
       it("should validate failed custom assertion", () => {
         const assertions = {
           custom: [

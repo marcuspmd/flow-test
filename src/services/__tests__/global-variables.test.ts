@@ -541,6 +541,19 @@ describe("GlobalVariablesService", () => {
       expect(result).toBe(0.5);
     });
 
+    it("should handle JavaScript expressions with $js: prefix", () => {
+      const { javascriptService } = require("../javascript.service");
+      (
+        javascriptService.parseJavaScriptExpression as jest.Mock
+      ).mockReturnValue("Date.now()");
+      (javascriptService.executeExpression as jest.Mock).mockReturnValue(
+        1700
+      );
+
+      const result = globalVariablesService.interpolate("{{$js: Date.now()}}");
+      expect(result).toBe(1700);
+    });
+
     it("should handle $js. expressions", () => {
       const { javascriptService } = require("../javascript.service");
       (javascriptService.executeExpression as jest.Mock).mockReturnValue(

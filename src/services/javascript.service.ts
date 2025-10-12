@@ -231,11 +231,11 @@ export class JavaScriptService {
 
   /**
    * Parses a JavaScript expression from variable interpolation
-   * Supports format: {{js: expression}}
+   * Supports formats: {{js: expression}} and {{$js: expression}}
    */
   public parseJavaScriptExpression(fullExpression: string): string | null {
-    // Check if it's a JavaScript expression (starts with 'js:')
-    const jsMatch = fullExpression.match(/^js:\s*(.+)$/);
+    // Check if it's a JavaScript expression (starts with 'js:' or '$js:')
+    const jsMatch = fullExpression.match(/^\$?js:\s*(.+)$/);
 
     if (jsMatch) {
       return jsMatch[1].trim();

@@ -150,6 +150,13 @@ describe("JavaScriptService", () => {
       });
     });
 
+    it("should parse expressions with $js prefix", () => {
+      const result = javascriptService.parseJavaScriptExpression(
+        "$js: 1 + 2"
+      );
+      expect(result).toBe("1 + 2");
+    });
+
     it("should return null for non-JavaScript expressions", () => {
       const nonJsExpressions = [
         "regular_variable",
