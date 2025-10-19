@@ -52,7 +52,8 @@
     "dotenv": "^16.4.5",
     "fast-glob": "^3.3.0",
     "jmespath": "^0.15.0",
-    "js-yaml": "^4.1.0"
+    "js-yaml": "^4.1.0",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@jest/types": "^30.0.5",
