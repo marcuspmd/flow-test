@@ -65,12 +65,20 @@ export class InputService {
 
   constructor(runnerInteractiveMode = false) {
     // Detect CI environment
+    const autoInputEnv = process.env.FLOW_TEST_AUTO_INPUT;
+    const autoInputEnabled =
+      typeof autoInputEnv === "string" &&
+      ["true", "1", "yes", "on"].includes(autoInputEnv.toLowerCase());
+
     this.isCI = !!(
+      autoInputEnabled ||
       process.env.CI ||
       process.env.CONTINUOUS_INTEGRATION ||
       process.env.GITHUB_ACTIONS ||
       process.env.GITLAB_CI ||
-      process.env.JENKINS_URL
+      process.env.JENKINS_URL ||
+      process.env.JEST_WORKER_ID ||
+      process.env.NODE_ENV === "test"
     );
     this.runnerInteractiveMode = runnerInteractiveMode;
   }

@@ -102,7 +102,12 @@ describe("TestDiscovery", () => {
       const setupSuite: TestSuite = {
         node_id: "setup-001",
         suite_name: "Setup Flow",
-        steps: [],
+        steps: [
+          {
+            name: "Initialize environment",
+            request: { method: "GET" as const, url: "/health" },
+          },
+        ],
       };
 
       mockFg.mockResolvedValue([
@@ -223,7 +228,12 @@ describe("TestDiscovery", () => {
       const setupSuite: TestSuite = {
         node_id: "setup-001",
         suite_name: "Setup",
-        steps: [],
+        steps: [
+          {
+            name: "Bootstrap",
+            request: { method: "GET" as const, url: "/setup" },
+          },
+        ],
       };
 
       mockFg.mockResolvedValue([
@@ -251,7 +261,15 @@ describe("TestDiscovery", () => {
   describe("parseTestFile", () => {
     it("should skip invalid test suites without suite_name", async () => {
       const consoleSpy = jest.spyOn(console, "warn").mockImplementation();
-      const invalidSuite = { node_id: "test-001", steps: [] };
+      const invalidSuite = {
+        node_id: "test-001",
+        steps: [
+          {
+            name: "Dummy",
+            request: { method: "GET" as const, url: "/dummy" },
+          },
+        ],
+      };
       mockYaml.load.mockReturnValue(invalidSuite);
 
       const tests = await testDiscovery.discoverTests();
@@ -266,7 +284,15 @@ describe("TestDiscovery", () => {
 
     it("should skip invalid test suites without node_id", async () => {
       const consoleSpy = jest.spyOn(console, "warn").mockImplementation();
-      const invalidSuite = { suite_name: "Test", steps: [] };
+      const invalidSuite = {
+        suite_name: "Test",
+        steps: [
+          {
+            name: "Dummy",
+            request: { method: "GET" as const, url: "/dummy" },
+          },
+        ],
+      };
       mockYaml.load.mockReturnValue(invalidSuite);
 
       const tests = await testDiscovery.discoverTests();
@@ -726,7 +752,12 @@ describe("TestDiscovery", () => {
       const suiteWithoutDeps = {
         node_id: "test-001",
         suite_name: "Simple Test",
-        steps: [],
+        steps: [
+          {
+            name: "Simple",
+            request: { method: "GET" as const, url: "/simple" },
+          },
+        ],
       };
       mockFs.readFileSync.mockReturnValue("yaml content");
       mockYaml.load.mockReturnValue(suiteWithoutDeps);

@@ -358,9 +358,18 @@ export class AssertionService {
    * Escapes JMESPath keys that contain special characters
    */
   private escapeJMESPathKey(key: string): string {
-    // If key already contains explicit JMESPath notation (arrays, filters, etc.), return as-is
-    if (/[?\[\]\*@]/.test(key)) {
+    const looksLikeExpression =
+      /@\./.test(key) ||
+      /\[\s*[\d*?]/.test(key) ||
+      /^\[[^\]]+\]$/.test(key);
+
+    if (looksLikeExpression && key.includes("]")) {
       return key;
+    }
+
+    if (key.includes("[") && !key.includes("]")) {
+      const escaped = key.replace(/"/g, '\\"');
+      return `"${escaped}"`;
     }
 
     // If key contains special characters (hyphens, spaces, etc.) but not dots (which are valid JMESPath), quote it

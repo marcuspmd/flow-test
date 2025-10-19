@@ -178,17 +178,18 @@ export class TestDiscovery {
       throw new Error(`Test directory does not exist: ${testDirectory}`);
     }
 
-    const runtimeFilters = this.configManager.getRuntimeFilters();
+    const runtimeFilters = this.configManager.getRuntimeFilters() || {};
     const discoveredTests: DiscoveredTest[] = [];
 
-    if (
-      runtimeFilters.file_patterns &&
-      runtimeFilters.file_patterns.length > 0
-    ) {
+    const filePatterns = runtimeFilters.file_patterns || [];
+    const excludePatterns =
+      runtimeFilters.exclude_patterns || config.discovery!.exclude;
+
+    if (filePatterns.length > 0) {
       const filteredTests = await this.discoverTestsByFilePatterns(
         testDirectory,
-        runtimeFilters.file_patterns,
-        runtimeFilters.exclude_patterns || config.discovery!.exclude
+        filePatterns,
+        excludePatterns
       );
 
       if (filteredTests.length > 0) {

@@ -583,7 +583,7 @@ describe("ExecutionService", () => {
 
       expect(result.status).toBe("failure");
       expect(result.error_message).toContain(
-        "Call configuration must use relative paths"
+        "Call configuration with path_type 'relative' must use relative paths"
       );
     });
   });

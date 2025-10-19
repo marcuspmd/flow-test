@@ -11,6 +11,14 @@ class SmartTestRunner {
         this.projectRoot = path.resolve(__dirname, '..');
         this.services = ['httpbin'];
         this.flowTestArgs = process.env.FLOW_TEST_ARGS || '';
+
+        // Ensure non-interactive defaults when running smart tests
+        if (!process.env.NODE_ENV) {
+            process.env.NODE_ENV = 'test';
+        }
+        if (!process.env.FLOW_TEST_AUTO_INPUT) {
+            process.env.FLOW_TEST_AUTO_INPUT = 'true';
+        }
     }
 
     /**
@@ -143,7 +151,12 @@ class SmartTestRunner {
             execSync(testCommand, {
                 stdio: 'inherit',
                 cwd: this.projectRoot,
-                env: { ...process.env, FLOW_TEST_ARGS: this.flowTestArgs }
+                env: {
+                    ...process.env,
+                    FLOW_TEST_ARGS: this.flowTestArgs,
+                    NODE_ENV: process.env.NODE_ENV || 'test',
+                    FLOW_TEST_AUTO_INPUT: process.env.FLOW_TEST_AUTO_INPUT || 'true'
+                }
             });
 
             console.log('✅ Tests completed successfully!');

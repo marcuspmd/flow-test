@@ -12,6 +12,7 @@ const mockLogger = {
   error: jest.fn(),
   warn: jest.fn(),
   debug: jest.fn(),
+  displayRawHttpResponse: jest.fn(),
 };
 
 jest.mock("../logger.service", () => ({
