@@ -782,6 +782,8 @@ certificates:
 | `domains` | `string[]` | ❌ Não | Padrões de domínio (apenas global) |
 | `name` | `string` | ❌ Não | Nome descritivo (apenas global) |
 | `verify` | `boolean` | ❌ Não | Verificar SSL do servidor (padrão: `true`). Use `false` para desabilitar (⚠️ INSEGURO) |
+| `min_version` | `"TLSv1" \| "TLSv1.1" \| "TLSv1.2" \| "TLSv1.3"` | ❌ Não | Versão mínima do TLS (padrão: definido pelo Node.js) |
+| `max_version` | `"TLSv1" \| "TLSv1.1" \| "TLSv1.2" \| "TLSv1.3"` | ❌ Não | Versão máxima do TLS (padrão: definido pelo Node.js) |
 
 > **Nota:** Use `cert_path` + `key_path` OU `pfx_path`, não ambos.
 

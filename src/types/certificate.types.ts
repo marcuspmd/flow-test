@@ -4,6 +4,11 @@
  */
 
 /**
+ * Supported TLS versions for secure connections
+ */
+export type TLSVersion = "TLSv1" | "TLSv1.1" | "TLSv1.2" | "TLSv1.3";
+
+/**
  * Configuration for PEM-based certificates (separate cert and key files)
  */
 export interface PemCertificateConfig {
@@ -17,6 +22,10 @@ export interface PemCertificateConfig {
   ca_path?: string;
   /** Disable SSL verification (equivalent to PHP's 'verify' => false) - USE WITH CAUTION */
   verify?: boolean;
+  /** Minimum TLS version (e.g., "TLSv1.2") */
+  min_version?: TLSVersion;
+  /** Maximum TLS version (e.g., "TLSv1.3") */
+  max_version?: TLSVersion;
 }
 
 /**
@@ -31,6 +40,10 @@ export interface PfxCertificateConfig {
   ca_path?: string;
   /** Disable SSL verification (equivalent to PHP's 'verify' => false) - USE WITH CAUTION */
   verify?: boolean;
+  /** Minimum TLS version (e.g., "TLSv1.2") */
+  min_version?: TLSVersion;
+  /** Maximum TLS version (e.g., "TLSv1.3") */
+  max_version?: TLSVersion;
 }
 
 /**
@@ -57,6 +70,10 @@ export interface CertificateEntry {
   domains?: string[];
   /** Disable SSL verification - USE WITH CAUTION (insecure) */
   verify?: boolean;
+  /** Minimum TLS version (e.g., "TLSv1.2") */
+  min_version?: TLSVersion;
+  /** Maximum TLS version (e.g., "TLSv1.3") */
+  max_version?: TLSVersion;
 }
 
 /**

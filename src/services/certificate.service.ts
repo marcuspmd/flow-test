@@ -186,6 +186,17 @@ export class CertificateService {
         );
       }
 
+      // TLS version configuration
+      if (config.min_version) {
+        agentOptions.minVersion = config.min_version;
+        this.logger.debug(`TLS min version set to: ${config.min_version}`);
+      }
+
+      if (config.max_version) {
+        agentOptions.maxVersion = config.max_version;
+        this.logger.debug(`TLS max version set to: ${config.max_version}`);
+      }
+
       return agentOptions;
     } catch (error) {
       this.logger.error("Failed to load certificate", {

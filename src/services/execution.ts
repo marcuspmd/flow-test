@@ -498,10 +498,10 @@ export class ExecutionService {
         results.push(result);
 
         // Captures exported variables and registers in Global Registry
+        // Export variables even if test failed, as captured data might still be useful
         if (
-          test.exports &&
-          test.exports.length > 0 &&
-          result.status === "success"
+          (test.exports && test.exports.length > 0) ||
+          (test.exports_optional && test.exports_optional.length > 0)
         ) {
           this.captureAndRegisterExports(test, result);
         }
