@@ -117,6 +117,23 @@ export interface GlobalConfig {
 
   /** Base URL prepended to relative request URLs */
   base_url?: string;
+
+  /**
+   * Global SSL/TLS client certificates for HTTPS authentication (mTLS).
+   * Certificates can be applied to all requests or filtered by domain patterns.
+   *
+   * @example
+   * ```yaml
+   * globals:
+   *   certificates:
+   *     - name: "Corporate API Certificate"
+   *       cert_path: "./certs/client.crt"
+   *       key_path: "./certs/client.key"
+   *       passphrase: "{{$env.CERT_PASSWORD}}"
+   *       domains: ["*.company.com"]
+   * ```
+   */
+  certificates?: import("./certificate.types").CertificateEntry[];
 }
 
 /**

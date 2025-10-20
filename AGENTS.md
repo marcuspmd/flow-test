@@ -30,12 +30,21 @@
 - [11. Configuração de Retry](#11-configuração-de-retry)
 - [12. Timeouts](#12-timeouts)
 - [13. Resolução de URLs](#13-resolução-de-urls)
+- [14. Certificados Digitais (Client Certificates)](#14-certificados-digitais-client-certificates)
 - [15. Response Object Structure](#15-response-object-structure)
 
+### Escopo e Variáveis
+- [16. Escopo de Variáveis](#16-escopo-de-variáveis)
+
+### Execução
+- [17. Execution Modes](#17-execution-modes)
+- [18. Priority Levels](#18-priority-levels)
+- [19. Tags](#19-tags)
+
 ### Exemplos e Troubleshooting
-- [19. Exemplos Práticos Completos](#19-exemplos-práticos-completos)
-- [20. Guia de Troubleshooting](#20-guia-de-troubleshooting)
-- [21. Limitações Conhecidas](#21-limitações-conhecidas)
+- [20. Exemplos Práticos Completos](#20-exemplos-práticos-completos)
+- [21. Guia de Troubleshooting](#21-guia-de-troubleshooting)
+- [22. Limitações Conhecidas](#22-limitações-conhecidas)
 
 ---
 
@@ -644,7 +653,137 @@ call:
 
 ---
 
-### 14. Escopo de Variáveis
+### 14. Certificados Digitais (Client Certificates)
+
+O Flow Test Engine suporta autenticação com certificados digitais para requisições HTTPS (mTLS - mutual TLS), essencial para integração com APIs corporativas e governamentais.
+
+#### 14.1 Formatos Suportados
+
+| Formato | Descrição | Configuração |
+|---------|-----------|--------------|
+| **PEM** | Certificado e chave em arquivos separados | `cert_path` + `key_path` |
+| **PFX/P12** | Certificado e chave em arquivo único | `pfx_path` |
+
+#### 14.2 Configuração por Nível
+
+**Global (flow-test.config.yml):**
+```yaml
+globals:
+  certificates:
+    - name: "Corporate API"
+      cert_path: "./certs/client.crt"
+      key_path: "./certs/client.key"
+      passphrase: "{{$env.CERT_PASSWORD}}"
+      ca_path: "./certs/ca.crt"
+      domains: ["*.company.com", "*.empresa.com.br"]
+
+    - name: "Gov API"
+      pfx_path: "./certs/gov-cert.pfx"
+      passphrase: "{{$env.GOV_CERT_PASS}}"
+      domains: ["*.gov.br"]
+```
+
+**Suite Level:**
+```yaml
+suite_name: "Secure API Tests"
+certificate:
+  cert_path: "./certs/test-client.crt"
+  key_path: "./certs/test-client.key"
+  passphrase: "{{$env.CERT_PASSWORD}}"
+```
+
+**Step Level:**
+```yaml
+steps:
+  - name: "Admin operation"
+    request:
+      method: POST
+      url: "/admin/action"
+      certificate:
+        pfx_path: "./certs/admin.pfx"
+        passphrase: "{{$env.ADMIN_CERT_PASS}}"
+```
+
+#### 14.3 Prioridade de Certificados
+
+1. **Certificado do step** (maior prioridade)
+2. **Certificado da suite**
+3. **Certificado global por matching de domínio**
+4. **Nenhum certificado** (requisição prossegue sem client cert)
+
+#### 14.4 Domain Matching
+
+Certificados globais podem ser filtrados por padrões de domínio:
+
+```yaml
+certificates:
+  - domains: ["api.example.com"]           # Exact match
+  - domains: ["*.example.com"]             # Wildcard subdomain
+  - domains: ["*.api.com", "*.service.com"] # Multiple patterns
+  - domains: []                             # Aplica a todos os domínios
+```
+
+#### 14.5 Propriedades de Certificado
+
+| Propriedade | Tipo | Obrigatório | Descrição |
+|-------------|------|-------------|-----------|
+| `cert_path` | `string` | Condicional* | Caminho para arquivo de certificado (.crt, .pem) |
+| `key_path` | `string` | Condicional* | Caminho para chave privada (.key, .pem) |
+| `pfx_path` | `string` | Condicional* | Caminho para arquivo PFX/P12 |
+| `passphrase` | `string` | ❌ Não | Senha do certificado (use `{{$env.VAR}}`) |
+| `ca_path` | `string` | ❌ Não | Caminho para CA certificate |
+| `domains` | `string[]` | ❌ Não | Padrões de domínio (apenas global) |
+| `name` | `string` | ❌ Não | Nome descritivo (apenas global) |
+
+> **Nota:** Use `cert_path` + `key_path` OU `pfx_path`, não ambos.
+
+#### 14.6 Segurança
+
+**✅ Boas Práticas:**
+- SEMPRE use `{{$env.PASSWORD}}` para senhas
+- Certificados já estão no `.gitignore`
+- Use permissões restritivas: `chmod 600 *.key *.pfx`
+- Nunca commite certificados ou chaves privadas
+- Configure `ci_default` para ambientes CI/CD
+
+**Exemplo Seguro:**
+```yaml
+certificate:
+  pfx_path: "./certs/certificate.pfx"
+  passphrase: "{{$env.CERT_PASSWORD}}"  # ✅ CORRETO
+  # passphrase: "senha123"              # ❌ NUNCA faça isso!
+```
+
+#### 14.7 Casos de Uso
+
+**e-CAC (Receita Federal):**
+```yaml
+suite_name: "e-CAC API"
+base_url: "https://cav.receita.fazenda.gov.br"
+certificate:
+  pfx_path: "./certs/certificado-ecac.pfx"
+  passphrase: "{{$env.ECAC_CERT_PASSWORD}}"
+```
+
+**API Bancária (mTLS):**
+```yaml
+certificate:
+  cert_path: "./certs/company-client.crt"
+  key_path: "./certs/company-client.key"
+  ca_path: "./certs/bank-ca.crt"
+  passphrase: "{{$env.BANKING_CERT_PASS}}"
+```
+
+📖 **Guia Completo:** Consulte [docs/certificates-guide.md](docs/certificates-guide.md) para:
+- Geração de certificados para teste
+- Conversão entre formatos (PEM ↔ PFX)
+- Troubleshooting detalhado
+- Configuração CI/CD
+- Exemplos completos
+
+---
+
+### 15. Escopo de Variáveis
 
 | Escopo | Descrição | Acesso | Persistência |
 |--------|-----------|--------|--------------|
@@ -654,7 +793,7 @@ call:
 | **Environment** | Sistema operacional | Todas as suites (via `{{$env.VAR}}`) | Permanente |
 | **Dynamic** | De inputs com `dynamic` config | Conforme `scope` configurado | Conforme `scope` |
 
-#### 14.1 Ordem de Precedência (maior para menor)
+#### 15.1 Ordem de Precedência (maior para menor)
 
 1. Variáveis runtime (capturadas no step atual)
 2. Variáveis de iteração (`as` variable)
@@ -665,7 +804,7 @@ call:
 
 ---
 
-### 15. Response Object Structure
+### 16. Response Object Structure
 
 Estrutura do objeto de resposta disponível para captures e assertions:
 
@@ -682,7 +821,7 @@ Estrutura do objeto de resposta disponível para captures e assertions:
 
 ---
 
-### 16. Execution Modes
+### 17. Execution Modes
 
 | Mode | Descrição | Use Case | Restrições |
 |------|-----------|----------|------------|
@@ -691,7 +830,7 @@ Estrutura do objeto de resposta disponível para captures e assertions:
 
 ---
 
-### 17. Priority Levels
+### 18. Priority Levels
 
 | Nível | Descrição | Uso Típico |
 |-------|-----------|------------|
@@ -707,7 +846,7 @@ npx flow-test-engine --priority critical,high
 
 ---
 
-### 18. Tags
+### 19. Tags
 
 Tags são strings arbitrárias para categorização. Exemplos comuns:
 
@@ -729,9 +868,9 @@ npx flow-test-engine --tags smoke,auth
 
 ---
 
-## 19. Exemplos Práticos Completos
+## 20. Exemplos Práticos Completos
 
-### 19.1 Autenticação com Captura e Uso de Token
+### 22.1 Autenticação com Captura e Uso de Token
 
 ```yaml
 suite_name: "Authentication Flow"
@@ -780,7 +919,7 @@ steps:
         id: {equals: "{{user_id}}"}
 ```
 
-### 19.2 Iteração com Dados Dinâmicos
+### 22.2 Iteração com Dados Dinâmicos
 
 ```yaml
 suite_name: "Bulk User Creation"
@@ -817,7 +956,7 @@ steps:
       "created_user_{{_iteration.index}}": "body.id"
 ```
 
-### 19.3 Cenários Condicionais Avançados
+### 21.3 Cenários Condicionais Avançados
 
 ```yaml
 suite_name: "Conditional API Testing"
@@ -882,7 +1021,7 @@ steps:
             creation_failed: true
 ```
 
-### 19.4 Input Interativo com Validação
+### 20.4 Input Interativo com Validação
 
 ```yaml
 suite_name: "Interactive API Testing"
@@ -950,7 +1089,7 @@ steps:
         authenticated: {equals: true}
 ```
 
-### 19.5 Dependências e Reuso entre Suites
+### 20.5 Dependências e Reuso entre Suites
 
 **File: `auth-setup.yaml`**
 ```yaml
@@ -1011,7 +1150,7 @@ steps:
       status_code: 201
 ```
 
-### 19.6 Testes de Performance com Response Time
+### 20.6 Testes de Performance com Response Time
 
 ```yaml
 suite_name: "Performance Tests"
@@ -1064,7 +1203,7 @@ steps:
       "page_{{page}}_count": "body.items | length(@)"
 ```
 
-### 19.7 Validação Complexa com Regex e Tipos
+### 20.7 Validação Complexa com Regex e Tipos
 
 ```yaml
 suite_name: "Data Validation Tests"
@@ -1137,7 +1276,7 @@ steps:
           regex: "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}"  # ISO 8601
 ```
 
-### 19.8 Error Handling e Retry
+### 20.8 Error Handling e Retry
 
 ```yaml
 suite_name: "Error Handling Tests"
@@ -1203,9 +1342,9 @@ steps:
 
 ---
 
-## 20. Guia de Troubleshooting
+## 21. Guia de Troubleshooting
 
-### 20.1 Problemas Comuns e Soluções
+### 22.1 Problemas Comuns e Soluções
 
 | Problema | Causa Provável | Solução |
 |----------|----------------|---------|
@@ -1218,7 +1357,7 @@ steps:
 | `Input timeout` | Usuário não respondeu | Definir `ci_default` e `timeout_seconds` |
 | `Iteration failed` | Array vazio ou inválido | Validar fonte do array antes de iterar |
 
-### 20.2 Debug Tips
+### 22.2 Debug Tips
 
 ```yaml
 # Capturar resposta completa para debug
@@ -1241,7 +1380,7 @@ assert:
       message: "Body received: {{body}}"
 ```
 
-### 20.3 Validação de YAML
+### 21.3 Validação de YAML
 
 ```bash
 # Verificar sintaxe YAML
@@ -1256,9 +1395,9 @@ npx flow-test-engine --list
 
 ---
 
-## 21. Limitações Conhecidas
+## 22. Limitações Conhecidas
 
-### 21.1 Limitações Técnicas
+### 22.1 Limitações Técnicas
 
 | Limitação | Descrição | Workaround |
 |-----------|-----------|------------|
@@ -1269,7 +1408,7 @@ npx flow-test-engine --list
 | **Timeout granular** | Não há timeout por assertion individual | Usar timeout no step ou request |
 | **Parallel com dependências** | Dependências entre steps em parallel não são garantidas | Usar `sequential` ou separar em suites |
 
-### 21.2 Boas Práticas
+### 22.2 Boas Práticas
 
 ✅ **DO:**
 - Usar `node_id` únicos e descritivos

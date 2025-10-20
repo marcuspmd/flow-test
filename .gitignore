@@ -47,6 +47,17 @@ web_modules/
 # TypeScript cache
 *.tsbuildinfo
 
+# SSL/TLS Certificates - SECURITY: Never commit private keys or certificates
+*.pfx
+*.p12
+*.key
+*.pem
+*.crt
+*.cer
+*.der
+certs/
+certificates/
+
 # Optional npm cache directory
 .npm
 

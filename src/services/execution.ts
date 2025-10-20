@@ -18,6 +18,7 @@ import { PriorityService } from "./priority";
 import { DependencyService } from "./dependency.service";
 import { GlobalRegistryService } from "./global-registry.service";
 import { HttpService } from "./http.service";
+import { CertificateService } from "./certificate.service";
 import { AssertionService } from "./assertion.service";
 import { CaptureService } from "./capture.service";
 import { ComputedService } from "./computed.service";
@@ -161,6 +162,7 @@ export class ExecutionService {
 
   // Services reused from previous version
   private httpService: HttpService;
+  private certificateService?: CertificateService;
   private assertionService: AssertionService;
   private captureService: CaptureService;
   private scenarioService: ScenarioService;
@@ -200,10 +202,24 @@ export class ExecutionService {
 
     const config = configManager.getConfig();
 
+    // Initialize certificate service if certificates are configured
+    if (
+      config.globals?.certificates &&
+      config.globals.certificates.length > 0
+    ) {
+      this.certificateService = new CertificateService(
+        config.globals.certificates
+      );
+      this.logger.info(
+        "Certificate service initialized with global certificates"
+      );
+    }
+
     // Initializes HTTP services with global configuration
     this.httpService = new HttpService(
       config.globals?.base_url,
-      config.execution?.timeout || config.globals?.timeouts?.default || 60000
+      config.execution?.timeout || config.globals?.timeouts?.default || 60000,
+      this.certificateService
     );
     this.assertionService = new AssertionService();
     this.captureService = new CaptureService();
@@ -1676,8 +1692,8 @@ export class ExecutionService {
           // Context includes all current variables (including the input that was just captured)
           const stepCapturedVariables = this.captureService.captureFromObject(
             step.capture,
-            currentVariables,  // source object for JMESPath
-            currentVariables   // variable context for {{js:...}} and {{...}}
+            currentVariables, // source object for JMESPath
+            currentVariables // variable context for {{js:...}} and {{...}}
           );
 
           // Merge with existing captured variables
@@ -1693,7 +1709,9 @@ export class ExecutionService {
             );
           }
         } catch (error) {
-          this.logger.error(`❌ Error processing step.capture after input: ${error}`);
+          this.logger.error(
+            `❌ Error processing step.capture after input: ${error}`
+          );
           // Don't fail the step, just log the error
         }
       }

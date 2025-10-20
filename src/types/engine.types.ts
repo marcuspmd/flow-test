@@ -61,6 +61,9 @@ export interface RequestDetails {
 
   /** Request timeout in milliseconds */
   timeout?: number;
+
+  /** SSL/TLS client certificate configuration for HTTPS requests (mTLS) */
+  certificate?: import("./certificate.types").CertificateConfig;
 }
 
 /**

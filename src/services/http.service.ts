@@ -10,8 +10,9 @@
 
 import axios, { AxiosResponse, AxiosError } from "axios";
 import { RequestDetails } from "../types/engine.types";
-import { StepExecutionResult } from "../types/config.types";
+import { StepExecutionResult } from "../types/engine.types";
 import { getLogger } from "./logger.service";
+import { CertificateService } from "./certificate.service";
 
 /**
  * HTTP service for executing API requests with comprehensive monitoring and error handling.
@@ -89,6 +90,9 @@ export class HttpService {
   /** Timeout in milliseconds for HTTP requests */
   private timeout: number;
 
+  /** Certificate service for HTTPS client authentication */
+  private certificateService?: CertificateService;
+
   private logger = getLogger();
 
   /**
@@ -96,6 +100,7 @@ export class HttpService {
    *
    * @param baseUrl - Optional base URL to prefix relative request URLs
    * @param timeout - Request timeout in milliseconds
+   * @param certificateService - Optional certificate service for client certificate authentication
    *
    * @defaultValue timeout - 60000ms (60 seconds)
    *
@@ -113,10 +118,21 @@ export class HttpService {
    * ```typescript
    * const service = new HttpService();
    * ```
+   *
+   * @example Constructor with certificate service
+   * ```typescript
+   * const certService = new CertificateService([...]);
+   * const service = new HttpService('https://api.example.com', 60000, certService);
+   * ```
    */
-  constructor(baseUrl?: string, timeout: number = 60000) {
+  constructor(
+    baseUrl?: string,
+    timeout: number = 60000,
+    certificateService?: CertificateService
+  ) {
     this.baseUrl = baseUrl;
     this.timeout = timeout;
+    this.certificateService = certificateService;
   }
 
   /**
@@ -169,6 +185,15 @@ export class HttpService {
         timeout: this.timeout,
         validateStatus: () => true, // Does not reject by HTTP status
       };
+
+      // Apply certificate if configured
+      if (this.certificateService) {
+        this.certificateService.applyCertificate(
+          axiosConfig,
+          request.certificate,
+          fullUrl
+        );
+      }
 
       // Executes the request
       const response: AxiosResponse = await axios(axiosConfig);

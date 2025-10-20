@@ -1,0 +1,124 @@
+suite_name: "Certificate Authentication Test"
+node_id: "cert-auth-test"
+description: "Test suite demonstrating client certificate authentication (mTLS)"
+
+# Base URL for API endpoints
+base_url: "https://secure-api.example.com"
+
+# Suite-level certificate configuration
+# This certificate will be used for all requests in this suite unless overridden
+certificate:
+  cert_path: "./tests/fixtures/certs/client.crt"
+  key_path: "./tests/fixtures/certs/client.key"
+  passphrase: "{{$env.CERT_PASSWORD}}"
+  ca_path: "./tests/fixtures/certs/ca.crt"
+
+variables:
+  test_data: "sensitive information"
+  api_version: "v1"
+
+metadata:
+  priority: "high"
+  tags: ["security", "mtls", "certificates"]
+  description: "Validates client certificate authentication across different scenarios"
+
+steps:
+  # Step 1: Test with global (suite-level) certificate
+  - name: "Authenticate with suite certificate"
+    step_id: "auth-with-suite-cert"
+    request:
+      method: GET
+      url: "/api/{{api_version}}/protected/user-info"
+      headers:
+        Accept: "application/json"
+    assert:
+      status_code: 200
+      body:
+        authenticated: { equals: true }
+        auth_method: { equals: "client_certificate" }
+    capture:
+      user_id: "body.user.id"
+      session_token: "body.session.token"
+    metadata:
+      description: "Verify authentication using suite-level certificate"
+
+  # Step 2: Test POST request with certificate
+  - name: "Create protected resource"
+    request:
+      method: POST
+      url: "/api/{{api_version}}/resources"
+      headers:
+        Content-Type: "application/json"
+        X-Session-Token: "{{session_token}}"
+      body:
+        name: "Confidential Document"
+        owner_id: "{{user_id}}"
+        data: "{{test_data}}"
+        created_at: "{{$js:new Date().toISOString()}}"
+    assert:
+      status_code: 201
+      body:
+        id: { exists: true, type: "string" }
+        name: { equals: "Confidential Document" }
+        owner_id: { equals: "{{user_id}}" }
+    capture:
+      resource_id: "body.id"
+
+  # Step 3: Override with step-specific PFX certificate
+  - name: "Access with alternative PFX certificate"
+    request:
+      method: GET
+      url: "/api/{{api_version}}/admin/settings"
+      # Step-specific certificate overrides suite certificate
+      certificate:
+        pfx_path: "./tests/fixtures/certs/admin.pfx"
+        passphrase: "{{$env.ADMIN_PFX_PASS}}"
+      headers:
+        X-Admin-Access: "true"
+    assert:
+      status_code: 200
+      body:
+        admin_access: { equals: true }
+        permissions: { contains: "admin" }
+    metadata:
+      description: "Use different certificate for admin endpoints"
+
+  # Step 4: Test certificate with restricted resource
+  - name: "Verify resource access control"
+    request:
+      method: GET
+      url: "/api/{{api_version}}/resources/{{resource_id}}"
+      headers:
+        X-Session-Token: "{{session_token}}"
+    assert:
+      status_code: 200
+      body:
+        id: { equals: "{{resource_id}}" }
+        owner_id: { equals: "{{user_id}}" }
+    scenarios:
+      - name: "Owner has full access"
+        condition: "body.owner_id == user_id"
+        then:
+          assert:
+            body:
+              can_edit: { equals: true }
+              can_delete: { equals: true }
+
+  # Step 5: Test without certificate (should fail or use different endpoint)
+  - name: "Attempt access to public endpoint"
+    request:
+      method: GET
+      url: "/api/{{api_version}}/public/status"
+      # No certificate needed for public endpoint
+    assert:
+      status_code: 200
+      body:
+        public: { equals: true }
+    metadata:
+      description: "Public endpoints should work without certificates"
+
+# Export variables for use in other suites
+exports:
+  - user_id
+  - session_token
+  - resource_id
