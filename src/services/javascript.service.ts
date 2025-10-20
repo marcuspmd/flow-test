@@ -253,6 +253,7 @@ export class JavaScriptService {
     reason?: string;
   } {
     // List of dangerous patterns to block
+    // Note: Buffer.from() is ALLOWED for base64 encoding (common use case)
     const dangerousPatterns = [
       /require\s*\(/,
       /import\s+/,
@@ -263,7 +264,8 @@ export class JavaScriptService {
       /__proto__/,
       /process\s*\./,
       /global\s*\./,
-      /Buffer\s*\./,
+      // Buffer is allowed but only for .from() - block dangerous methods
+      /Buffer\s*\.\s*(alloc|allocUnsafe|concat|isBuffer|isEncoding)/,
       /child_process\s*\./,
       /fs\s*\./,
       /os\s*\./,

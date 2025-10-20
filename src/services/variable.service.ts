@@ -141,29 +141,59 @@ export class VariableService {
       }
 
       // Handle multiple variables within the string
-      return template.replace(/\{\{([^}]+)\}\}/g, (match, variablePath) => {
-        const value = this.resolveVariable(variablePath.trim());
-        if (value === undefined) {
-          if (!suppressWarnings) {
-            // Verifica se é uma variável que foi intencionalmente limpa (comum após limpeza de runtime)
-            const isRuntimeVariable = this.isLikelyRuntimeVariable(
-              variablePath.trim()
-            );
-            if (isRuntimeVariable) {
-              // Log em nível debug em vez de warning para variáveis de runtime limpas
-              this.logger.debug(
-                `Runtime variable '${variablePath.trim()}' not found (expected after cleanup)`
-              );
-            } else {
-              this.logger.warn(
-                `Variable '${variablePath.trim()}' not found during interpolation`
-              );
-            }
+      // IMPORTANT: We need to handle nested interpolation carefully
+      // Example: "{{$js:Buffer.from('{{username}}:{{password}}').toString('base64')}}"
+      // Strategy: Process from innermost {{}} to outermost
+      let result = template;
+      let hasChanges = true;
+      let iterations = 0;
+      const maxIterations = 10; // Prevent infinite loops
+
+      while (hasChanges && iterations < maxIterations) {
+        hasChanges = false;
+        iterations++;
+
+        //  Find all {{ }} pairs and resolve the innermost ones first
+        const originalResult = result;
+        result = result.replace(/\{\{([^{}]+)\}\}/g, (match, variablePath) => {
+          const trimmedPath = variablePath.trim();
+
+          // Skip if this looks like it contains more nested variables
+          if (trimmedPath.includes("{{") || trimmedPath.includes("}}")) {
+            return match; // Leave it for next iteration
           }
-          return match; // Keep the original placeholder
+
+          const value = this.resolveVariable(trimmedPath);
+          if (value === undefined) {
+            if (!suppressWarnings) {
+              // Verifica se é uma variável que foi intencionalmente limpa (comum após limpeza de runtime)
+              const isRuntimeVariable =
+                this.isLikelyRuntimeVariable(trimmedPath);
+              if (isRuntimeVariable) {
+                // Log em nível debug em vez de warning para variáveis de runtime limpas
+                this.logger.debug(
+                  `Runtime variable '${trimmedPath}' not found (expected after cleanup)`
+                );
+              } else {
+                this.logger.warn(
+                  `Variable '${trimmedPath}' not found during interpolation`
+                );
+              }
+            }
+            return match; // Keep the original placeholder
+          }
+
+          hasChanges = true;
+          return String(value);
+        });
+
+        // If no changes were made, we're done or stuck
+        if (result === originalResult) {
+          break;
         }
-        return String(value);
-      });
+      }
+
+      return result;
     }
 
     if (Array.isArray(template)) {
@@ -221,6 +251,55 @@ export class VariableService {
   }
 
   /**
+   * Interpolates variables within a string (helper method for nested interpolation)
+   *
+   * This method is used to resolve nested variables within JavaScript expressions.
+   * For example: "Buffer.from('{{username}}:{{password}}')"
+   * will have {{username}} and {{password}} resolved before the JS executes.
+   *
+   * @param str - String containing {{variable}} placeholders
+   * @returns String with variables interpolated
+   * @private
+   */
+  private interpolateInString(str: string): string {
+    this.logger.debug(`[interpolateInString] Input: ${str}`);
+
+    const result = str.replace(/\{\{([^}]+)\}\}/g, (match, variablePath) => {
+      const trimmedPath = variablePath.trim();
+      this.logger.debug(`[interpolateInString] Processing: ${trimmedPath}`);
+
+      // Avoid infinite recursion - don't try to resolve JS or Faker within JS
+      if (
+        trimmedPath.startsWith("$js:") ||
+        trimmedPath.startsWith("js:") ||
+        trimmedPath.startsWith("$faker.") ||
+        trimmedPath.startsWith("faker.")
+      ) {
+        this.logger.debug(
+          `[interpolateInString] Skipping (recursive): ${trimmedPath}`
+        );
+        return match; // Keep the original placeholder
+      }
+
+      const value = this.resolveVariable(trimmedPath);
+      this.logger.debug(
+        `[interpolateInString] Resolved ${trimmedPath} = ${value}`
+      );
+
+      if (value === undefined) {
+        this.logger.warn(
+          `Variable '${trimmedPath}' not found during nested interpolation`
+        );
+        return match; // Keep the original placeholder
+      }
+      return String(value);
+    });
+
+    this.logger.debug(`[interpolateInString] Output: ${result}`);
+    return result;
+  }
+
+  /**
    * Resolves a variable following the scope hierarchy
    *
    * Searches for a variable in precedence order: Faker > runtime > suite > imported > global > globalRegistry.
@@ -239,6 +318,11 @@ export class VariableService {
    * ```
    */
   private resolveVariable(variablePath: string): any {
+    // Log para debug
+    if (variablePath.includes("$js:") || variablePath.includes("Buffer")) {
+      this.logger.debug(`[resolveVariable] Input: ${variablePath}`);
+    }
+
     // DEBUG: Log what we're trying to resolve
     if (variablePath.includes("$faker")) {
       this.logger.debug(
@@ -302,6 +386,18 @@ export class VariableService {
           }
 
           if (jsExpression) {
+            // IMPORTANT: Interpolate nested variables within the JavaScript expression
+            // This allows expressions like: Buffer.from('{{username}}:{{password}}')
+            // The {{username}} and {{password}} will be resolved before executing the JS
+            this.logger.debug(
+              `[JS Interpolation] Original expression: ${jsExpression}`
+            );
+            const interpolatedExpression =
+              this.interpolateInString(jsExpression);
+            this.logger.debug(
+              `[JS Interpolation] After interpolation: ${interpolatedExpression}`
+            );
+
             // Update execution context with current variables
             const context: JavaScriptExecutionContext = {
               ...this.currentExecutionContext,
@@ -310,10 +406,11 @@ export class VariableService {
             // Use code block mode only for $js expressions, not for logical operators
             const useCodeBlock = variablePath.startsWith("$js.");
             const result = javascriptService.executeExpression(
-              jsExpression,
+              interpolatedExpression,
               context,
               useCodeBlock
             );
+            this.logger.debug(`[JS Interpolation] Result: ${result}`);
             return result;
           }
           return undefined;
