@@ -1,6 +1,15 @@
 project_name: Flow Test Demo Project
 test_directory: ./
 globals:
+  # Arquivos .env para carregar automaticamente
+  # Carrega variáveis de ambiente antes da execução dos testes
+  # Arquivos são carregados em ordem, últimos sobrescrevem os primeiros
+  env_files:
+    - .env                # Variáveis gerais
+    - .env.local          # Sobrescritas locais (adicionar ao .gitignore)
+    # - .env.test         # Específico para testes
+    # - .env.production   # Produção (usar com cuidado)
+
   variables:
     api_base_url: http://localhost:8080
     httpbin_url: http://localhost:8080

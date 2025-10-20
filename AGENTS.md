@@ -162,6 +162,53 @@ Criar uma documentação técnica completa que cubra todas as propriedades, tipo
 | **Faker.js** | `{{$faker.category.method}}` | Dados fake dinâmicos | `{{$faker.internet.email}}`, `{{$faker.person.firstName}}` |
 | **JavaScript** | `{{$js:expression}}` | Expressão JavaScript | `{{$js:Date.now()}}`, `{{$js:Math.random()}}` |
 
+#### 3.1.1 Variáveis de Ambiente (.env)
+
+O Flow Test Engine suporta **carregamento automático** de arquivos `.env` através do `flow-test.config.yml`:
+
+**Configuração no flow-test.config.yml:**
+```yaml
+globals:
+  env_files:
+    - .env              # Carregado primeiro
+    - .env.local        # Sobrescreve valores do .env
+    - .env.test         # Específico para testes
+```
+
+**Regras Importantes:**
+- ✅ Variáveis devem começar com `FLOW_TEST_` (ex: `FLOW_TEST_API_KEY`)
+- ✅ Arquivos carregados em ordem - últimos sobrescrevem primeiros
+- ✅ Caminhos relativos à raiz do projeto
+- ✅ Continua execução mesmo se arquivo não existir (com warning)
+- ✅ Uso no YAML: `{{$env.API_KEY}}` (sem o prefixo `FLOW_TEST_`)
+
+**Exemplo Completo:**
+
+`.env`:
+```bash
+FLOW_TEST_API_BASE_URL=https://api.example.com
+FLOW_TEST_OAUTH_USERNAME=client_id_123
+FLOW_TEST_OAUTH_PASSWORD=client_secret_xyz
+FLOW_TEST_PEM_PASSWORD=cert_password
+```
+
+`suite.yaml`:
+```yaml
+base_url: "{{$env.API_BASE_URL}}"
+certificate:
+  cert_path: "./certs/client.pem"
+  passphrase: "{{$env.PEM_PASSWORD}}"  # Lê FLOW_TEST_PEM_PASSWORD
+
+steps:
+  - name: "Login"
+    request:
+      url: "/auth/login"
+      headers:
+        Authorization: "Basic {{$js:Buffer.from('{{$env.OAUTH_USERNAME}}:{{$env.OAUTH_PASSWORD}}').toString('base64')}}"
+```
+
+📖 **Guia Completo:** [guides/10.environment-variables-guide.md](guides/10.environment-variables-guide.md)
+
 #### 3.2 Faker.js - Categorias Principais
 
 | Categoria | Exemplos de Métodos | Resultado |
