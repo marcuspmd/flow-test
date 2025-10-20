@@ -175,8 +175,16 @@ export class CertificateService {
         this.logger.debug(`Loaded PFX certificate from ${pfxPath}`);
       }
 
-      // Additional security options
-      agentOptions.rejectUnauthorized = true; // Validate server certificate by default
+      // SSL verification control
+      // Default: verify = true (secure), can be disabled with verify = false
+      const shouldVerify = config.verify !== false; // Default to true
+      agentOptions.rejectUnauthorized = shouldVerify;
+
+      if (!shouldVerify) {
+        this.logger.warn(
+          "⚠️  SSL verification disabled (verify: false) - This is INSECURE and should only be used in development!"
+        );
+      }
 
       return agentOptions;
     } catch (error) {

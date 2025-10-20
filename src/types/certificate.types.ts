@@ -15,6 +15,8 @@ export interface PemCertificateConfig {
   passphrase?: string;
   /** Optional CA certificate path for verification */
   ca_path?: string;
+  /** Disable SSL verification (equivalent to PHP's 'verify' => false) - USE WITH CAUTION */
+  verify?: boolean;
 }
 
 /**
@@ -27,6 +29,8 @@ export interface PfxCertificateConfig {
   passphrase?: string;
   /** Optional CA certificate path */
   ca_path?: string;
+  /** Disable SSL verification (equivalent to PHP's 'verify' => false) - USE WITH CAUTION */
+  verify?: boolean;
 }
 
 /**
@@ -51,6 +55,8 @@ export interface CertificateEntry {
    * If empty, applies to all domains
    */
   domains?: string[];
+  /** Disable SSL verification - USE WITH CAUTION (insecure) */
+  verify?: boolean;
 }
 
 /**
@@ -90,12 +96,14 @@ export function toCertificateConfig(
       key_path: entry.key_path!,
       passphrase: entry.passphrase,
       ca_path: entry.ca_path,
+      verify: entry.verify,
     };
   } else if (isPfxCertificate(entry)) {
     return {
       pfx_path: entry.pfx_path!,
       passphrase: entry.passphrase,
       ca_path: entry.ca_path,
+      verify: entry.verify,
     };
   }
   throw new Error(

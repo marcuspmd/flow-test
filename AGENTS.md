@@ -774,15 +774,25 @@ certificates:
 
 | Propriedade | Tipo | Obrigatório | Descrição |
 |-------------|------|-------------|-----------|
-| `cert_path` | `string` | Condicional* | Caminho para arquivo de certificado (.crt, .pem) |
-| `key_path` | `string` | Condicional* | Caminho para chave privada (.key, .pem) |
-| `pfx_path` | `string` | Condicional* | Caminho para arquivo PFX/P12 |
+| `cert_path` | `string` | Condicional* | Caminho para arquivo de certificado (.crt, .pem) - relativo ao `cwd` ou absoluto |
+| `key_path` | `string` | Condicional* | Caminho para chave privada (.key, .pem) - relativo ao `cwd` ou absoluto |
+| `pfx_path` | `string` | Condicional* | Caminho para arquivo PFX/P12 - relativo ao `cwd` ou absoluto |
 | `passphrase` | `string` | ❌ Não | Senha do certificado (use `{{$env.VAR}}`) |
-| `ca_path` | `string` | ❌ Não | Caminho para CA certificate |
+| `ca_path` | `string` | ❌ Não | Caminho para CA certificate - relativo ao `cwd` ou absoluto |
 | `domains` | `string[]` | ❌ Não | Padrões de domínio (apenas global) |
 | `name` | `string` | ❌ Não | Nome descritivo (apenas global) |
+| `verify` | `boolean` | ❌ Não | Verificar SSL do servidor (padrão: `true`). Use `false` para desabilitar (⚠️ INSEGURO) |
 
 > **Nota:** Use `cert_path` + `key_path` OU `pfx_path`, não ambos.
+
+> **⚠️ IMPORTANTE - Resolução de Caminhos:**
+> - **Caminhos relativos** (ex: `./certs/cert.pem`) são resolvidos a partir do **diretório onde você executa o comando** (`process.cwd()`), NÃO do arquivo YAML
+> - **Caminhos absolutos** (ex: `/full/path/to/cert.pem`) funcionam de qualquer lugar
+> - **Recomendação**: Use variáveis de ambiente com caminhos absolutos para evitar problemas:
+>   ```yaml
+>   certificate:
+>     cert_path: "{{$env.CERT_PATH}}"  # .env: FLOW_TEST_CERT_PATH=/caminho/absoluto/cert.pem
+>   ```
 
 #### 14.6 Segurança
 
@@ -792,12 +802,14 @@ certificates:
 - Use permissões restritivas: `chmod 600 *.key *.pfx`
 - Nunca commite certificados ou chaves privadas
 - Configure `ci_default` para ambientes CI/CD
+- **⚠️ CUIDADO com `verify: false`**: Desabilita verificação SSL (inseguro). Use APENAS em desenvolvimento/testes!
 
 **Exemplo Seguro:**
 ```yaml
 certificate:
   pfx_path: "./certs/certificate.pfx"
   passphrase: "{{$env.CERT_PASSWORD}}"  # ✅ CORRETO
+  verify: false  # ⚠️ Apenas para desenvolvimento - equivalente ao PHP 'verify' => false
   # passphrase: "senha123"              # ❌ NUNCA faça isso!
 ```
 

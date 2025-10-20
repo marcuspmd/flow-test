@@ -17,7 +17,9 @@ variables:
   password: "{{$env.OAUTH_PASSWORD}}"      # FLOW_TEST_OAUTH_PASSWORD
 
   # Caminho do certificado
-  cert_path: "./certs/client-certificate.pem"
+  # ⚠️ IMPORTANTE: Caminhos relativos são resolvidos a partir do diretório onde você EXECUTA o comando (process.cwd())
+  # Recomendação: Use variável de ambiente com caminho absoluto
+  cert_path: "./certs/client-certificate.pem"  # Relativo ao diretório de execução
   cert_password: "{{$env.PEM_PASSWORD}}"   # FLOW_TEST_PEM_PASSWORD
 
   # Grant type para OAuth2
@@ -35,6 +37,9 @@ exports:
 certificate:
   cert_path: "{{cert_path}}"
   passphrase: "{{cert_password}}"
+  # Desabilitar verificação SSL (equivalente ao PHP 'verify' => false)
+  # ⚠️ USE COM CUIDADO - Apenas para desenvolvimento/testes
+  verify: false
   # Se tiver certificado CA separado:
   # ca_path: "./certs/ca-certificate.crt"
 
