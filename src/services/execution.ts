@@ -202,16 +202,21 @@ export class ExecutionService {
 
     const config = configManager.getConfig();
 
-    // Initialize certificate service if certificates are configured
+    // Initialize certificate service (always, even if no global certificates)
+    // This allows suite-level and step-level certificates to work
+    this.certificateService = new CertificateService(
+      config.globals?.certificates || []
+    );
     if (
       config.globals?.certificates &&
       config.globals.certificates.length > 0
     ) {
-      this.certificateService = new CertificateService(
-        config.globals.certificates
-      );
       this.logger.info(
-        "Certificate service initialized with global certificates"
+        `Certificate service initialized with ${config.globals.certificates.length} global certificate(s)`
+      );
+    } else {
+      this.logger.debug(
+        "Certificate service initialized (no global certificates)"
       );
     }
 
@@ -753,9 +758,24 @@ export class ExecutionService {
         const interpolatedBaseUrl = this.globalVariables.interpolateString(
           suite.base_url
         );
+
+        this.logger.debug(
+          `Creating new HttpService for suite with certificateService: ${!!this
+            .certificateService}`
+        );
+
         this.httpService = new HttpService(
           interpolatedBaseUrl,
-          this.configManager.getConfig().execution?.timeout || 60000
+          this.configManager.getConfig().execution?.timeout || 60000,
+          this.certificateService
+        );
+      }
+
+      // Store suite-level certificate for later use in steps
+      if (suite.certificate) {
+        this.globalVariables.setRuntimeVariable(
+          "__suite_certificate",
+          suite.certificate
         );
       }
 
@@ -1410,6 +1430,25 @@ export class ExecutionService {
         const interpolatedRequest = this.globalVariables.interpolate(
           step.request
         );
+
+        // Apply suite-level certificate if no request-specific certificate
+        if (!interpolatedRequest.certificate && suite.certificate) {
+          const interpolatedCertificate = this.globalVariables.interpolate(
+            suite.certificate
+          );
+          interpolatedRequest.certificate = interpolatedCertificate;
+          this.logger.debug(
+            `Applied suite-level certificate to request: ${step.name}`
+          );
+        } else if (interpolatedRequest.certificate) {
+          this.logger.debug(
+            `Using step-level certificate for request: ${step.name}`
+          );
+        } else {
+          this.logger.debug(
+            `No certificate configured for request: ${step.name}`
+          );
+        }
 
         // 2. Executes HTTP request
         httpResult = await this.httpService.executeRequest(

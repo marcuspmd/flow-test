@@ -188,11 +188,21 @@ export class HttpService {
 
       // Apply certificate if configured
       if (this.certificateService) {
+        this.logger.debug(
+          `HttpService has certificateService, applying certificate for ${fullUrl}`
+        );
         this.certificateService.applyCertificate(
           axiosConfig,
           request.certificate,
           fullUrl
         );
+      } else {
+        this.logger.debug(`HttpService does NOT have certificateService`);
+        if (request.certificate) {
+          this.logger.warn(
+            `Request has certificate but HttpService has no certificateService!`
+          );
+        }
       }
 
       // Executes the request

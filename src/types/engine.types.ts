@@ -15,6 +15,8 @@ import {
   InputDynamicConfig,
   InputValidationConfig,
 } from "./common.types";
+import type { CertificateConfig } from "./certificate.types";
+import type { StepCallConfig } from "./call.types";
 
 /**
  * HTTP request details with comprehensive configuration options.
@@ -33,7 +35,6 @@ import {
  *     "Authorization": "Bearer {{auth_token}}"
  *   },
  *   body: {
-import type { StepCallConfig } from "./call.types";
  *     name: "John Doe",
  *     email: "john@example.com"
  *   },
@@ -910,6 +911,8 @@ export interface TestSuite {
     timeout?: number;
     estimated_duration_ms?: number;
   };
+  /** Certificate configuration for all requests in this suite */
+  certificate?: CertificateConfig;
 }
 
 /**

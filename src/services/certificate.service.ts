@@ -57,6 +57,16 @@ export class CertificateService {
   }
 
   /**
+   * Get global certificates for this service
+   *
+   * @returns Array of global certificate entries
+   * @public
+   */
+  public getGlobalCertificates(): CertificateEntry[] {
+    return this.globalCertificates;
+  }
+
+  /**
    * Find applicable certificate for a given URL
    *
    * @param url - Full URL to match against certificate domains
@@ -267,6 +277,17 @@ export class CertificateService {
           certificateConfig,
           baseDir
         );
+
+        this.logger.debug(
+          `Certificate agent options: ${JSON.stringify({
+            hasPfx: !!agentOptions.pfx,
+            hasPassphrase: !!agentOptions.passphrase,
+            rejectUnauthorized: agentOptions.rejectUnauthorized,
+            minVersion: agentOptions.minVersion,
+            maxVersion: agentOptions.maxVersion,
+          })}`
+        );
+
         axiosConfig.httpsAgent = new https.Agent(agentOptions);
 
         this.logger.info(`Applied certificate: ${certificateName}`, {
