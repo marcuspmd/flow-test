@@ -20,7 +20,7 @@ describe("ScriptExecutorService", () => {
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    jest.resetAllMocks();
   });
 
   describe("constructor", () => {
@@ -251,6 +251,26 @@ describe("ScriptExecutorService", () => {
         expect(result.variables).toEqual({});
       });
 
+      it("should capture console output before continuing after error", async () => {
+        const config: ScriptConfig = {
+          script: `
+            console.log('before failure');
+            throw new Error('Script failure');
+          `,
+          continue_on_error: true,
+        };
+
+        const result = await service.executePreRequestScript(
+          config,
+          {},
+          { method: "GET", url: "/test" }
+        );
+
+        expect(result.success).toBe(false);
+        expect(result.console_output).toContain("before failure");
+        expect(result.error).toContain("Script failure");
+      });
+
       it("should use default timeout when not specified", async () => {
         const config: ScriptConfig = {
           script: "setVariable('test', 'value');",
@@ -284,6 +304,63 @@ describe("ScriptExecutorService", () => {
         expect(result.console_output).toContain("Line 1");
         expect(result.console_output).toContain("Line 2");
         expect(result.console_output).toContain("Line 3");
+      });
+
+      it("should stringify complex console output", async () => {
+        const config: ScriptConfig = {
+          script: `
+            console.log({ foo: 'bar' }, 123, false);
+          `,
+        };
+
+        const result = await service.executePreRequestScript(
+          config,
+          {},
+          { method: "GET", url: "/test" }
+        );
+
+        expect(result.success).toBe(true);
+        expect(result.console_output).toContain('{"foo":"bar"} 123 false');
+      });
+
+      it("should clone buffers when capturing variables", async () => {
+        const config: ScriptConfig = {
+          script: `
+            const buf = Buffer.from('hello');
+            setVariable('buffer_value', buf);
+            buf.write('WORLD');
+          `,
+        };
+
+        const result = await service.executePreRequestScript(
+          config,
+          {},
+          { method: "GET", url: "/test" }
+        );
+
+        expect(result.success).toBe(true);
+        expect(Buffer.isBuffer(result.variables.buffer_value)).toBe(true);
+        expect(result.variables.buffer_value.toString()).toBe("hello");
+      });
+
+      it("should ignore invalid variable names", async () => {
+        const config: ScriptConfig = {
+          script: `
+            setVariable('', 'invalid');
+            setVariable(undefined, 'also_invalid');
+            setVariable('valid', 'stored');
+          `,
+        };
+
+        const result = await service.executePreRequestScript(
+          config,
+          {},
+          { method: "GET", url: "/test" }
+        );
+
+        expect(result.success).toBe(true);
+        expect(result.variables).toHaveProperty("valid", "stored");
+        expect(Object.keys(result.variables)).toEqual(["valid"]);
       });
     });
 
@@ -535,6 +612,27 @@ describe("ScriptExecutorService", () => {
         expect(result.variables.random_name).toBeDefined();
         expect(typeof result.variables.random_name).toBe("string");
       });
+
+      it("should not mutate original request object in post-request script", async () => {
+        const request = { method: "GET", url: "/original" };
+        const config: ScriptConfig = {
+          script: `
+            request.url = '/mutated';
+            setVariable('changed_url', request.url);
+          `,
+        };
+
+        const result = await service.executePostRequestScript(
+          config,
+          {},
+          request,
+          { status: 200, status_code: 200, headers: {}, body: {} }
+        );
+
+        expect(result.success).toBe(true);
+        expect(result.variables.changed_url).toBe("/mutated");
+        expect(request.url).toBe("/original");
+      });
     });
 
     describe("file-based scripts", () => {
@@ -560,6 +658,43 @@ describe("ScriptExecutorService", () => {
 
         expect(result.success).toBe(true);
         expect(result.variables.status_ok).toBe(true);
+      });
+
+      it("should throw error when post-request script file is missing", async () => {
+        (fs.existsSync as jest.Mock).mockReturnValue(false);
+
+        const config: ScriptConfig = {
+          script_file: "/missing/post-script.js",
+        };
+
+        await expect(
+          service.executePostRequestScript(
+            config,
+            {},
+            { method: "GET", url: "/test" },
+            { status: 200, status_code: 200, headers: {}, body: {} }
+          )
+        ).rejects.toThrow("Post-request script execution failed");
+      });
+
+      it("should throw error when post-request script file cannot be read", async () => {
+        (fs.existsSync as jest.Mock).mockReturnValue(true);
+        (fs.readFileSync as jest.Mock).mockImplementation(() => {
+          throw new Error("Read error");
+        });
+
+        const config: ScriptConfig = {
+          script_file: "/path/to/post-script.js",
+        };
+
+        await expect(
+          service.executePostRequestScript(
+            config,
+            {},
+            { method: "GET", url: "/test" },
+            { status: 200, status_code: 200, headers: {}, body: {} }
+          )
+        ).rejects.toThrow("Post-request script execution failed");
       });
     });
   });
