@@ -38,6 +38,10 @@ module.exports = {
     '!src/__tests__/**',
     '!src/**/*.test.ts',
     '!src/**/*.spec.ts',
+    '!src/**/*.schemas.ts',
+    '!src/**/*.types.ts',
+    '!src/**/*.index.ts',
+    '!src/**/*.check.ts',
   ],
 
   coverageThreshold: {

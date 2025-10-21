@@ -323,6 +323,34 @@ describe("ScriptExecutorService", () => {
         expect(result.console_output).toContain('{"foo":"bar"} 123 false');
       });
 
+      it("should capture all console methods and format complex arguments", async () => {
+        const config: ScriptConfig = {
+          script: `
+            const circular = {};
+            circular.self = circular;
+            console.info('Info message', 123, false);
+            console.warn({ value: 1n });
+            console.error(Buffer.from('Failure'));
+            console.log(circular);
+          `,
+        };
+
+        const result = await service.executePreRequestScript(
+          config,
+          {},
+          { method: "GET", url: "/test" }
+        );
+
+        expect(result.success).toBe(true);
+        expect(result.console_output).toContain("Info message 123 false");
+        expect(result.console_output).toContain("Failure");
+        const objectOutputs = result.console_output?.filter((line) =>
+          line.includes("[object Object]")
+        );
+        expect(objectOutputs?.length).toBeGreaterThanOrEqual(1);
+        expect(result.console_output?.length).toBe(4);
+      });
+
       it("should clone buffers when capturing variables", async () => {
         const config: ScriptConfig = {
           script: `
@@ -406,6 +434,31 @@ describe("ScriptExecutorService", () => {
 
         expect(result.success).toBe(true);
         expect(result.variables.loaded).toBe(true);
+      });
+
+      it("should warn when script file is empty", async () => {
+        const scriptPath = "/path/to/empty.js";
+
+        (fs.existsSync as jest.Mock).mockReturnValue(true);
+        (fs.readFileSync as jest.Mock).mockReturnValue("   ");
+
+        const warnSpy = jest.spyOn((service as any).logger, "warn");
+
+        const config: ScriptConfig = {
+          script_file: scriptPath,
+        };
+
+        const result = await service.executePreRequestScript(
+          config,
+          {},
+          { method: "GET", url: "/test" },
+          "/suite/test.yaml"
+        );
+
+        expect(result.success).toBe(true);
+        expect(warnSpy).toHaveBeenCalledWith(
+          `Script file is empty: ${scriptPath}`
+        );
       });
 
       it("should throw error when script file not found", async () => {
@@ -591,6 +644,31 @@ describe("ScriptExecutorService", () => {
         expect(result.success).toBe(false);
         expect(result.error).toContain("Post-request error");
         expect(result.variables).toEqual({});
+      });
+
+      it("should log console output before post-request failure", async () => {
+        const config: ScriptConfig = {
+          script: `
+            console.log('before failure');
+            throw new Error('Post failure');
+          `,
+          continue_on_error: true,
+        };
+
+        const debugSpy = jest.spyOn(getLogger(), "debug");
+
+        const result = await service.executePostRequestScript(
+          config,
+          {},
+          { method: "GET", url: "/test" },
+          { status: 200, status_code: 200, headers: {}, body: {} }
+        );
+
+        expect(result.success).toBe(false);
+        expect(result.console_output).toContain("before failure");
+        expect(debugSpy).toHaveBeenCalledWith(
+          expect.stringContaining("Console output before failure")
+        );
       });
 
       it("should use faker in post-request script", async () => {
@@ -855,6 +933,38 @@ describe("ScriptExecutorService", () => {
 
       // Original should remain unchanged
       expect(requestCopy.url).toBe("/original");
+    });
+  });
+
+  describe("internal helpers", () => {
+    it("should clone objects via JSON fallback when structuredClone unavailable", () => {
+      const original = { nested: { value: 42 } };
+      const serviceAny = service as any;
+      const originalStructuredClone = (global as any).structuredClone;
+      (global as any).structuredClone = undefined;
+
+      try {
+        const cloned = serviceAny.cloneValue(original);
+        expect(cloned).not.toBe(original);
+        expect(cloned).toEqual(original);
+      } finally {
+        (global as any).structuredClone = originalStructuredClone;
+      }
+    });
+
+    it("should return original value when cloning unsupported objects", () => {
+      const circular: any = {};
+      circular.self = circular;
+      const serviceAny = service as any;
+      const originalStructuredClone = (global as any).structuredClone;
+      (global as any).structuredClone = undefined;
+
+      try {
+        const cloned = serviceAny.cloneValue(circular);
+        expect(cloned).toBe(circular);
+      } finally {
+        (global as any).structuredClone = originalStructuredClone;
+      }
     });
   });
 });
