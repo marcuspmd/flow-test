@@ -1417,10 +1417,10 @@ export class ExecutionService {
         );
       }
 
-      // Validate that step has either request or input
-      if (!step.request && !step.input) {
+      // Validate that step has either request, input, or call
+      if (!step.request && !step.input && !step.call) {
         throw new Error(
-          `Step '${step.name}' must have either 'request' or 'input' configuration`
+          `Step '${step.name}' must have either 'request', 'input', or 'call' configuration`
         );
       }
 
@@ -2122,25 +2122,14 @@ export class ExecutionService {
       this.globalVariables.getAllVariables()
     );
 
-    const requestHeaders: Record<string, string> = {
-      "x-step-call-target": resolvedStepKey,
-      "x-step-call-isolation": isolateContext ? "true" : "false",
-    };
-
     const stepResult: StepExecutionResult = {
       step_id: identifiers.stepId,
       qualified_step_id: identifiers.qualifiedStepId,
       step_name: step.name,
       status,
       duration_ms: duration,
-      request_details: {
-        method: "CALL",
-        url: resolvedTestPath,
-        raw_url: callConfig.test,
-        headers: requestHeaders,
-        body: interpolatedVariables,
-        base_url: suite.base_url,
-      },
+      // Note: Steps com 'call' não possuem request_details pois não são requisições HTTP
+      // A informação sobre a chamada está disponível via call_details se necessário
       ...(propagatedVariables && Object.keys(propagatedVariables).length > 0
         ? { captured_variables: propagatedVariables }
         : {}),
@@ -2168,21 +2157,43 @@ export class ExecutionService {
 
     try {
       if (shouldIsolate) {
+        // Modo isolado: limpa contexto e define variáveis da suite chamada
         this.globalVariables.clearAllNonGlobalVariables();
-      }
 
-      if (request.variables && Object.keys(request.variables).length > 0) {
-        this.globalVariables.setRuntimeVariables(request.variables);
-      }
-
-      if (resolved.suite.variables) {
-        if (shouldIsolate) {
+        // Define variáveis da suite chamada primeiro
+        if (resolved.suite.variables) {
           this.globalVariables.setSuiteVariables(resolved.suite.variables);
-        } else {
-          const interpolatedSuiteVars = this.globalVariables.interpolate(
-            this.cloneData(resolved.suite.variables)
-          );
-          this.globalVariables.setRuntimeVariables(interpolatedSuiteVars);
+        }
+
+        // Variáveis do call têm prioridade sobre as da suite
+        if (request.variables && Object.keys(request.variables).length > 0) {
+          this.globalVariables.setRuntimeVariables(request.variables);
+        }
+      } else {
+        // Modo não-isolado: mantém contexto atual
+        // Variáveis da suite chamada são apenas fallback (não sobrescrevem contexto atual)
+        if (resolved.suite.variables) {
+          const currentVars = this.globalVariables.getAllVariables();
+          const suiteVarsToAdd: Record<string, any> = {};
+
+          // Adiciona apenas variáveis da suite que não existem no contexto atual
+          for (const [key, value] of Object.entries(resolved.suite.variables)) {
+            if (!(key in currentVars)) {
+              suiteVarsToAdd[key] = value;
+            }
+          }
+
+          if (Object.keys(suiteVarsToAdd).length > 0) {
+            const interpolatedVars = this.globalVariables.interpolate(
+              this.cloneData(suiteVarsToAdd)
+            );
+            this.globalVariables.setRuntimeVariables(interpolatedVars);
+          }
+        }
+
+        // Variáveis do call sempre têm prioridade
+        if (request.variables && Object.keys(request.variables).length > 0) {
+          this.globalVariables.setRuntimeVariables(request.variables);
         }
       }
 
@@ -2194,7 +2205,12 @@ export class ExecutionService {
         this.configManager.getConfig().execution?.timeout ??
         60000;
 
-      this.httpService = new HttpService(baseUrl, timeout);
+      // Propaga o certificateService para o HttpService da suite chamada
+      this.httpService = new HttpService(
+        baseUrl,
+        timeout,
+        this.certificateService
+      );
 
       const callDiscovered: DiscoveredTest = {
         file_path: resolved.suitePath,
