@@ -1,0 +1,40 @@
+suite_name: "Test HMAC"
+node_id: "test-hmac"
+base_url: "https://httpbin.org"
+
+variables:
+  api_key: "test_key"
+  username: "testuser"
+
+steps:
+  - name: "Test HMAC generation"
+    pre_request:
+      script: |
+        console.log('Testing HMAC...');
+
+        const timestamp = Date.now();
+        const message = `${variables.username}:${timestamp}`;
+
+        const signature = crypto.createHmac('sha256', variables.api_key)
+          .update(message)
+          .digest('hex');
+
+        console.log('Message:', message);
+        console.log('Signature:', signature);
+
+        setVariable('timestamp', timestamp);
+        setVariable('signature', signature);
+
+        request.headers['X-Timestamp'] = timestamp.toString();
+        request.headers['X-Signature'] = signature;
+
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        test: "hmac"
+
+    assert:
+      status_code: 200

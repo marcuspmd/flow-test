@@ -676,8 +676,17 @@ export interface TestStep {
   /** Optional unique identifier used for targeted execution */
   step_id?: string;
 
+  /** Script to execute before the HTTP request (for dynamic data preparation) */
+  pre_request?: import("./common.types").ScriptConfig;
+
   /** HTTP request configuration including method, URL, headers, and body (optional if step only contains inputs) */
   request?: RequestDetails;
+
+  /** Script to execute after the HTTP request (for response processing) */
+  post_request?: import("./common.types").ScriptConfig;
+
+  /** Delay/wait configuration (in milliseconds or range) to pause before next step */
+  delay?: import("./common.types").DelayConfig;
 
   /** Response validation rules and assertions */
   assert?: Assertions;

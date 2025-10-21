@@ -173,3 +173,101 @@ export interface InputProcessingResult {
   /** Derived dynamic assignments created from this input */
   derived_assignments: DynamicVariableAssignment[];
 }
+
+/**
+ * Configuration for pre-request or post-request script execution.
+ *
+ * @remarks
+ * Scripts can be provided inline or loaded from external files.
+ * They execute in a sandboxed environment with access to variables,
+ * request/response objects, and utility functions.
+ */
+export interface ScriptConfig {
+  /** JavaScript code to execute inline */
+  script?: string;
+  /** Path to external JavaScript file (relative to suite or absolute) */
+  script_file?: string;
+  /** Maximum execution time in milliseconds (default: 5000) */
+  timeout?: number;
+  /** Whether to continue execution if the script fails (default: false) */
+  continue_on_error?: boolean;
+}
+
+/**
+ * Configuration for delay/wait steps.
+ *
+ * @remarks
+ * Delays can be fixed values, interpolated variables, or random ranges.
+ * Useful for rate limiting, simulating user behavior, or waiting for async operations.
+ */
+export type DelayConfig =
+  | number // Fixed delay in milliseconds
+  | string // Delay with variable interpolation (e.g., "{{computed_delay_ms}}")
+  | {
+      /** Minimum delay in milliseconds */
+      min: number;
+      /** Maximum delay in milliseconds */
+      max: number;
+    };
+
+/**
+ * Context object available to pre-request scripts.
+ */
+export interface PreRequestScriptContext {
+  /** Access to all variables (read) */
+  variables: Record<string, any>;
+  /** Function to set variables for the request */
+  setVariable: (name: string, value: any) => void;
+  /** Mutable request object that will be sent */
+  request: {
+    method: string;
+    url: string;
+    headers?: Record<string, string>;
+    body?: any;
+    params?: Record<string, any>;
+    timeout?: number;
+  };
+  /** Utility: crypto module */
+  crypto: any;
+  /** Utility: Buffer */
+  Buffer: any;
+  /** Utility: console for logging */
+  console: Console;
+  /** Utility: faker (if available) */
+  faker?: any;
+}
+
+/**
+ * Context object available to post-request scripts.
+ */
+export interface PostRequestScriptContext {
+  /** Access to all variables (read) */
+  variables: Record<string, any>;
+  /** Function to set variables after processing response */
+  setVariable: (name: string, value: any) => void;
+  /** Immutable response object */
+  response: {
+    status: number;
+    status_code: number;
+    headers?: Record<string, string>;
+    body?: any;
+    data?: any;
+    response_time_ms?: number;
+  };
+  /** Immutable original request */
+  request: {
+    method: string;
+    url: string;
+    headers?: Record<string, string>;
+    body?: any;
+    params?: Record<string, any>;
+  };
+  /** Utility: crypto module */
+  crypto: any;
+  /** Utility: Buffer */
+  Buffer: any;
+  /** Utility: console for logging */
+  console: Console;
+  /** Utility: faker (if available) */
+  faker?: any;
+}

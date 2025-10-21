@@ -93,7 +93,9 @@ describe("JavaScriptService", () => {
         { expr: "obj.__proto__", pattern: "__proto__" },
         { expr: "process.exit()", pattern: "process" },
         { expr: "global.test", pattern: "global" },
-        { expr: "Buffer.from('test')", pattern: "Buffer" },
+        // Buffer.from() is allowed, but dangerous Buffer methods are blocked
+        { expr: "Buffer.alloc(10)", pattern: "Buffer.alloc" },
+        { expr: "Buffer.allocUnsafe(10)", pattern: "Buffer.allocUnsafe" },
       ];
 
       dangerousExpressions.forEach(({ expr, pattern }) => {
@@ -151,9 +153,7 @@ describe("JavaScriptService", () => {
     });
 
     it("should parse expressions with $js prefix", () => {
-      const result = javascriptService.parseJavaScriptExpression(
-        "$js: 1 + 2"
-      );
+      const result = javascriptService.parseJavaScriptExpression("$js: 1 + 2");
       expect(result).toBe("1 + 2");
     });
 
@@ -405,8 +405,14 @@ describe("JavaScriptService", () => {
           javascriptService.executeExpression("global.test");
         }).toThrow();
 
+        // Buffer.from() is now allowed for base64 encoding
+        // But dangerous Buffer methods should be blocked
         expect(() => {
-          javascriptService.executeExpression("Buffer.from('test')");
+          javascriptService.executeExpression("Buffer.alloc(10)");
+        }).toThrow();
+
+        expect(() => {
+          javascriptService.executeExpression("Buffer.allocUnsafe(10)");
         }).toThrow();
       });
 

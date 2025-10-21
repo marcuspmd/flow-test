@@ -26,6 +26,7 @@ import { DynamicExpressionService } from "./dynamic-expression.service";
 import { ScenarioService } from "./scenario.service";
 import { IterationService } from "./iteration.service";
 import { InputService } from "./input.service";
+import { ScriptExecutorService } from "./script-executor.service";
 import { getLogger } from "./logger.service";
 import {
   DiscoveredTest,
@@ -46,7 +47,7 @@ import type {
   StepCallResult,
   StepExecutionHandlerInput,
 } from "../types/call.types";
-import { DynamicVariableAssignment } from "../types/common.types";
+import { DynamicVariableAssignment, DelayConfig } from "../types/common.types";
 import { CallService } from "./call.service";
 import { EngineExecutionOptions } from "../types/config.types";
 
@@ -171,6 +172,7 @@ export class ExecutionService {
   private computedService: ComputedService;
   private dynamicExpressionService: DynamicExpressionService;
   private callService: CallService;
+  private scriptExecutorService: ScriptExecutorService;
   private stepCallStack: string[] = [];
 
   // Performance statistics
@@ -239,6 +241,7 @@ export class ExecutionService {
       this.computedService
     );
     this.callService = new CallService(this.executeResolvedStepCall.bind(this));
+    this.scriptExecutorService = new ScriptExecutorService(this.logger);
 
     this.performanceData = {
       requests: [],
@@ -1425,6 +1428,65 @@ export class ExecutionService {
 
       // 1. Execute HTTP request if present
       if (step.request) {
+        // **1.1 Execute pre-request script if present**
+        if (step.pre_request) {
+          try {
+            this.logger.debug(
+              `Executing pre-request script for step '${step.name}'`
+            );
+
+            const currentVariables = this.globalVariables.getAllVariables();
+            const requestCopy = JSON.parse(JSON.stringify(step.request));
+
+            // Garantir que headers sempre seja um objeto
+            if (!requestCopy.headers) {
+              requestCopy.headers = {};
+            }
+
+            const scriptResult =
+              await this.scriptExecutorService.executePreRequestScript(
+                step.pre_request,
+                currentVariables,
+                requestCopy,
+                discoveredTest?.file_path
+              );
+
+            // Apply variables set by the script
+            if (Object.keys(scriptResult.variables).length > 0) {
+              this.globalVariables.setRuntimeVariables(scriptResult.variables);
+              this.logger.debug(
+                `Pre-request script set ${
+                  Object.keys(scriptResult.variables).length
+                } variable(s)`
+              );
+            }
+
+            // Apply modified request if script changed it
+            if (scriptResult.modified_request) {
+              Object.assign(step.request, scriptResult.modified_request);
+              this.logger.debug("Request modified by pre-request script");
+            }
+
+            // Log console output if any
+            if (
+              scriptResult.console_output &&
+              scriptResult.console_output.length > 0
+            ) {
+              scriptResult.console_output.forEach((log) =>
+                this.logger.debug(log)
+              );
+            }
+          } catch (error) {
+            const errorMessage =
+              error instanceof Error ? error.message : String(error);
+            this.logger.error(`Pre-request script failed: ${errorMessage}`);
+
+            if (!step.pre_request.continue_on_error) {
+              throw error;
+            }
+          }
+        }
+
         // Interpolates variables in request
         const rawRequestUrl = step.request?.url;
         const interpolatedRequest = this.globalVariables.interpolate(
@@ -1460,6 +1522,77 @@ export class ExecutionService {
 
         // Records performance data
         this.recordPerformanceData(interpolatedRequest, httpResult);
+
+        // **2.5 Execute post-request script if present**
+        if (step.post_request && httpResult.response_details) {
+          try {
+            this.logger.debug(
+              `Executing post-request script for step '${step.name}'`
+            );
+
+            const currentVariables = this.globalVariables.getAllVariables();
+
+            const scriptResult =
+              await this.scriptExecutorService.executePostRequestScript(
+                step.post_request,
+                currentVariables,
+                {
+                  method: interpolatedRequest.method,
+                  url:
+                    httpResult.request_details?.url || interpolatedRequest.url,
+                  headers: interpolatedRequest.headers || {},
+                  body: interpolatedRequest.body,
+                  params: interpolatedRequest.params,
+                },
+                {
+                  status: httpResult.response_details.status,
+                  status_code: httpResult.response_details.status,
+                  headers: httpResult.response_details.headers || {},
+                  body: httpResult.response_details.body,
+                  data: httpResult.response_details.body,
+                  response_time_ms: httpResult.response_time || 0,
+                },
+                discoveredTest?.file_path
+              );
+
+            // Apply variables set by the script
+            if (Object.keys(scriptResult.variables).length > 0) {
+              this.globalVariables.setRuntimeVariables(scriptResult.variables);
+              this.logger.debug(
+                `Post-request script set ${
+                  Object.keys(scriptResult.variables).length
+                } variable(s)`
+              );
+
+              // Also add to captured variables for this step
+              if (!httpResult.captured_variables) {
+                httpResult.captured_variables = {};
+              }
+              Object.assign(
+                httpResult.captured_variables,
+                scriptResult.variables
+              );
+            }
+
+            // Log console output if any
+            if (
+              scriptResult.console_output &&
+              scriptResult.console_output.length > 0
+            ) {
+              scriptResult.console_output.forEach((log) =>
+                this.logger.debug(log)
+              );
+            }
+          } catch (error) {
+            const errorMessage =
+              error instanceof Error ? error.message : String(error);
+            this.logger.error(`Post-request script failed: ${errorMessage}`);
+
+            if (!step.post_request.continue_on_error) {
+              throw error;
+            }
+          }
+        }
 
         // 3. Process scenarios if they exist
         if (
@@ -1781,6 +1914,11 @@ export class ExecutionService {
 
       // Fires step end hook
       await this.hooks.onStepEnd?.(step, stepResult, context);
+
+      // **Execute delay if configured**
+      if (step.delay) {
+        await this.executeDelay(step.delay, step.name);
+      }
 
       return stepResult;
     } catch (error) {
@@ -2397,6 +2535,70 @@ export class ExecutionService {
     }
 
     result.request_details.raw_url = templateUrl;
+  }
+
+  /**
+   * Execute delay/wait based on DelayConfig.
+   * Supports fixed delays, interpolated delays, and random ranges.
+   *
+   * @param delayConfig - Delay configuration (number, string, or range object)
+   * @param stepName - Name of the step (for logging)
+   */
+  private async executeDelay(
+    delayConfig: DelayConfig,
+    stepName: string
+  ): Promise<void> {
+    let delayMs: number;
+
+    if (typeof delayConfig === "number") {
+      // Fixed delay
+      delayMs = delayConfig;
+    } else if (typeof delayConfig === "string") {
+      // Interpolated delay
+      const interpolated = this.globalVariables.interpolate({
+        delay: delayConfig,
+      });
+      const parsedDelay = parseInt(String(interpolated.delay), 10);
+
+      if (isNaN(parsedDelay) || parsedDelay < 0) {
+        this.logger.warn(
+          `Invalid interpolated delay value for step '${stepName}': ${interpolated.delay}. Skipping delay.`
+        );
+        return;
+      }
+
+      delayMs = parsedDelay;
+    } else if (
+      typeof delayConfig === "object" &&
+      "min" in delayConfig &&
+      "max" in delayConfig
+    ) {
+      // Random range delay
+      const min = delayConfig.min;
+      const max = delayConfig.max;
+
+      if (min < 0 || max < 0 || min > max) {
+        this.logger.warn(
+          `Invalid delay range for step '${stepName}': min=${min}, max=${max}. Skipping delay.`
+        );
+        return;
+      }
+
+      delayMs = Math.floor(Math.random() * (max - min + 1)) + min;
+    } else {
+      this.logger.warn(
+        `Invalid delay configuration for step '${stepName}'. Skipping delay.`
+      );
+      return;
+    }
+
+    if (delayMs > 0) {
+      this.logger.info(
+        `⏳ Waiting ${delayMs}ms before next step (step: ${stepName})...`
+      );
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+      this.logger.debug(`✅ Delay completed (${delayMs}ms)`);
+    }
   }
 
   /**

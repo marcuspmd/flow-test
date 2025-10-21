@@ -5,7 +5,7 @@ module.exports = {
   testEnvironment: 'node',
 
   // Diretórios e arquivos
-  roots: ['<rootDir>/src'],
+  roots: ['<rootDir>/src', '<rootDir>/tests'],
   testMatch: [
     '**/__tests__/**/*.ts',
     '**/*.test.ts',

@@ -1,4 +1,10 @@
-import { EngineHooks, ExecutionStats, TestSuite, TestStep, ExecutionContext } from "../types/engine.types";
+import {
+  EngineHooks,
+  ExecutionStats,
+  TestSuite,
+  TestStep,
+  ExecutionContext,
+} from "../types/engine.types";
 import { LoggerService, getLogger } from "./logger.service";
 
 /**
@@ -9,7 +15,9 @@ export function createConsoleHooks(logger: LoggerService): EngineHooks {
 
   return {
     onExecutionStart: async (stats: ExecutionStats) => {
-      cliLogger.info(`🚀 Starting execution of ${stats.tests_discovered} test(s)`);
+      cliLogger.info(
+        `🚀 Starting execution of ${stats.tests_discovered} test(s)`
+      );
     },
 
     onTestDiscovered: async (test: any) => {
@@ -44,7 +52,11 @@ export function createConsoleHooks(logger: LoggerService): EngineHooks {
       );
     },
 
-    onStepEnd: async (step: TestStep, result: any, _context: ExecutionContext) => {
+    onStepEnd: async (
+      step: TestStep,
+      result: any,
+      _context: ExecutionContext
+    ) => {
       logger.info(`Step completed`, {
         stepName: step.name,
         duration: result.duration_ms,
@@ -59,6 +71,14 @@ export function createConsoleHooks(logger: LoggerService): EngineHooks {
       cliLogger.error(`💥 Engine error: ${error.message}`, {
         error,
       });
+    },
+
+    onExecutionEnd: async (stats: ExecutionStats) => {
+      cliLogger.info(
+        `🏁 Execution completed with ${(
+          (stats.tests_successful / stats.tests_completed) * 100 || 0
+        ).toFixed(1)}% success rate`
+      );
     },
   };
 }
