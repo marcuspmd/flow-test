@@ -23,6 +23,7 @@ import {
 } from "./comparison.strategy";
 import { LengthStrategy, MinLengthStrategy } from "./length.strategy";
 import { NotEmptyStrategy } from "./not-empty.strategy";
+import { InStrategy, NotInStrategy } from "./in.strategy";
 
 // Export all strategies
 export * from "./assertion-strategy.interface";
@@ -35,6 +36,7 @@ export * from "./exists.strategy";
 export * from "./comparison.strategy";
 export * from "./length.strategy";
 export * from "./not-empty.strategy";
+export * from "./in.strategy";
 
 /**
  * Creates and returns the default set of assertion strategies.
@@ -68,6 +70,8 @@ export function getDefaultStrategies(): AssertionStrategy[] {
     new LengthStrategy(),
     new MinLengthStrategy(),
     new NotEmptyStrategy(),
+    new InStrategy(),
+    new NotInStrategy(),
   ];
 }
 

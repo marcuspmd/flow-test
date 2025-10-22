@@ -774,14 +774,42 @@ ${stepsMarkup}
         const passed = assertion.passed;
         const icon = passed ? "✅" : "❌";
         const statusClass = passed ? "assertion--passed" : "assertion--failed";
-        const path = ReportingUtils.escapeHtml(assertion.path || "");
+
+        // Use 'field' instead of 'path' as per AssertionResult interface
+        const field = ReportingUtils.escapeHtml(
+          assertion.field || assertion.path || "unknown"
+        );
         const message = ReportingUtils.escapeHtml(assertion.message || "");
+
+        // Format expected and actual values for better visibility
+        const expected =
+          assertion.expected !== undefined
+            ? ReportingUtils.escapeHtml(JSON.stringify(assertion.expected))
+            : "";
+        const actual =
+          assertion.actual !== undefined
+            ? ReportingUtils.escapeHtml(JSON.stringify(assertion.actual))
+            : "";
+
+        // Build detailed assertion info
+        let detailsHtml = "";
+        if (expected || actual) {
+          detailsHtml = `<div class="assertion-details">`;
+          if (expected) {
+            detailsHtml += `<span class="assertion-detail"><strong>Expected:</strong> ${expected}</span>`;
+          }
+          if (actual) {
+            detailsHtml += `<span class="assertion-detail"><strong>Actual:</strong> ${actual}</span>`;
+          }
+          detailsHtml += `</div>`;
+        }
 
         return `<div class="assertion ${statusClass}">
           <span class="assertion-icon">${icon}</span>
           <div class="assertion-content">
-            <div class="assertion-path">${path}</div>
-            <div class="assertion-message">${message}</div>
+            <div class="assertion-path"><strong>${field}</strong></div>
+            ${message ? `<div class="assertion-message">${message}</div>` : ""}
+            ${detailsHtml}
           </div>
         </div>`;
       })
@@ -1329,11 +1357,33 @@ ${stepsMarkup}
       .assertion-content { flex: 1; }
       .assertion-path {
         font-family: 'Consolas', 'Monaco', monospace;
+        font-size: 0.9rem;
+        color: var(--text);
+        margin-bottom: 4px;
+        font-weight: 600;
+      }
+      .assertion-message {
         font-size: 0.85rem;
         color: var(--muted);
-        margin-bottom: 4px;
+        margin-bottom: 6px;
       }
-      .assertion-message { font-size: 0.9rem; color: var(--text); }
+      .assertion-details {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        margin-top: 8px;
+        padding-top: 8px;
+        border-top: 1px solid var(--border);
+      }
+      .assertion-detail {
+        font-family: 'Consolas', 'Monaco', monospace;
+        font-size: 0.8rem;
+        color: var(--muted);
+      }
+      .assertion-detail strong {
+        color: var(--text);
+        margin-right: 6px;
+      }
       .capture-item {
         display: flex;
         flex-direction: column;

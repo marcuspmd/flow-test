@@ -1,0 +1,49 @@
+node_id: "assertions-demo"
+suite_name: "Demonstração de Assertions Detalhadas"
+
+metadata:
+  priority: "medium"
+  tags: ["demo", "assertions"]
+
+base_url: "{{httpbin_url}}"
+
+steps:
+  - name: "Teste com múltiplas assertions"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+        X-Custom-Header: "test-value"
+      body:
+        username: "john_doe"
+        email: "john@example.com"
+        age: 25
+        active: true
+        roles: ["user", "admin"]
+
+    assert:
+      status_code: 200
+
+      headers:
+        Content-Type:
+          contains: "application/json"
+
+      body:
+        json:
+          username:
+            equals: "john_doe"
+            type: "string"
+          email:
+            regex: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
+          age:
+            type: "number"
+            greater_than: 18
+            less_than: 100
+          active:
+            equals: true
+            type: "boolean"
+          roles:
+            type: "array"
+            length:
+              equals: 2

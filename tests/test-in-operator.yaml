@@ -1,0 +1,42 @@
+suite_name: "Test IN Operator"
+node_id: "test-in-operator"
+base_url: "https://httpbin.org"
+
+steps:
+  - name: "Test status_code with IN operator"
+    request:
+      method: GET
+      url: "/status/200"
+    assert:
+      status_code:
+        in: [200, 201, 202]
+
+  - name: "Test status_code with NOT_IN operator"
+    request:
+      method: GET
+      url: "/status/200"
+    assert:
+      status_code:
+        not_in: [400, 404, 500]
+
+  - name: "Test body field with IN"
+    request:
+      method: POST
+      url: "/anything"
+      body:
+        status: "active"
+        type: "user"
+    assert:
+      body:
+        status: { in: ["active", "pending", "processing"] }
+        type: { in: ["user", "admin"] }
+
+  - name: "Test body field with NOT_IN"
+    request:
+      method: POST
+      url: "/anything"
+      body:
+        status: "active"
+    assert:
+      body:
+        status: { not_in: ["deleted", "banned", "suspended"] }

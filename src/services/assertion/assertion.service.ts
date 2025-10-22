@@ -566,6 +566,10 @@ export class AssertionService {
           results.push(result);
         }
       } else {
+        // Skip array indices (0, 1, 2...) when iterating over arrays
+        if (!isNaN(Number(checkKey))) {
+          continue;
+        }
         // Fallback for unknown check types
         this.logger.warn(`Unknown assertion check: ${checkKey}`);
       }
