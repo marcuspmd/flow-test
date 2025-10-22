@@ -19,6 +19,13 @@ export interface StepCallConfig {
   step: string;
   /** Variáveis a serem passadas para o contexto do step chamado */
   variables?: Record<string, any>;
+  /**
+   * Alias para prefixar variáveis capturadas (opcional)
+   * - Se definido: variáveis serão prefixadas com "alias." (ex: "auth.access_token")
+   * - Se não definido: variáveis serão prefixadas com "node_id." (ex: "func_auth.access_token")
+   * - Útil para evitar prefixos longos e melhorar legibilidade
+   */
+  alias?: string;
   /** Executa em contexto isolado (default: true) */
   isolate_context?: boolean;
   /** Estratégia de erro: fail | continue | warn (default: fail) */
@@ -37,6 +44,7 @@ export interface StepCallRequest {
   path_type?: "relative" | "absolute";
   step: string;
   variables?: Record<string, any>;
+  alias?: string;
   isolate_context?: boolean;
   timeout?: number;
   retry?: {
@@ -58,6 +66,30 @@ export interface StepCallResult {
   suite_name?: string;
   suite_node_id?: string;
   status?: "success" | "failure" | "skipped";
+  /** Detalhes da requisição HTTP executada (se houver) */
+  request_details?: {
+    method: string;
+    url: string;
+    headers?: Record<string, string>;
+    body?: any;
+    full_url?: string;
+    curl_command?: string;
+    raw_request?: string;
+    raw_url?: string;
+    base_url?: string;
+  };
+  /** Detalhes da resposta HTTP recebida (se houver) */
+  response_details?: {
+    status_code: number;
+    headers: Record<string, string>;
+    body: any;
+    size_bytes: number;
+    raw_response?: string;
+  };
+  /** Resultados das assertions executadas */
+  assertions_results?: import("./config.types").AssertionResult[];
+  /** Steps aninhados executados dentro desta call (para calls recursivos) */
+  nested_steps?: import("./config.types").StepExecutionResult[];
 }
 
 export interface StepCallExecutionOptions {

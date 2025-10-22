@@ -117,6 +117,9 @@ export class CallStepStrategy implements StepExecutionStrategy {
         globalVariables
       );
       const isolateContext = callConfig.isolate_context ?? true;
+      const alias = callConfig.alias
+        ? globalVariables.interpolateString(callConfig.alias).trim()
+        : undefined;
 
       // **6. Build call request and options**
       const callRequest: StepCallRequest = {
@@ -124,6 +127,7 @@ export class CallStepStrategy implements StepExecutionStrategy {
         path_type: callConfig.path_type,
         step: resolvedStepKey,
         variables: interpolatedVariables,
+        alias: alias, // Pass alias to CallService for variable prefixing
         isolate_context: isolateContext,
         timeout: callConfig.timeout,
         retry: callConfig.retry,
@@ -143,15 +147,17 @@ export class CallStepStrategy implements StepExecutionStrategy {
       };
 
       const callLabel = `${resolvedTestPath}::${resolvedStepKey}`;
+      const aliasLabel = alias ? ` [alias: ${alias}]` : "";
 
       logger.info(
-        `📞 Calling step '${callLabel}' (isolate=${isolateContext})`,
+        `📞 Calling step '${callLabel}'${aliasLabel} (isolate=${isolateContext})`,
         {
           stepName: step.name,
           metadata: {
             type: "step_call",
             internal: true,
             suite: suite.suite_name,
+            alias: alias,
           },
         }
       );
@@ -209,7 +215,15 @@ export class CallStepStrategy implements StepExecutionStrategy {
           globalVariables.getAllVariables()
         ),
         error_message: callResult.error,
-        assertions_results: [],
+        // Include request/response details from nested call execution
+        request_details: callResult.request_details,
+        response_details: callResult.response_details,
+        // Include assertions executed in the nested call
+        assertions_results: callResult.assertions_results || [],
+        // Include nested steps if present (for recursive calls or scenarios)
+        ...(callResult.nested_steps && callResult.nested_steps.length > 0
+          ? { scenarios_results: callResult.nested_steps }
+          : {}),
       };
 
       return result;

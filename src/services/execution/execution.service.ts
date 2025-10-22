@@ -9,9 +9,21 @@
  * @packageDocumentation
  */
 
+import { injectable, inject } from "inversify";
 import fs from "fs";
 import path from "path";
 import yaml from "js-yaml";
+import { TYPES } from "../../di/identifiers";
+import type { ILogger } from "../../interfaces/services/ILogger";
+import type { IConfigManager } from "../../interfaces/services/IConfigManager";
+import type { IGlobalRegistryService } from "../../interfaces/services/IGlobalRegistryService";
+import type { IHttpService } from "../../interfaces/services/IHttpService";
+import type { IVariableService } from "../../interfaces/services/IVariableService";
+import type { IAssertionService } from "../../interfaces/services/IAssertionService";
+import type { ICaptureService } from "../../interfaces/services/ICaptureService";
+import type { IExecutionService } from "../../interfaces/services/IExecutionService";
+import type { IPriorityService } from "../../interfaces/services/IPriorityService";
+import type { IDependencyService } from "../../interfaces/services/IDependencyService";
 import { ConfigManager } from "../../core/config";
 import { VariableService } from "../variable.service";
 import { PriorityService } from "../priority";
@@ -25,8 +37,6 @@ import {
 import { CertificateService } from "../certificate";
 import { AssertionService } from "../assertion";
 import { CaptureService } from "../capture.service";
-import { ComputedService } from "../computed.service";
-import { DynamicExpressionService } from "../dynamic-expression.service";
 import { ScenarioService } from "../scenario.service";
 import { IterationService } from "../iteration.service";
 import { InputService } from "../input";
@@ -163,25 +173,24 @@ type StepFilterSets = {
  * @public
  * @since 1.0.0
  */
-export class ExecutionService {
-  private configManager: ConfigManager;
-  private globalVariables: VariableService;
-  private priorityService: PriorityService;
-  private dependencyService: DependencyService;
-  private globalRegistry: GlobalRegistryService;
-  private hooks: EngineHooks;
-  private logger = getLogger();
+@injectable()
+export class ExecutionService implements IExecutionService {
+  private logger: ILogger;
+  private configManager: IConfigManager;
+  private globalVariables: IVariableService;
+  private globalRegistry: IGlobalRegistryService;
+  private httpService: IHttpService;
+  private assertionService: IAssertionService;
+  private captureService: ICaptureService;
 
-  // Services reused from previous version
-  private httpService: HttpService;
+  // DI services now fully migrated
+  private priorityService: IPriorityService;
+  private dependencyService: IDependencyService;
   private certificateService?: CertificateService;
-  private assertionService: AssertionService;
-  private captureService: CaptureService;
+  private hooks: EngineHooks;
   private scenarioService: ScenarioService;
   private iterationService: IterationService;
   private inputService: InputService;
-  private computedService: ComputedService;
-  private dynamicExpressionService: DynamicExpressionService;
   private callService: CallService;
   private scriptExecutorService: ScriptExecutorService;
   private javascriptService: JavaScriptService;
@@ -201,64 +210,57 @@ export class ExecutionService {
   };
 
   constructor(
-    configManager: ConfigManager,
-    globalVariables: VariableService,
-    priorityService: PriorityService,
-    dependencyService: DependencyService,
-    globalRegistry: GlobalRegistryService,
+    @inject(TYPES.ILogger) logger: ILogger,
+    @inject(TYPES.IConfigManager) configManager: IConfigManager,
+    @inject(TYPES.IGlobalRegistryService)
+    globalRegistry: IGlobalRegistryService,
+    @inject(TYPES.IHttpService) httpService: IHttpService,
+    @inject(TYPES.IVariableService) globalVariables: IVariableService,
+    @inject(TYPES.IAssertionService) assertionService: IAssertionService,
+    @inject(TYPES.ICaptureService) captureService: ICaptureService,
+    @inject(TYPES.IPriorityService) priorityService: IPriorityService,
+    @inject(TYPES.IDependencyService) dependencyService: IDependencyService,
     hooks: EngineHooks = {},
     executionOptions?: EngineExecutionOptions
   ) {
+    this.logger = logger;
     this.configManager = configManager;
+    this.globalRegistry = globalRegistry;
+    this.httpService = httpService;
     this.globalVariables = globalVariables;
+    this.assertionService = assertionService;
+    this.captureService = captureService;
+
+    // DI services now fully migrated
     this.priorityService = priorityService;
     this.dependencyService = dependencyService;
-    this.globalRegistry = globalRegistry;
     this.hooks = hooks;
 
     const config = configManager.getConfig();
 
     // Initialize certificate service (always, even if no global certificates)
     // This allows suite-level and step-level certificates to work
-    this.certificateService = new CertificateService(
-      config.globals?.certificates || []
-    );
-    if (
-      config.globals?.certificates &&
-      config.globals.certificates.length > 0
-    ) {
+    const certificates = config.globals?.certificates || [];
+    this.certificateService = new CertificateService();
+    if (certificates.length > 0) {
       this.logger.info(
-        `Certificate service initialized with ${config.globals.certificates.length} global certificate(s)`
+        `Certificate service initialized with ${certificates.length} global certificate(s)`
       );
     } else {
       this.logger.debug(
         "Certificate service initialized (no global certificates)"
       );
     }
-
-    // Initializes HTTP services with global configuration
-    this.httpService = new HttpService(
-      config.globals?.base_url,
-      config.execution?.timeout || config.globals?.timeouts?.default || 60000,
-      this.certificateService
-    );
-    this.assertionService = new AssertionService();
-    this.captureService = new CaptureService();
     this.iterationService = new IterationService();
     this.scenarioService = new ScenarioService();
     this.inputService = new InputService(
       executionOptions?.runner_interactive_mode || false
     );
-    this.computedService = new ComputedService();
-    this.dynamicExpressionService = new DynamicExpressionService(
-      this.captureService,
-      this.computedService
-    );
     this.callService = new CallService(this.executeResolvedStepCall.bind(this));
-    this.scriptExecutorService = new ScriptExecutorService(this.logger);
+    this.scriptExecutorService = new ScriptExecutorService(this.logger as any); // TODO: Remove cast when ScriptExecutorService uses ILogger
     this.javascriptService = new JavaScriptService();
     this.hookExecutorService = new HookExecutorService(
-      this.globalVariables,
+      this.globalVariables as any, // TODO: Remove cast when HookExecutorService uses IVariableService
       this.javascriptService,
       this.callService
     );
@@ -376,6 +378,53 @@ export class ExecutionService {
       .replace(/[^a-z0-9_.:-]/g, "-")
       .replace(/-+/g, "-")
       .replace(/^-|-$/g, "");
+  }
+
+  /**
+   * Execute a single test suite (IExecutionService interface method)
+   */
+  async executeSuite(
+    test: DiscoveredTest,
+    options?: {
+      stepIds?: string[];
+      skipDependencies?: boolean;
+    }
+  ): Promise<SuiteExecutionResult> {
+    // Execute single suite - delegates to executeTests
+    const results = await this.executeTests([test]);
+    return results[0];
+  }
+
+  /**
+   * Execute multiple test suites (IExecutionService interface method)
+   */
+  async executeSuites(
+    tests: DiscoveredTest[],
+    executionMode?: "sequential" | "parallel"
+  ): Promise<SuiteExecutionResult[]> {
+    return this.executeTests(tests);
+  }
+
+  /**
+   * Aggregate execution statistics (IExecutionService interface method)
+   */
+  aggregateStats(results: SuiteExecutionResult[]): ExecutionStats {
+    const stats: ExecutionStats = {
+      tests_discovered: results.length,
+      tests_completed: results.length,
+      tests_successful: results.filter((r) => r.status === "success").length,
+      tests_failed: results.filter((r) => r.status === "failure").length,
+      tests_skipped: results.filter((r) => r.status === "skipped").length,
+      requests_made: results.reduce(
+        (sum, r) => sum + (r.steps_executed || 0),
+        0
+      ),
+      total_response_time_ms: results.reduce(
+        (sum, r) => sum + (r.duration_ms || 0),
+        0
+      ),
+    };
+    return stats;
   }
 
   /**
@@ -742,9 +791,6 @@ export class ExecutionService {
         { metadata: { type: "internal_debug", internal: true } }
       );
 
-      // Reset dynamic definitions registered by previous suites
-      this.dynamicExpressionService.reset();
-
       // Configures suite variables
       if (suite.variables) {
         this.globalVariables.setSuiteVariables(suite.variables);
@@ -765,14 +811,13 @@ export class ExecutionService {
         );
 
         this.logger.debug(
-          `Creating new HttpService for suite with certificateService: ${!!this
-            .certificateService}`
+          `Setting base URL for HttpService: ${interpolatedBaseUrl}`
         );
 
-        this.httpService = new HttpService(
-          interpolatedBaseUrl,
-          this.configManager.getConfig().execution?.timeout || 60000,
-          this.certificateService
+        // TODO: HttpService is now injected via DI, use setBaseUrl instead of creating new instance
+        this.httpService.setBaseUrl(interpolatedBaseUrl);
+        this.httpService.setTimeout(
+          this.configManager.getConfig().execution?.timeout || 60000
         );
       }
 
@@ -1178,19 +1223,18 @@ export class ExecutionService {
           stepNumber: stepIndex + 1,
         } as any,
         logger: this.logger,
-        globalVariables: this.globalVariables,
-        httpService: this.httpService,
-        assertionService: this.assertionService,
-        captureService: this.captureService,
+        globalVariables: this.globalVariables as any, // TODO: Strategies should use interfaces
+        httpService: this.httpService as any, // TODO: Strategies should use interfaces
+        assertionService: this.assertionService as any, // TODO: Strategies should use interfaces
+        captureService: this.captureService as any, // TODO: Strategies should use interfaces
         scenarioService: this.scenarioService,
         callService: this.callService,
         inputService: this.inputService,
         iterationService: this.iterationService,
-        dynamicExpressionService: this.dynamicExpressionService,
         scriptExecutorService: this.scriptExecutorService,
         hookExecutorService: this.hookExecutorService,
         hooks: this.hooks,
-        configManager: this.configManager,
+        configManager: this.configManager as any, // TODO: Strategies should use interfaces
         stepCallStack: this.stepCallStack,
         discoveredTest: discoveredTest as any,
       };
@@ -1238,9 +1282,6 @@ export class ExecutionService {
     const restoreVariables = shouldIsolate
       ? this.globalVariables.createSnapshot()
       : undefined;
-    const restoreDynamics = shouldIsolate
-      ? this.dynamicExpressionService.createSnapshot()
-      : undefined;
 
     const previousHttpService = this.httpService;
     const callStart = Date.now();
@@ -1257,7 +1298,8 @@ export class ExecutionService {
 
         // Variáveis do call têm prioridade sobre as da suite
         if (request.variables && Object.keys(request.variables).length > 0) {
-          this.globalVariables.setRuntimeVariables(request.variables);
+          // TODO: Add setRuntimeVariables to IVariableService interface
+          (this.globalVariables as any).setRuntimeVariables(request.variables);
         }
       } else {
         // Modo não-isolado: mantém contexto atual
@@ -1277,30 +1319,29 @@ export class ExecutionService {
             const interpolatedVars = this.globalVariables.interpolate(
               this.cloneData(suiteVarsToAdd)
             );
-            this.globalVariables.setRuntimeVariables(interpolatedVars);
+            // TODO: Add setRuntimeVariables to IVariableService interface
+            (this.globalVariables as any).setRuntimeVariables(interpolatedVars);
           }
         }
 
         // Variáveis do call sempre têm prioridade
         if (request.variables && Object.keys(request.variables).length > 0) {
-          this.globalVariables.setRuntimeVariables(request.variables);
+          // TODO: Add setRuntimeVariables to IVariableService interface
+          (this.globalVariables as any).setRuntimeVariables(request.variables);
         }
       }
 
       const baseUrl = resolved.suite.base_url
         ? this.globalVariables.interpolateString(resolved.suite.base_url)
-        : previousHttpService.getBaseUrl();
+        : (previousHttpService as any).getBaseUrl(); // TODO: Add getBaseUrl to IHttpService
       const timeout =
         request.timeout ??
         this.configManager.getConfig().execution?.timeout ??
         60000;
 
-      // Propaga o certificateService para o HttpService da suite chamada
-      this.httpService = new HttpService(
-        baseUrl,
-        timeout,
-        this.certificateService
-      );
+      // TODO: HttpService is now injected via DI, use setBaseUrl and setTimeout instead
+      this.httpService.setBaseUrl(baseUrl);
+      this.httpService.setTimeout(timeout);
 
       const callDiscovered: DiscoveredTest = {
         file_path: resolved.suitePath,
@@ -1332,7 +1373,8 @@ export class ExecutionService {
           ? this.processCapturedVariables(
               stepResult.captured_variables,
               resolved.suite,
-              shouldIsolate
+              shouldIsolate,
+              request.alias // Pass alias to use as prefix instead of node_id
             )
           : undefined;
 
@@ -1347,11 +1389,20 @@ export class ExecutionService {
         step_name: stepResult.step_name,
         suite_name: resolved.suite.suite_name,
         suite_node_id: resolved.suite.node_id,
+        // Propagate request/response details from nested step execution
+        request_details: stepResult.request_details,
+        response_details: stepResult.response_details,
+        assertions_results: stepResult.assertions_results,
+        // Include the full step result as nested_steps for visibility
+        // This allows callers to see all details of the executed step
+        nested_steps:
+          stepResult.request_details || stepResult.input_results
+            ? [stepResult]
+            : undefined,
       };
     } finally {
       this.httpService = previousHttpService;
       if (shouldIsolate) {
-        restoreDynamics?.();
         restoreVariables?.();
       }
     }
@@ -1552,18 +1603,29 @@ export class ExecutionService {
 
   /**
    * Processes captured variables, optionally applying namespace for exported variables
+   *
+   * @param capturedVariables - Variables captured from step execution
+   * @param suite - Test suite that was executed
+   * @param applyNamespace - Whether to apply namespace/alias prefix
+   * @param alias - Optional alias to use instead of node_id (useful for calls)
+   * @returns Processed variables with namespace/alias prefix if applicable
    */
   private processCapturedVariables(
     capturedVariables: Record<string, any>,
     suite: TestSuite,
-    applyNamespace: boolean = false
+    applyNamespace: boolean = false,
+    alias?: string
   ): Record<string, any> {
     const processedVariables: Record<string, any> = {};
 
     for (const [variableName, value] of Object.entries(capturedVariables)) {
-      const finalName = applyNamespace
-        ? `${suite.node_id}.${variableName}`
-        : variableName;
+      let finalName = variableName;
+
+      if (applyNamespace) {
+        // Use alias if provided, otherwise fallback to node_id
+        const prefix = alias || suite.node_id;
+        finalName = `${prefix}.${variableName}`;
+      }
 
       processedVariables[finalName] = value;
     }
@@ -1665,7 +1727,7 @@ export class ExecutionService {
     }
 
     const baseUrl =
-      result.request_details.base_url || this.httpService.getBaseUrl();
+      result.request_details.base_url || (this.httpService as any).getBaseUrl(); // TODO: Add getBaseUrl to IHttpService
 
     if (baseUrl && !result.request_details.base_url) {
       result.request_details.base_url = baseUrl;

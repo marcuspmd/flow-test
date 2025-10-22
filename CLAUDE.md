@@ -185,12 +185,39 @@ The `call` feature allows reusing steps from other YAML files:
 - Implemented in `src/services/call.service.ts`
 - Uses `CallService` to resolve and execute remote steps
 - Supports variable injection via `call.variables`
-- Context isolation by default (`isolate_context: true`) - captured variables return namespaced as `node_id.variable`
-- Set `isolate_context: false` to mutate parent scope
+- **Alias support** (`alias: "short_name"`): Use custom prefixes for captured variables instead of long node_ids
+  - With alias: `alias: "auth"` → variables like `auth.access_token`
+  - Without alias: variables prefixed with `node_id` → `func_auth.access_token`
+  - Alias is interpolated and supports variables
+- Context isolation by default (`isolate_context: true`) - captured variables return namespaced
+- Set `isolate_context: false` to mutate parent scope (no namespace applied)
+- **Full visibility**: Call steps now include `request_details`, `response_details`, `assertions_results` in JSON and HTML reports
 - Error strategies: `fail` (default), `warn`, `continue` (skips step)
 - Max recursion depth: 10 levels (prevents infinite loops)
 - Suite caching with file mtime validation
 - Paths must be relative to current file and sandboxed within `test_directory`
+
+**Example with alias:**
+```yaml
+steps:
+  - name: "Authenticate"
+    call:
+      test: "../functions/auth.yaml"
+      step: "get-token"
+      alias: "auth"  # Variables will be prefixed with "auth." instead of node_id
+      isolate_context: false
+      variables:
+        username: "{{env.API_USERNAME}}"
+        password: "{{env.API_PASSWORD}}"
+    # Captured variables accessible as: auth.access_token, auth.token_expires_in
+
+  - name: "Use token"
+    request:
+      method: GET
+      url: "/api/protected-resource"
+      headers:
+        Authorization: "Bearer {{auth.access_token}}"
+```
 
 ### Variable Resolution Priority
 Variables are resolved in this order (highest to lowest):
