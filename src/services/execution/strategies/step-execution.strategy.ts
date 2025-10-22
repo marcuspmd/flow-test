@@ -22,7 +22,7 @@ import type {
   DiscoveredTest,
   EngineHooks,
 } from "../../../types/engine.types";
-import type { GlobalVariablesService } from "../../global-variables";
+import type { VariableService } from "../../variable.service";
 import type { HttpService } from "../../http.service";
 import type { AssertionService } from "../../assertion";
 import type { CaptureService } from "../../capture.service";
@@ -82,7 +82,7 @@ export interface StepExecutionContext {
   // Core Services (injected once, reused across strategies)
 
   /** Global variables service for variable interpolation and scoping */
-  readonly globalVariables: GlobalVariablesService;
+  readonly globalVariables: VariableService;
 
   /** HTTP service for executing requests */
   readonly httpService: HttpService;

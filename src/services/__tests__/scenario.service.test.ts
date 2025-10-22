@@ -1,12 +1,12 @@
 import { ScenarioService } from "../scenario.service";
 import { ConditionalScenario, Assertions } from "../../types/engine.types";
 import { StepExecutionResult } from "../../types/config.types";
-import { AssertionService } from "../assertion";
+import { AssertionService } from "../assertion"; // Já está correto!
 import { CaptureService } from "../capture.service";
 import * as jmespath from "jmespath";
 
 // Mock dependencies
-jest.mock("../assertion.service");
+jest.mock("../assertion"); // Corrigido: agora aponta para o index.ts
 jest.mock("../capture.service");
 jest.mock("../logger.service", () => ({
   getLogger: () => ({
@@ -248,7 +248,7 @@ describe("ScenarioService", () => {
       scenarioService.processScenarios(scenarios, mockResult, "simple");
 
       expect(mockResult.status).toBe("failure");
-      expect(mockResult.error_message).toContain("Scenario error:");
+      expect(mockResult.error_message).toContain("Scenario error at index");
     });
 
     it("should handle failed assertions in scenario", () => {

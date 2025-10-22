@@ -9,6 +9,8 @@
  * @packageDocumentation
  */
 
+import { ErrorHandler } from "../utils";
+
 /**
  * Execution context available in JavaScript expressions with comprehensive data access.
  *
@@ -132,40 +134,50 @@ export class JavaScriptService {
       throw new Error(`Invalid JavaScript expression: ${validation.reason}`);
     }
 
-    try {
-      // Create sandbox with context
-      const sandbox = this.createSandbox(context);
+    return ErrorHandler.handle(
+      () => {
+        // Create sandbox with context
+        const sandbox = this.createSandbox(context);
 
-      // Create parameter names and values for the Function constructor
-      const paramNames = Object.keys(sandbox);
-      const paramValues = paramNames.map((name) => sandbox[name]);
+        // Create parameter names and values for the Function constructor
+        const paramNames = Object.keys(sandbox);
+        const paramValues = paramNames.map((name) => sandbox[name]);
 
-      // Create a secure function with timeout
-      const timeoutMs = this.config.timeout;
-      const wrappedExpression = `
-        var startTime = Date.now();
-        var checkTimeout = function() {
-          if (Date.now() - startTime > ${timeoutMs}) {
-            throw new Error('JavaScript expression timeout exceeded');
+        // Create a secure function with timeout
+        const timeoutMs = this.config.timeout;
+        const wrappedExpression = `
+          var startTime = Date.now();
+          var checkTimeout = function() {
+            if (Date.now() - startTime > ${timeoutMs}) {
+              throw new Error('JavaScript expression timeout exceeded');
+            }
+          };
+
+          // Simple timeout check (not perfect but better than nothing)
+          try {
+            ${asCodeBlock ? expression : `return (${expression});`}
+          } catch (error) {
+            throw error;
           }
-        };
+        `;
 
-        // Simple timeout check (not perfect but better than nothing)
-        try {
-          ${asCodeBlock ? expression : `return (${expression});`}
-        } catch (error) {
-          throw error;
-        }
-      `;
+        // Execute in isolated function scope
+        const func = new Function(...paramNames, wrappedExpression);
+        const result = func.apply(null, paramValues);
 
-      // Execute in isolated function scope
-      const func = new Function(...paramNames, wrappedExpression);
-      const result = func.apply(null, paramValues);
-
-      return result;
-    } catch (error) {
-      throw new Error(`JavaScript execution error: ${error}`);
-    }
+        return result;
+      },
+      {
+        message: "JavaScript execution error",
+        context: {
+          expression:
+            expression.substring(0, 100) +
+            (expression.length > 100 ? "..." : ""),
+          asCodeBlock,
+        },
+        rethrow: true,
+      }
+    );
   }
 
   /**

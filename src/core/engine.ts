@@ -13,7 +13,7 @@ import fs from "fs";
 import yaml from "js-yaml";
 import { ConfigManager } from "./config";
 import { TestDiscovery } from "./discovery";
-import { GlobalVariablesService } from "../services/global-variables";
+import { VariableService } from "../services/variable.service";
 import { PriorityService } from "../services/priority";
 import { DependencyService } from "../services/dependency.service";
 import { GlobalRegistryService } from "../services/global-registry.service";
@@ -116,7 +116,7 @@ import {
  *       .filter(Boolean)
  *       .join(', ');
  *     console.log(`   🔗 Dependencies: ${dependencyNodeIds}`);
-*   }
+ *   }
  * });
  * ```
  *
@@ -131,7 +131,7 @@ export class FlowTestEngine {
   private testDiscovery: TestDiscovery;
 
   /** Global variables management service for inter-suite communication */
-  private globalVariables: GlobalVariablesService;
+  private globalVariables: VariableService;
 
   /** Priority-based sorting and execution service */
   private priorityService: PriorityService;
@@ -200,7 +200,7 @@ export class FlowTestEngine {
    *     timeout_ms: 30000
    *   },
    *   reporting: {
- *     formats: ['json'],
+   *     formats: ['json'],
    *     output_directory: './test-reports'
    *   },
    *   filters: {
@@ -262,7 +262,7 @@ export class FlowTestEngine {
       this.configManager.getConfig().test_directory
     );
     this.globalRegistry = new GlobalRegistryService();
-    this.globalVariables = new GlobalVariablesService(
+    this.globalVariables = new VariableService(
       this.configManager,
       this.globalRegistry
     );
@@ -549,7 +549,9 @@ export class FlowTestEngine {
 
       return suite?.metadata?.tags || [];
     } catch (error) {
-      getLogger().warn(`Warning: Could not read tags from ${filePath}: ${error}`);
+      getLogger().warn(
+        `Warning: Could not read tags from ${filePath}: ${error}`
+      );
       return [];
     }
   }

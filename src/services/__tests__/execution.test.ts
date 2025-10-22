@@ -1,6 +1,6 @@
 import { ExecutionService } from "../execution";
 import { ConfigManager } from "../../core/config";
-import { GlobalVariablesService } from "../global-variables";
+import { VariableService } from "../variable.service";
 import { PriorityService } from "../priority";
 import { DependencyService } from "../dependency.service";
 import { GlobalRegistryService } from "../global-registry.service";
@@ -18,7 +18,7 @@ import {
 
 // Mock all dependencies
 jest.mock("../../core/config");
-jest.mock("../global-variables");
+jest.mock("../variable.service");
 jest.mock("../priority");
 jest.mock("../dependency.service");
 jest.mock("../global-registry.service");
@@ -46,7 +46,7 @@ jest.mock("../logger.service", () => ({
 describe("ExecutionService", () => {
   let executionService: ExecutionService;
   let mockConfigManager: jest.Mocked<ConfigManager>;
-  let mockGlobalVariablesService: jest.Mocked<GlobalVariablesService>;
+  let mockVariableService: jest.Mocked<VariableService>;
   let mockPriorityService: jest.Mocked<PriorityService>;
   let mockDependencyService: jest.Mocked<DependencyService>;
   let mockGlobalRegistryService: jest.Mocked<GlobalRegistryService>;
@@ -127,7 +127,7 @@ describe("ExecutionService", () => {
       getRuntimeFilters: jest.fn().mockReturnValue({}),
     } as any;
 
-    mockGlobalVariablesService = {
+    mockVariableService = {
       getVariablesByScope: jest.fn().mockReturnValue({}),
       setSuiteVariables: jest.fn(),
       setDependencies: jest.fn(),
@@ -163,7 +163,7 @@ describe("ExecutionService", () => {
     // Create service instance
     executionService = new ExecutionService(
       mockConfigManager,
-      mockGlobalVariablesService,
+      mockVariableService,
       mockPriorityService,
       mockDependencyService,
       mockGlobalRegistryService
@@ -479,7 +479,7 @@ describe("ExecutionService", () => {
     it("should handle undefined hooks parameter", () => {
       const serviceWithoutHooks = new ExecutionService(
         mockConfigManager,
-        mockGlobalVariablesService,
+        mockVariableService,
         mockPriorityService,
         mockDependencyService,
         mockGlobalRegistryService
@@ -503,7 +503,7 @@ describe("ExecutionService", () => {
 
       const parallelService = new ExecutionService(
         mockConfigManager,
-        mockGlobalVariablesService,
+        mockVariableService,
         mockPriorityService,
         mockDependencyService,
         mockGlobalRegistryService
@@ -523,7 +523,7 @@ describe("ExecutionService", () => {
 
       const serviceWithDefaults = new ExecutionService(
         mockConfigManager,
-        mockGlobalVariablesService,
+        mockVariableService,
         mockPriorityService,
         mockDependencyService,
         mockGlobalRegistryService
@@ -898,7 +898,7 @@ describe("ExecutionService", () => {
         api_key: "secret",
       };
 
-      mockGlobalVariablesService.getAllVariables = jest
+      mockVariableService.getAllVariables = jest
         .fn()
         .mockReturnValue(variables);
 
@@ -983,7 +983,7 @@ describe("ExecutionService", () => {
     it("should execute interpolated delay", async () => {
       jest.useFakeTimers();
 
-      mockGlobalVariablesService.interpolate = jest
+      mockVariableService.interpolate = jest
         .fn()
         .mockReturnValue({ delay: "500" });
 
@@ -995,7 +995,7 @@ describe("ExecutionService", () => {
       jest.advanceTimersByTime(500);
       await delayPromise;
 
-      expect(mockGlobalVariablesService.interpolate).toHaveBeenCalled();
+      expect(mockVariableService.interpolate).toHaveBeenCalled();
 
       jest.useRealTimers();
     });
@@ -1239,7 +1239,7 @@ describe("ExecutionService", () => {
 
   describe("interpolate call variables", () => {
     it("should interpolate call variables", () => {
-      mockGlobalVariablesService.interpolate = jest
+      mockVariableService.interpolate = jest
         .fn()
         .mockReturnValue({ username: "john", token: "abc123" });
 
@@ -1249,7 +1249,7 @@ describe("ExecutionService", () => {
       );
 
       expect(result).toEqual({ username: "john", token: "abc123" });
-      expect(mockGlobalVariablesService.interpolate).toHaveBeenCalled();
+      expect(mockVariableService.interpolate).toHaveBeenCalled();
     });
 
     it("should return undefined for no variables", () => {
@@ -1514,7 +1514,7 @@ describe("ExecutionService", () => {
       };
 
       mockDependencyService.getCachedResult.mockReturnValue(null);
-      mockGlobalVariablesService.getVariablesByScope = jest
+      mockVariableService.getVariablesByScope = jest
         .fn()
         .mockReturnValue({ token: "abc123", user_id: "456" });
 
@@ -1722,7 +1722,7 @@ describe("ExecutionService", () => {
       await (executionService as any).executeSingleTest(mockDiscoveredTest);
 
       expect(
-        mockGlobalVariablesService.clearAllNonGlobalVariables
+        mockVariableService.clearAllNonGlobalVariables
       ).toHaveBeenCalled();
     });
 
@@ -1735,7 +1735,7 @@ describe("ExecutionService", () => {
 
       await (executionService as any).executeSingleTest(mockDiscoveredTest);
 
-      expect(mockGlobalVariablesService.setSuiteVariables).toHaveBeenCalledWith(
+      expect(mockVariableService.setSuiteVariables).toHaveBeenCalledWith(
         mockTestSuite.variables
       );
     });
@@ -1757,7 +1757,7 @@ describe("ExecutionService", () => {
 
       await (executionService as any).executeSingleTest(testWithDeps);
 
-      expect(mockGlobalVariablesService.setDependencies).toHaveBeenCalledWith([
+      expect(mockVariableService.setDependencies).toHaveBeenCalledWith([
         "dep-1",
         "dep-2",
       ]);
@@ -1817,7 +1817,7 @@ describe("ExecutionService", () => {
       const onSuiteStart = jest.fn();
       const serviceWithHooks = new ExecutionService(
         mockConfigManager,
-        mockGlobalVariablesService,
+        mockVariableService,
         mockPriorityService,
         mockDependencyService,
         mockGlobalRegistryService,
@@ -1849,7 +1849,7 @@ describe("ExecutionService", () => {
       const onSuiteEnd = jest.fn();
       const serviceWithHooks = new ExecutionService(
         mockConfigManager,
-        mockGlobalVariablesService,
+        mockVariableService,
         mockPriorityService,
         mockDependencyService,
         mockGlobalRegistryService,

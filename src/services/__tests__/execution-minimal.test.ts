@@ -1,6 +1,6 @@
 import { ExecutionService } from "../execution";
 import { ConfigManager } from "../../core/config";
-import { GlobalVariablesService } from "../global-variables";
+import { VariableService } from "../variable.service";
 import { PriorityService } from "../priority";
 import { DependencyService } from "../dependency.service";
 import { GlobalRegistryService } from "../global-registry.service";
@@ -15,7 +15,7 @@ import path from "path";
 
 // Mock all dependencies
 jest.mock("../../core/config");
-jest.mock("../global-variables");
+jest.mock("../variable.service");
 jest.mock("../priority");
 jest.mock("../dependency.service");
 jest.mock("../global-registry.service");
@@ -36,7 +36,7 @@ jest.mock("../logger.service", () => ({
 describe("ExecutionService", () => {
   let executionService: ExecutionService;
   let mockConfigManager: jest.Mocked<ConfigManager>;
-  let mockGlobalVariablesService: jest.Mocked<GlobalVariablesService>;
+  let mockGlobalVariablesService: jest.Mocked<VariableService>;
   let mockPriorityService: jest.Mocked<PriorityService>;
   let mockDependencyService: jest.Mocked<DependencyService>;
   let mockGlobalRegistryService: jest.Mocked<GlobalRegistryService>;

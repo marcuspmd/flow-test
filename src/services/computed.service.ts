@@ -8,6 +8,7 @@ import {
   javascriptService,
   JavaScriptExecutionContext,
 } from "./javascript.service";
+import { ErrorHandler } from "../utils";
 
 /**
  * Execution context supplied to {@link ComputedService} evaluators.
@@ -92,19 +93,15 @@ export class ComputedService {
       },
     };
 
-    try {
-      const result = javascriptService.executeExpression(
-        expression,
-        jsContext,
-        false
-      );
-      return result;
-    } catch (error) {
-      this.logger.error(
-        `Computed expression evaluation failed: ${expression} -> ${error}`
-      );
-      throw error;
-    }
+    return ErrorHandler.handle(
+      () => javascriptService.executeExpression(expression, jsContext, false),
+      {
+        message: `Computed expression evaluation failed`,
+        context: { expression },
+        rethrow: true,
+        logger: this.logger,
+      }
+    ) as any;
   }
 
   /**

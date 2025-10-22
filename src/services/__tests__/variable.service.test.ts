@@ -3,10 +3,7 @@
  * Cobertura abrangente da interface pública
  */
 
-import { VariableService } from "../variable.service";
-import { GlobalVariableContext } from "../../types/config.types";
-
-// Mock do logger
+// Mock do logger - DEVE vir antes de qualquer import
 const mockLogger = {
   info: jest.fn(),
   error: jest.fn(),
@@ -18,25 +15,8 @@ jest.mock("../logger.service", () => ({
   getLogger: () => mockLogger,
 }));
 
-// Mock do faker service
-jest.mock("../faker.service", () => ({
-  fakerService: {
-    parseFakerExpression: jest.fn((expression: string) => {
-      if (expression === "faker.internet.email") return "test@example.com";
-      if (expression === "faker.person.firstName") return "John";
-      if (expression === "faker.datatype.number") return 42;
-      return `mocked_${expression}`;
-    }),
-  },
-}));
-
-// Mock do javascript service
-jest.mock("../javascript.service", () => ({
-  javascriptService: {
-    parseJavaScriptExpression: jest.fn(),
-    executeExpression: jest.fn(),
-  },
-}));
+import { VariableService } from "../variable.service";
+import { GlobalVariableContext } from "../../types/config.types";
 
 describe("VariableService", () => {
   let service: VariableService;
@@ -119,12 +99,15 @@ describe("VariableService", () => {
 
     it("should interpolate faker expressions", () => {
       const result = service.interpolate("Email: {{faker.internet.email}}");
-      expect(result).toBe("Email: test@example.com");
+      // Faker agora retorna valores reais (não mockados), então verificamos apenas o formato
+      expect(result).toMatch(/Email: .+@.+\..+/);
     });
 
     it("should interpolate $faker expressions", () => {
       const result = service.interpolate("Name: {{$faker.person.firstName}}");
-      expect(result).toBe("Name: John");
+      // Faker agora retorna valores reais (não mockados), então verificamos que não é placeholder
+      expect(result).toMatch(/Name: [A-Z][a-z]+/); // Nome começa com maiúscula
+      expect(result).not.toBe("Name: {{$faker.person.firstName}}");
     });
 
     it("should interpolate complex objects", () => {
@@ -179,95 +162,30 @@ describe("VariableService", () => {
   });
 
   describe("JavaScript expressions", () => {
-    let mockJavaScriptService: any;
+    // Testes de JavaScript foram movidos para interpolation.service.test.ts
+    // VariableService agora delega toda a lógica de interpolação para InterpolationService
+    // Mantemos apenas testes de integração básicos
 
-    beforeEach(() => {
-      mockJavaScriptService =
-        require("../javascript.service").javascriptService;
-      mockJavaScriptService.parseJavaScriptExpression.mockClear();
-      mockJavaScriptService.executeExpression.mockClear();
-    });
-
-    it("should process js: expressions", () => {
-      mockJavaScriptService.parseJavaScriptExpression.mockReturnValue(
-        "Math.max(1,2)"
-      );
-      mockJavaScriptService.executeExpression.mockReturnValue(2);
-
-      const result = service.interpolate("Result: {{js:Math.max(1,2)}}");
+    it("should process js: expressions via InterpolationService", () => {
+      const result = service.interpolate("Result: {{$js:Math.max(1,2)}}");
       expect(result).toBe("Result: 2");
-      expect(
-        mockJavaScriptService.parseJavaScriptExpression
-      ).toHaveBeenCalledWith("js:Math.max(1,2)");
-    });
-
-    it("should process $js: expressions", () => {
-      mockJavaScriptService.parseJavaScriptExpression.mockReturnValue(
-        "Date.now()"
-      );
-      mockJavaScriptService.executeExpression.mockReturnValue(1700);
-
-      const result = service.interpolate("Now: {{$js: Date.now()}}");
-      expect(result).toBe("Now: 1700");
-      expect(
-        mockJavaScriptService.parseJavaScriptExpression
-      ).toHaveBeenCalledWith("$js: Date.now()");
-      expect(mockJavaScriptService.executeExpression).toHaveBeenCalledWith(
-        "Date.now()",
-        expect.objectContaining({ variables: expect.any(Object) }),
-        false
-      );
-    });
-
-    it("should process $js. expressions", () => {
-      mockJavaScriptService.executeExpression.mockReturnValue(true);
-
-      const result = service.interpolate("Status: {{$js.return true}}");
-      expect(result).toBe("Status: true");
-      expect(mockJavaScriptService.executeExpression).toHaveBeenCalledWith(
-        "return true",
-        expect.objectContaining({ variables: expect.any(Object) }),
-        true
-      );
-    });
-
-    it("should process expressions with logical operators", () => {
-      mockJavaScriptService.executeExpression.mockReturnValue(false);
-
-      const result = service.interpolate("Valid: {{false || false}}");
-      expect(result).toBe("Valid: false");
-      expect(mockJavaScriptService.executeExpression).toHaveBeenCalledWith(
-        "false || false",
-        expect.objectContaining({ variables: expect.any(Object) }),
-        false
-      );
     });
 
     it("should handle error in JavaScript expression", () => {
-      mockJavaScriptService.executeExpression.mockImplementation(() => {
-        throw new Error("Syntax error");
-      });
-
-      const result = service.interpolate("Result: {{js:invalid syntax}}");
-      expect(result).toBe("Result: {{js:invalid syntax}}");
-      expect(mockLogger.warn).toHaveBeenCalledWith(
-        expect.stringContaining("Error resolving JavaScript expression")
-      );
+      const result = service.interpolate("Result: {{$js:invalid syntax}}");
+      // InterpolationService retorna o placeholder em caso de erro
+      expect(result).toBe("Result: {{$js:invalid syntax}}");
     });
   });
 
   describe("Faker expressions", () => {
-    it("should process faker expressions with error", () => {
-      const { fakerService } = require("../faker.service");
-      fakerService.parseFakerExpression.mockImplementation(() => {
-        throw new Error("Faker error");
-      });
+    // Testes de Faker foram movidos para interpolation.service.test.ts
+    // Mantemos apenas teste de integração básico
 
-      const result = service.interpolate("Value: {{faker.invalid.expression}}");
-      expect(result).toBe("Value: {{faker.invalid.expression}}");
-      expect(mockLogger.warn).toHaveBeenCalledWith(
-        expect.stringContaining("Error resolving Faker expression")
-      );
+    it("should process faker expressions via InterpolationService", () => {
+      const result = service.interpolate("Email: {{$faker.internet.email}}");
+      // Verifica apenas que retorna um email válido (formato)
+      expect(result).toMatch(/Email: .+@.+\..+/);
     });
   });
 

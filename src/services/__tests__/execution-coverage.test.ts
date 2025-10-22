@@ -1,13 +1,13 @@
 import { ExecutionService } from "../execution";
 import { ConfigManager } from "../../core/config";
-import { GlobalVariablesService } from "../global-variables";
+import { VariableService } from "../variable.service";
 import { PriorityService } from "../priority";
 import { DependencyService } from "../dependency.service";
 import { GlobalRegistryService } from "../global-registry.service";
 
 // Mock all dependencies
 jest.mock("../../core/config");
-jest.mock("../global-variables");
+jest.mock("../variable.service");
 jest.mock("../priority");
 jest.mock("../dependency.service");
 jest.mock("../global-registry.service");
@@ -21,7 +21,7 @@ jest.mock("../computed.service");
 jest.mock("../dynamic-expression.service");
 jest.mock("../call.service");
 jest.mock("../script-executor.service");
-jest.mock("../certificate.service");
+jest.mock("../certificate"); // Corrigido: agora aponta para o index.ts
 jest.mock("fs");
 jest.mock("js-yaml");
 jest.mock("../logger.service", () => ({
@@ -40,7 +40,7 @@ jest.mock("../logger.service", () => ({
 describe("ExecutionService - High Coverage Tests", () => {
   let executionService: ExecutionService;
   let mockConfigManager: jest.Mocked<ConfigManager>;
-  let mockGlobalVariablesService: jest.Mocked<GlobalVariablesService>;
+  let mockVariableService: jest.Mocked<VariableService>;
   let mockPriorityService: jest.Mocked<PriorityService>;
   let mockDependencyService: jest.Mocked<DependencyService>;
   let mockGlobalRegistryService: jest.Mocked<GlobalRegistryService>;
@@ -57,7 +57,7 @@ describe("ExecutionService - High Coverage Tests", () => {
       getRuntimeFilters: jest.fn().mockReturnValue({}),
     } as any;
 
-    mockGlobalVariablesService = {
+    mockVariableService = {
       getVariablesByScope: jest.fn().mockReturnValue({}),
       setSuiteVariables: jest.fn(),
       setDependencies: jest.fn(),
@@ -89,7 +89,7 @@ describe("ExecutionService - High Coverage Tests", () => {
 
     executionService = new ExecutionService(
       mockConfigManager,
-      mockGlobalVariablesService,
+      mockVariableService,
       mockPriorityService,
       mockDependencyService,
       mockGlobalRegistryService
@@ -120,7 +120,7 @@ describe("ExecutionService - High Coverage Tests", () => {
 
   describe("branch coverage - delay config validation", () => {
     it("should handle invalid interpolated delay", async () => {
-      mockGlobalVariablesService.interpolate = jest
+      mockVariableService.interpolate = jest
         .fn()
         .mockReturnValue({ delay: "invalid" });
 
@@ -134,7 +134,7 @@ describe("ExecutionService - High Coverage Tests", () => {
     });
 
     it("should handle negative interpolated delay", async () => {
-      mockGlobalVariablesService.interpolate = jest
+      mockVariableService.interpolate = jest
         .fn()
         .mockReturnValue({ delay: "-100" });
 
@@ -250,7 +250,7 @@ describe("ExecutionService - High Coverage Tests", () => {
         steps_results: [],
       };
 
-      mockGlobalVariablesService.getVariablesByScope = jest
+      mockVariableService.getVariablesByScope = jest
         .fn()
         .mockReturnValue({});
 
@@ -287,7 +287,7 @@ describe("ExecutionService - High Coverage Tests", () => {
         variables_captured: { optional_var: "value" },
       };
 
-      mockGlobalVariablesService.getVariablesByScope = jest
+      mockVariableService.getVariablesByScope = jest
         .fn()
         .mockReturnValue({ optional_var: "value" });
 
@@ -339,7 +339,7 @@ describe("ExecutionService - High Coverage Tests", () => {
           variables_captured: { token: "abc123" },
         });
 
-      mockGlobalVariablesService.getVariablesByScope = jest
+      mockVariableService.getVariablesByScope = jest
         .fn()
         .mockReturnValue({ token: "abc123" });
 
@@ -374,7 +374,7 @@ describe("ExecutionService - High Coverage Tests", () => {
 
       const serviceWithCerts = new ExecutionService(
         mockConfigManager,
-        mockGlobalVariablesService,
+        mockVariableService,
         mockPriorityService,
         mockDependencyService,
         mockGlobalRegistryService
@@ -399,7 +399,7 @@ describe("ExecutionService - High Coverage Tests", () => {
 
       const serviceWithGlobalUrl = new ExecutionService(
         mockConfigManager,
-        mockGlobalVariablesService,
+        mockVariableService,
         mockPriorityService,
         mockDependencyService,
         mockGlobalRegistryService
@@ -419,7 +419,7 @@ describe("ExecutionService - High Coverage Tests", () => {
 
       const serviceWithDefaultTimeout = new ExecutionService(
         mockConfigManager,
-        mockGlobalVariablesService,
+        mockVariableService,
         mockPriorityService,
         mockDependencyService,
         mockGlobalRegistryService
@@ -521,7 +521,7 @@ describe("ExecutionService - High Coverage Tests", () => {
         },
       };
 
-      mockGlobalVariablesService.interpolate = jest.fn().mockReturnValue({
+      mockVariableService.interpolate = jest.fn().mockReturnValue({
         user: "john",
         nested: {
           value: "interpolated",

@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import yaml from "js-yaml";
 import { getLogger } from "./logger.service";
+import { ErrorHandler } from "../utils";
 import type {
   ResolvedStepCall,
   StepCallExecutionOptions,
@@ -226,22 +227,29 @@ export class CallService {
   }
 
   private async loadSuiteFromDisk(filePath: string): Promise<TestSuite> {
-    try {
-      const fileContent = await fs.promises.readFile(filePath, "utf8");
-      const suite = yaml.load(fileContent) as TestSuite;
+    const result = await ErrorHandler.handleAsync(
+      async () => {
+        const fileContent = await fs.promises.readFile(filePath, "utf8");
+        const suite = yaml.load(fileContent) as TestSuite;
 
-      if (!suite?.suite_name) {
-        throw new Error("Invalid suite: missing suite_name");
+        if (!suite?.suite_name) {
+          throw new Error("Invalid suite: missing suite_name");
+        }
+
+        if (!Array.isArray(suite.steps) || suite.steps.length === 0) {
+          throw new Error("Invalid suite: missing steps array");
+        }
+
+        return suite;
+      },
+      {
+        message: `Failed to load suite from ${filePath}`,
+        context: { filePath },
+        rethrow: true,
       }
-
-      if (!Array.isArray(suite.steps) || suite.steps.length === 0) {
-        throw new Error("Invalid suite: missing steps array");
-      }
-
-      return suite;
-    } catch (error) {
-      throw new Error(`Failed to load suite from ${filePath}: ${error}`);
-    }
+    );
+    // With rethrow: true, result is never undefined (throws instead)
+    return result as TestSuite;
   }
 
   private findTargetStep(

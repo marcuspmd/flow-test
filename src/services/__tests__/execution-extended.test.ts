@@ -1,6 +1,6 @@
 import { ExecutionService } from "../execution";
 import { ConfigManager } from "../../core/config";
-import { GlobalVariablesService } from "../global-variables";
+import { VariableService } from "../variable.service";
 import { PriorityService } from "../priority";
 import { DependencyService } from "../dependency.service";
 import { GlobalRegistryService } from "../global-registry.service";
@@ -9,7 +9,7 @@ import { DiscoveredTest } from "../../types/config.types";
 
 // Mock all dependencies
 jest.mock("../../core/config");
-jest.mock("../global-variables");
+jest.mock("../variable.service");
 jest.mock("../priority");
 jest.mock("../dependency.service");
 jest.mock("../global-registry.service");
@@ -23,7 +23,7 @@ jest.mock("../computed.service");
 jest.mock("../dynamic-expression.service");
 jest.mock("../call.service");
 jest.mock("../script-executor.service");
-jest.mock("../certificate.service");
+jest.mock("../certificate"); // Corrigido: agora aponta para o index.ts
 jest.mock("fs");
 jest.mock("js-yaml");
 jest.mock("../logger.service", () => ({
@@ -42,7 +42,7 @@ jest.mock("../logger.service", () => ({
 describe("ExecutionService - Extended Coverage", () => {
   let executionService: ExecutionService;
   let mockConfigManager: jest.Mocked<ConfigManager>;
-  let mockGlobalVariablesService: jest.Mocked<GlobalVariablesService>;
+  let mockVariableService: jest.Mocked<VariableService>;
   let mockPriorityService: jest.Mocked<PriorityService>;
   let mockDependencyService: jest.Mocked<DependencyService>;
   let mockGlobalRegistryService: jest.Mocked<GlobalRegistryService>;
@@ -85,7 +85,7 @@ describe("ExecutionService - Extended Coverage", () => {
       getRuntimeFilters: jest.fn().mockReturnValue({}),
     } as any;
 
-    mockGlobalVariablesService = {
+    mockVariableService = {
       getVariablesByScope: jest.fn().mockReturnValue({}),
       setSuiteVariables: jest.fn(),
       setDependencies: jest.fn(),
@@ -117,7 +117,7 @@ describe("ExecutionService - Extended Coverage", () => {
 
     executionService = new ExecutionService(
       mockConfigManager,
-      mockGlobalVariablesService,
+      mockVariableService,
       mockPriorityService,
       mockDependencyService,
       mockGlobalRegistryService
@@ -382,7 +382,7 @@ describe("ExecutionService - Extended Coverage", () => {
         },
       };
 
-      mockGlobalVariablesService.getVariablesByScope = jest
+      mockVariableService.getVariablesByScope = jest
         .fn()
         .mockReturnValue({ optional_var1: "value1" });
 

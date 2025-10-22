@@ -13,7 +13,7 @@ import fs from "fs";
 import path from "path";
 import yaml from "js-yaml";
 import { ConfigManager } from "../../core/config";
-import { GlobalVariablesService } from "../global-variables";
+import { VariableService } from "../variable.service";
 import { PriorityService } from "../priority";
 import { DependencyService } from "../dependency.service";
 import { GlobalRegistryService } from "../global-registry.service";
@@ -159,7 +159,7 @@ type StepFilterSets = {
  */
 export class ExecutionService {
   private configManager: ConfigManager;
-  private globalVariables: GlobalVariablesService;
+  private globalVariables: VariableService;
   private priorityService: PriorityService;
   private dependencyService: DependencyService;
   private globalRegistry: GlobalRegistryService;
@@ -194,7 +194,7 @@ export class ExecutionService {
 
   constructor(
     configManager: ConfigManager,
-    globalVariables: GlobalVariablesService,
+    globalVariables: VariableService,
     priorityService: PriorityService,
     dependencyService: DependencyService,
     globalRegistry: GlobalRegistryService,

@@ -14,7 +14,7 @@ import {
 // Mock all dependencies
 jest.mock("../config");
 jest.mock("../discovery");
-jest.mock("../../services/global-variables");
+jest.mock("../../services/variable.service");
 jest.mock("../../services/priority");
 jest.mock("../../services/dependency.service");
 jest.mock("../../services/global-registry.service");
@@ -70,9 +70,7 @@ describe("FlowTestEngine", () => {
     // Mock module imports with proper implementations
     const { ConfigManager } = require("../config");
     const { TestDiscovery } = require("../discovery");
-    const {
-      GlobalVariablesService,
-    } = require("../../services/global-variables");
+    const { VariableService } = require("../../services/variable.service");
     const { PriorityService } = require("../../services/priority");
     const { DependencyService } = require("../../services/dependency.service");
     const {
@@ -91,7 +89,7 @@ describe("FlowTestEngine", () => {
       discoverTests: jest.fn().mockResolvedValue([mockDiscoveredTest]),
     }));
 
-    GlobalVariablesService.mockImplementation(() => ({
+    VariableService.mockImplementation(() => ({
       getAllVariables: jest.fn().mockReturnValue({}),
     }));
 

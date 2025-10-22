@@ -333,7 +333,7 @@ describe("FakerService", () => {
       expect(() => {
         fakerService.executeMethod("person.firstName");
       }).toThrow(
-        "Error executing Faker method 'person.firstName': Error: Simulated faker error"
+        "Error executing Faker method 'person.firstName': Simulated faker error"
       );
 
       // Restaurar mock original

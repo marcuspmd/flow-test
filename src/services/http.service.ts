@@ -248,6 +248,7 @@ export class HttpService {
       };
     } catch (error) {
       const duration = Date.now() - startTime;
+      const fullUrl = this.buildFullUrl(request.url);
       const errorMessage = this.formatError(error);
 
       this.logger.error(`Error: ${errorMessage}`, {
@@ -255,8 +256,6 @@ export class HttpService {
         duration,
         error: error as Error,
       });
-
-      const fullUrl = this.buildFullUrl(request.url);
 
       return {
         step_name: stepName,

@@ -100,9 +100,10 @@ describe("InterpolationService", () => {
       expect(result).toBe("Key: secret123");
     });
 
-    it("should return undefined for missing env vars", () => {
+    it("should return null for missing env vars (single variable template)", () => {
       const result = service.interpolate("{{$env.MISSING}}", context);
-      expect(result).toBe("{{$env.MISSING}}");
+      // Para single variable templates, retorna o valor resolvido (null neste caso)
+      expect(result).toBe(null);
     });
 
     it("should prioritize env vars over regular variables", () => {

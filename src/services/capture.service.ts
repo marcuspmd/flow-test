@@ -13,6 +13,7 @@ import * as jmespath from "jmespath";
 import { StepExecutionResult } from "../types/config.types";
 import { getLogger } from "./logger.service";
 import { InterpolationService } from "./interpolation.service";
+import { ResponseContextBuilder, ErrorHandler } from "../utils";
 
 /**
  * Service responsible for capturing variables from HTTP responses
@@ -74,24 +75,26 @@ export class CaptureService {
     }
 
     for (const [variableName, jmesPath] of Object.entries(captureConfig)) {
-      try {
-        const value = this.extractValue(jmesPath, result, variableContext);
-
-        if (value !== undefined) {
-          capturedVariables[variableName] = value;
-          this.logger.info(
-            `    [📥] Captured: ${variableName} = ${this.formatValue(value)}`,
-            { metadata: { type: "variable_capture", internal: true } }
-          );
-        } else {
-          this.logger.warn(
-            `Could not capture: ${variableName} (path: ${jmesPath})`
-          );
+      const value = ErrorHandler.handle(
+        () => this.extractValue(jmesPath, result, variableContext),
+        {
+          logger: this.logger,
+          message: `Error capturing ${variableName}`,
+          context: { variableName, jmesPath },
+          defaultValue: undefined,
         }
-      } catch (error) {
-        this.logger.error(`Error capturing ${variableName}`, {
-          error: error as Error,
-        });
+      );
+
+      if (value !== undefined) {
+        capturedVariables[variableName] = value;
+        this.logger.info(
+          `    [📥] Captured: ${variableName} = ${this.formatValue(value)}`,
+          { metadata: { type: "variable_capture", internal: true } }
+        );
+      } else {
+        this.logger.warn(
+          `Could not capture: ${variableName} (path: ${jmesPath})`
+        );
       }
     }
 
@@ -108,29 +111,27 @@ export class CaptureService {
     const context = this.buildGenericContext(source, variableContext);
 
     for (const [variableName, expression] of Object.entries(captureConfig)) {
-      try {
-        const value = this.extractValue(
-          expression,
-          undefined,
-          variableContext,
-          context
-        );
-
-        if (value !== undefined) {
-          capturedVariables[variableName] = value;
-          this.logger.info(
-            `    [📥] Captured: ${variableName} = ${this.formatValue(value)}`,
-            { metadata: { type: "variable_capture", internal: true } }
-          );
-        } else {
-          this.logger.warn(
-            `Could not capture: ${variableName} (path: ${expression})`
-          );
+      const value = ErrorHandler.handle(
+        () =>
+          this.extractValue(expression, undefined, variableContext, context),
+        {
+          logger: this.logger,
+          message: `Error capturing ${variableName}`,
+          context: { variableName, expression },
+          defaultValue: undefined,
         }
-      } catch (error) {
-        this.logger.error(`Error capturing ${variableName}`, {
-          error: error as Error,
-        });
+      );
+
+      if (value !== undefined) {
+        capturedVariables[variableName] = value;
+        this.logger.info(
+          `    [📥] Captured: ${variableName} = ${this.formatValue(value)}`,
+          { metadata: { type: "variable_capture", internal: true } }
+        );
+      } else {
+        this.logger.warn(
+          `Could not capture: ${variableName} (path: ${expression})`
+        );
       }
     }
 
@@ -242,15 +243,7 @@ export class CaptureService {
    * ```
    */
   private buildContext(result: StepExecutionResult): any {
-    const response = result.response_details!;
-
-    return {
-      status_code: response.status_code,
-      headers: response.headers,
-      body: response.body,
-      duration_ms: result.duration_ms,
-      size_bytes: response.size_bytes,
-    };
+    return ResponseContextBuilder.build(result);
   }
 
   private buildGenericContext(

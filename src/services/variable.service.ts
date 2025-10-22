@@ -17,6 +17,7 @@ import {
   interpolationService,
   InterpolationContext,
 } from "./interpolation.service";
+import { ConfigManager } from "../core/config";
 
 /**
  * Service responsible for variable interpolation and resolution
@@ -54,18 +55,66 @@ export class VariableService {
   /** Logger service */
   private logger = getLogger();
 
+  /** Interpolation cache for performance optimization */
+  private interpolationCache: Map<string, any> = new Map();
+
+  /** Cache enabled flag */
+  private cacheEnabled: boolean = true;
+
+  /** Dependencies (node_ids of dependent flows) */
+  private dependencies: string[] = [];
+
+  /** Optional ConfigManager for loading global variables */
+  private configManager?: ConfigManager;
+
   /**
    * VariableService constructor
    *
-   * @param context - Hierarchical context of variables organized by scope
+   * @param contextOrConfigManager - Either a GlobalVariableContext or ConfigManager instance
    * @param globalRegistry - Optional global registry for exported variables
    */
   constructor(
-    context: GlobalVariableContext,
+    contextOrConfigManager: GlobalVariableContext | ConfigManager,
     globalRegistry?: GlobalRegistryService
   ) {
-    this.context = context;
-    this.globalRegistry = globalRegistry;
+    // Check if it's a ConfigManager instance
+    if (contextOrConfigManager instanceof ConfigManager) {
+      this.configManager = contextOrConfigManager;
+      this.globalRegistry = globalRegistry;
+      this.context = this.initializeContext();
+    } else {
+      // Legacy: direct context initialization
+      this.context = contextOrConfigManager;
+      // Ensure environment is set if not provided
+      if (!this.context.environment) {
+        this.context.environment = this.loadEnvironmentVariables();
+      }
+      this.globalRegistry = globalRegistry;
+    }
+  }
+
+  /**
+   * Initializes the variable context from ConfigManager
+   */
+  private initializeContext(): GlobalVariableContext {
+    return {
+      environment: this.loadEnvironmentVariables(),
+      global: this.configManager?.getGlobalVariables() || {},
+      suite: {},
+      runtime: {},
+      imported: {},
+    };
+  }
+
+  /**
+   * Loads all environment variables from process.env
+   */
+  private loadEnvironmentVariables(): Record<string, any> {
+    const envVars: Record<string, any> = {};
+    Object.keys(process.env).forEach((key) => {
+      envVars[key] = process.env[key];
+    });
+    return envVars;
   }
 
   /**
@@ -78,7 +127,7 @@ export class VariableService {
    * @remarks
    * This method now delegates to InterpolationService for consistency.
    * It provides a variableResolver function that looks up variables
-   * in the hierarchical context.
+   * in the hierarchical context. Includes caching for performance.
    *
    * @param template - String, array or object containing variable placeholders
    * @param suppressWarnings - If true, suppresses warnings for missing variables (useful for cleanup testing)
@@ -102,6 +151,15 @@ export class VariableService {
    * ```
    */
   interpolate(template: string | any, suppressWarnings: boolean = false): any {
+    // Check cache for string templates
+    if (
+      typeof template === "string" &&
+      this.cacheEnabled &&
+      this.interpolationCache.has(template)
+    ) {
+      return this.interpolationCache.get(template);
+    }
+
     // Create interpolation context
     const context: InterpolationContext = {
       variableResolver: (path: string) => this.resolveVariable(path),
@@ -110,7 +168,14 @@ export class VariableService {
     };
 
     // Delegate to InterpolationService
-    return interpolationService.interpolate(template, context);
+    const result = interpolationService.interpolate(template, context);
+
+    // Cache string results
+    if (typeof template === "string" && this.cacheEnabled) {
+      this.interpolationCache.set(template, result);
+    }
+
+    return result;
   }
 
   /**
@@ -217,6 +282,7 @@ export class VariableService {
    */
   setVariable(name: string, value: any): void {
     this.context.runtime[name] = value;
+    this.invalidateCacheForVariable(name);
   }
 
   /**
@@ -224,6 +290,7 @@ export class VariableService {
    */
   setVariables(variables: Record<string, any>): void {
     Object.assign(this.context.runtime, variables);
+    this.clearCache();
   }
 
   /**
@@ -353,6 +420,195 @@ export class VariableService {
    */
   setGlobalRegistry(globalRegistry: GlobalRegistryService): void {
     this.globalRegistry = globalRegistry;
+    this.clearCache();
+  }
+
+  /**
+   * Sets the dependencies for this flow (node_ids of dependent flows)
+   */
+  setDependencies(dependencies: string[]): void {
+    this.dependencies = dependencies;
+    this.clearCache();
+  }
+
+  /**
+   * Clears the interpolation cache
+   */
+  clearCache(): void {
+    this.interpolationCache.clear();
+  }
+
+  /**
+   * Invalidates cache entries that use a specific variable
+   */
+  private invalidateCacheForVariable(variableName: string): void {
+    const pattern = new RegExp(`\\{\\{[^}]*${variableName}[^}]*\\}\\}`);
+
+    for (const [template] of this.interpolationCache) {
+      if (typeof template === "string" && pattern.test(template)) {
+        this.interpolationCache.delete(template);
+      }
+    }
+  }
+
+  /**
+   * Enables/disables interpolation cache
+   */
+  setCacheEnabled(enabled: boolean): void {
+    this.cacheEnabled = enabled;
+    if (!enabled) {
+      this.clearCache();
+    }
+  }
+
+  /**
+   * Sets variables in runtime scope
+   */
+  setRuntimeVariables(variables: Record<string, any>): void {
+    Object.assign(this.context.runtime, variables);
+    this.clearCache();
+  }
+
+  /**
+   * Sets a single variable in runtime scope
+   */
+  setRuntimeVariable(name: string, value: any): void {
+    this.context.runtime[name] = value;
+    this.invalidateCacheForVariable(name);
+  }
+
+  /**
+   * Sets variables in suite scope (with interpolation)
+   */
+  setSuiteVariables(variables: Record<string, any>): void {
+    // Interpolate variables when setting them to resolve expressions like {{$js.return ...}}
+    const interpolatedVariables: Record<string, any> = {};
+    for (const [key, value] of Object.entries(variables)) {
+      interpolatedVariables[key] = this.interpolate(value);
+    }
+    Object.assign(this.context.suite, interpolatedVariables);
+    this.clearCache();
+  }
+
+  /**
+   * Gets a specific variable following the hierarchy
+   */
+  getVariable(name: string): any {
+    // First check in context hierarchy
+    const hierarchyValue =
+      this.context.runtime[name] ??
+      this.context.suite[name] ??
+      this.findInImported(name) ??
+      this.context.global[name] ??
+      (this.context.environment ? this.context.environment[name] : undefined);
+
+    if (hierarchyValue !== undefined) {
+      return hierarchyValue;
+    }
+
+    // Check for dependency variables if registry is available
+    if (
+      this.globalRegistry &&
+      this.dependencies.length > 0 &&
+      !name.includes(".")
+    ) {
+      // Check if the variable name is a dependency node_id itself
+      if (this.dependencies.includes(name)) {
+        const nodeVariables = this.globalRegistry.getNodeVariables(name);
+        if (Object.keys(nodeVariables).length > 0) {
+          return nodeVariables;
+        }
+      }
+
+      // Check for exported variables from dependencies
+      for (const dependencyNodeId of this.dependencies) {
+        const exportedValue = this.globalRegistry.getExportedVariable(
+          `${dependencyNodeId}.${name}`
+        );
+        if (exportedValue !== undefined) {
+          return exportedValue;
+        }
+      }
+    }
+
+    // Provide default fallback for execution_mode
+    if (name === "execution_mode") {
+      return "sequential";
+    }
+
+    return undefined;
+  }
+
+  /**
+   * Gets statistics of the variable system
+   */
+  getStats(): {
+    environment_vars: number;
+    global_vars: number;
+    suite_vars: number;
+    runtime_vars: number;
+    imported_vars: number;
+    cache_size: number;
+    cache_enabled: boolean;
+  } {
+    return {
+      environment_vars: this.context.environment
+        ? Object.keys(this.context.environment).length
+        : 0,
+      global_vars: Object.keys(this.context.global).length,
+      suite_vars: Object.keys(this.context.suite).length,
+      runtime_vars: Object.keys(this.context.runtime).length,
+      imported_vars: Object.keys(this.context.imported).length,
+      cache_size: this.interpolationCache.size,
+      cache_enabled: this.cacheEnabled,
+    };
+  }
+
+  /**
+   * Gets variables from a specific scope
+   */
+  getVariablesByScope(scope: keyof GlobalVariableContext): Record<string, any> {
+    // For environment variables, return current process.env instead of cached version
+    if (scope === "environment") {
+      return { ...process.env };
+    }
+    return { ...this.context[scope] };
+  }
+
+  /**
+   * Lists names of all available variables
+   */
+  getAvailableVariableNames(): string[] {
+    const allVars = this.getAllVariables();
+    return Object.keys(allVars).sort();
+  }
+
+  /**
+   * Interpolates a string replacing {{variable}} with values
+   *
+   * @param template - String template with variable placeholders
+   * @returns Interpolated string
+   */
+  interpolateString(template: string): string {
+    if (!template || typeof template !== "string") {
+      return template ? String(template) : "";
+    }
+
+    const result = this.interpolate(template);
+    return typeof result === "string" ? result : String(result);
+  }
+
+  /**
+   * Creates a snapshot of the current variable state
+   * Returns a function that when called, restores the state
+   */
+  createSnapshot(): () => void {
+    const snapshot = JSON.parse(JSON.stringify(this.context));
+
+    return () => {
+      this.context = snapshot;
+      this.clearCache();
+    };
   }
 
   /**
@@ -361,6 +617,7 @@ export class VariableService {
    */
   clearRuntimeVariables(): void {
     this.context.runtime = {};
+    this.clearCache();
     this.logger.info("Runtime variables cleared for node transition");
   }
 
@@ -371,6 +628,7 @@ export class VariableService {
   clearSuiteVariables(): void {
     this.context.suite = {};
     this.context.runtime = {};
+    this.clearCache();
     this.logger.info(
       "Suite and runtime variables cleared for suite transition"
     );
@@ -384,6 +642,7 @@ export class VariableService {
     this.context.suite = {};
     this.context.runtime = {};
     this.context.imported = {};
+    this.clearCache();
     this.logger.info("All non-global variables cleared");
   }
 

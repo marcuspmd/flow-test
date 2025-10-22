@@ -10,6 +10,7 @@
  */
 
 import { faker } from "@faker-js/faker";
+import { ErrorHandler } from "../utils";
 
 /**
  * Configuration options for the Faker service initialization.
@@ -295,42 +296,47 @@ export class FakerService {
    * @returns Generated fake data
    */
   public executeMethod(methodPath: string, args: any[] = []): any {
-    try {
-      const pathParts = methodPath.split(".");
+    return ErrorHandler.handle(
+      () => {
+        const pathParts = methodPath.split(".");
 
-      if (pathParts.length !== 2) {
-        throw new Error(
-          `Invalid Faker method path: ${methodPath}. Expected format: 'category.method'`
-        );
+        if (pathParts.length !== 2) {
+          throw new Error(
+            `Invalid Faker method path: ${methodPath}. Expected format: 'category.method'`
+          );
+        }
+
+        const [category, method] = pathParts;
+
+        // Security check: only allow allowlisted methods (check BEFORE accessing)
+        if (!this.allowlistedMethods.has(methodPath)) {
+          throw new Error(
+            `Faker method '${methodPath}' is not allowlisted for security reasons`
+          );
+        }
+
+        // Navigate to the method
+        const categoryObject = (faker as any)[category];
+        if (!categoryObject) {
+          throw new Error(`Faker category '${category}' not found`);
+        }
+
+        const methodFunction = categoryObject[method];
+        if (typeof methodFunction !== "function") {
+          throw new Error(
+            `Faker method '${method}' not found in category '${category}'`
+          );
+        }
+
+        // Execute the method with arguments
+        return methodFunction.apply(categoryObject, args);
+      },
+      {
+        message: `Error executing Faker method '${methodPath}'`,
+        context: { methodPath, args },
+        rethrow: true,
       }
-
-      const [category, method] = pathParts;
-
-      // Security check: only allow allowlisted methods (check BEFORE accessing)
-      if (!this.allowlistedMethods.has(methodPath)) {
-        throw new Error(
-          `Faker method '${methodPath}' is not allowlisted for security reasons`
-        );
-      }
-
-      // Navigate to the method
-      const categoryObject = (faker as any)[category];
-      if (!categoryObject) {
-        throw new Error(`Faker category '${category}' not found`);
-      }
-
-      const methodFunction = categoryObject[method];
-      if (typeof methodFunction !== "function") {
-        throw new Error(
-          `Faker method '${method}' not found in category '${category}'`
-        );
-      }
-
-      // Execute the method with arguments
-      return methodFunction.apply(categoryObject, args);
-    } catch (error) {
-      throw new Error(`Error executing Faker method '${methodPath}': ${error}`);
-    }
+    ) as any;
   }
 
   /**
@@ -352,13 +358,18 @@ export class FakerService {
     if (methodWithArgsMatch) {
       const [, methodPath, argsString] = methodWithArgsMatch;
 
-      try {
-        // Parse arguments as JSON array or single value
-        const args = this.parseArguments(argsString);
-        return this.executeMethod(methodPath, args);
-      } catch (error) {
-        throw new Error(`Error parsing Faker arguments: ${error}`);
-      }
+      return ErrorHandler.handle(
+        () => {
+          // Parse arguments as JSON array or single value
+          const args = this.parseArguments(argsString);
+          return this.executeMethod(methodPath, args);
+        },
+        {
+          message: "Error parsing Faker arguments",
+          context: { expression, argsString },
+          rethrow: true,
+        }
+      ) as any;
     } else {
       // Simple method call without arguments
       return this.executeMethod(cleanExpression);
@@ -370,27 +381,39 @@ export class FakerService {
    * Supports: arrays, objects, strings, numbers, booleans
    */
   private parseArguments(argsString: string): any[] {
-    try {
-      // First try to parse the string directly as JSON (for arrays and objects)
-      const directParsed = JSON.parse(argsString);
-      return [directParsed];
-    } catch {
-      try {
-        // Convert single quotes to double quotes for JSON compatibility
+    // First try to parse the string directly as JSON (for arrays and objects)
+    const directResult = ErrorHandler.handle(
+      () => {
+        const directParsed = JSON.parse(argsString);
+        return [directParsed];
+      },
+      { message: "Parsing arguments as JSON", rethrow: false }
+    );
+    if (directResult !== undefined) return directResult;
+
+    // Convert single quotes to double quotes for JSON compatibility
+    const quotesResult = ErrorHandler.handle(
+      () => {
         const jsonCompatible = argsString.replace(/'/g, '"');
         const directParsedWithQuotes = JSON.parse(jsonCompatible);
         return [directParsedWithQuotes];
-      } catch {
-        try {
-          // If that fails, try wrapping in array brackets (for comma-separated values)
-          const wrappedParsed = JSON.parse(`[${argsString}]`);
-          return Array.isArray(wrappedParsed) ? wrappedParsed : [wrappedParsed];
-        } catch {
-          // If JSON parsing fails completely, treat as single string argument
-          return [argsString.replace(/^['"]|['"]$/g, "")];
-        }
-      }
-    }
+      },
+      { message: "Parsing arguments with quote conversion", rethrow: false }
+    );
+    if (quotesResult !== undefined) return quotesResult;
+
+    // If that fails, try wrapping in array brackets (for comma-separated values)
+    const wrappedResult = ErrorHandler.handle(
+      () => {
+        const wrappedParsed = JSON.parse(`[${argsString}]`);
+        return Array.isArray(wrappedParsed) ? wrappedParsed : [wrappedParsed];
+      },
+      { message: "Parsing arguments as array", rethrow: false }
+    );
+    if (wrappedResult !== undefined) return wrappedResult;
+
+    // If JSON parsing fails completely, treat as single string argument
+    return [argsString.replace(/^['"]|['"]$/g, "")];
   }
 
   /**

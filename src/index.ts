@@ -76,7 +76,7 @@ export { ConfigManager } from "./core/config";
 export { TestDiscovery } from "./core/discovery";
 
 // Export services for advanced usage
-export { GlobalVariablesService } from "./services/global-variables";
+export { VariableService } from "./services/variable.service";
 export { PriorityService } from "./services/priority";
 export { ReportingService } from "./services/reporting";
 export { ExecutionService } from "./services/execution";

@@ -4,6 +4,7 @@ import { StepExecutionResult } from "../types/config.types";
 import { AssertionService } from "./assertion";
 import { CaptureService } from "./capture.service";
 import { getLogger } from "./logger.service";
+import { ResponseContextBuilder, ErrorHandler } from "../utils";
 
 /**
  * Scenario Service for Flow Test Engine
@@ -38,49 +39,71 @@ export class ScenarioService {
 
     for (let i = 0; i < scenarios.length; i++) {
       const scenario = scenarios[i];
-      try {
-        const conditionMet = this.evaluateCondition(scenario.condition, result);
 
-        if (verbosity === "detailed" || verbosity === "verbose") {
-          this.logger.info(
-            `Condição "${scenario.condition}": ${
-              conditionMet ? "TRUE" : "FALSE"
-            }`
+      const evaluation = ErrorHandler.handle(
+        () => {
+          const conditionMet = this.evaluateCondition(
+            scenario.condition,
+            result
           );
+
+          if (verbosity === "detailed" || verbosity === "verbose") {
+            this.logger.info(
+              `Condição "${scenario.condition}": ${
+                conditionMet ? "TRUE" : "FALSE"
+              }`
+            );
+          }
+
+          const scenarioBlock = conditionMet ? scenario.then : scenario.else;
+
+          let assertionsAdded = 0;
+          let capturesAdded = 0;
+          if (scenarioBlock) {
+            const execResult = this.executeScenarioBlock(
+              scenarioBlock,
+              result,
+              verbosity,
+              variableContext
+            );
+            assertionsAdded = execResult.assertionsAdded;
+            capturesAdded = execResult.capturesAdded;
+            executedCount += 1;
+          }
+
+          return {
+            index: i + 1,
+            condition: scenario.condition,
+            matched: conditionMet,
+            executed: Boolean(scenarioBlock),
+            branch: scenarioBlock ? (conditionMet ? "then" : "else") : "none",
+            assertions_added: assertionsAdded,
+            captures_added: capturesAdded,
+          };
+        },
+        {
+          logger: this.logger,
+          message: `Error evaluating scenario`,
+          context: { scenarioIndex: i, condition: scenario.condition },
+          rethrow: false,
+          defaultValue: {
+            index: i + 1,
+            condition: scenario.condition,
+            matched: false,
+            executed: false,
+            branch: "error" as any,
+            assertions_added: 0,
+            captures_added: 0,
+          } as any,
         }
+      );
 
-        const scenarioBlock = conditionMet ? scenario.then : scenario.else;
-
-        let assertionsAdded = 0;
-        let capturesAdded = 0;
-        if (scenarioBlock) {
-          const execResult = this.executeScenarioBlock(
-            scenarioBlock,
-            result,
-            verbosity,
-            variableContext
-          );
-          assertionsAdded = execResult.assertionsAdded;
-          capturesAdded = execResult.capturesAdded;
-          executedCount += 1;
-        }
-
-        evaluations.push({
-          index: i + 1,
-          condition: scenario.condition,
-          matched: conditionMet,
-          executed: Boolean(scenarioBlock),
-          branch: scenarioBlock ? (conditionMet ? "then" : "else") : "none",
-          assertions_added: assertionsAdded,
-          captures_added: capturesAdded,
-        });
-      } catch (error) {
-        this.logger.error(`Error evaluating scenario`, {
-          error: error as Error,
-        });
-        result.error_message = `Scenario error: ${error}`;
+      if (evaluation && evaluation.branch === "error") {
+        result.error_message = `Scenario error at index ${i}`;
         result.status = "failure";
       }
+
+      evaluations.push(evaluation);
     }
 
     result.scenarios_meta = {
@@ -154,16 +177,7 @@ export class ScenarioService {
    * Builds the context for condition evaluation.
    */
   private buildEvaluationContext(result: StepExecutionResult): any {
-    const response = result.response_details!;
-
-    return {
-      status_code: response.status_code,
-      headers: response.headers,
-      body: response.body,
-      duration_ms: result.duration_ms,
-      size_bytes: response.size_bytes,
-      step_status: result.status,
-    };
+    return ResponseContextBuilder.build(result, { includeStepStatus: true });
   }
 
   /**
