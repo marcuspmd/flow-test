@@ -13,10 +13,8 @@
  * @since 1.2.0 (ADR-001 Phase 3)
  */
 
-import type {
-  StepExecutionStrategy,
-  StepExecutionContext,
-} from "./step-execution.strategy";
+import { BaseStepStrategy } from "./base-step.strategy";
+import type { StepExecutionContext } from "./step-execution.strategy";
 import type { StepExecutionResult } from "../../../types/config.types";
 import type { TestStep } from "../../../types/engine.types";
 import type {
@@ -43,9 +41,9 @@ import * as path from "path";
  * 7. Propagate variables if successful
  * 8. Build and return result
  *
- * @implements {StepExecutionStrategy}
+ * @extends {BaseStepStrategy}
  */
-export class CallStepStrategy implements StepExecutionStrategy {
+export class CallStepStrategy extends BaseStepStrategy {
   /**
    * Determines if this strategy can handle the given step.
    *
@@ -212,7 +210,8 @@ export class CallStepStrategy implements StepExecutionStrategy {
           ? { captured_variables: propagatedVariables }
           : {}),
         available_variables: this.filterAvailableVariables(
-          globalVariables.getAllVariables()
+          globalVariables.getAllVariables(),
+          { stepType: "call", stepName: step.name }
         ),
         error_message: callResult.error,
         // Include request/response details from nested call execution
@@ -330,82 +329,6 @@ export class CallStepStrategy implements StepExecutionStrategy {
     return callResult.status ?? (callResult.success ? "success" : "failure");
   }
 
-  /**
-   * Intelligently filters and masks available variables for call step context
-   *
-   * @param variables - All variables
-   * @returns Filtered, masked, and summarized variables
-   * @private
-   */
-  private filterAvailableVariables(
-    variables: Record<string, any>
-  ): Record<string, any> {
-    const {
-      smartFilterAndMask,
-    } = require("../../../utils/variable-masking.utils");
-
-    // Extract recently captured variables from current context
-    const recentCaptures = new Set<string>();
-    for (const key of Object.keys(variables)) {
-      if (
-        key.startsWith("captured_") ||
-        key.includes("_call") ||
-        key.includes("_result")
-      ) {
-        recentCaptures.add(key);
-      }
-    }
-
-    return smartFilterAndMask(
-      variables,
-      {
-        stepType: "call",
-        recentCaptures,
-        isFirstStep: false,
-      },
-      {
-        alwaysInclude: ["suite_name", "step_id", "test_path"],
-        alwaysExclude: ["PATH", "HOME", "USER", "SHELL", "PWD", "LANG"],
-        maxPerCategory: 5,
-      },
-      {
-        maxDepth: 2,
-        maxObjectSize: 12,
-        maxArrayLength: 3,
-        maxStringLength: 120,
-      }
-    );
-  }
-
-  /**
-   * Builds a failure result when execution errors occur.
-   *
-   * @param context - Execution context
-   * @param error - Error that occurred
-   * @param duration - Execution duration in ms
-   * @returns Failure step execution result
-   * @private
-   */
-  private buildFailureResult(
-    context: StepExecutionContext,
-    error: any,
-    duration: number
-  ): StepExecutionResult {
-    const { step, identifiers, globalVariables } = context;
-    const errorMessage = error instanceof Error ? error.message : String(error);
-
-    return {
-      step_id: identifiers.stepId,
-      qualified_step_id: identifiers.qualifiedStepId,
-      step_name: step.name,
-      status: "failure",
-      duration_ms: duration,
-      error_message: errorMessage,
-      captured_variables: {},
-      available_variables: this.filterAvailableVariables(
-        globalVariables.getAllVariables()
-      ),
-      assertions_results: [],
-    };
-  }
+  // filterAvailableVariables and buildFailureResult methods moved to BaseStepStrategy
+  // to eliminate code duplication across all strategies
 }
