@@ -165,7 +165,6 @@ results/
 ├── latest.json                                        ✅
 └── html/
     ├── index_2025-10-22_11-19-00.html                ✅
-    ├── dataprev-oauth2-test_2025-10-22_11-19-00.html ✅
     ├── cli-comprehensive-test_2025-10-22_11-19-00.html ✅
     └── latest/                                        ✅
         ├── index_2025-10-22_11-19-00.html            ✅

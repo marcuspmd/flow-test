@@ -642,23 +642,42 @@ ${stepsMarkup}
     );
     const curlCommand = ReportingUtils.generateCurlCommand(request);
 
+    const headersJson = ReportingUtils.formatJson(request.headers);
     const headersHtml =
       request.headers && Object.keys(request.headers).length > 0
         ? `<div class="code-block">
-            <div class="code-header"><span class="code-title">Headers</span></div>
+            <div class="code-header">
+              <span class="code-title">Headers</span>
+              <button class="copy-btn" onclick="copyToClipboard(this)" data-content="${ReportingUtils.escapeAttribute(
+                headersJson
+              )}">
+                <span class="copy-icon">📋</span>
+                <span class="copy-text">Copy</span>
+              </button>
+            </div>
             <pre class="code-content">${ReportingUtils.escapeHtml(
-              ReportingUtils.formatJson(request.headers)
+              headersJson
             )}</pre>
           </div>`
         : "";
 
+    const bodyContent =
+      typeof request.body === "string"
+        ? request.body
+        : ReportingUtils.formatJson(request.body);
     const bodyHtml = request.body
       ? `<div class="code-block">
-            <div class="code-header"><span class="code-title">Body</span></div>
+            <div class="code-header">
+              <span class="code-title">Body</span>
+              <button class="copy-btn" onclick="copyToClipboard(this)" data-content="${ReportingUtils.escapeAttribute(
+                bodyContent
+              )}">
+                <span class="copy-icon">📋</span>
+                <span class="copy-text">Copy</span>
+              </button>
+            </div>
             <pre class="code-content">${ReportingUtils.escapeHtml(
-              typeof request.body === "string"
-                ? request.body
-                : ReportingUtils.formatJson(request.body)
+              bodyContent
             )}</pre>
           </div>`
       : "";
@@ -697,23 +716,42 @@ ${stepsMarkup}
         ? "response-status--success"
         : "response-status--error";
 
+    const responseHeadersJson = ReportingUtils.formatJson(response.headers);
     const headersHtml =
       response.headers && Object.keys(response.headers).length > 0
         ? `<div class="code-block">
-            <div class="code-header"><span class="code-title">Headers</span></div>
+            <div class="code-header">
+              <span class="code-title">Headers</span>
+              <button class="copy-btn" onclick="copyToClipboard(this)" data-content="${ReportingUtils.escapeAttribute(
+                responseHeadersJson
+              )}">
+                <span class="copy-icon">📋</span>
+                <span class="copy-text">Copy</span>
+              </button>
+            </div>
             <pre class="code-content">${ReportingUtils.escapeHtml(
-              ReportingUtils.formatJson(response.headers)
+              responseHeadersJson
             )}</pre>
           </div>`
         : "";
 
+    const responseBodyContent =
+      typeof response.body === "string"
+        ? response.body
+        : ReportingUtils.formatJson(response.body);
     const bodyHtml = response.body
       ? `<div class="code-block">
-          <div class="code-header"><span class="code-title">Body</span></div>
+          <div class="code-header">
+            <span class="code-title">Body</span>
+            <button class="copy-btn" onclick="copyToClipboard(this)" data-content="${ReportingUtils.escapeAttribute(
+              responseBodyContent
+            )}">
+              <span class="copy-icon">📋</span>
+              <span class="copy-text">Copy</span>
+            </button>
+          </div>
           <pre class="code-content">${ReportingUtils.escapeHtml(
-            typeof response.body === "string"
-              ? response.body
-              : ReportingUtils.formatJson(response.body)
+            responseBodyContent
           )}</pre>
         </div>`
       : "";
@@ -749,9 +787,26 @@ ${stepsMarkup}
       })
       .join("\n");
 
+    // Create JSON of all assertions for copy
+    const assertionsJson = ReportingUtils.formatJson(assertions);
+
     return `<div class="tab-content" data-tab="assertions">
-      <div class="assertions-list">
-        ${assertionsHtml}
+      <div class="code-block">
+        <div class="code-header">
+          <span class="code-label">Assertions Results</span>
+          <button class="copy-button" onclick="copyToClipboard(this)" data-content="${ReportingUtils.escapeAttribute(
+            assertionsJson
+          )}">
+            <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
+            <span class="copy-text">Copy</span>
+          </button>
+        </div>
+        <div class="assertions-list">
+          ${assertionsHtml}
+        </div>
       </div>
     </div>`;
   }
@@ -774,9 +829,26 @@ ${stepsMarkup}
       })
       .join("\n");
 
+    // Create JSON of all captures for copy
+    const capturesJson = ReportingUtils.formatJson(captures);
+
     return `<div class="tab-content" data-tab="captures">
-      <div class="captures-list">
-        ${capturesHtml}
+      <div class="code-block">
+        <div class="code-header">
+          <span class="code-label">Captured Variables</span>
+          <button class="copy-button" onclick="copyToClipboard(this)" data-content="${ReportingUtils.escapeAttribute(
+            capturesJson
+          )}">
+            <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
+            <span class="copy-text">Copy</span>
+          </button>
+        </div>
+        <div class="captures-list">
+          ${capturesHtml}
+        </div>
       </div>
     </div>`;
   }
