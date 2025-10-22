@@ -1,7 +1,7 @@
 import * as jmespath from "jmespath";
 import { ConditionalScenario, Assertions } from "../types/engine.types";
 import { StepExecutionResult } from "../types/config.types";
-import { AssertionService } from "./assertion.service";
+import { AssertionService } from "./assertion";
 import { CaptureService } from "./capture.service";
 import { getLogger } from "./logger.service";
 
@@ -170,7 +170,11 @@ export class ScenarioService {
    * Executes a scenario block (then or else).
    */
   private executeScenarioBlock(
-    block: { assert?: Assertions; capture?: Record<string, string>; variables?: Record<string, any> },
+    block: {
+      assert?: Assertions;
+      capture?: Record<string, string>;
+      variables?: Record<string, any>;
+    },
     result: StepExecutionResult,
     verbosity: string,
     variableContext?: Record<string, any>
@@ -241,7 +245,9 @@ export class ScenarioService {
 
       if (verbosity === "detailed" || verbosity === "verbose") {
         this.logger.info(
-          `Set ${Object.keys(block.variables).length} scenario variable(s): ${Object.keys(block.variables).join(', ')}`
+          `Set ${
+            Object.keys(block.variables).length
+          } scenario variable(s): ${Object.keys(block.variables).join(", ")}`
         );
       }
     }

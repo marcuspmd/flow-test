@@ -12,6 +12,7 @@
 import * as jmespath from "jmespath";
 import { StepExecutionResult } from "../types/config.types";
 import { getLogger } from "./logger.service";
+import { InterpolationService } from "./interpolation.service";
 
 /**
  * Service responsible for capturing variables from HTTP responses
@@ -34,6 +35,11 @@ import { getLogger } from "./logger.service";
  */
 export class CaptureService {
   private logger = getLogger();
+  private interpolationService: InterpolationService;
+
+  constructor() {
+    this.interpolationService = new InterpolationService();
+  }
 
   /**
    * Captures variables from HTTP response using JMESPath expressions
@@ -134,9 +140,15 @@ export class CaptureService {
   /**
    * Extracts a value from the response using JMESPath or evaluates expressions
    *
-   * @param expression - JMESPath expression, JavaScript expression, or direct value
+   * @remarks
+   * This method now delegates variable interpolation to InterpolationService,
+   * ensuring consistent handling of {{variable}}, {{$env.VAR}}, {{$faker.xxx}},
+   * and {{$js:expr}} across the entire system.
+   *
+   * @param expression - JMESPath expression, interpolated expression, or direct value
    * @param result - Execution result
-   * @param variableContext - Current variable context for JavaScript expressions
+   * @param variableContext - Current variable context for interpolation
+   * @param customContext - Custom context for JMESPath evaluation
    * @returns Extracted value
    * @throws Error if expression is invalid
    * @private
@@ -147,9 +159,7 @@ export class CaptureService {
     variableContext?: Record<string, any>,
     customContext?: any
   ): any {
-    // Handle different types of expressions
-
-    // Check if expression is a string
+    // Handle non-string expressions
     if (typeof expression !== "string") {
       return expression; // Return as-is if not a string
     }
@@ -160,66 +170,41 @@ export class CaptureService {
       return expression.slice(1, -1);
     }
 
-    // 2. Check if it's wrapped in {{...}} (interpolation syntax)
-    if (expression.startsWith("{{") && expression.endsWith("}}")) {
-      const innerExpression = expression.slice(2, -2).trim();
+    // 2. Interpolate variables using InterpolationService if expression contains {{...}}
+    if (expression.includes("{{")) {
+      const interpolationContext = {
+        runtime: variableContext || {},
+        suite: {},
+        imported: {},
+        global: {},
+        variableResolver: (varName: string) => variableContext?.[varName],
+      };
 
-      // Check if it's a JavaScript expression
-      if (
-        innerExpression.startsWith("js:") ||
-        innerExpression.startsWith("$js:")
-      ) {
-        const jsExpression = innerExpression.replace(/^\$?js:/, "").trim();
-        try {
-          // Create a safe evaluation context with response data and variables
-          const evaluationContext =
-            customContext ?? (result ? this.buildContext(result) : undefined);
-          if (!evaluationContext) {
-            throw new Error(
-              "Capture context is not available for JavaScript evaluation"
-            );
-          }
-          const variables = variableContext || {};
-
-          // Use Function constructor for safer evaluation
-          const evalFunction = new Function(
-            "status_code",
-            "headers",
-            "body",
-            "duration_ms",
-            "variables",
-            `return ${jsExpression};`
-          );
-          return evalFunction(
-            evaluationContext.status_code,
-            evaluationContext.headers,
-            evaluationContext.body,
-            evaluationContext.duration_ms,
-            variables
-          );
-        } catch (error) {
-          throw new Error(
-            `Invalid JavaScript expression '${jsExpression}': ${error}`
-          );
-        }
-      } else {
-        // It's a variable reference, should not be processed here
-        // Return the expression as-is for later interpolation
-        return expression;
+      try {
+        expression = this.interpolationService.interpolate(
+          expression,
+          interpolationContext
+        );
+      } catch (error) {
+        this.logger.warn(
+          `Failed to interpolate expression '${expression}': ${error}`
+        );
+        // Continue with original expression - may still be valid JMESPath
       }
     }
 
-    // 3. Try as direct JMESPath expression
+    // 3. Evaluate as JMESPath expression
     const evaluationContext =
       customContext ?? (result ? this.buildContext(result) : undefined);
 
     if (!evaluationContext) {
       throw new Error("Capture context is not available for evaluation");
     }
+
     try {
       return jmespath.search(evaluationContext, expression);
     } catch (error) {
-      // If JMESPath fails, try to return as literal value or expression
+      // If JMESPath fails, try to return as literal value
       // This handles cases where the expression might be a plain string or number
       if (expression === "true") return true;
       if (expression === "false") return false;

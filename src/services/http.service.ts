@@ -12,7 +12,7 @@ import axios, { AxiosResponse, AxiosError } from "axios";
 import { RequestDetails } from "../types/engine.types";
 import { StepExecutionResult } from "../types/engine.types";
 import { getLogger } from "./logger.service";
-import { CertificateService } from "./certificate.service";
+import { CertificateService } from "./certificate";
 
 /**
  * HTTP service for executing API requests with comprehensive monitoring and error handling.

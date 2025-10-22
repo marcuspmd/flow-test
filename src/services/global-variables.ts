@@ -1,12 +1,12 @@
 import { ConfigManager } from "../core/config";
 import { GlobalVariableContext } from "../types/engine.types";
 import { GlobalRegistryService } from "./global-registry.service";
-import { fakerService } from "./faker.service";
 import { getLogger } from "./logger.service";
+import { JavaScriptExecutionContext } from "./javascript.service";
 import {
-  javascriptService,
-  JavaScriptExecutionContext,
-} from "./javascript.service";
+  interpolationService,
+  InterpolationContext,
+} from "./interpolation.service";
 
 /**
  * Service for managing global variables with hierarchical scoping and intelligent caching
@@ -289,7 +289,11 @@ export class GlobalVariablesService {
 
     // Check for dependency variables if registry is available
     // Only check for direct dependency names, not dot notation (that's handled in interpolation)
-    if (this.globalRegistry && this.dependencies.length > 0 && !name.includes('.')) {
+    if (
+      this.globalRegistry &&
+      this.dependencies.length > 0 &&
+      !name.includes(".")
+    ) {
       // Check if the variable name is a dependency node_id itself
       if (this.dependencies.includes(name)) {
         // For dependency node_ids, get all variables from that node directly
@@ -301,7 +305,9 @@ export class GlobalVariablesService {
 
       // Check for exported variables from dependencies (simple names only)
       for (const dependencyNodeId of this.dependencies) {
-        const exportedValue = this.globalRegistry.getExportedVariable(`${dependencyNodeId}.${name}`);
+        const exportedValue = this.globalRegistry.getExportedVariable(
+          `${dependencyNodeId}.${name}`
+        );
         if (exportedValue !== undefined) {
           return exportedValue;
         }
@@ -309,8 +315,8 @@ export class GlobalVariablesService {
     }
 
     // Provide default fallback values for commonly used variables
-    if (name === 'execution_mode') {
-      return 'sequential';
+    if (name === "execution_mode") {
+      return "sequential";
     }
 
     return undefined;
@@ -571,119 +577,51 @@ export class GlobalVariablesService {
   /**
    * Resolves variable expressions with support for paths and exported variables
    */
+  /**
+   * Resolves a variable expression using InterpolationService
+   *
+   * @remarks
+   * This method now delegates special expression handling ($env, $faker, $js)
+   * to InterpolationService for consistency. It focuses on hierarchical variable
+   * lookup and exported variable resolution.
+   *
+   * @param expression - Variable expression to resolve
+   * @returns Resolved value or undefined
+   * @private
+   */
   private resolveVariableExpression(expression: string): any {
-    // Check if it's a Faker expression (starts with 'faker.' or '$faker.') - PRIORITY OVER JS
-    if (expression.startsWith("faker.") || expression.startsWith("$faker.")) {
+    // Delegate to InterpolationService if it's a special expression
+    if (
+      expression.startsWith("$env.") ||
+      expression.startsWith("$faker.") ||
+      expression.startsWith("faker.") ||
+      expression.startsWith("$js:") ||
+      expression.startsWith("$js.") ||
+      expression.startsWith("js:") ||
+      /\|\||&&|[><=!]==?|\?|:/.test(expression) // Logical operators
+    ) {
+      const interpolationContext: InterpolationContext = {
+        variableResolver: (path: string) => this.getVariable(path),
+        javascriptContext: {
+          ...this.currentExecutionContext,
+          variables: this.getAllVariables(),
+        },
+        suppressWarnings: false,
+      };
+
       try {
-        let fakerExpression = expression;
-        if (expression.startsWith("$faker.")) {
-          // Handle $faker.person.name format
-          fakerExpression = expression.substring(1); // Remove "$" to get "faker.person.name"
-        }
-        const result = fakerService.parseFakerExpression(fakerExpression);
+        // Wrap in {{...}} for InterpolationService
+        const wrappedExpression = `{{${expression}}}`;
+        const result = interpolationService.interpolate(
+          wrappedExpression,
+          interpolationContext
+        );
         return result;
       } catch (error) {
         getLogger().warn(
-          `Error resolving Faker expression '${expression}': ${error}`
+          `Error resolving expression '${expression}': ${error}`
         );
         return undefined;
-      }
-    }
-
-    // Check if it's an environment variable (starts with '$env.') - PRIORITY OVER JS
-    if (expression.startsWith("$env.")) {
-      const envVarName = expression.substring(5); // Remove "$env." to get variable name
-      const envValue = process.env[envVarName];
-      return envValue || null;
-    }
-
-    // Check for expressions containing $env with logical operators (like $env.NODE_ENV || 'default')
-    if (expression.includes("$env.")) {
-      try {
-        // Replace $env variables with their actual values in the expression
-        let resolvedExpression = expression;
-        const envMatches = expression.match(/\$env\.([A-Z_][A-Z0-9_]*)/gi);
-
-        if (envMatches) {
-          for (const envMatch of envMatches) {
-            const envVarName = envMatch.substring(5); // Remove "$env."
-            const envValue = process.env[envVarName];
-            // Replace with quoted string if exists, or undefined if not
-            const replacement = envValue ? `"${envValue}"` : 'undefined';
-            resolvedExpression = resolvedExpression.replace(envMatch, replacement);
-          }
-
-          // Now execute as JavaScript expression
-          const allVars = this.getAllVariables();
-          const context: JavaScriptExecutionContext = {
-            ...this.currentExecutionContext,
-            variables: allVars,
-          };
-          const result = javascriptService.executeExpression(
-            resolvedExpression,
-            context,
-            false
-          );
-          return result;
-        }
-      } catch (error) {
-        getLogger().warn(
-          `Error resolving $env expression '${expression}': ${error}`
-        );
-        return undefined;
-      }
-    }
-
-    // Check if it's a JavaScript expression, but NOT if it's a Faker expression
-    if (!expression.startsWith("faker.") && !expression.startsWith("$faker.")) {
-      const hasLogicalOperators = /\|\||&&|[><=!]==?|\?|:/.test(expression);
-
-      if (
-        expression.startsWith("js:") ||
-        expression.startsWith("$js:") ||
-        expression.startsWith("$js.") ||
-        hasLogicalOperators
-      ) {
-        try {
-          let jsExpression: string | null = null;
-
-          if (
-            expression.startsWith("js:") ||
-            expression.startsWith("$js:")
-          ) {
-            jsExpression =
-              javascriptService.parseJavaScriptExpression(expression);
-          } else if (expression.startsWith("$js.")) {
-            // Handle $js.return and $js.expression formats
-            jsExpression = expression.substring(4); // Remove "$js."
-          } else if (hasLogicalOperators) {
-            // Handle logical expressions like "jwt_login_success || false"
-            jsExpression = expression;
-          }
-
-          if (jsExpression) {
-            // Update execution context with current variables
-            const allVars = this.getAllVariables();
-            const context: JavaScriptExecutionContext = {
-              ...this.currentExecutionContext,
-              variables: allVars,
-            };
-            // Use code block mode only for $js expressions, not for logical operators
-            const useCodeBlock = expression.startsWith("$js.");
-            const result = javascriptService.executeExpression(
-              jsExpression,
-              context,
-              useCodeBlock
-            );
-            return result;
-          }
-          return undefined;
-        } catch (error) {
-          getLogger().warn(
-            `Error resolving JavaScript expression '${expression}': ${error}`
-          );
-          return undefined;
-        }
       }
     }
 
@@ -786,7 +724,7 @@ export class GlobalVariablesService {
    */
   getVariablesByScope(scope: keyof GlobalVariableContext): Record<string, any> {
     // For environment variables, return current process.env instead of cached version
-    if (scope === 'environment') {
+    if (scope === "environment") {
       return { ...process.env };
     }
     return { ...this.context[scope] };

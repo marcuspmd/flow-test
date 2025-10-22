@@ -87,7 +87,7 @@ export * from "./types/config.types";
 
 // Export legacy compatible services (for migration)
 export { HttpService } from "./services/http.service";
-export { AssertionService } from "./services/assertion.service";
+export { AssertionService } from "./services/assertion";
 export { CaptureService } from "./services/capture.service";
 
 /**

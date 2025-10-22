@@ -3,7 +3,7 @@
  * Validates HTTP response assertions with status codes, headers, and body validation using JMESPath
  */
 
-import { AssertionService } from "../assertion.service";
+import { AssertionService } from "../assertion";
 import { StepExecutionResult } from "../../types/config.types";
 import * as jmespath from "jmespath";
 

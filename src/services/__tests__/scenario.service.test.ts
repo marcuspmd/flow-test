@@ -1,7 +1,7 @@
 import { ScenarioService } from "../scenario.service";
 import { ConditionalScenario, Assertions } from "../../types/engine.types";
 import { StepExecutionResult } from "../../types/config.types";
-import { AssertionService } from "../assertion.service";
+import { AssertionService } from "../assertion";
 import { CaptureService } from "../capture.service";
 import * as jmespath from "jmespath";
 

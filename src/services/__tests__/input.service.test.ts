@@ -5,7 +5,7 @@
  * rather than testing private methods that have been moved to strategies/helpers.
  */
 
-import { InputService } from "../input.service";
+import { InputService } from "../input";
 import { InputConfig } from "../../types/engine.types";
 import { InputTypeRegistry } from "../input/strategies/input-types";
 import { PromptStyleRegistry } from "../input/strategies/prompt-styles";
