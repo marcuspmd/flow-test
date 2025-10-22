@@ -42,14 +42,19 @@ import {
   InputExecutionContext,
 } from "../types/engine.types";
 import type {
-  StepCallExecutionOptions,
-  StepCallRequest,
   StepCallResult,
   StepExecutionHandlerInput,
 } from "../types/call.types";
-import { DynamicVariableAssignment, DelayConfig } from "../types/common.types";
+import { DelayConfig } from "../types/common.types";
 import { CallService } from "./call.service";
 import { EngineExecutionOptions } from "../types/config.types";
+import { StepStrategyFactory } from "../strategies/step-strategy.factory";
+import { RequestStepStrategy } from "../strategies/request-step.strategy";
+import { InputStepStrategy } from "../strategies/input-step.strategy";
+import { CallStepStrategy } from "../strategies/call-step.strategy";
+import { IteratedStepStrategy } from "../strategies/iterated-step.strategy";
+import { ScenarioStepStrategy } from "../strategies/scenario-step.strategy";
+import type { StepExecutionContext } from "../strategies/step-execution.strategy";
 
 type StepIdentifiers = {
   stepId: string;
@@ -174,6 +179,7 @@ export class ExecutionService {
   private callService: CallService;
   private scriptExecutorService: ScriptExecutorService;
   private stepCallStack: string[] = [];
+  private stepStrategyFactory: StepStrategyFactory;
 
   // Performance statistics
   private performanceData: {
@@ -243,61 +249,23 @@ export class ExecutionService {
     this.callService = new CallService(this.executeResolvedStepCall.bind(this));
     this.scriptExecutorService = new ScriptExecutorService(this.logger);
 
+    // Initialize Strategy Pattern factory and register strategies
+    this.stepStrategyFactory = new StepStrategyFactory();
+
+    // Register strategies in priority order (high to low)
+    const iteratedStrategy = new IteratedStepStrategy();
+    this.stepStrategyFactory.registerStrategy(iteratedStrategy, 0); // Highest priority
+    iteratedStrategy.setFactory(this.stepStrategyFactory); // Enable delegation
+
+    this.stepStrategyFactory.registerStrategy(new CallStepStrategy(), 1);
+    this.stepStrategyFactory.registerStrategy(new ScenarioStepStrategy(), 2);
+    this.stepStrategyFactory.registerStrategy(new InputStepStrategy(), 3);
+    this.stepStrategyFactory.registerStrategy(new RequestStepStrategy(), 4); // Lowest priority (fallback)
+
     this.performanceData = {
       requests: [],
       start_time: Date.now(),
     };
-  }
-
-  private buildDynamicContext(
-    suite: TestSuite,
-    step: TestStep,
-    variables: Record<string, any>,
-    contextData?: {
-      captured?: Record<string, any>;
-      response?: StepExecutionResult["response_details"];
-      request?: StepExecutionResult["request_details"];
-      extras?: Record<string, any>;
-    }
-  ) {
-    return {
-      variables,
-      stepName: step.name,
-      suiteNodeId: suite.node_id,
-      suiteName: suite.suite_name,
-      timestamp: new Date().toISOString(),
-      captured: contextData?.captured,
-      response: contextData?.response,
-      request: contextData?.request,
-      extras: contextData?.extras,
-    };
-  }
-
-  private applyDynamicAssignments(
-    assignments: DynamicVariableAssignment[],
-    suite: TestSuite
-  ): Record<string, any> {
-    const applied: Record<string, any> = {};
-
-    for (const assignment of assignments) {
-      this.globalVariables.setVariable(
-        assignment.name,
-        assignment.value,
-        assignment.scope
-      );
-
-      if (assignment.persist || assignment.scope === "global") {
-        this.globalRegistry.setExportedVariable(
-          suite.node_id,
-          assignment.name,
-          assignment.value
-        );
-      }
-
-      applied[assignment.name] = assignment.value;
-    }
-
-    return applied;
   }
 
   private buildStepFilter(stepIds?: string[]): StepFilterSets | undefined {
@@ -1090,241 +1058,6 @@ export class ExecutionService {
   }
 
   /**
-   * Executes a step that has scenarios (conditional execution)
-   */
-  private async executeScenarioStep(
-    step: any,
-    suite: TestSuite,
-    _stepIndex: number,
-    stepStartTime: number,
-    context: any,
-    identifiers: StepIdentifiers
-  ): Promise<StepExecutionResult> {
-    try {
-      // First, try to find a scenario that matches the current conditions
-      let executedScenario = false;
-      const evaluations: any[] = [];
-      let httpResult: any = null;
-      let assertionResults: any[] = [];
-      let capturedVariables: Record<string, any> = {};
-
-      for (let i = 0; i < step.scenarios.length; i++) {
-        const scenario = step.scenarios[i];
-        try {
-          // Evaluate the condition using current variables
-          const conditionMet = this.evaluateScenarioCondition(
-            scenario.condition
-          );
-
-          if (conditionMet && scenario.then) {
-            this.logger.info(`Executing scenario: ${scenario.condition}`);
-
-            // Execute the scenario's request if it exists
-            if (scenario.then.request) {
-              const rawScenarioUrl = scenario.then.request?.url;
-              const interpolatedRequest = this.globalVariables.interpolate(
-                scenario.then.request
-              );
-              httpResult = await this.httpService.executeRequest(
-                step.name,
-                interpolatedRequest
-              );
-              this.attachRawUrlToResult(httpResult, rawScenarioUrl);
-              this.recordPerformanceData(interpolatedRequest, httpResult);
-            }
-
-            // Execute assertions from scenario
-            if (scenario.then.assert && httpResult?.response_details) {
-              const interpolatedAssertions = this.globalVariables.interpolate(
-                scenario.then.assert
-              );
-              assertionResults = this.assertionService.validateAssertions(
-                interpolatedAssertions,
-                httpResult
-              );
-              httpResult.assertions_results = assertionResults;
-
-              const failedAssertions = assertionResults.filter(
-                (a) => !a.passed
-              );
-              if (failedAssertions.length > 0) {
-                httpResult.status = "failure";
-                httpResult.error_message = `${failedAssertions.length} assertion(s) failed`;
-              }
-            }
-
-            // Execute captures from scenario
-            if (scenario.then.capture && httpResult?.response_details) {
-              const currentVariables = this.globalVariables.getAllVariables();
-              capturedVariables = this.captureService.captureVariables(
-                scenario.then.capture,
-                httpResult,
-                currentVariables
-              );
-              httpResult.captured_variables = capturedVariables;
-
-              if (Object.keys(capturedVariables).length > 0) {
-                this.globalVariables.setRuntimeVariables(
-                  this.processCapturedVariables(capturedVariables, suite)
-                );
-              }
-            }
-
-            executedScenario = true;
-
-            evaluations.push({
-              index: i + 1,
-              condition: scenario.condition,
-              matched: true,
-              executed: true,
-              branch: "then",
-              assertions_added: assertionResults.length,
-              captures_added: Object.keys(capturedVariables || {}).length,
-            });
-
-            break;
-          }
-
-          // Not matched (or no 'then') -> record evaluation row
-          evaluations.push({
-            index: i + 1,
-            condition: scenario.condition,
-            matched: conditionMet,
-            executed: false,
-            branch: "none",
-            assertions_added: 0,
-            captures_added: 0,
-          });
-        } catch (error) {
-          this.logger.warn(
-            `Error evaluating scenario condition: ${scenario.condition}`,
-            { error: error as Error }
-          );
-        }
-      }
-
-      const stepEndTime = Date.now();
-      const stepDuration = stepEndTime - stepStartTime;
-
-      if (!executedScenario) {
-        // No scenario matched - this is OK, just skip execution
-        this.logger.info(`No scenarios matched for step: ${step.name}`);
-        const skippedResult: StepExecutionResult = {
-          step_id: identifiers.stepId,
-          qualified_step_id: identifiers.qualifiedStepId,
-          step_name: step.name,
-          status: "skipped",
-          duration_ms: stepDuration,
-          captured_variables: {},
-          available_variables: this.filterAvailableVariables(
-            this.globalVariables.getAllVariables()
-          ),
-          error_message: "No matching scenario conditions",
-          scenarios_meta: {
-            has_scenarios: true,
-            executed_count: 0,
-            evaluations,
-          } as any,
-        };
-
-        await this.hooks.onStepEnd?.(step, skippedResult, context);
-        return skippedResult;
-      }
-
-      const stepResult: StepExecutionResult = {
-        step_id: identifiers.stepId,
-        qualified_step_id: identifiers.qualifiedStepId,
-        step_name: step.name,
-        status: httpResult?.status || "success",
-        duration_ms: stepDuration,
-        request_details: httpResult?.request_details,
-        response_details: httpResult?.response_details,
-        assertions_results: assertionResults,
-        captured_variables: capturedVariables,
-        available_variables: this.filterAvailableVariables(
-          this.globalVariables.getAllVariables()
-        ),
-        scenarios_meta: {
-          has_scenarios: true,
-          executed_count: 1,
-          evaluations,
-        } as any,
-        error_message: httpResult?.error_message,
-      };
-
-      await this.hooks.onStepEnd?.(step, stepResult, context);
-      return stepResult;
-    } catch (error) {
-      const stepEndTime = Date.now();
-      const stepDuration = stepEndTime - stepStartTime;
-
-      const errorResult: StepExecutionResult = {
-        step_id: identifiers.stepId,
-        qualified_step_id: identifiers.qualifiedStepId,
-        step_name: step.name,
-        status: "failure",
-        duration_ms: stepDuration,
-        error_message: `Scenario execution error: ${error}`,
-        captured_variables: {},
-        available_variables: this.filterAvailableVariables(
-          this.globalVariables.getAllVariables()
-        ),
-      };
-
-      await this.hooks.onStepEnd?.(step, errorResult, context);
-      return errorResult;
-    }
-  }
-
-  /**
-   * Evaluates a scenario condition using current variables
-   */
-  private evaluateScenarioCondition(condition: string): boolean {
-    try {
-      // Get current variables for evaluation context
-      const allVars = this.globalVariables.getAllVariables();
-      const context = {
-        ...allVars,
-        variables: allVars,
-      };
-
-      // Simple evaluation for now - we can improve this later
-      // Handle common patterns like "payment_approved == 'true'"
-      const interpolatedCondition = this.globalVariables.interpolate(condition);
-
-      // If condition contains JavaScript-like operators, try to evaluate
-      if (
-        interpolatedCondition.includes("==") ||
-        interpolatedCondition.includes("!=") ||
-        interpolatedCondition.includes("&&") ||
-        interpolatedCondition.includes("||")
-      ) {
-        // Simple string-based evaluation for now
-        // This is a basic implementation - could be enhanced with proper JS evaluation
-        if (interpolatedCondition.includes("== 'true'")) {
-          const varName = interpolatedCondition.split("== 'true'")[0].trim();
-          return allVars[varName] === "true" || allVars[varName] === true;
-        }
-
-        if (interpolatedCondition.includes("== true")) {
-          const varName = interpolatedCondition.split("== true")[0].trim();
-          return allVars[varName] === true || allVars[varName] === "true";
-        }
-
-        return false;
-      }
-
-      // For simple variable checks
-      return Boolean(allVars[condition]);
-    } catch (error) {
-      this.logger.warn(`Error evaluating condition: ${condition}`, {
-        error: error as Error,
-      });
-      return false;
-    }
-  }
-
-  /**
    * Executes an individual step
    */
   private async executeStep(
@@ -1352,6 +1085,7 @@ export class ExecutionService {
 
     await this.hooks.onStepStart?.(step, context);
 
+    // Skip step if not in execution filter
     if (!shouldExecute) {
       const skippedResult: StepExecutionResult = {
         step_id: identifiers.stepId,
@@ -1373,771 +1107,75 @@ export class ExecutionService {
       return skippedResult;
     }
 
+    // Execute step using Strategy Pattern
     try {
-      if (step.call) {
-        const callStepResult = await this.executeCallStep(
-          step,
-          suite,
-          stepIndex,
-          identifiers,
-          context,
-          discoveredTest
-        );
+      // Get appropriate strategy for this step
+      const strategy = this.stepStrategyFactory.getStrategy(step);
+      const strategyName = strategy.constructor.name;
 
-        await this.hooks.onStepEnd?.(step, callStepResult, context);
-        return callStepResult;
-      }
+      this.logger.debug(
+        `Using strategy: ${strategyName} for step '${step.name}'`
+      );
 
-      // Initialize captured variables and assertion results for all steps
-      let capturedVariables: Record<string, any> = {};
-      let assertionResults: any[] = [];
-
-      // Check if step has iteration configuration - if so, execute multiple times
-      if (step.iterate) {
-        return await this.executeIteratedStep(
-          step,
-          suite,
-          stepIndex,
-          stepStartTime,
-          context,
-          identifiers,
-          discoveredTest
-        );
-      }
-
-      // Check if step has scenarios WITHOUT request - if so, use scenario-based execution
-      if (step.scenarios && Array.isArray(step.scenarios) && !step.request) {
-        return await this.executeScenarioStep(
-          step,
-          suite,
-          stepIndex,
-          stepStartTime,
-          context,
-          identifiers
-        );
-      }
-
-      // Validate that step has either request, input, or call
-      if (!step.request && !step.input && !step.call) {
-        throw new Error(
-          `Step '${step.name}' must have either 'request', 'input', or 'call' configuration`
-        );
-      }
-
-      let httpResult: any = null;
-
-      // 1. Execute HTTP request if present
-      if (step.request) {
-        // **1.1 Execute pre-request script if present**
-        if (step.pre_request) {
-          try {
-            this.logger.debug(
-              `Executing pre-request script for step '${step.name}'`
-            );
-
-            const currentVariables = this.globalVariables.getAllVariables();
-            const requestCopy = JSON.parse(JSON.stringify(step.request));
-
-            // Garantir que headers sempre seja um objeto
-            if (!requestCopy.headers) {
-              requestCopy.headers = {};
-            }
-
-            const scriptResult =
-              await this.scriptExecutorService.executePreRequestScript(
-                step.pre_request,
-                currentVariables,
-                requestCopy,
-                discoveredTest?.file_path
-              );
-
-            // Apply variables set by the script
-            if (Object.keys(scriptResult.variables).length > 0) {
-              this.globalVariables.setRuntimeVariables(scriptResult.variables);
-              this.logger.debug(
-                `Pre-request script set ${
-                  Object.keys(scriptResult.variables).length
-                } variable(s)`
-              );
-            }
-
-            // Apply modified request if script changed it
-            if (scriptResult.modified_request) {
-              Object.assign(step.request, scriptResult.modified_request);
-              this.logger.debug("Request modified by pre-request script");
-            }
-
-            // Log console output if any
-            if (
-              scriptResult.console_output &&
-              scriptResult.console_output.length > 0
-            ) {
-              scriptResult.console_output.forEach((log) =>
-                this.logger.debug(log)
-              );
-            }
-          } catch (error) {
-            const errorMessage =
-              error instanceof Error ? error.message : String(error);
-            this.logger.error(`Pre-request script failed: ${errorMessage}`);
-
-            if (!step.pre_request.continue_on_error) {
-              throw error;
-            }
-          }
-        }
-
-        // Interpolates variables in request
-        const rawRequestUrl = step.request?.url;
-        const interpolatedRequest = this.globalVariables.interpolate(
-          step.request
-        );
-
-        // Apply suite-level certificate if no request-specific certificate
-        if (!interpolatedRequest.certificate && suite.certificate) {
-          const interpolatedCertificate = this.globalVariables.interpolate(
-            suite.certificate
-          );
-          interpolatedRequest.certificate = interpolatedCertificate;
-          this.logger.debug(
-            `Applied suite-level certificate to request: ${step.name}`
-          );
-        } else if (interpolatedRequest.certificate) {
-          this.logger.debug(
-            `Using step-level certificate for request: ${step.name}`
-          );
-        } else {
-          this.logger.debug(
-            `No certificate configured for request: ${step.name}`
-          );
-        }
-
-        // 2. Executes HTTP request
-        httpResult = await this.httpService.executeRequest(
-          step.name,
-          interpolatedRequest
-        );
-
-        this.attachRawUrlToResult(httpResult, rawRequestUrl);
-
-        // Records performance data
-        this.recordPerformanceData(interpolatedRequest, httpResult);
-
-        // **2.5 Execute post-request script if present**
-        if (step.post_request && httpResult.response_details) {
-          try {
-            this.logger.debug(
-              `Executing post-request script for step '${step.name}'`
-            );
-
-            const currentVariables = this.globalVariables.getAllVariables();
-
-            const scriptResult =
-              await this.scriptExecutorService.executePostRequestScript(
-                step.post_request,
-                currentVariables,
-                {
-                  method: interpolatedRequest.method,
-                  url:
-                    httpResult.request_details?.url || interpolatedRequest.url,
-                  headers: interpolatedRequest.headers || {},
-                  body: interpolatedRequest.body,
-                  params: interpolatedRequest.params,
-                },
-                {
-                  status: httpResult.response_details.status,
-                  status_code: httpResult.response_details.status,
-                  headers: httpResult.response_details.headers || {},
-                  body: httpResult.response_details.body,
-                  data: httpResult.response_details.body,
-                  response_time_ms: httpResult.response_time || 0,
-                },
-                discoveredTest?.file_path
-              );
-
-            // Apply variables set by the script
-            if (Object.keys(scriptResult.variables).length > 0) {
-              this.globalVariables.setRuntimeVariables(scriptResult.variables);
-              this.logger.debug(
-                `Post-request script set ${
-                  Object.keys(scriptResult.variables).length
-                } variable(s)`
-              );
-
-              // Also add to captured variables for this step
-              if (!httpResult.captured_variables) {
-                httpResult.captured_variables = {};
-              }
-              Object.assign(
-                httpResult.captured_variables,
-                scriptResult.variables
-              );
-            }
-
-            // Log console output if any
-            if (
-              scriptResult.console_output &&
-              scriptResult.console_output.length > 0
-            ) {
-              scriptResult.console_output.forEach((log) =>
-                this.logger.debug(log)
-              );
-            }
-          } catch (error) {
-            const errorMessage =
-              error instanceof Error ? error.message : String(error);
-            this.logger.error(`Post-request script failed: ${errorMessage}`);
-
-            if (!step.post_request.continue_on_error) {
-              throw error;
-            }
-          }
-        }
-
-        // 3. Process scenarios if they exist
-        if (
-          step.scenarios &&
-          Array.isArray(step.scenarios) &&
-          httpResult.response_details
-        ) {
-          // Interpolate variables in scenarios before processing
-          const interpolatedScenarios = this.globalVariables.interpolate(
-            step.scenarios
-          );
-
-          this.scenarioService.processScenarios(
-            interpolatedScenarios,
-            httpResult,
-            "verbose"
-          );
-        }
-
-        // 4. Executes assertions
-        if (step.assert && httpResult.response_details) {
-          // Interpolate assertion values before validation
-          const interpolatedAssertions = this.globalVariables.interpolate(
-            step.assert
-          );
-
-          assertionResults = this.assertionService.validateAssertions(
-            interpolatedAssertions,
-            httpResult
-          );
-          httpResult.assertions_results = assertionResults;
-
-          const failedAssertions = assertionResults.filter((a) => !a.passed);
-          if (failedAssertions.length > 0) {
-            httpResult.status = "failure";
-            httpResult.error_message = `${failedAssertions.length} assertion(s) failed`;
-          }
-        }
-
-        // 5. Captures variables
-        // First, include any variables captured by scenarios
-        if (httpResult.captured_variables) {
-          capturedVariables = { ...httpResult.captured_variables };
-
-          // Make sure scenario-captured variables are also available globally
-          if (Object.keys(capturedVariables).length > 0) {
-            this.globalVariables.setRuntimeVariables(
-              this.processCapturedVariables(capturedVariables, suite)
-            );
-          }
-        }
-
-        if (step.capture && httpResult.response_details) {
-          // Get current variables for capture context
-          const currentVariables = this.globalVariables.getAllVariables();
-
-          const stepCapturedVariables = this.captureService.captureVariables(
-            step.capture,
-            httpResult,
-            currentVariables
-          );
-
-          // Merge step captures with scenario captures
-          capturedVariables = {
-            ...capturedVariables,
-            ...stepCapturedVariables,
-          };
-          httpResult.captured_variables = capturedVariables;
-
-          // Immediately update runtime variables so they're available for next steps
-          if (Object.keys(stepCapturedVariables).length > 0) {
-            this.globalVariables.setRuntimeVariables(
-              this.processCapturedVariables(stepCapturedVariables, suite)
-            );
-          }
-        }
-      } else {
-        // For steps without request, create a mock result
-        httpResult = {
-          status: "success",
-          status_code: 200,
-          response_time: 0,
-          captured_variables: {},
-        };
-      }
-
-      // Use captured variables from HTTP execution if available
-      if (step.request && httpResult.captured_variables) {
-        capturedVariables = { ...httpResult.captured_variables };
-      }
-
-      let inputResultsForStep: InputResult[] | undefined;
-      const stepDynamicAssignments: DynamicVariableAssignment[] = [];
-
-      // 6. Process interactive input(s) if configured
-      if (step.input) {
-        try {
-          // Set execution context for interactive inputs
-          const executionContext: InputExecutionContext = {
-            suite_name: suite.suite_name,
-            suite_path: discoveredTest?.file_path,
-            step_name: step.name,
-            step_id: step.step_id,
-            step_index: stepIndex,
-            cache_key: `${suite.node_id || suite.suite_name}::${step.name}`,
-          };
-          this.inputService.setExecutionContext(executionContext);
-
-          const currentVariables = this.globalVariables.getAllVariables();
-          const inputResult = await this.inputService.promptUser(
-            step.input,
-            currentVariables
-          );
-
-          // Handle single or multiple input results
-          const inputResults = Array.isArray(inputResult)
-            ? inputResult
-            : [inputResult];
-          inputResultsForStep = inputResults;
-          const inputConfigs = Array.isArray(step.input)
-            ? step.input
-            : [step.input];
-
-          if (!httpResult.captured_variables) {
-            httpResult.captured_variables = {};
-          }
-
-          const createDynamicContext = () =>
-            this.buildDynamicContext(
-              suite,
-              step,
-              this.globalVariables.getAllVariables(),
-              {
-                captured: {
-                  ...(httpResult.captured_variables ?? {}),
-                },
-                response: httpResult.response_details,
-                request: httpResult.request_details,
-              }
-            );
-
-          let inputProcessedSuccessfully = true;
-          const triggeredVariables = new Set<string>();
-          let lastSuccessfulInput: InputResult | undefined;
-
-          inputResults.forEach((result, index) => {
-            const config =
-              inputConfigs[Math.min(index, inputConfigs.length - 1)];
-            if (Array.isArray(step.input)) {
-              this.logger.info(`📝 Processing input: ${result.variable}`);
-            } else {
-              this.logger.info(`📝 Prompting for input: ${result.variable}`);
-            }
-
-            if (result.validation_passed) {
-              // Store input result as a variable
-              this.globalVariables.setRuntimeVariable(
-                result.variable,
-                result.value
-              );
-              triggeredVariables.add(result.variable);
-              lastSuccessfulInput = result;
-
-              this.logger.info(
-                `✅ Input captured: ${result.variable} = ${
-                  result.used_default ? "(default)" : "(user input)"
-                }`
-              );
-
-              // Add input result to captured variables for this step
-              httpResult.captured_variables[result.variable] = result.value;
-              capturedVariables[result.variable] = result.value;
-
-              const dynamicContext = createDynamicContext();
-
-              const dynamicOutcome =
-                this.dynamicExpressionService.processInputDynamics(
-                  result,
-                  config.dynamic,
-                  dynamicContext
-                );
-
-              if (dynamicOutcome.assignments.length > 0) {
-                const applied = this.applyDynamicAssignments(
-                  dynamicOutcome.assignments,
-                  suite
-                );
-                stepDynamicAssignments.push(...dynamicOutcome.assignments);
-                result.derived_assignments = dynamicOutcome.assignments;
-                Object.assign(httpResult.captured_variables, applied);
-                Object.assign(capturedVariables, applied);
-                dynamicOutcome.assignments.forEach((assignment) => {
-                  triggeredVariables.add(assignment.name);
-                });
-              }
-
-              if (dynamicOutcome.registeredDefinitions.length > 0) {
-                this.dynamicExpressionService.registerDefinitions(
-                  dynamicOutcome.registeredDefinitions
-                );
-              }
-            } else {
-              this.logger.error(
-                `❌ Input validation failed for ${result.variable}: ${result.validation_error}`
-              );
-              inputProcessedSuccessfully = false;
-              // Continue processing other inputs but mark as partially failed
-            }
-          });
-
-          if (triggeredVariables.size > 0) {
-            const reevaluatedAssignments =
-              this.dynamicExpressionService.reevaluate(
-                Array.from(triggeredVariables),
-                lastSuccessfulInput,
-                createDynamicContext()
-              );
-
-            if (reevaluatedAssignments.length > 0) {
-              const applied = this.applyDynamicAssignments(
-                reevaluatedAssignments,
-                suite
-              );
-              stepDynamicAssignments.push(...reevaluatedAssignments);
-              if (lastSuccessfulInput) {
-                lastSuccessfulInput.derived_assignments = [
-                  ...(lastSuccessfulInput.derived_assignments ?? []),
-                  ...reevaluatedAssignments,
-                ];
-              }
-              Object.assign(httpResult.captured_variables, applied);
-              Object.assign(capturedVariables, applied);
-            }
-          }
-
-          // Update the final captured variables reference
-          if (
-            httpResult.captured_variables &&
-            Object.keys(httpResult.captured_variables).length > 0
-          ) {
-            capturedVariables = {
-              ...capturedVariables,
-              ...httpResult.captured_variables,
-            };
-          }
-
-          // If this was an input-only step and inputs failed, mark the step as failed
-          if (!step.request && !inputProcessedSuccessfully) {
-            httpResult.status = "failure";
-            httpResult.error_message = "One or more input validations failed";
-          }
-        } catch (error) {
-          this.logger.error(`❌ Input processing error: ${error}`);
-          // If this was an input-only step and input failed, mark the step as failed
-          if (!step.request) {
-            httpResult.status = "failure";
-            httpResult.error_message = `Input processing error: ${error}`;
-          }
-        }
-      }
-
-      // 7. Process step.capture after input (similar to request capture)
-      // This allows capturing/transforming input values, just like we do with request responses
-      if (step.input && step.capture) {
-        try {
-          const currentVariables = this.globalVariables.getAllVariables();
-
-          // Use captureFromObject which supports both JMESPath and JavaScript expressions
-          // Context includes all current variables (including the input that was just captured)
-          const stepCapturedVariables = this.captureService.captureFromObject(
-            step.capture,
-            currentVariables, // source object for JMESPath
-            currentVariables // variable context for {{js:...}} and {{...}}
-          );
-
-          // Merge with existing captured variables
-          capturedVariables = {
-            ...capturedVariables,
-            ...stepCapturedVariables,
-          };
-
-          // Update runtime variables immediately so they're available for next steps
-          if (Object.keys(stepCapturedVariables).length > 0) {
-            this.globalVariables.setRuntimeVariables(
-              this.processCapturedVariables(stepCapturedVariables, suite)
-            );
-          }
-        } catch (error) {
-          this.logger.error(
-            `❌ Error processing step.capture after input: ${error}`
-          );
-          // Don't fail the step, just log the error
-        }
-      }
-
-      const stepEndTime = Date.now();
-      const stepDuration = stepEndTime - stepStartTime;
-
-      const stepResult: StepExecutionResult = {
-        step_id: identifiers.stepId,
-        qualified_step_id: identifiers.qualifiedStepId,
-        step_name: step.name,
-        status: httpResult.status,
-        duration_ms: stepDuration,
-        request_details: httpResult.request_details,
-        response_details: httpResult.response_details,
-        assertions_results: assertionResults,
-        captured_variables: capturedVariables,
-        ...(inputResultsForStep ? { input_results: inputResultsForStep } : {}),
-        ...(stepDynamicAssignments.length > 0
-          ? { dynamic_assignments: stepDynamicAssignments }
-          : {}),
-        available_variables: this.filterAvailableVariables(
-          this.globalVariables.getAllVariables()
-        ),
-        scenarios_meta: (httpResult as any).scenarios_meta,
-        error_message: httpResult.error_message,
+      // Build execution context for strategy
+      const strategyContext: StepExecutionContext = {
+        step,
+        suite,
+        stepIndex,
+        identifiers: {
+          stepId: identifiers.stepId,
+          qualifiedStepId: identifiers.qualifiedStepId,
+          stepNumber: stepIndex + 1,
+        } as any,
+        logger: this.logger,
+        globalVariables: this.globalVariables,
+        httpService: this.httpService,
+        assertionService: this.assertionService,
+        captureService: this.captureService,
+        scenarioService: this.scenarioService,
+        callService: this.callService,
+        inputService: this.inputService,
+        iterationService: this.iterationService,
+        dynamicExpressionService: this.dynamicExpressionService,
+        scriptExecutorService: this.scriptExecutorService,
+        hooks: this.hooks,
+        configManager: this.configManager,
+        stepCallStack: this.stepCallStack,
+        discoveredTest: discoveredTest as any,
       };
 
-      // Fires step end hook
-      await this.hooks.onStepEnd?.(step, stepResult, context);
+      // Execute step using strategy
+      const result = await strategy.execute(strategyContext);
 
-      // **Execute delay if configured**
-      if (step.delay) {
-        await this.executeDelay(step.delay, step.name);
-      }
+      // Fire step end hook
+      await this.hooks.onStepEnd?.(step, result, context);
 
-      return stepResult;
-    } catch (error) {
-      const stepEndTime = Date.now();
-      const stepDuration = stepEndTime - stepStartTime;
+      this.logger.debug(
+        `Step '${step.name}' completed via ${strategyName}: ${result.status}`
+      );
 
-      const errorResult: StepExecutionResult = {
+      return result;
+    } catch (error: any) {
+      this.logger.error(
+        `Strategy execution failed for step '${step.name}': ${error.message}`
+      );
+
+      const failureResult: StepExecutionResult = {
         step_id: identifiers.stepId,
         qualified_step_id: identifiers.qualifiedStepId,
         step_name: step.name,
         status: "failure",
-        duration_ms: stepDuration,
-        error_message: `Step execution error: ${error}`,
+        duration_ms: Date.now() - stepStartTime,
+        error_message: `Strategy execution error: ${error.message}`,
         captured_variables: {},
         available_variables: this.filterAvailableVariables(
           this.globalVariables.getAllVariables()
         ),
       };
 
-      if (step.request?.url) {
-        errorResult.request_details = {
-          method: step.request?.method || "GET",
-          url: step.request?.url,
-          raw_url: step.request?.url,
-          base_url: this.httpService.getBaseUrl(),
-        };
-
-        this.attachRawUrlToResult(errorResult, step.request?.url);
-      }
-
-      // Fires step end hook even with error
-      await this.hooks.onStepEnd?.(step, errorResult, context);
-
-      return errorResult;
+      await this.hooks.onStepEnd?.(step, failureResult, context);
+      return failureResult;
     }
-  }
-
-  private async executeCallStep(
-    step: TestStep,
-    suite: TestSuite,
-    stepIndex: number,
-    identifiers: StepIdentifiers,
-    _context: Record<string, any>,
-    discoveredTest?: DiscoveredTest
-  ): Promise<StepExecutionResult> {
-    if (!step.call) {
-      throw new Error("Step call configuration not found");
-    }
-
-    const incompatibleFields: string[] = [];
-    if (step.request) incompatibleFields.push("request");
-    if (step.iterate) incompatibleFields.push("iterate");
-    if (step.input) incompatibleFields.push("input");
-    if (step.scenarios && step.scenarios.length > 0)
-      incompatibleFields.push("scenarios");
-
-    if (incompatibleFields.length > 0) {
-      throw new Error(
-        `Step '${
-          step.name
-        }' cannot define 'call' alongside [${incompatibleFields.join(", ")}]`
-      );
-    }
-
-    const callerSuitePath = discoveredTest?.file_path;
-    if (!callerSuitePath) {
-      throw new Error(
-        `Cannot execute step call from suite '${suite.suite_name}' without a caller suite path`
-      );
-    }
-
-    const callConfig = step.call;
-    const callStartTime = Date.now();
-
-    if (
-      callConfig.variables &&
-      (typeof callConfig.variables !== "object" ||
-        Array.isArray(callConfig.variables))
-    ) {
-      throw new Error(
-        `Call variables for step '${step.name}' must be an object with key/value pairs`
-      );
-    }
-
-    if (
-      callConfig.on_error &&
-      !["fail", "continue", "warn"].includes(callConfig.on_error)
-    ) {
-      throw new Error(
-        `Invalid call error strategy '${callConfig.on_error}' in step '${step.name}'. Allowed values: fail, continue, warn`
-      );
-    }
-
-    if (typeof callConfig.test !== "string") {
-      throw new Error(
-        `Call configuration for step '${step.name}' must define 'test' as string`
-      );
-    }
-
-    if (typeof callConfig.step !== "string") {
-      throw new Error(
-        `Call configuration for step '${step.name}' must define 'step' as string`
-      );
-    }
-
-    const resolvedTestPath = this.globalVariables
-      .interpolateString(callConfig.test)
-      .trim();
-    const resolvedStepKey = this.globalVariables
-      .interpolateString(callConfig.step)
-      .trim();
-
-    if (!resolvedTestPath || !resolvedStepKey) {
-      throw new Error(
-        `Invalid call configuration for step '${step.name}': both 'test' and 'step' are required`
-      );
-    }
-
-    const interpolatedVariables = this.interpolateCallVariables(
-      callConfig.variables
-    );
-    const isolateContext = callConfig.isolate_context ?? true;
-
-    const allowedRoot = path.resolve(
-      this.configManager.getConfig().test_directory
-    );
-
-    const callRequest: StepCallRequest = {
-      test: resolvedTestPath,
-      step: resolvedStepKey,
-      variables: interpolatedVariables,
-      isolate_context: isolateContext,
-      timeout: callConfig.timeout,
-      retry: callConfig.retry,
-      on_error: callConfig.on_error,
-    };
-
-    const callOptions: StepCallExecutionOptions = {
-      callerSuitePath,
-      callerNodeId: suite.node_id,
-      callerSuiteName: suite.suite_name,
-      allowedRoot,
-      callStack: this.stepCallStack,
-    };
-
-    const callLabel = `${resolvedTestPath}::${resolvedStepKey}`;
-
-    this.logger.info(
-      `📞 Calling step '${callLabel}' (isolate=${isolateContext})`,
-      {
-        stepName: step.name,
-        metadata: {
-          type: "step_call",
-          internal: true,
-          suite: suite.suite_name,
-        },
-      }
-    );
-
-    const callResult = await this.callService.executeStepCall(
-      callRequest,
-      callOptions
-    );
-
-    const duration = Date.now() - callStartTime;
-    const status =
-      callResult.status ?? (callResult.success ? "success" : "failure");
-
-    if (callResult.success) {
-      this.logger.info(
-        `✅ Step call '${callLabel}' completed in ${duration}ms`,
-        {
-          stepName: step.name,
-          metadata: {
-            type: "step_call",
-            internal: true,
-            suite: suite.suite_name,
-          },
-        }
-      );
-    } else {
-      this.logger.warn(
-        `⚠️ Step call '${callLabel}' finished with status '${status}'`,
-        {
-          stepName: step.name,
-          metadata: {
-            type: "step_call",
-            internal: true,
-            suite: suite.suite_name,
-          },
-        }
-      );
-    }
-
-    const propagatedVariables = callResult.propagated_variables;
-    if (callResult.success && propagatedVariables) {
-      this.globalVariables.setRuntimeVariables(propagatedVariables);
-    }
-
-    const availableVariables = this.filterAvailableVariables(
-      this.globalVariables.getAllVariables()
-    );
-
-    const stepResult: StepExecutionResult = {
-      step_id: identifiers.stepId,
-      qualified_step_id: identifiers.qualifiedStepId,
-      step_name: step.name,
-      status,
-      duration_ms: duration,
-      // Note: Steps com 'call' não possuem request_details pois não são requisições HTTP
-      // A informação sobre a chamada está disponível via call_details se necessário
-      ...(propagatedVariables && Object.keys(propagatedVariables).length > 0
-        ? { captured_variables: propagatedVariables }
-        : {}),
-      available_variables: availableVariables,
-      error_message: callResult.error,
-    };
-
-    return stepResult;
   }
 
   private async executeResolvedStepCall({
@@ -2662,179 +1700,6 @@ export class ExecutionService {
       requests_per_second: Math.round(rps * 100) / 100,
       slowest_endpoints: slowestEndpoints,
     };
-  }
-
-  /**
-   * Executes a step with iteration configuration multiple times
-   */
-  private async executeIteratedStep(
-    step: any,
-    suite: TestSuite,
-    stepIndex: number,
-    stepStartTime: number,
-    context: any,
-    identifiers: StepIdentifiers,
-    discoveredTest?: DiscoveredTest
-  ): Promise<StepExecutionResult> {
-    try {
-      // Validate iteration configuration
-      const validationErrors = this.iterationService.validateIteration(
-        step.iterate
-      );
-      if (validationErrors.length > 0) {
-        throw new Error(
-          `Invalid iteration configuration: ${validationErrors.join(", ")}`
-        );
-      }
-
-      // Expand iteration into contexts
-      const variableContext = this.globalVariables.getAllVariables();
-      const iterationContexts = this.iterationService.expandIteration(
-        step.iterate,
-        variableContext
-      );
-
-      if (iterationContexts.length === 0) {
-        this.logger.warn(`No iterations to execute for step "${step.name}"`);
-        return {
-          step_id: identifiers.stepId,
-          qualified_step_id: identifiers.qualifiedStepId,
-          step_name: step.name,
-          status: "success",
-          duration_ms: Date.now() - stepStartTime,
-          request_details: undefined,
-          response_details: undefined,
-          assertions_results: [],
-          captured_variables: {},
-          available_variables: variableContext,
-        };
-      }
-
-      // Execute each iteration
-      const iterationResults: StepExecutionResult[] = [];
-      let allIterationsSuccessful = true;
-
-      for (let i = 0; i < iterationContexts.length; i++) {
-        const iterationContext = iterationContexts[i];
-
-        // Create a snapshot of current variables to restore later
-        const variableSnapshot = this.globalVariables.createSnapshot();
-
-        try {
-          // Set iteration variable in context
-          this.globalVariables.setRuntimeVariable(
-            iterationContext.variableName,
-            iterationContext.value
-          );
-
-          // Create iteration-specific step name
-          const iterationStepName = `${step.name} [${i + 1}/${
-            iterationContexts.length
-          }]`;
-          const iterationStep = {
-            ...step,
-            name: iterationStepName,
-            iterate: undefined, // Remove iterate to prevent infinite recursion
-          };
-
-          const iterationIdentifiers: StepIdentifiers = {
-            stepId: `${identifiers.stepId}-iter-${i + 1}`,
-            qualifiedStepId: `${suite.node_id}::${identifiers.stepId}-iter-${
-              i + 1
-            }`,
-            normalizedQualifiedStepId: `${this.normalizeSuiteId(
-              suite.node_id
-            )}::${identifiers.stepId}-iter-${i + 1}`,
-          };
-
-          iterationStep.step_id = iterationIdentifiers.stepId;
-
-          this.logger.info(
-            `[${iterationStepName}] Starting iteration ${i + 1} of ${
-              iterationContexts.length
-            }`
-          );
-
-          // Execute the step for this iteration
-          const iterationResult = await this.executeStep(
-            iterationStep,
-            suite,
-            stepIndex,
-            iterationIdentifiers,
-            true,
-            discoveredTest
-          );
-          iterationResults.push(iterationResult);
-
-          if (iterationResult.status !== "success") {
-            allIterationsSuccessful = false;
-
-            // Check if should stop on first failure
-            if (!step.continue_on_failure) {
-              this.logger.warn(
-                `[${iterationStepName}] Stopping iterations due to failure`
-              );
-              break;
-            }
-          }
-        } finally {
-          // Restore variable state (removing iteration variable)
-          variableSnapshot();
-        }
-      }
-
-      // Combine results from all iterations
-      const totalDuration = Date.now() - stepStartTime;
-      const combinedCapturedVariables: Record<string, any> = {};
-      const combinedAssertions: any[] = [];
-
-      // Merge captured variables and assertions from all iterations
-      iterationResults.forEach((result, index) => {
-        if (result.captured_variables) {
-          Object.entries(result.captured_variables).forEach(([key, value]) => {
-            // Prefix with iteration index to avoid conflicts
-            combinedCapturedVariables[`${key}_iteration_${index}`] = value;
-          });
-        }
-        if (result.assertions_results) {
-          combinedAssertions.push(...result.assertions_results);
-        }
-      });
-
-      return {
-        step_id: identifiers.stepId,
-        qualified_step_id: identifiers.qualifiedStepId,
-        step_name: step.name,
-        status: allIterationsSuccessful ? "success" : "failure",
-        duration_ms: totalDuration,
-        request_details: iterationResults[0]?.request_details || undefined,
-        response_details:
-          iterationResults[iterationResults.length - 1]?.response_details ||
-          undefined,
-        assertions_results: combinedAssertions,
-        captured_variables: combinedCapturedVariables,
-        available_variables: this.globalVariables.getAllVariables(),
-        iteration_results: iterationResults, // Include individual iteration results
-      };
-    } catch (error: any) {
-      this.logger.error(
-        `Error executing iterated step "${step.name}": ${error.message}`
-      );
-
-      return {
-        step_id: identifiers.stepId,
-        qualified_step_id: identifiers.qualifiedStepId,
-        step_name: step.name,
-        status: "failure",
-        duration_ms: Date.now() - stepStartTime,
-        request_details: undefined,
-        response_details: undefined,
-        assertions_results: [],
-        captured_variables: {},
-        available_variables: this.globalVariables.getAllVariables(),
-        error_message: error.message,
-      };
-    }
   }
 
   /**

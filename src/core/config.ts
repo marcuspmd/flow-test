@@ -238,6 +238,38 @@ export class ConfigManager {
   }
 
   /**
+   * Checks if the Strategy Pattern refactor feature flag is enabled.
+   *
+   * @returns `true` if Strategy Pattern execution is enabled, `false` otherwise
+   *
+   * @remarks
+   * This feature flag controls whether the ExecutionService delegates step execution
+   * to specialized strategy classes (RequestStepStrategy, InputStepStrategy, etc.)
+   * instead of using the monolithic executeStep method.
+   *
+   * **Priority**: Environment variable > Config file > Default (false)
+   *
+   * **Status**: EXPERIMENTAL - In development (ADR-001)
+   *
+   * @example Check if Strategy Pattern is enabled
+   * ```typescript
+   * const configManager = new ConfigManager();
+   *
+   * if (configManager.isStrategyPatternEnabled()) {
+   *   console.log('Using new Strategy Pattern execution');
+   * } else {
+   *   console.log('Using legacy executeStep method');
+   * }
+   * ```
+   *
+   * @public
+   * @since 1.2.0
+   */
+  isStrategyPatternEnabled(): boolean {
+    return this.config.globals?.use_strategy_pattern ?? false;
+  }
+
+  /**
    * Resolve o caminho do arquivo de configuração a ser usado
    *
    * Se um arquivo específico for fornecido, valida sua existência.
@@ -352,6 +384,12 @@ export class ConfigManager {
           slow_tests: config.globals?.timeouts?.slow_tests || 60000,
         },
         base_url: config.globals?.base_url,
+        // Feature flag: Strategy Pattern refactor (ADR-001)
+        // Default: false (disabled), can be overridden by env var FLOW_TEST_USE_STRATEGY_PATTERN
+        use_strategy_pattern: this.parseBoolean(
+          process.env.FLOW_TEST_USE_STRATEGY_PATTERN,
+          config.globals?.use_strategy_pattern ?? false
+        ),
       },
       discovery: {
         patterns: config.discovery?.patterns || [
@@ -499,7 +537,9 @@ export class ConfigManager {
       const envPath = path.resolve(envFile);
 
       if (!fs.existsSync(envPath)) {
-        logger.warn(`Environment file not found: ${envFile} (resolved to ${envPath})`);
+        logger.warn(
+          `Environment file not found: ${envFile} (resolved to ${envPath})`
+        );
         continue;
       }
 
@@ -507,7 +547,9 @@ export class ConfigManager {
         const result = dotenv.config({ path: envPath });
 
         if (result.error) {
-          logger.warn(`Failed to load environment file ${envFile}: ${result.error.message}`);
+          logger.warn(
+            `Failed to load environment file ${envFile}: ${result.error.message}`
+          );
         } else {
           logger.debug(`Loaded environment variables from ${envFile}`);
         }
@@ -699,5 +741,34 @@ export class ConfigManager {
 
     const yaml = require("js-yaml");
     fs.writeFileSync(outputPath, yaml.dump(debugConfig, { indent: 2 }), "utf8");
+  }
+
+  /**
+   * Parses a boolean value from string or boolean input.
+   *
+   * @param envValue - Environment variable value (string or undefined)
+   * @param configValue - Configuration file value (boolean)
+   * @returns Parsed boolean value
+   *
+   * @remarks
+   * Environment variables take precedence over config file values.
+   * Supports common boolean string representations: "true", "1", "yes", "on"
+   *
+   * @internal
+   */
+  private parseBoolean(
+    envValue: string | undefined,
+    configValue: boolean
+  ): boolean {
+    if (envValue !== undefined) {
+      const normalized = envValue.toLowerCase().trim();
+      return (
+        normalized === "true" ||
+        normalized === "1" ||
+        normalized === "yes" ||
+        normalized === "on"
+      );
+    }
+    return configValue;
   }
 }

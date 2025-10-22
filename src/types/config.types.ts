@@ -134,6 +134,36 @@ export interface GlobalConfig {
    * ```
    */
   certificates?: import("./certificate.types").CertificateEntry[];
+
+  /**
+   * INTERNAL FEATURE FLAG: Enable Strategy Pattern refactor for executeStep.
+   *
+   * @remarks
+   * Controls whether the execution service uses the new Strategy Pattern architecture
+   * for step execution. When true, steps are delegated to specialized strategy classes
+   * (RequestStepStrategy, InputStepStrategy, etc.) instead of the monolithic executeStep method.
+   *
+   * **Status**: EXPERIMENTAL - In development (ADR-001)
+   * **Default**: `false` (disabled)
+   * **Environment override**: `FLOW_TEST_USE_STRATEGY_PATTERN=true`
+   *
+   * @internal
+   * @experimental
+   * @since 1.2.0
+   *
+   * @example Enable via config
+   * ```yaml
+   * globals:
+   *   use_strategy_pattern: true
+   * ```
+   *
+   * @example Enable via environment variable
+   * ```bash
+   * export FLOW_TEST_USE_STRATEGY_PATTERN=true
+   * npm test
+   * ```
+   */
+  use_strategy_pattern?: boolean;
 }
 
 /**

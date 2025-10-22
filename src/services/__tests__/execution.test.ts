@@ -1132,63 +1132,6 @@ describe("ExecutionService", () => {
     });
   });
 
-  describe("dynamic context and assignments", () => {
-    it("should build dynamic context correctly", () => {
-      const suite = mockTestSuite;
-      const step = mockTestSuite.steps[0];
-      const variables = { test_var: "value" };
-      const contextData = {
-        captured: { token: "abc" },
-        response: { status_code: 200, body: {} },
-      };
-
-      const context = (executionService as any).buildDynamicContext(
-        suite,
-        step,
-        variables,
-        contextData
-      );
-
-      expect(context.variables).toEqual(variables);
-      expect(context.stepName).toBe(step.name);
-      expect(context.suiteNodeId).toBe(suite.node_id);
-      expect(context.suiteName).toBe(suite.suite_name);
-      expect(context.captured).toEqual({ token: "abc" });
-      expect(context.timestamp).toBeDefined();
-    });
-
-    it("should apply dynamic assignments", () => {
-      const assignments = [
-        {
-          name: "dynamic_var1",
-          value: "value1",
-          scope: "runtime" as const,
-          persist: false,
-        },
-        {
-          name: "dynamic_var2",
-          value: "value2",
-          scope: "global" as const,
-          persist: true,
-        },
-      ];
-
-      mockGlobalVariablesService.setVariable = jest.fn();
-
-      const applied = (executionService as any).applyDynamicAssignments(
-        assignments,
-        mockTestSuite
-      );
-
-      expect(applied.dynamic_var1).toBe("value1");
-      expect(applied.dynamic_var2).toBe("value2");
-      expect(mockGlobalVariablesService.setVariable).toHaveBeenCalledTimes(2);
-      expect(
-        mockGlobalRegistryService.setExportedVariable
-      ).toHaveBeenCalledWith(mockTestSuite.node_id, "dynamic_var2", "value2");
-    });
-  });
-
   describe("input validation", () => {
     it("should detect interactive input steps in parallel mode", () => {
       const testsWithInput = [
@@ -1234,36 +1177,15 @@ describe("ExecutionService", () => {
     });
   });
 
-  describe("scenario condition evaluation", () => {
+  // NOTE: evaluateScenarioCondition tests removed - this logic is now handled by ScenarioStepStrategy
+  // Tests for ScenarioStepStrategy are in src/strategies/__tests__/scenario-step.strategy.test.ts
+  describe.skip("scenario condition evaluation (legacy - removed)", () => {
     it("should evaluate simple scenario conditions", () => {
-      mockGlobalVariablesService.getAllVariables = jest.fn().mockReturnValue({
-        payment_approved: true,
-        status: "active",
-      });
-
-      const result1 = (executionService as any).evaluateScenarioCondition(
-        "payment_approved"
-      );
-      expect(result1).toBe(true);
-
-      const result2 = (executionService as any).evaluateScenarioCondition(
-        "nonexistent_var"
-      );
-      expect(result2).toBe(false);
+      // Test moved to ScenarioStepStrategy
     });
 
     it("should handle condition evaluation errors", () => {
-      mockGlobalVariablesService.interpolate = jest
-        .fn()
-        .mockImplementation(() => {
-          throw new Error("Interpolation failed");
-        });
-
-      const result = (executionService as any).evaluateScenarioCondition(
-        "invalid == condition"
-      );
-
-      expect(result).toBe(false);
+      // Test moved to ScenarioStepStrategy
     });
   });
 

@@ -55,6 +55,7 @@ describe("ExecutionService", () => {
         reporting: {},
         test_directory: process.cwd(),
       }),
+      isStrategyPatternEnabled: jest.fn().mockReturnValue(false), // Feature flag disabled by default
     } as any;
 
     mockGlobalVariablesService = {

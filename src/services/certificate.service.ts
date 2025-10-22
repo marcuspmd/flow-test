@@ -3,18 +3,23 @@
  * @module services/certificate
  */
 
-import * as fs from "fs";
-import * as path from "path";
 import { AxiosRequestConfig } from "axios";
 import * as https from "https";
 import {
   CertificateConfig,
   CertificateEntry,
-  isPemCertificate,
-  isPfxCertificate,
   toCertificateConfig,
 } from "../types/certificate.types";
 import { getLogger } from "./logger.service";
+import {
+  LoaderRegistry,
+  getDefaultLoaders,
+  CertificateLoaderContext,
+} from "./certificate/strategies";
+import {
+  extractHostname,
+  matchesAnyDomain,
+} from "./certificate/helpers/domain-matcher.helper";
 
 /**
  * Service for loading and managing client certificates for HTTPS requests
@@ -43,17 +48,24 @@ import { getLogger } from "./logger.service";
 export class CertificateService {
   private logger = getLogger();
   private globalCertificates: CertificateEntry[] = [];
+  private loaderRegistry: LoaderRegistry;
 
   /**
    * Initialize with global certificates from config
    *
    * @param certificates - Array of global certificate entries
+   * @param loaderRegistry - Optional custom loader registry (defaults to standard loaders)
    */
-  constructor(certificates?: CertificateEntry[]) {
+  constructor(
+    certificates?: CertificateEntry[],
+    loaderRegistry?: LoaderRegistry
+  ) {
     if (certificates) {
       this.globalCertificates = certificates;
       this.logger.info(`Loaded ${certificates.length} global certificate(s)`);
     }
+
+    this.loaderRegistry = loaderRegistry || getDefaultLoaders();
   }
 
   /**
@@ -80,33 +92,25 @@ export class CertificateService {
    * @internal
    */
   private findCertificateForUrl(url: string): CertificateEntry | undefined {
+    const hostname = extractHostname(url);
+
+    if (!hostname) {
+      this.logger.warn(`Invalid URL for certificate matching: ${url}`);
+      return undefined;
+    }
+
     for (const entry of this.globalCertificates) {
       // If no domains specified, certificate applies to all
       if (!entry.domains || entry.domains.length === 0) {
         return entry;
       }
 
-      // Check if URL matches any domain pattern
-      try {
-        const urlObj = new URL(url);
-        const hostname = urlObj.hostname;
-
-        for (const domainPattern of entry.domains) {
-          // Convert wildcard pattern to regex
-          // First escape dots, then replace * with .*
-          const regexPattern = domainPattern
-            .replace(/\./g, "\\.") // Escape dots first
-            .replace(/\*/g, ".*"); // Then replace * with .*
-          const regex = new RegExp("^" + regexPattern + "$");
-          if (regex.test(hostname)) {
-            this.logger.debug(
-              `Certificate "${entry.name}" matched for ${hostname}`
-            );
-            return entry;
-          }
-        }
-      } catch (error) {
-        this.logger.warn(`Invalid URL for certificate matching: ${url}`);
+      // Check if hostname matches any domain pattern
+      if (matchesAnyDomain(hostname, entry.domains)) {
+        this.logger.debug(
+          `Certificate "${entry.name}" matched for ${hostname}`
+        );
+        return entry;
       }
     }
 
@@ -127,93 +131,13 @@ export class CertificateService {
     config: CertificateConfig,
     baseDir: string = process.cwd()
   ): https.AgentOptions {
-    const agentOptions: https.AgentOptions = {};
+    const context: CertificateLoaderContext = {
+      config,
+      baseDir,
+      logger: this.logger,
+    };
 
-    try {
-      if (isPemCertificate(config)) {
-        // PEM format: separate cert and key files
-        const certPath = path.resolve(baseDir, config.cert_path);
-        const keyPath = path.resolve(baseDir, config.key_path);
-
-        if (!fs.existsSync(certPath)) {
-          throw new Error(`Certificate file not found: ${certPath}`);
-        }
-        if (!fs.existsSync(keyPath)) {
-          throw new Error(`Key file not found: ${keyPath}`);
-        }
-
-        agentOptions.cert = fs.readFileSync(certPath);
-        agentOptions.key = fs.readFileSync(keyPath);
-
-        if (config.passphrase) {
-          agentOptions.passphrase = config.passphrase;
-        }
-
-        if (config.ca_path) {
-          const caPath = path.resolve(baseDir, config.ca_path);
-          if (fs.existsSync(caPath)) {
-            agentOptions.ca = fs.readFileSync(caPath);
-          } else {
-            this.logger.warn(`CA certificate file not found: ${caPath}`);
-          }
-        }
-
-        this.logger.debug(`Loaded PEM certificate from ${certPath}`);
-      } else if (isPfxCertificate(config)) {
-        // PFX/P12 format: bundled cert and key
-        const pfxPath = path.resolve(baseDir, config.pfx_path);
-
-        if (!fs.existsSync(pfxPath)) {
-          throw new Error(`PFX file not found: ${pfxPath}`);
-        }
-
-        agentOptions.pfx = fs.readFileSync(pfxPath);
-
-        if (config.passphrase) {
-          agentOptions.passphrase = config.passphrase;
-        }
-
-        if (config.ca_path) {
-          const caPath = path.resolve(baseDir, config.ca_path);
-          if (fs.existsSync(caPath)) {
-            agentOptions.ca = fs.readFileSync(caPath);
-          } else {
-            this.logger.warn(`CA certificate file not found: ${caPath}`);
-          }
-        }
-
-        this.logger.debug(`Loaded PFX certificate from ${pfxPath}`);
-      }
-
-      // SSL verification control
-      // Default: verify = true (secure), can be disabled with verify = false
-      const shouldVerify = config.verify !== false; // Default to true
-      agentOptions.rejectUnauthorized = shouldVerify;
-
-      if (!shouldVerify) {
-        this.logger.warn(
-          "⚠️  SSL verification disabled (verify: false) - This is INSECURE and should only be used in development!"
-        );
-      }
-
-      // TLS version configuration
-      if (config.min_version) {
-        agentOptions.minVersion = config.min_version;
-        this.logger.debug(`TLS min version set to: ${config.min_version}`);
-      }
-
-      if (config.max_version) {
-        agentOptions.maxVersion = config.max_version;
-        this.logger.debug(`TLS max version set to: ${config.max_version}`);
-      }
-
-      return agentOptions;
-    } catch (error) {
-      this.logger.error("Failed to load certificate", {
-        error: error as Error,
-      });
-      throw error;
-    }
+    return this.loaderRegistry.load(context);
   }
 
   /**
@@ -331,56 +255,13 @@ export class CertificateService {
     config: CertificateConfig,
     baseDir: string = process.cwd()
   ): Promise<{ valid: boolean; errors: string[] }> {
-    const errors: string[] = [];
+    const context: CertificateLoaderContext = {
+      config,
+      baseDir,
+      logger: this.logger,
+    };
 
-    try {
-      if (isPemCertificate(config)) {
-        const certPath = path.resolve(baseDir, config.cert_path);
-        const keyPath = path.resolve(baseDir, config.key_path);
-
-        if (!fs.existsSync(certPath)) {
-          errors.push(`Certificate file not found: ${certPath}`);
-        } else if (!fs.statSync(certPath).isFile()) {
-          errors.push(`Certificate path is not a file: ${certPath}`);
-        }
-
-        if (!fs.existsSync(keyPath)) {
-          errors.push(`Key file not found: ${keyPath}`);
-        } else if (!fs.statSync(keyPath).isFile()) {
-          errors.push(`Key path is not a file: ${keyPath}`);
-        }
-
-        if (config.ca_path) {
-          const caPath = path.resolve(baseDir, config.ca_path);
-          if (!fs.existsSync(caPath)) {
-            errors.push(`CA file not found: ${caPath}`);
-          }
-        }
-      } else if (isPfxCertificate(config)) {
-        const pfxPath = path.resolve(baseDir, config.pfx_path);
-
-        if (!fs.existsSync(pfxPath)) {
-          errors.push(`PFX file not found: ${pfxPath}`);
-        } else if (!fs.statSync(pfxPath).isFile()) {
-          errors.push(`PFX path is not a file: ${pfxPath}`);
-        }
-
-        if (config.ca_path) {
-          const caPath = path.resolve(baseDir, config.ca_path);
-          if (!fs.existsSync(caPath)) {
-            errors.push(`CA file not found: ${caPath}`);
-          }
-        }
-      }
-
-      return {
-        valid: errors.length === 0,
-        errors,
-      };
-    } catch (error) {
-      errors.push(`Validation error: ${(error as Error).message}`);
-      return { valid: false, errors };
-    }
+    return this.loaderRegistry.validate(context);
   }
 
   /**

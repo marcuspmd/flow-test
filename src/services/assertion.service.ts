@@ -13,6 +13,8 @@ import * as jmespath from "jmespath";
 import { Assertions, AssertionChecks } from "../types/engine.types";
 import { AssertionResult, StepExecutionResult } from "../types/config.types";
 import { getLogger } from "./logger.service";
+import { StrategyRegistry } from "./assertion/strategies";
+import { AssertionContext } from "./assertion/strategies/assertion-strategy.interface";
 
 /**
  * Comprehensive assertion validation service for HTTP response testing.
@@ -82,6 +84,11 @@ import { getLogger } from "./logger.service";
  */
 export class AssertionService {
   private logger = getLogger();
+  private strategyRegistry: StrategyRegistry;
+
+  constructor(strategyRegistry?: StrategyRegistry) {
+    this.strategyRegistry = strategyRegistry || new StrategyRegistry();
+  }
 
   /**
    * Validates all assertions of an HTTP response
@@ -359,9 +366,7 @@ export class AssertionService {
    */
   private escapeJMESPathKey(key: string): string {
     const looksLikeExpression =
-      /@\./.test(key) ||
-      /\[\s*[\d*?]/.test(key) ||
-      /^\[[^\]]+\]$/.test(key);
+      /@\./.test(key) || /\[\s*[\d*?]/.test(key) || /^\[[^\]]+\]$/.test(key);
 
     if (looksLikeExpression && key.includes("]")) {
       return key;
@@ -525,7 +530,12 @@ export class AssertionService {
   }
 
   /**
-   * Validates a set of checks for a specific field.
+   * Validates a set of checks for a specific field using strategies.
+   *
+   * @remarks
+   * This method applies the Strategy Pattern to delegate validation logic
+   * to specialized strategy classes, making the code more maintainable
+   * and extensible following the Open/Closed Principle.
    */
   private validateFieldChecks(
     fieldName: string,
@@ -534,311 +544,34 @@ export class AssertionService {
   ): AssertionResult[] {
     const results: AssertionResult[] = [];
 
-    if (checks.equals !== undefined) {
-      const passed = this.deepEqual(actualValue, checks.equals);
-      results.push(
-        this.createAssertionResult(
-          `${fieldName}.equals`,
-          checks.equals,
+    // Iterate through each check property and find matching strategies
+    for (const [checkKey, checkValue] of Object.entries(checks)) {
+      const checkObj = { [checkKey]: checkValue };
+      const strategy = this.strategyRegistry.findStrategy(checkObj);
+
+      if (strategy) {
+        const context: AssertionContext & { propertyName?: string } = {
+          fieldName,
           actualValue,
-          passed
-        )
-      );
-    }
+          expectedValue: checkValue,
+          propertyName: checkKey, // Pass the original property name
+        };
 
-    if (checks.not_equals !== undefined) {
-      const passed = !this.deepEqual(actualValue, checks.not_equals);
-      results.push(
-        this.createAssertionResult(
-          `${fieldName}.not_equals`,
-          `not ${checks.not_equals}`,
-          actualValue,
-          passed
-        )
-      );
-    }
+        const result = strategy.validate(context);
 
-    if (checks.contains !== undefined) {
-      const passed = this.contains(actualValue, checks.contains);
-      results.push(
-        this.createAssertionResult(
-          `${fieldName}.contains`,
-          checks.contains,
-          actualValue,
-          passed,
-          passed ? undefined : `Value does not contain: ${checks.contains}`
-        )
-      );
-    }
-
-    if (checks.greater_than !== undefined) {
-      const passed =
-        typeof actualValue === "number" && actualValue > checks.greater_than;
-      results.push(
-        this.createAssertionResult(
-          `${fieldName}.greater_than`,
-          `> ${checks.greater_than}`,
-          actualValue,
-          passed
-        )
-      );
-    }
-
-    if (checks.less_than !== undefined) {
-      const passed =
-        typeof actualValue === "number" && actualValue < checks.less_than;
-      results.push(
-        this.createAssertionResult(
-          `${fieldName}.less_than`,
-          `< ${checks.less_than}`,
-          actualValue,
-          passed
-        )
-      );
-    }
-
-    if (checks.regex !== undefined) {
-      const passed = this.matchesRegex(actualValue, checks.regex);
-      results.push(
-        this.createAssertionResult(
-          `${fieldName}.regex`,
-          checks.regex,
-          actualValue,
-          passed,
-          passed ? undefined : `Value does not match pattern: ${checks.regex}`
-        )
-      );
-    }
-
-    if (checks.type !== undefined) {
-      const actualType = this.getValueType(actualValue);
-      const passed = actualType === checks.type;
-      results.push(
-        this.createAssertionResult(
-          `${fieldName}.type`,
-          checks.type,
-          actualType,
-          passed
-        )
-      );
-    }
-
-    if (checks.exists !== undefined) {
-      const exists = actualValue !== undefined && actualValue !== null;
-      const passed = exists === checks.exists;
-      results.push(
-        this.createAssertionResult(
-          `${fieldName}.exists`,
-          checks.exists,
-          exists,
-          passed
-        )
-      );
-    }
-
-    if (checks.length !== undefined) {
-      const length = this.getValueLength(actualValue);
-      if (length === -1) {
-        results.push(
-          this.createAssertionResult(
-            `${fieldName}.length`,
-            "valid array or string",
-            actualValue,
-            false,
-            "Value must be an array or string to check length"
-          )
-        );
+        // Handle both single and multiple results
+        if (Array.isArray(result)) {
+          results.push(...result);
+        } else {
+          results.push(result);
+        }
       } else {
-        if (checks.length.equals !== undefined) {
-          const passed = length === checks.length.equals;
-          results.push(
-            this.createAssertionResult(
-              `${fieldName}.length.equals`,
-              checks.length.equals,
-              length,
-              passed
-            )
-          );
-        }
-
-        if (checks.length.greater_than !== undefined) {
-          const passed = length > checks.length.greater_than;
-          results.push(
-            this.createAssertionResult(
-              `${fieldName}.length.greater_than`,
-              `> ${checks.length.greater_than}`,
-              length,
-              passed
-            )
-          );
-        }
-
-        if (checks.length.less_than !== undefined) {
-          const passed = length < checks.length.less_than;
-          results.push(
-            this.createAssertionResult(
-              `${fieldName}.length.less_than`,
-              `< ${checks.length.less_than}`,
-              length,
-              passed
-            )
-          );
-        }
+        // Fallback for unknown check types
+        this.logger.warn(`Unknown assertion check: ${checkKey}`);
       }
-    }
-
-    // Additional validation checks to support YAML test syntax
-    if ((checks as any).pattern !== undefined) {
-      const passed = this.matchesRegex(actualValue, (checks as any).pattern);
-      results.push(
-        this.createAssertionResult(
-          `${fieldName}.pattern`,
-          (checks as any).pattern,
-          actualValue,
-          passed,
-          passed
-            ? undefined
-            : `Value does not match pattern: ${(checks as any).pattern}`
-        )
-      );
-    }
-
-    if ((checks as any).minLength !== undefined) {
-      const length = this.getValueLength(actualValue);
-      if (length === -1) {
-        results.push(
-          this.createAssertionResult(
-            `${fieldName}.minLength`,
-            "valid array or string",
-            actualValue,
-            false,
-            "Value must be an array or string to check minLength"
-          )
-        );
-      } else {
-        const passed = length >= (checks as any).minLength;
-        results.push(
-          this.createAssertionResult(
-            `${fieldName}.minLength`,
-            `>= ${(checks as any).minLength}`,
-            length,
-            passed,
-            passed
-              ? undefined
-              : `Length ${length} is less than minimum ${
-                  (checks as any).minLength
-                }`
-          )
-        );
-      }
-    }
-
-    if ((checks as any).notEmpty !== undefined) {
-      const isEmpty =
-        actualValue === null ||
-        actualValue === undefined ||
-        actualValue === "" ||
-        (Array.isArray(actualValue) && actualValue.length === 0) ||
-        (typeof actualValue === "object" &&
-          Object.keys(actualValue).length === 0);
-
-      const passed = (checks as any).notEmpty ? !isEmpty : isEmpty;
-      results.push(
-        this.createAssertionResult(
-          `${fieldName}.notEmpty`,
-          (checks as any).notEmpty,
-          !isEmpty,
-          passed,
-          passed
-            ? undefined
-            : `Value ${(checks as any).notEmpty ? "is empty" : "is not empty"}`
-        )
-      );
     }
 
     return results;
-  }
-
-  /**
-   * Checks if two values are deeply equal with type-tolerant comparison.
-   */
-  private deepEqual(a: any, b: any): boolean {
-    if (a === b) return true;
-    if (a == null || b == null) return false;
-
-    // Type-tolerant comparison for numbers and strings
-    if (typeof a !== typeof b) {
-      // Try to compare number and string representations
-      if (
-        (typeof a === "number" && typeof b === "string") ||
-        (typeof a === "string" && typeof b === "number")
-      ) {
-        // Convert both to strings for comparison
-        return String(a) === String(b);
-      }
-      // Try boolean to string comparison
-      if (
-        (typeof a === "boolean" && typeof b === "string") ||
-        (typeof a === "string" && typeof b === "boolean")
-      ) {
-        return String(a) === String(b);
-      }
-      return false;
-    }
-
-    if (typeof a === "object") {
-      if (Array.isArray(a) !== Array.isArray(b)) return false;
-
-      const keysA = Object.keys(a);
-      const keysB = Object.keys(b);
-
-      if (keysA.length !== keysB.length) return false;
-
-      for (const key of keysA) {
-        if (!keysB.includes(key) || !this.deepEqual(a[key], b[key])) {
-          return false;
-        }
-      }
-
-      return true;
-    }
-
-    return false;
-  }
-
-  /**
-   * Checks if a value contains another (for strings, arrays, or objects).
-   */
-  private contains(haystack: any, needle: any): boolean {
-    if (typeof haystack === "string" && typeof needle === "string") {
-      return haystack.includes(needle);
-    }
-
-    if (Array.isArray(haystack)) {
-      return haystack.some((item) => this.deepEqual(item, needle));
-    }
-
-    if (typeof haystack === "object" && haystack !== null) {
-      return Object.values(haystack).some((value) =>
-        this.deepEqual(value, needle)
-      );
-    }
-
-    return false;
-  }
-
-  /**
-   * Checks if a value matches a regular expression.
-   */
-  private matchesRegex(value: any, pattern: string): boolean {
-    if (typeof value !== "string") return false;
-
-    try {
-      const regex = new RegExp(pattern);
-      return regex.test(value);
-    } catch {
-      return false;
-    }
   }
 
   /**
@@ -860,25 +593,5 @@ export class AssertionService {
         message ||
         (passed ? "OK" : `Expected: ${expected}, Received: ${actual}`),
     };
-  }
-
-  /**
-   * Gets the type of a value for type assertions.
-   */
-  private getValueType(value: any): string {
-    if (value === null) return "null";
-    if (Array.isArray(value)) return "array";
-    return typeof value;
-  }
-
-  /**
-   * Gets the length of a value for length assertions.
-   * Returns -1 if the value doesn't have a length property.
-   */
-  private getValueLength(value: any): number {
-    if (typeof value === "string" || Array.isArray(value)) {
-      return value.length;
-    }
-    return -1;
   }
 }

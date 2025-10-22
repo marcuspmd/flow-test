@@ -292,81 +292,15 @@ describe("ExecutionService - Extended Coverage", () => {
     });
   });
 
-  describe("executeCallStep", () => {
+  // NOTE: executeCallStep tests removed - this logic is now handled by CallStepStrategy
+  // Tests for CallStepStrategy are in src/strategies/__tests__/call-step.strategy.test.ts
+  describe.skip("executeCallStep (legacy - removed)", () => {
     it("should validate call configuration", async () => {
-      const step: any = {
-        name: "Invalid Call Step",
-        call: {
-          test: "test.yaml",
-          step: "target",
-        },
-        request: {
-          method: "GET",
-          url: "/invalid",
-        },
-      };
-
-      const identifiers = {
-        stepId: "invalid-call",
-        qualifiedStepId: "suite::invalid-call",
-        normalizedQualifiedStepId: "suite::invalid-call",
-      };
-
-      await expect(
-        (executionService as any).executeCallStep(
-          step,
-          mockTestSuite,
-          0,
-          identifiers,
-          {},
-          mockDiscoveredTest
-        )
-      ).rejects.toThrow("cannot define 'call' alongside");
+      // Test moved to CallStepStrategy
     });
 
     it("should interpolate call variables", async () => {
-      const step: any = {
-        name: "Call with Variables",
-        call: {
-          test: "{{test_file}}",
-          step: "{{step_name}}",
-          variables: {
-            user: "{{current_user}}",
-          },
-        },
-      };
-
-      const identifiers = {
-        stepId: "call-vars",
-        qualifiedStepId: "suite::call-vars",
-        normalizedQualifiedStepId: "suite::call-vars",
-      };
-
-      mockGlobalVariablesService.interpolateString = jest
-        .fn()
-        .mockImplementation((str) => str.replace(/{{|}}/g, ""));
-
-      mockGlobalVariablesService.interpolate = jest
-        .fn()
-        .mockReturnValue({ user: "john" });
-
-      const callService = (executionService as any).callService;
-      callService.executeStepCall = jest.fn().mockResolvedValue({
-        success: true,
-        status: "success",
-        executionTime: 100,
-      });
-
-      const result = await (executionService as any).executeCallStep(
-        step,
-        mockTestSuite,
-        0,
-        identifiers,
-        {},
-        mockDiscoveredTest
-      );
-
-      expect(result.status).toBe("success");
+      // Test moved to CallStepStrategy
     });
   });
 
