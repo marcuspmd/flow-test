@@ -48,25 +48,31 @@ export class BoxedPromptStyle implements PromptStyleStrategy {
 
     console.log(); // Empty line
 
-    const boxWidth = Math.max(config.prompt.length + 4, 40);
+    // Calculate box width considering both prompt and description
+    let boxWidth = Math.max(config.prompt.length + 4, 40);
+    if (config.description) {
+      boxWidth = Math.max(boxWidth, config.description.length + 4);
+    }
 
     // Top border
     console.log(chalk.cyan("┌" + "─".repeat(boxWidth - 2) + "┐"));
 
     // Prompt line
+    const promptPadding = Math.max(0, boxWidth - config.prompt.length - 3);
     console.log(
       chalk.cyan("│ ") +
         chalk.bold(config.prompt) +
-        " ".repeat(boxWidth - config.prompt.length - 3) +
+        " ".repeat(promptPadding) +
         chalk.cyan("│")
     );
 
     // Description line (if provided)
     if (config.description) {
+      const descPadding = Math.max(0, boxWidth - config.description.length - 3);
       console.log(
         chalk.cyan("│ ") +
           chalk.gray(config.description) +
-          " ".repeat(boxWidth - config.description.length - 3) +
+          " ".repeat(descPadding) +
           chalk.cyan("│")
       );
     }

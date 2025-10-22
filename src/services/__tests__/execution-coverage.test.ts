@@ -250,9 +250,7 @@ describe("ExecutionService - High Coverage Tests", () => {
         steps_results: [],
       };
 
-      mockVariableService.getVariablesByScope = jest
-        .fn()
-        .mockReturnValue({});
+      mockVariableService.getVariablesByScope = jest.fn().mockReturnValue({});
 
       (executionService as any).captureAndRegisterExports(test, result);
 
@@ -321,27 +319,45 @@ describe("ExecutionService - High Coverage Tests", () => {
       mockDependencyService.getCachedResult.mockReturnValue(null);
       mockPriorityService.isRequiredTest = jest.fn().mockReturnValue(false);
 
+      // Mock executeSingleTest to call captureAndRegisterExports internally
+      const mockResult = {
+        node_id: "failing-test",
+        suite_name: "Failing Test",
+        file_path: "/failing.yaml",
+        start_time: new Date().toISOString(),
+        end_time: new Date().toISOString(),
+        status: "failure",
+        duration_ms: 100,
+        steps_executed: 1,
+        steps_successful: 0,
+        steps_failed: 1,
+        success_rate: 0,
+        steps_results: [],
+        variables_captured: { token: "abc123" },
+      };
+
+      // Mock getAllCapturedVariables to return captured vars
+      jest
+        .spyOn(executionService as any, "getAllCapturedVariables")
+        .mockReturnValue({ token: "abc123" });
+
+      // Mock getVariablesByScope to return runtime vars
+      mockVariableService.getVariablesByScope.mockReturnValue({
+        token: "abc123",
+      });
+
       jest
         .spyOn(executionService as any, "executeSingleTest")
-        .mockResolvedValue({
-          node_id: "failing-test",
-          suite_name: "Failing Test",
-          file_path: "/failing.yaml",
-          start_time: new Date().toISOString(),
-          end_time: new Date().toISOString(),
-          status: "failure",
-          duration_ms: 100,
-          steps_executed: 1,
-          steps_successful: 0,
-          steps_failed: 1,
-          success_rate: 0,
-          steps_results: [],
-          variables_captured: { token: "abc123" },
+        .mockImplementation(async (discoveredTest: any) => {
+          // Simulate the internal call to captureAndRegisterExports
+          if (discoveredTest.exports && discoveredTest.exports.length > 0) {
+            (executionService as any).captureAndRegisterExports(
+              discoveredTest,
+              mockResult
+            );
+          }
+          return mockResult;
         });
-
-      mockVariableService.getVariablesByScope = jest
-        .fn()
-        .mockReturnValue({ token: "abc123" });
 
       const results = await (
         executionService as any

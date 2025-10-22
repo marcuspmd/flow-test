@@ -1,0 +1,45 @@
+suite_name: "Test Dynamic Variables"
+node_id: "test-dynamic-vars"
+description: "Test computed variables with persist_to_global"
+
+variables:
+  users:
+    - id: 1
+      name: "Alice"
+      email: "alice@example.com"
+    - id: 2
+      name: "Bob"
+      email: "bob@example.com"
+    - id: 3
+      name: "Charlie"
+      email: "charlie@example.com"
+
+exports: ["selected_user_name", "selected_user_email", "selected_user"]
+
+steps:
+  - name: "Select user"
+    step_id: "select-user"
+    input:
+      prompt: "Choose a user:"
+      variable: "selected_user_index"
+      type: "select"
+      required: true
+      ci_default: 0
+      options: "{{users[*].{value: @, label: join(' - ', [name, email])}}}"
+      dynamic:
+        scope: "global"
+        computed:
+          selected_user_name: "users[selected_user_index].name"
+          selected_user_email: "users[selected_user_index].email"
+          selected_user: "users[selected_user_index]"
+        exports: ["selected_user_name", "selected_user_email", "selected_user"]
+        persist_to_global: true
+
+  - name: "Confirm selection"
+    step_id: "confirm-selection"
+    input:
+      prompt: "Confirm: {{selected_user_name}} ({{selected_user_email}})"
+      variable: "confirm"
+      type: "confirm"
+      default: true
+      ci_default: true

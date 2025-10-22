@@ -1,6 +1,6 @@
 suite_name: "Test IN Operator"
 node_id: "test-in-operator"
-base_url: "https://httpbin.org"
+base_url: "{{httpbin_url}}"
 
 steps:
   - name: "Test status_code with IN operator"

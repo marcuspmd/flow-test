@@ -317,6 +317,7 @@ export class InputStepStrategy implements StepExecutionStrategy {
     const applied: Record<string, any> = {};
 
     for (const assignment of assignments) {
+      // Apply to the specified scope
       switch (assignment.scope) {
         case "runtime":
           globalVariables.setRuntimeVariable(assignment.name, assignment.value);
@@ -343,6 +344,12 @@ export class InputStepStrategy implements StepExecutionStrategy {
           // Default to runtime scope
           globalVariables.setRuntimeVariable(assignment.name, assignment.value);
           applied[assignment.name] = assignment.value;
+      }
+
+      // Additionally persist to runtime scope if persist flag is set
+      // This makes the variable available immediately without namespace prefix (e.g., {{selected_bn}})
+      if (assignment.persist && assignment.scope !== "runtime") {
+        globalVariables.setRuntimeVariable(assignment.name, assignment.value);
       }
     }
 

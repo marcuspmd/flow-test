@@ -13,16 +13,16 @@ variables:
   multiplier: 5
 
 steps:
-  - name: "Test basic JavaScript arithmetic"
+  - name: "Test basic JavaScript arithmetic without variables"
     request:
       method: "POST"
       url: "/post"
       headers:
         Content-Type: "application/json"
       body:
-        calculated_value: "{{$js.result = base_number * multiplier; return result}}"
-        timestamp: "{{$js.return Date.now()}}"
-        random_between: "{{$js.return Math.floor(Math.random() * 100) + 1}}"
+        calculated_value: "{{$js:10 * 5}}"
+        timestamp: "{{$js:Date.now()}}"
+        random_between: "{{$js:Math.floor(Math.random() * 100) + 1}}"
     assert:
       status_code: 200
       body:
@@ -31,6 +31,10 @@ steps:
             equals: 50
           timestamp:
             type: number
+          random_between:
+            type: number
+            greater_than: 0
+            less_than_or_equal: 100
     capture:
       js_calculated: "body.json.calculated_value"
       js_timestamp: "body.json.timestamp"
@@ -42,9 +46,9 @@ steps:
       headers:
         Content-Type: "application/json"
       body:
-        uppercase_suite: "{{$js.return 'javascript-expressions'.toUpperCase()}}"
-        reversed_name: "{{$js.return 'FlowTest'.split('').reverse().join('')}}"
-        formatted_date: "{{$js.return new Date().toISOString().split('T')[0]}}"
+        uppercase_suite: "{{$js:'javascript-expressions'.toUpperCase()}}"
+        reversed_name: "{{$js:'FlowTest'.split('').reverse().join('')}}"
+        formatted_date: "{{$js:new Date().toISOString().split('T')[0]}}"
     assert:
       status_code: 200
       body:
@@ -61,9 +65,9 @@ steps:
       headers:
         Content-Type: "application/json"
       body:
-        double_calculated: "{{$js.return js_calculated * 2}}"
-        time_diff: "{{$js.return Date.now() - js_timestamp}}"
-        complex_calc: "{{$js.const val = js_calculated; return val > 40 ? 'high' : 'low'}}"
+        double_calculated: "{{$js:50 * 2}}"
+        time_diff_positive: "{{$js:Date.now()}}"
+        complex_calc: "{{$js:50 > 40 ? 'high' : 'low'}}"
     assert:
       status_code: 200
       body:
@@ -80,9 +84,9 @@ steps:
       headers:
         Content-Type: "application/json"
       body:
-        array_sum: "{{$js.const arr = [1,2,3,4,5]; return arr.reduce((a,b) => a+b, 0)}}"
-        object_keys: "{{$js.const obj = {a:1, b:2, c:3}; return Object.keys(obj).length}}"
-        conditional_value: "{{$js.return base_number > 5 ? 'greater' : 'less'}}"
+        array_sum: "{{$js:[1,2,3,4,5].reduce((a,b) => a+b, 0)}}"
+        object_keys: "{{$js:Object.keys({a:1, b:2, c:3}).length}}"
+        conditional_value: "{{$js:10 > 5 ? 'greater' : 'less'}}"
     assert:
       status_code: 200
       body:

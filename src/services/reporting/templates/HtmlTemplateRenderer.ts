@@ -614,6 +614,15 @@ ${stepsMarkup}
       contents.push(this.renderCapturesTab(step.captured_variables));
     }
 
+    // Exports tab (Dynamic Assignments & Input Results)
+    const hasExports =
+      (step.dynamic_assignments && step.dynamic_assignments.length > 0) ||
+      (step.input_results && step.input_results.length > 0);
+    if (hasExports) {
+      tabs.push('<button class="tab-btn" data-tab="exports">Exports</button>');
+      contents.push(this.renderExportsTab(step));
+    }
+
     if (tabs.length === 0) {
       return `<div class="step-details">
         <p class="detail-empty">No details available</p>
@@ -877,6 +886,147 @@ ${stepsMarkup}
         <div class="captures-list">
           ${capturesHtml}
         </div>
+      </div>
+    </div>`;
+  }
+
+  /**
+   * Render exports tab content (dynamic assignments and input variables)
+   */
+  private renderExportsTab(step: StepExecutionResult): string {
+    let contentHtml = "";
+
+    // Dynamic Assignments section
+    if (step.dynamic_assignments && step.dynamic_assignments.length > 0) {
+      const dynamicHtml = step.dynamic_assignments
+        .map((assignment) => {
+          const nameLabel = ReportingUtils.escapeHtml(assignment.name);
+          const valueLabel = ReportingUtils.escapeHtml(
+            typeof assignment.value === "string"
+              ? assignment.value
+              : ReportingUtils.formatJson(assignment.value)
+          );
+          const scopeLabel = ReportingUtils.escapeHtml(
+            assignment.scope || "runtime"
+          );
+          const sourceLabel = ReportingUtils.escapeHtml(
+            assignment.source || "computed"
+          );
+          const persistIcon = assignment.persist ? "🌐" : "";
+          const persistLabel = assignment.persist ? " (Global)" : "";
+
+          return `<div class="export-item">
+            <div class="export-header">
+              <span class="export-name">${nameLabel}</span>
+              <span class="export-badge ${
+                assignment.persist ? "export-badge--global" : ""
+              }">${scopeLabel}${persistLabel} ${persistIcon}</span>
+            </div>
+            <div class="export-meta">
+              <span class="export-source">Source: ${sourceLabel}</span>
+              ${
+                assignment.expression
+                  ? `<span class="export-expr">Expression: ${ReportingUtils.escapeHtml(
+                      assignment.expression
+                    )}</span>`
+                  : ""
+              }
+            </div>
+            <div class="export-value">${valueLabel}</div>
+          </div>`;
+        })
+        .join("\n");
+
+      contentHtml += `<div class="export-section">
+        <h4 class="export-section-title">Dynamic Assignments</h4>
+        <div class="exports-list">
+          ${dynamicHtml}
+        </div>
+      </div>`;
+    }
+
+    // Input Results section
+    if (step.input_results && step.input_results.length > 0) {
+      const inputHtml = step.input_results
+        .map((result) => {
+          const nameLabel = ReportingUtils.escapeHtml(result.variable);
+          const valueLabel = ReportingUtils.escapeHtml(
+            typeof result.value === "string"
+              ? result.value
+              : ReportingUtils.formatJson(result.value)
+          );
+          const statusIcon = result.validation_passed ? "✅" : "⚠️";
+          const defaultLabel = result.used_default ? " (default)" : "";
+
+          return `<div class="export-item">
+            <div class="export-header">
+              <span class="export-name">${statusIcon} ${nameLabel}</span>
+              <span class="export-badge">input${defaultLabel}</span>
+            </div>
+            <div class="export-value">${valueLabel}</div>
+            ${
+              result.derived_assignments &&
+              result.derived_assignments.length > 0
+                ? `
+              <details class="export-derived">
+                <summary>Derived Variables (${
+                  result.derived_assignments.length
+                })</summary>
+                <div class="derived-list">
+                  ${result.derived_assignments
+                    .map(
+                      (derived) =>
+                        `<div class="derived-item">
+                      <span class="derived-name">${ReportingUtils.escapeHtml(
+                        derived.name
+                      )}</span>
+                      <span class="derived-value">${ReportingUtils.escapeHtml(
+                        typeof derived.value === "string"
+                          ? derived.value
+                          : ReportingUtils.formatJson(derived.value)
+                      )}</span>
+                    </div>`
+                    )
+                    .join("")}
+                </div>
+              </details>
+            `
+                : ""
+            }
+          </div>`;
+        })
+        .join("\n");
+
+      contentHtml += `<div class="export-section">
+        <h4 class="export-section-title">Input Variables</h4>
+        <div class="exports-list">
+          ${inputHtml}
+        </div>
+      </div>`;
+    }
+
+    // Create JSON for copy
+    const exportsData = {
+      dynamic_assignments: step.dynamic_assignments || [],
+      input_results: step.input_results || [],
+    };
+    const exportsJson = ReportingUtils.formatJson(exportsData);
+
+    return `<div class="tab-content" data-tab="exports">
+      <div class="code-block">
+        <div class="code-header">
+          <span class="code-label">Exported Variables</span>
+          <button class="copy-button" onclick="copyToClipboard(this)" data-content="${ReportingUtils.escapeAttribute(
+            exportsJson
+          )}">
+            <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
+            <span class="copy-text">Copy</span>
+          </button>
+        </div>
+        ${contentHtml}
       </div>
     </div>`;
   }
@@ -1401,6 +1551,116 @@ ${stepsMarkup}
       .capture-value {
         font-family: 'Consolas', 'Monaco', monospace;
         font-size: 0.85rem;
+        color: var(--text);
+        word-break: break-all;
+      }
+      /* Export styles */
+      .export-section {
+        margin-bottom: 24px;
+      }
+      .export-section:last-child {
+        margin-bottom: 0;
+      }
+      .export-section-title {
+        margin: 0 0 12px 0;
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: var(--accent);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+      .exports-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .export-item {
+        padding: 14px;
+        background: var(--surface-soft);
+        border-radius: 6px;
+        border-left: 3px solid var(--accent);
+      }
+      .export-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+      }
+      .export-name {
+        font-family: 'Consolas', 'Monaco', monospace;
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: var(--accent);
+      }
+      .export-badge {
+        display: inline-flex;
+        padding: 2px 8px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        background: rgba(148, 163, 184, 0.15);
+        color: var(--muted);
+        border-radius: 4px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+      .export-badge--global {
+        background: rgba(45, 212, 191, 0.15);
+        color: var(--success);
+      }
+      .export-meta {
+        display: flex;
+        gap: 12px;
+        margin-bottom: 8px;
+        font-size: 0.8rem;
+        color: var(--muted);
+      }
+      .export-source, .export-expr {
+        font-family: 'Consolas', 'Monaco', monospace;
+      }
+      .export-value {
+        font-family: 'Consolas', 'Monaco', monospace;
+        font-size: 0.85rem;
+        color: var(--text);
+        padding: 8px;
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: 4px;
+        word-break: break-all;
+      }
+      .export-derived {
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px solid var(--border);
+      }
+      .export-derived summary {
+        cursor: pointer;
+        font-size: 0.85rem;
+        color: var(--muted);
+        user-select: none;
+      }
+      .export-derived summary:hover {
+        color: var(--text);
+      }
+      .derived-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-top: 8px;
+      }
+      .derived-item {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 8px;
+        background: rgba(0, 0, 0, 0.15);
+        border-radius: 4px;
+        font-family: 'Consolas', 'Monaco', monospace;
+        font-size: 0.8rem;
+      }
+      .derived-name {
+        color: var(--muted);
+        flex-shrink: 0;
+      }
+      .derived-value {
         color: var(--text);
         word-break: break-all;
       }

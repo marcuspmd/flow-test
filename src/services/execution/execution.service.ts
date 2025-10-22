@@ -469,18 +469,9 @@ export class ExecutionService {
         // Marks as executing
         this.dependencyService.markExecuting(test.suite_name);
 
-        // Executes the test
+        // Executes the test (exports are now handled inside executeSingleTest)
         const result = await this.executeSingleTest(test);
         results.push(result);
-
-        // Captures exported variables and registers in Global Registry
-        // Export variables even if test failed, as captured data might still be useful
-        if (
-          (test.exports && test.exports.length > 0) ||
-          (test.exports_optional && test.exports_optional.length > 0)
-        ) {
-          this.captureAndRegisterExports(test, result);
-        }
 
         // Marks as resolved in dependency graph
         const dependencyResult: DependencyResult = {
@@ -699,6 +690,31 @@ export class ExecutionService {
       // Display test metadata
       (this.logger as any).displayTestMetadata?.(suite);
 
+      // CRITICAL: Register node in GlobalRegistry BEFORE executing steps
+      // This ensures that capture/export operations can find the node
+      if (
+        (discoveredTest.exports && discoveredTest.exports.length > 0) ||
+        (discoveredTest.exports_optional &&
+          discoveredTest.exports_optional.length > 0)
+      ) {
+        this.globalRegistry.registerNode(
+          discoveredTest.node_id,
+          discoveredTest.suite_name,
+          [
+            ...(discoveredTest.exports || []),
+            ...(discoveredTest.exports_optional || []),
+          ],
+          discoveredTest.file_path
+        );
+        this.logger.debug(
+          `Registered node '${discoveredTest.node_id}' with exports: [${[
+            ...(discoveredTest.exports || []),
+            ...(discoveredTest.exports_optional || []),
+          ].join(", ")}]`,
+          { metadata: { type: "internal_debug", internal: true } }
+        );
+      }
+
       // VARIABLE CLEANUP: Clean non-global variables before starting new node
       // This ensures that runtime, suite and imported variables from previous node don't leak to this node
       this.globalVariables.clearAllNonGlobalVariables();
@@ -884,7 +900,8 @@ export class ExecutionService {
         );
       }
 
-      const result: SuiteExecutionResult = {
+      // Create preliminary result for export capture
+      const preliminaryResult: SuiteExecutionResult = {
         node_id: suite.node_id,
         suite_name: suite.suite_name,
         file_path: discoveredTest.file_path,
@@ -898,11 +915,27 @@ export class ExecutionService {
         steps_failed: failedSteps,
         success_rate: Math.round(successRate * 100) / 100,
         steps_results: stepResults,
-        variables_captured: this.getExportedVariables(discoveredTest),
+        variables_captured: {}, // Will be populated after export
         available_variables: this.filterAvailableVariables(
           this.globalVariables.getAllVariables()
         ),
         suite_yaml_content: suiteYamlContent,
+      };
+
+      // Capture and register exports BEFORE finalizing result
+      // This ensures exported variables are available in variables_captured
+      if (
+        (discoveredTest.exports && discoveredTest.exports.length > 0) ||
+        (discoveredTest.exports_optional &&
+          discoveredTest.exports_optional.length > 0)
+      ) {
+        this.captureAndRegisterExports(discoveredTest, preliminaryResult);
+      }
+
+      // Now get the exported variables after they've been registered
+      const result: SuiteExecutionResult = {
+        ...preliminaryResult,
+        variables_captured: this.getExportedVariables(discoveredTest),
       };
 
       // Display final results in Jest style
@@ -1364,11 +1397,50 @@ export class ExecutionService {
     if (!hasRequiredExports && !hasOptionalExports) return;
 
     // Get variables from multiple sources for comprehensive search
+    // IMPORTANT: Include ALL variables (suite, runtime, input, captured, etc.)
+    const allVars = this.globalVariables.getAllVariables();
     const runtimeVars = this.globalVariables.getVariablesByScope("runtime");
     const allCapturedVars = this.getAllCapturedVariables(result);
 
-    // Merge all sources (runtime takes precedence)
-    const allAvailableVars = { ...allCapturedVars, ...runtimeVars };
+    // DEBUG: Log what we found
+    this.logger.debug(
+      `[EXPORT DEBUG] Node '${test.node_id}' - Looking for exports: [${[
+        ...(test.exports || []),
+        ...(test.exports_optional || []),
+      ].join(", ")}]`,
+      { metadata: { type: "internal_debug", internal: true } }
+    );
+    this.logger.debug(
+      `[EXPORT DEBUG] All vars available: ${
+        Object.keys(allVars).length
+      } - [${Object.keys(allVars).join(", ")}]`,
+      { metadata: { type: "internal_debug", internal: true } }
+    );
+    this.logger.debug(
+      `[EXPORT DEBUG] Runtime vars available: ${
+        Object.keys(runtimeVars).length
+      } - [${Object.keys(runtimeVars).join(", ")}]`,
+      { metadata: { type: "internal_debug", internal: true } }
+    );
+    this.logger.debug(
+      `[EXPORT DEBUG] Captured vars from steps: ${
+        Object.keys(allCapturedVars).length
+      } - [${Object.keys(allCapturedVars).join(", ")}]`,
+      { metadata: { type: "internal_debug", internal: true } }
+    );
+
+    // Merge all sources with correct precedence:
+    // 1. Start with all variables (includes suite, input, etc.)
+    // 2. Override with captured vars from steps
+    // 3. Override with runtime vars (highest priority)
+    const allAvailableVars = { ...allVars, ...allCapturedVars, ...runtimeVars };
+
+    this.logger.debug(
+      `[EXPORT DEBUG] Total available vars after merge: ${
+        Object.keys(allAvailableVars).length
+      } - [${Object.keys(allAvailableVars).join(", ")}]`,
+      { metadata: { type: "internal_debug", internal: true } }
+    );
 
     // Process required exports (with warnings)
     if (hasRequiredExports) {
@@ -1380,6 +1452,12 @@ export class ExecutionService {
             test.node_id,
             exportName,
             value
+          );
+          this.logger.debug(
+            `[EXPORT DEBUG] Successfully exported '${exportName}' = ${JSON.stringify(
+              value
+            )?.substring(0, 100)}`,
+            { metadata: { type: "internal_debug", internal: true } }
           );
         } else {
           this.logger.warn(

@@ -585,8 +585,26 @@ export class RequestStepStrategy implements StepExecutionStrategy {
       const dynamicAssignments: DynamicVariableAssignment[] = [];
       let additionalCaptures: Record<string, any> = {};
 
-      // Process dynamic assignments from inputs
+      // CRITICAL: Register input variables in runtime (so they can be exported)
       inputResults.forEach((inputResult: any) => {
+        if (inputResult.validation_passed) {
+          // Store input value as runtime variable
+          globalVariables.setRuntimeVariable(
+            inputResult.variable,
+            inputResult.value
+          );
+
+          // Add to captures so it appears in step result
+          additionalCaptures[inputResult.variable] = inputResult.value;
+
+          logger.info(
+            `✅ Input captured: ${inputResult.variable} = ${
+              inputResult.used_default ? "(default)" : "(user input)"
+            }`
+          );
+        }
+
+        // Process dynamic assignments from inputs
         if (inputResult.derived_assignments) {
           dynamicAssignments.push(...inputResult.derived_assignments);
         }

@@ -326,23 +326,80 @@ export class InterpolationService {
       iterations++;
 
       const originalResult = result;
-      result = result.replace(/\{\{([^{}]+)\}\}/g, (match, expression) => {
-        const trimmedExpr = expression.trim();
 
-        // Skip if contains nested {{ or }} (will be processed in next iteration)
-        if (trimmedExpr.includes("{{") || trimmedExpr.includes("}}")) {
-          return match;
+      // Use a more sophisticated approach to find {{ }} patterns
+      // Process from left to right, finding matching pairs
+      const processedIndices = new Set<number>();
+
+      for (let i = 0; i < result.length - 1; i++) {
+        if (
+          result[i] === "{" &&
+          result[i + 1] === "{" &&
+          !processedIndices.has(i)
+        ) {
+          // Find matching }}
+          let depth = 1;
+          let j = i + 2;
+          let expression = "";
+
+          while (j < result.length - 1 && depth > 0) {
+            if (result[j] === "{" && result[j + 1] === "{") {
+              depth++;
+              expression += result[j];
+              j++;
+            } else if (result[j] === "}" && result[j + 1] === "}") {
+              depth--;
+              if (depth === 0) {
+                break;
+              }
+              expression += result[j];
+              j++;
+            } else {
+              expression += result[j];
+              j++;
+            }
+          }
+
+          if (depth === 0 && j < result.length - 1) {
+            // Found a complete {{ }} pair
+            const trimmedExpr = expression.trim();
+            const fullMatch = result.substring(i, j + 2);
+
+            // Check if this is a JS expression with nested variables
+            const isJsExpression =
+              trimmedExpr.startsWith("$js:") ||
+              trimmedExpr.startsWith("js:") ||
+              trimmedExpr.startsWith("$js.");
+
+            // Skip if contains nested {{ or }} UNLESS it's a JS expression
+            if (
+              !isJsExpression &&
+              (trimmedExpr.includes("{{") || trimmedExpr.includes("}}"))
+            ) {
+              i = j + 1;
+              continue;
+            }
+
+            const value = this.resolveExpression(trimmedExpr, context);
+            if (value !== undefined) {
+              result =
+                result.substring(0, i) +
+                String(value) +
+                result.substring(j + 2);
+              hasChanges = true;
+              // Mark this range as processed
+              for (let k = i; k <= j + 1; k++) {
+                processedIndices.add(k);
+              }
+              // Restart from beginning after replacement
+              break;
+            } else {
+              this.logMissingVariable(trimmedExpr, context);
+              i = j + 1;
+            }
+          }
         }
-
-        const value = this.resolveExpression(trimmedExpr, context);
-        if (value === undefined) {
-          this.logMissingVariable(trimmedExpr, context);
-          return match; // Keep original placeholder
-        }
-
-        hasChanges = true;
-        return String(value);
-      });
+      }
 
       // No changes means we're done or stuck
       if (result === originalResult) {

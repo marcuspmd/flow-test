@@ -353,18 +353,11 @@ export class InputService {
     variableService: VariableService
   ): Array<{ value: any; label: string }> {
     if (typeof options === "string") {
-      // Allow template interpolation ({{ }}, {{$js }}, etc.) before evaluating expression
-      const resolvedOptions = variableService.interpolate(options);
+      // Check if it's a wrapped expression {{...}}
+      const wrappedMatch = options.match(/^\{\{([\s\S]+)\}\}$/);
+      const expression = wrappedMatch ? wrappedMatch[1].trim() : options;
 
-      // If interpolation produced an options array directly, return it
-      if (Array.isArray(resolvedOptions)) {
-        return resolvedOptions;
-      }
-
-      const expression =
-        typeof resolvedOptions === "string" ? resolvedOptions : options;
-
-      // JMESPath expression - evaluate it
+      // Try to evaluate as JMESPath expression first (most common for options)
       try {
         const jmespath = require("jmespath");
         const result = jmespath.search(variables, expression);
@@ -374,11 +367,25 @@ export class InputService {
         }
 
         return result ? [result] : [];
-      } catch (error) {
-        this.logger.warn(
-          `⚠️ Failed to evaluate options expression: ${expression}`
-        );
-        return [];
+      } catch (jmespathError) {
+        // If JMESPath fails, try variable interpolation (for {{$faker}}, {{$js}}, {{variable}}, etc.)
+        try {
+          const resolvedOptions = variableService.interpolate(options);
+
+          // If interpolation produced an options array directly, return it
+          if (Array.isArray(resolvedOptions)) {
+            return resolvedOptions;
+          }
+
+          // If still a string after interpolation, log warning
+          this.logger.warn(
+            `⚠️ Failed to evaluate options expression: ${expression}`
+          );
+          return [];
+        } catch (interpolationError) {
+          this.logger.warn(`⚠️ Failed to interpolate options: ${expression}`);
+          return [];
+        }
       }
     }
 
