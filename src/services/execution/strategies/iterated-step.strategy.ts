@@ -319,17 +319,46 @@ export class IteratedStepStrategy implements StepExecutionStrategy {
   }
 
   /**
-   * Filters internal variables from available variables.
+   * Intelligently filters and masks available variables for iteration step context
    */
   private filterAvailableVariables(
     variables: Record<string, any>
   ): Record<string, any> {
-    const filtered: Record<string, any> = {};
-    for (const [key, value] of Object.entries(variables)) {
-      if (!key.startsWith("_")) {
-        filtered[key] = value;
+    const {
+      smartFilterAndMask,
+    } = require("../../../utils/variable-masking.utils");
+
+    // Extract recently captured variables from current context
+    const recentCaptures = new Set<string>();
+    for (const key of Object.keys(variables)) {
+      if (
+        key.startsWith("captured_") ||
+        key.includes("_iteration") ||
+        key.includes("_index") ||
+        key.includes("_item")
+      ) {
+        recentCaptures.add(key);
       }
     }
-    return filtered;
+
+    return smartFilterAndMask(
+      variables,
+      {
+        stepType: "iteration",
+        recentCaptures,
+        isFirstStep: false,
+      },
+      {
+        alwaysInclude: ["iteration_index", "iteration_item", "total_items"],
+        alwaysExclude: ["PATH", "HOME", "USER", "SHELL", "PWD", "LANG"],
+        maxPerCategory: 6,
+      },
+      {
+        maxDepth: 2,
+        maxObjectSize: 10,
+        maxArrayLength: 5,
+        maxStringLength: 100,
+      }
+    );
   }
 }

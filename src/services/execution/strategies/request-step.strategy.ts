@@ -682,26 +682,53 @@ export class RequestStepStrategy implements StepExecutionStrategy {
   }
 
   /**
-   * Filters available variables for result output.
+   * Intelligently filters and masks available variables for request step context
    *
    * @param variables - All variables
-   * @returns Filtered variables
+   * @returns Filtered, masked, and summarized variables
    * @private
    *
    * @remarks
-   * Removes internal/system variables that shouldn't be exposed in results.
+   * Uses smart filtering to show only relevant variables for HTTP request context.
    */
   private filterAvailableVariables(
     variables: Record<string, any>
   ): Record<string, any> {
-    // Filter out internal variables (starting with _)
-    const filtered: Record<string, any> = {};
-    for (const [key, value] of Object.entries(variables)) {
-      if (!key.startsWith("_")) {
-        filtered[key] = value;
+    const {
+      smartFilterAndMask,
+    } = require("../../../utils/variable-masking.utils");
+
+    // Extract recently captured variables from current context
+    const recentCaptures = new Set<string>();
+    for (const key of Object.keys(variables)) {
+      if (
+        key.startsWith("captured_") ||
+        key.includes("_response") ||
+        key.includes("_result")
+      ) {
+        recentCaptures.add(key);
       }
     }
-    return filtered;
+
+    return smartFilterAndMask(
+      variables,
+      {
+        stepType: "request",
+        recentCaptures,
+        isFirstStep: false,
+      },
+      {
+        alwaysInclude: ["base_url", "auth_token", "api_key"],
+        alwaysExclude: ["PATH", "HOME", "USER", "SHELL", "PWD", "LANG"],
+        maxPerCategory: 6,
+      },
+      {
+        maxDepth: 2,
+        maxObjectSize: 15,
+        maxArrayLength: 3,
+        maxStringLength: 150,
+      }
+    );
   }
 
   /**

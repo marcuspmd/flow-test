@@ -317,22 +317,50 @@ export class CallStepStrategy implements StepExecutionStrategy {
   }
 
   /**
-   * Filters out internal variables (starting with _).
+   * Intelligently filters and masks available variables for call step context
    *
    * @param variables - All variables
-   * @returns Filtered variables without internal ones
+   * @returns Filtered, masked, and summarized variables
    * @private
    */
   private filterAvailableVariables(
     variables: Record<string, any>
   ): Record<string, any> {
-    const filtered: Record<string, any> = {};
-    for (const [key, value] of Object.entries(variables)) {
-      if (!key.startsWith("_")) {
-        filtered[key] = value;
+    const {
+      smartFilterAndMask,
+    } = require("../../../utils/variable-masking.utils");
+
+    // Extract recently captured variables from current context
+    const recentCaptures = new Set<string>();
+    for (const key of Object.keys(variables)) {
+      if (
+        key.startsWith("captured_") ||
+        key.includes("_call") ||
+        key.includes("_result")
+      ) {
+        recentCaptures.add(key);
       }
     }
-    return filtered;
+
+    return smartFilterAndMask(
+      variables,
+      {
+        stepType: "call",
+        recentCaptures,
+        isFirstStep: false,
+      },
+      {
+        alwaysInclude: ["suite_name", "step_id", "test_path"],
+        alwaysExclude: ["PATH", "HOME", "USER", "SHELL", "PWD", "LANG"],
+        maxPerCategory: 5,
+      },
+      {
+        maxDepth: 2,
+        maxObjectSize: 12,
+        maxArrayLength: 3,
+        maxStringLength: 120,
+      }
+    );
   }
 
   /**

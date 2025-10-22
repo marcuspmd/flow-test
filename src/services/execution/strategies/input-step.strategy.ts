@@ -357,22 +357,50 @@ export class InputStepStrategy implements StepExecutionStrategy {
   }
 
   /**
-   * Filters out internal variables (starting with _).
+   * Intelligently filters and masks available variables for input step context
    *
    * @param variables - All variables
-   * @returns Filtered variables without internal ones
+   * @returns Filtered, masked, and summarized variables
    * @private
    */
   private filterAvailableVariables(
     variables: Record<string, any>
   ): Record<string, any> {
-    const filtered: Record<string, any> = {};
-    for (const [key, value] of Object.entries(variables)) {
-      if (!key.startsWith("_")) {
-        filtered[key] = value;
+    const {
+      smartFilterAndMask,
+    } = require("../../../utils/variable-masking.utils");
+
+    // Extract recently captured variables from current context
+    const recentCaptures = new Set<string>();
+    for (const key of Object.keys(variables)) {
+      if (
+        key.startsWith("captured_") ||
+        key.includes("_input") ||
+        key.includes("_user")
+      ) {
+        recentCaptures.add(key);
       }
     }
-    return filtered;
+
+    return smartFilterAndMask(
+      variables,
+      {
+        stepType: "input",
+        recentCaptures,
+        isFirstStep: false,
+      },
+      {
+        alwaysInclude: ["username", "email", "default_value"],
+        alwaysExclude: ["PATH", "HOME", "USER", "SHELL", "PWD", "LANG"],
+        maxPerCategory: 5,
+      },
+      {
+        maxDepth: 1,
+        maxObjectSize: 10,
+        maxArrayLength: 3,
+        maxStringLength: 100,
+      }
+    );
   }
 
   /**

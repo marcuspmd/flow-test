@@ -539,17 +539,45 @@ export class ScenarioStepStrategy implements StepExecutionStrategy {
   }
 
   /**
-   * Filters internal variables from available variables.
+   * Intelligently filters and masks available variables for scenario step context
    */
   private filterAvailableVariables(
     variables: Record<string, any>
   ): Record<string, any> {
-    const filtered: Record<string, any> = {};
-    for (const [key, value] of Object.entries(variables)) {
-      if (!key.startsWith("_")) {
-        filtered[key] = value;
+    const {
+      smartFilterAndMask,
+    } = require("../../../utils/variable-masking.utils");
+
+    // Extract recently captured variables from current context
+    const recentCaptures = new Set<string>();
+    for (const key of Object.keys(variables)) {
+      if (
+        key.startsWith("captured_") ||
+        key.includes("_condition") ||
+        key.includes("_scenario")
+      ) {
+        recentCaptures.add(key);
       }
     }
-    return filtered;
+
+    return smartFilterAndMask(
+      variables,
+      {
+        stepType: "scenario",
+        recentCaptures,
+        isFirstStep: false,
+      },
+      {
+        alwaysInclude: ["condition", "scenario_name", "branch"],
+        alwaysExclude: ["PATH", "HOME", "USER", "SHELL", "PWD", "LANG"],
+        maxPerCategory: 4,
+      },
+      {
+        maxDepth: 1,
+        maxObjectSize: 8,
+        maxArrayLength: 2,
+        maxStringLength: 80,
+      }
+    );
   }
 }

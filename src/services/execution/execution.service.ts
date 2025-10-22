@@ -18,6 +18,10 @@ import { PriorityService } from "../priority";
 import { DependencyService } from "../dependency.service";
 import { GlobalRegistryService } from "../global-registry.service";
 import { HttpService } from "../http.service";
+import {
+  maskSensitiveVariables,
+  smartFilterAndMask,
+} from "../../utils/variable-masking.utils";
 import { CertificateService } from "../certificate";
 import { AssertionService } from "../assertion";
 import { CaptureService } from "../capture.service";
@@ -585,7 +589,8 @@ export class ExecutionService {
           error_message: `Unexpected error: ${error}`,
           variables_captured: this.getExportedVariables(test),
           available_variables: this.filterAvailableVariables(
-            this.globalVariables.getAllVariables()
+            this.globalVariables.getAllVariables(),
+            { isFirstStep: true }
           ),
         };
 
@@ -654,10 +659,13 @@ export class ExecutionService {
             steps_results: [],
             error_message: `Parallel execution error: ${result.reason}`,
             variables_captured: this.getExportedVariables(batch[index]),
-            available_variables: this.filterAvailableVariables({
-              ...this.globalVariables.getAllVariables(),
-              ...this.globalVariables.getVariablesByScope("runtime"),
-            }),
+            available_variables: this.filterAvailableVariables(
+              {
+                ...this.globalVariables.getAllVariables(),
+                ...this.globalVariables.getVariablesByScope("runtime"),
+              },
+              { isFirstStep: true }
+            ),
           };
 
           results.push(errorResult);
@@ -865,7 +873,8 @@ export class ExecutionService {
             error_message: `Step execution error: ${error}`,
             captured_variables: {},
             available_variables: this.filterAvailableVariables(
-              this.globalVariables.getAllVariables()
+              this.globalVariables.getAllVariables(),
+              { stepName: step.name }
             ),
           };
 
@@ -917,7 +926,8 @@ export class ExecutionService {
         steps_results: stepResults,
         variables_captured: {}, // Will be populated after export
         available_variables: this.filterAvailableVariables(
-          this.globalVariables.getAllVariables()
+          this.globalVariables.getAllVariables(),
+          { stepName: `${suite.suite_name}_final` }
         ),
         suite_yaml_content: suiteYamlContent,
       };
@@ -977,7 +987,8 @@ export class ExecutionService {
         error_message: `Suite loading error: ${error}`,
         variables_captured: {},
         available_variables: this.filterAvailableVariables(
-          this.globalVariables.getAllVariables()
+          this.globalVariables.getAllVariables(),
+          { isFirstStep: true }
         ),
         suite_yaml_content: suiteYamlContent,
       };
@@ -987,67 +998,62 @@ export class ExecutionService {
   }
 
   /**
-   * Filters out environment variables and shows only relevant variables
+   * Intelligently filters variables to show only what's relevant for current context
    */
   private filterAvailableVariables(
-    variables: Record<string, any>
+    variables: Record<string, any>,
+    context: {
+      stepType?: "request" | "input" | "call" | "scenario" | "iteration";
+      stepName?: string;
+      isFirstStep?: boolean;
+    } = {}
   ): Record<string, any> {
-    const filtered: Record<string, any> = {};
+    // Get recently captured variables from global registry
+    const recentCaptures = new Set<string>();
 
-    // Get environment variables to exclude
-    const envVarsToExclude = this.getEnvironmentVariablesToExclude();
-
-    // Patterns for relevant variables (captured, config, and test-related)
-    const relevantPatterns = [
-      /^captured_/, // Captured variables from current flow
-      /^config_/, // Configuration variables
-      /^test_/, // Test-specific variables
-      /^auth_/, // Authentication variables
-      /^api_/, // API-related variables
-      /^flow_/, // Flow-specific variables
-      /^suite_/, // Suite-level variables
-      /^base_/, // Base configuration (like base_url)
-      /^current_/, // Current context variables
-      /^result_/, // Result variables
-      /^scenario_/, // Scenario variables
-    ];
-
-    // Get all exported variables (these are always relevant)
-    const exportedVariables = this.globalRegistry.getAllExportedVariables();
-    const exportedVariableNames = new Set(Object.keys(exportedVariables));
-
-    for (const [key, value] of Object.entries(variables)) {
-      // Skip if it's an environment variable
-      if (envVarsToExclude.has(key)) {
-        continue;
-      }
-
-      // Always include exported variables (they have namespaces like "nodeId.variable")
-      if (exportedVariableNames.has(key)) {
-        filtered[key] = value;
-        continue;
-      }
-
-      // Include if it matches relevant patterns
-      const isRelevant = relevantPatterns.some((pattern) => pattern.test(key));
-      if (isRelevant) {
-        // Check if this variable has a namespaced exported version
-        // If it does, skip the non-namespaced version to avoid duplicates
-        let hasNamespacedVersion = false;
-        for (const exportedVarName of exportedVariableNames) {
-          if (exportedVarName.endsWith(`.${key}`)) {
-            hasNamespacedVersion = true;
-            break;
-          }
-        }
-
-        if (!hasNamespacedVersion) {
-          filtered[key] = value;
-        }
+    // Look for variables that match patterns suggesting they were recently captured
+    for (const key of Object.keys(variables)) {
+      if (
+        key.startsWith("captured_") ||
+        key.includes("_result") ||
+        key.includes("_response")
+      ) {
+        recentCaptures.add(key);
       }
     }
 
-    return filtered;
+    // Use smart filtering with masking
+    return smartFilterAndMask(
+      variables,
+      {
+        stepType: context.stepType,
+        stepName: context.stepName,
+        recentCaptures,
+        isFirstStep: context.isFirstStep,
+      },
+      {
+        recentCapturesOnly: false,
+        recentUsageDepth: 3,
+        alwaysInclude: ["base_url", "suite_name", "node_id"],
+        alwaysExclude: [
+          "PATH",
+          "HOME",
+          "USER",
+          "SHELL",
+          "PWD",
+          "LANG",
+          "TERM",
+          "TMPDIR",
+        ],
+        maxPerCategory: 8,
+      },
+      {
+        maxDepth: 2,
+        maxObjectSize: 20,
+        maxArrayLength: 5,
+        maxStringLength: 200,
+      }
+    );
   }
 
   /**
@@ -1128,7 +1134,8 @@ export class ExecutionService {
         duration_ms: 0,
         captured_variables: {},
         available_variables: this.filterAvailableVariables(
-          this.globalVariables.getAllVariables()
+          this.globalVariables.getAllVariables(),
+          { stepName: step.name }
         ),
       };
 
@@ -1202,7 +1209,8 @@ export class ExecutionService {
         error_message: `Strategy execution error: ${error.message}`,
         captured_variables: {},
         available_variables: this.filterAvailableVariables(
-          this.globalVariables.getAllVariables()
+          this.globalVariables.getAllVariables(),
+          { stepName: step.name }
         ),
       };
 
