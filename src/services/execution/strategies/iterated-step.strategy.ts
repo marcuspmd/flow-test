@@ -3,10 +3,8 @@
  * This is a wrapper strategy that executes the underlying step multiple times.
  */
 
-import type {
-  StepExecutionStrategy,
-  StepExecutionContext,
-} from "./step-execution.strategy";
+import { BaseStepStrategy } from "./base-step.strategy";
+import type { StepExecutionContext } from "./step-execution.strategy";
 import type { TestStep } from "../../../types/engine.types";
 import type { StepExecutionResult } from "../../../types/config.types";
 import type { StepStrategyFactory } from "./step-strategy.factory";
@@ -15,7 +13,7 @@ import type { StepStrategyFactory } from "./step-strategy.factory";
  * Strategy for steps with iterate configuration.
  * This is a wrapper that delegates to another strategy but executes it in a loop.
  */
-export class IteratedStepStrategy implements StepExecutionStrategy {
+export class IteratedStepStrategy extends BaseStepStrategy {
   private factory?: StepStrategyFactory;
 
   /**
@@ -228,12 +226,11 @@ export class IteratedStepStrategy implements StepExecutionStrategy {
         `❌ Error executing iterated step '${step.name}': ${error.message}`
       );
 
+      // Use inherited buildFailureResult from BaseStepStrategy
       return this.buildFailureResult(
-        identifiers,
-        step,
-        error,
-        stepStartTime,
-        globalVariables.getAllVariables()
+        context,
+        error as Error,
+        Date.now() - stepStartTime
       );
     }
   }
@@ -277,7 +274,10 @@ export class IteratedStepStrategy implements StepExecutionStrategy {
       response_details: undefined,
       assertions_results: [],
       captured_variables: {},
-      available_variables: this.filterAvailableVariables(availableVariables),
+      available_variables: this.filterAvailableVariables(availableVariables, {
+        stepType: "iteration",
+        stepName: step.name,
+      }),
     };
   }
 
@@ -321,7 +321,10 @@ export class IteratedStepStrategy implements StepExecutionStrategy {
         undefined,
       assertions_results: combinedAssertions,
       captured_variables: combinedCapturedVariables,
-      available_variables: this.filterAvailableVariables(availableVariables),
+      available_variables: this.filterAvailableVariables(availableVariables, {
+        stepType: "iteration",
+        stepName: step.name,
+      }),
       iteration_results: iterationResults, // Include individual iteration results
     };
   }
@@ -329,71 +332,8 @@ export class IteratedStepStrategy implements StepExecutionStrategy {
   /**
    * Builds failure result when iteration encounters an error.
    */
-  private buildFailureResult(
-    identifiers: any,
-    step: TestStep,
-    error: Error,
-    stepStartTime: number,
-    availableVariables: Record<string, any>
-  ): StepExecutionResult {
-    return {
-      step_id: identifiers.stepId,
-      qualified_step_id: identifiers.qualifiedStepId,
-      step_name: step.name,
-      status: "failure",
-      duration_ms: Date.now() - stepStartTime,
-      request_details: undefined,
-      response_details: undefined,
-      assertions_results: [],
-      captured_variables: {},
-      available_variables: this.filterAvailableVariables(availableVariables),
-      error_message: error.message,
-    };
-  }
-
-  /**
-   * Intelligently filters and masks available variables for iteration step context
-   */
-  private filterAvailableVariables(
-    variables: Record<string, any>
-  ): Record<string, any> {
-    const {
-      smartFilterAndMask,
-    } = require("../../../utils/variable-masking.utils");
-
-    // Extract recently captured variables from current context
-    const recentCaptures = new Set<string>();
-    for (const key of Object.keys(variables)) {
-      if (
-        key.startsWith("captured_") ||
-        key.includes("_iteration") ||
-        key.includes("_index") ||
-        key.includes("_item")
-      ) {
-        recentCaptures.add(key);
-      }
-    }
-
-    return smartFilterAndMask(
-      variables,
-      {
-        stepType: "iteration",
-        recentCaptures,
-        isFirstStep: false,
-      },
-      {
-        alwaysInclude: ["iteration_index", "iteration_item", "total_items"],
-        alwaysExclude: ["PATH", "HOME", "USER", "SHELL", "PWD", "LANG"],
-        maxPerCategory: 6,
-      },
-      {
-        maxDepth: 2,
-        maxObjectSize: 10,
-        maxArrayLength: 5,
-        maxStringLength: 100,
-      }
-    );
-  }
+  // filterAvailableVariables and buildFailureResult methods moved to BaseStepStrategy
+  // to eliminate code duplication across all strategies
 
   /**
    * Executes lifecycle hooks at the appropriate point

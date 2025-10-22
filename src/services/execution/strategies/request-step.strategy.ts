@@ -19,10 +19,8 @@
  * @packageDocumentation
  */
 
-import type {
-  StepExecutionStrategy,
-  StepExecutionContext,
-} from "./step-execution.strategy";
+import { BaseStepStrategy } from "./base-step.strategy";
+import type { StepExecutionContext } from "./step-execution.strategy";
 import type {
   TestStep,
   StepExecutionResult,
@@ -98,7 +96,7 @@ import type { DynamicVariableAssignment } from "../../../types/common.types";
  *
  * @public
  */
-export class RequestStepStrategy implements StepExecutionStrategy {
+export class RequestStepStrategy extends BaseStepStrategy {
   /**
    * Determines if this strategy can handle the given step.
    *

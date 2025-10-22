@@ -4,10 +4,8 @@
  */
 
 import * as jmespath from "jmespath";
-import type {
-  StepExecutionStrategy,
-  StepExecutionContext,
-} from "./step-execution.strategy";
+import { BaseStepStrategy } from "./base-step.strategy";
+import type { StepExecutionContext } from "./step-execution.strategy";
 import type { TestStep } from "../../../types/engine.types";
 import type { StepExecutionResult } from "../../../types/config.types";
 
@@ -27,7 +25,7 @@ interface ScenarioEvaluation {
 /**
  * Strategy for steps with scenarios only (no request, input, call, or iterate).
  */
-export class ScenarioStepStrategy implements StepExecutionStrategy {
+export class ScenarioStepStrategy extends BaseStepStrategy {
   /**
    * Checks if this strategy can handle the given step.
    * Returns true only if step has scenarios but no request, input, call, or iterate.
