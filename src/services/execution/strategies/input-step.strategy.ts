@@ -82,7 +82,10 @@ export class InputStepStrategy implements StepExecutionStrategy {
         );
       }
 
-      // **1. Set execution context for interactive inputs**
+      // **1. Execute pre-input hooks**
+      await this.executeHooks(context, step.hooks_pre_input, "pre_input");
+
+      // **2. Set execution context for interactive inputs**
       const executionContext: InputExecutionContext = {
         suite_name: suite.suite_name,
         suite_path: discoveredTest?.file_path,
@@ -93,11 +96,17 @@ export class InputStepStrategy implements StepExecutionStrategy {
       };
       context.inputService.setExecutionContext(executionContext);
 
-      // **2. Process interactive inputs**
+      // **3. Process interactive inputs**
       const { inputResults, capturedVariables, dynamicAssignments } =
         await this.processInputs(context);
 
-      // **3. Build success result**
+      // **4. Execute post-input hooks**
+      await this.executeHooks(context, step.hooks_post_input, "post_input", {
+        inputs: inputResults,
+        captured: capturedVariables,
+      });
+
+      // **5. Build success result**
       const duration = Date.now() - startTime;
 
       const result: StepExecutionResult = {
@@ -433,5 +442,60 @@ export class InputStepStrategy implements StepExecutionStrategy {
       ),
       assertions_results: [],
     };
+  }
+
+  /**
+   * Executes lifecycle hooks at the appropriate point
+   *
+   * @param context - Execution context
+   * @param hooks - Array of hook actions to execute
+   * @param hookPoint - Name of the hook point (for logging)
+   * @param additionalContext - Additional context data (e.g., inputs, captured vars)
+   * @private
+   */
+  private async executeHooks(
+    context: StepExecutionContext,
+    hooks: import("../../../types/hook.types").HookAction[] | undefined,
+    hookPoint: string,
+    additionalContext?: Record<string, any>
+  ): Promise<void> {
+    if (!hooks || hooks.length === 0) {
+      return;
+    }
+
+    const { hookExecutorService, step, globalVariables, logger } = context;
+
+    try {
+      logger.debug(
+        `[Hook] Executing ${hooks.length} hook(s) at ${hookPoint} for step '${step.name}'`
+      );
+
+      const hookContext: import("../../../types/hook.types").HookExecutionContext =
+        {
+          stepName: step.name,
+          stepIndex: context.stepIndex,
+          variables: globalVariables.getAllVariables(),
+          ...additionalContext,
+        };
+
+      const result = await hookExecutorService.executeHooks(hooks, hookContext);
+
+      if (!result.success) {
+        logger.warn(
+          `[Hook] Hook execution at ${hookPoint} encountered issues: ${result.error}`
+        );
+      } else {
+        logger.debug(
+          `[Hook] Successfully executed hooks at ${hookPoint} in ${result.duration_ms}ms`
+        );
+      }
+    } catch (error) {
+      logger.error(
+        `[Hook] Failed to execute hooks at ${hookPoint}: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
+      // Don't throw - hooks should not break test execution
+    }
   }
 }

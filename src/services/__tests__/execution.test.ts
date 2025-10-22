@@ -891,11 +891,11 @@ describe("ExecutionService", () => {
   describe("variable filtering and processing", () => {
     it("should filter available variables correctly", () => {
       const variables = {
-        captured_token: "abc123",
-        test_user: "john@example.com",
-        PATH: "/usr/bin",
-        HOME: "/home/user",
-        api_key: "secret",
+        captured_token: "abc123", // Has "captured_" prefix - always included
+        user_email: "john@example.com", // Has "user" prefix + email is sensitive
+        PATH: "/usr/bin", // Environment variable - excluded
+        HOME: "/home/user", // Environment variable - excluded
+        captured_api_key: "secret", // Has "captured_" prefix - always included
       };
 
       mockVariableService.getAllVariables = jest
@@ -910,9 +910,12 @@ describe("ExecutionService", () => {
         variables
       );
 
-      expect(filtered.captured_token).toBe("abc123");
-      expect(filtered.test_user).toBe("john@example.com");
-      expect(filtered.api_key).toBe("secret");
+      // captured_token has "token" in name, so it's masked: "abc123" -> "a****3"
+      expect(filtered.captured_token).toBe("a****3");
+      // user_email matches user pattern and email is sensitive, so masked: "john@example.com" -> "j**************m"
+      expect(filtered.user_email).toBe("j**************m");
+      // captured_api_key has "key" in name, so it's masked: "secret" -> "s****t"
+      expect(filtered.captured_api_key).toBe("s****t");
       // Environment variables should be filtered out
       expect(filtered.PATH).toBeUndefined();
       expect(filtered.HOME).toBeUndefined();
@@ -920,11 +923,11 @@ describe("ExecutionService", () => {
 
     it("should include variables matching relevant patterns", () => {
       const variables = {
-        captured_data: "value1",
-        config_url: "value2",
-        auth_token: "value3",
-        suite_name: "value4",
-        random_var: "value5", // should be filtered out
+        captured_data: "value1", // Has "captured_" prefix - always included
+        captured_url: "value2", // Has "captured_" prefix - always included
+        captured_auth_token: "value3", // Has "captured_" prefix + sensitive - masked
+        suite_name: "value4", // In alwaysInclude - always included
+        random_var: "value5", // No pattern match - should be filtered out
       };
 
       mockGlobalRegistryService.getAllExportedVariables = jest
@@ -936,8 +939,9 @@ describe("ExecutionService", () => {
       );
 
       expect(filtered.captured_data).toBe("value1");
-      expect(filtered.config_url).toBe("value2");
-      expect(filtered.auth_token).toBe("value3");
+      expect(filtered.captured_url).toBe("value2");
+      // captured_auth_token has "token" and "auth" - sensitive and will be masked: "value3" -> "v****3"
+      expect(filtered.captured_auth_token).toBe("v****3");
       expect(filtered.suite_name).toBe("value4");
       expect(filtered.random_var).toBeUndefined();
     });
@@ -958,8 +962,8 @@ describe("ExecutionService", () => {
         variables
       );
 
-      // Should include namespaced exported variable
-      expect(filtered["suite1.auth_token"]).toBe("token123");
+      // Should include namespaced exported variable (masked: "token123" -> "t******3")
+      expect(filtered["suite1.auth_token"]).toBe("t******3");
       // Should skip non-namespaced version if namespaced exists
       expect(filtered.auth_token).toBeUndefined();
     });
@@ -1721,9 +1725,7 @@ describe("ExecutionService", () => {
 
       await (executionService as any).executeSingleTest(mockDiscoveredTest);
 
-      expect(
-        mockVariableService.clearAllNonGlobalVariables
-      ).toHaveBeenCalled();
+      expect(mockVariableService.clearAllNonGlobalVariables).toHaveBeenCalled();
     });
 
     it("should set suite variables", async () => {

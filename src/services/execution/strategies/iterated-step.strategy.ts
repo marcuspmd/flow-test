@@ -111,6 +111,22 @@ export class IteratedStepStrategy implements StepExecutionStrategy {
             value: iterationContext.value,
           });
 
+          // Execute pre-iteration hooks
+          await this.executeHooks(
+            context,
+            step.hooks_pre_iteration,
+            "pre_iteration",
+            {
+              iteration: {
+                index: i,
+                total: iterationContexts.length,
+                isFirst: i === 0,
+                isLast: i === iterationContexts.length - 1,
+                value: iterationContext.value,
+              },
+            }
+          );
+
           // Create iteration-specific step
           const iterationStepName = `${step.name} [${i + 1}/${
             iterationContexts.length
@@ -147,6 +163,23 @@ export class IteratedStepStrategy implements StepExecutionStrategy {
           );
 
           iterationResults.push(iterationResult);
+
+          // Execute post-iteration hooks
+          await this.executeHooks(
+            context,
+            step.hooks_post_iteration,
+            "post_iteration",
+            {
+              iteration: {
+                index: i,
+                total: iterationContexts.length,
+                isFirst: i === 0,
+                isLast: i === iterationContexts.length - 1,
+                value: iterationContext.value,
+              },
+              result: iterationResult,
+            }
+          );
 
           if (iterationResult.status !== "success") {
             allIterationsSuccessful = false;
@@ -360,5 +393,60 @@ export class IteratedStepStrategy implements StepExecutionStrategy {
         maxStringLength: 100,
       }
     );
+  }
+
+  /**
+   * Executes lifecycle hooks at the appropriate point
+   *
+   * @param context - Execution context
+   * @param hooks - Array of hook actions to execute
+   * @param hookPoint - Name of the hook point (for logging)
+   * @param additionalContext - Additional context data (e.g., iteration metadata, result)
+   * @private
+   */
+  private async executeHooks(
+    context: StepExecutionContext,
+    hooks: import("../../../types/hook.types").HookAction[] | undefined,
+    hookPoint: string,
+    additionalContext?: Record<string, any>
+  ): Promise<void> {
+    if (!hooks || hooks.length === 0) {
+      return;
+    }
+
+    const { hookExecutorService, step, globalVariables, logger } = context;
+
+    try {
+      logger.debug(
+        `[Hook] Executing ${hooks.length} hook(s) at ${hookPoint} for step '${step.name}'`
+      );
+
+      const hookContext: import("../../../types/hook.types").HookExecutionContext =
+        {
+          stepName: step.name,
+          stepIndex: context.stepIndex,
+          variables: globalVariables.getAllVariables(),
+          ...additionalContext,
+        };
+
+      const result = await hookExecutorService.executeHooks(hooks, hookContext);
+
+      if (!result.success) {
+        logger.warn(
+          `[Hook] Hook execution at ${hookPoint} encountered issues: ${result.error}`
+        );
+      } else {
+        logger.debug(
+          `[Hook] Successfully executed hooks at ${hookPoint} in ${result.duration_ms}ms`
+        );
+      }
+    } catch (error) {
+      logger.error(
+        `[Hook] Failed to execute hooks at ${hookPoint}: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
+      // Don't throw - hooks should not break test execution
+    }
   }
 }

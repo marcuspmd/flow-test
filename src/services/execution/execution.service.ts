@@ -31,6 +31,8 @@ import { ScenarioService } from "../scenario.service";
 import { IterationService } from "../iteration.service";
 import { InputService } from "../input";
 import { ScriptExecutorService } from "../script-executor.service";
+import { JavaScriptService } from "../javascript.service";
+import { HookExecutorService } from "./hook-executor.service";
 import { getLogger } from "../logger.service";
 import {
   DiscoveredTest,
@@ -182,6 +184,8 @@ export class ExecutionService {
   private dynamicExpressionService: DynamicExpressionService;
   private callService: CallService;
   private scriptExecutorService: ScriptExecutorService;
+  private javascriptService: JavaScriptService;
+  private hookExecutorService: HookExecutorService;
   private stepCallStack: string[] = [];
   private stepStrategyFactory: StepStrategyFactory;
 
@@ -252,6 +256,12 @@ export class ExecutionService {
     );
     this.callService = new CallService(this.executeResolvedStepCall.bind(this));
     this.scriptExecutorService = new ScriptExecutorService(this.logger);
+    this.javascriptService = new JavaScriptService();
+    this.hookExecutorService = new HookExecutorService(
+      this.globalVariables,
+      this.javascriptService,
+      this.callService
+    );
 
     // Initialize Strategy Pattern factory and register strategies
     this.stepStrategyFactory = new StepStrategyFactory();
@@ -1178,6 +1188,7 @@ export class ExecutionService {
         iterationService: this.iterationService,
         dynamicExpressionService: this.dynamicExpressionService,
         scriptExecutorService: this.scriptExecutorService,
+        hookExecutorService: this.hookExecutorService,
         hooks: this.hooks,
         configManager: this.configManager,
         stepCallStack: this.stepCallStack,

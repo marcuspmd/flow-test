@@ -711,6 +711,40 @@ export interface TestStep {
 
   /** Additional metadata for execution control and organization */
   metadata?: TestStepMetadata;
+
+  // ==================== Lifecycle Hooks ====================
+  // Hooks allow injection of logic at specific points in execution flow
+  // Replaces ComputedService and DynamicExpressionService functionality
+
+  /** Hook executed before input collection */
+  hooks_pre_input?: import("./hook.types").HookAction[];
+
+  /** Hook executed after input collection */
+  hooks_post_input?: import("./hook.types").HookAction[];
+
+  /** Hook executed before each iteration (when using iterate) */
+  hooks_pre_iteration?: import("./hook.types").HookAction[];
+
+  /** Hook executed after each iteration (when using iterate) */
+  hooks_post_iteration?: import("./hook.types").HookAction[];
+
+  /** Hook executed before HTTP request */
+  hooks_pre_request?: import("./hook.types").HookAction[];
+
+  /** Hook executed after HTTP request */
+  hooks_post_request?: import("./hook.types").HookAction[];
+
+  /** Hook executed before assertions */
+  hooks_pre_assertion?: import("./hook.types").HookAction[];
+
+  /** Hook executed after assertions */
+  hooks_post_assertion?: import("./hook.types").HookAction[];
+
+  /** Hook executed before variable capture */
+  hooks_pre_capture?: import("./hook.types").HookAction[];
+
+  /** Hook executed after variable capture */
+  hooks_post_capture?: import("./hook.types").HookAction[];
 }
 
 /**

@@ -105,6 +105,9 @@ export interface StepExecutionContext {
   /** Script executor service for pre/post-request scripts */
   readonly scriptExecutorService: ScriptExecutorService;
 
+  /** Hook executor service for lifecycle hooks */
+  readonly hookExecutorService: import("../hook-executor.service").HookExecutorService;
+
   /** Call service for cross-suite step invocation */
   readonly callService: CallService;
 

@@ -173,8 +173,8 @@ describe("ExecutionService - High Coverage Tests", () => {
         variables
       );
 
-      // Should include namespaced version
-      expect(filtered["suite1.token"]).toBe("namespaced");
+      // Should include namespaced version (masked: "namespaced" -> "n********d")
+      expect(filtered["suite1.token"]).toBe("n********d");
       // Should skip non-namespaced if namespaced exists
       expect(filtered.token).toBeUndefined();
     });

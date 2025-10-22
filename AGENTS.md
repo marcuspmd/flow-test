@@ -25,6 +25,12 @@
 - [8. Cenários Condicionais](#8-cenários-condicionais-conditionalscenario)
 - [9. Step Call Cross-Suite](#9-step-call-cross-suite-stepcallconfig)
 
+### Lifecycle Hooks (NOVO v2.0)
+- [9.1. Sistema de Lifecycle Hooks](#91-sistema-de-lifecycle-hooks)
+- [9.2. Hook Actions (Ações)](#92-hook-actions-ações)
+- [9.3. Hook Points (Pontos de Execução)](#93-hook-points-pontos-de-execução)
+- [9.4. Exemplos Práticos de Hooks](#94-exemplos-práticos-de-hooks)
+
 ### Configurações Avançadas
 - [10. Tipos de Dados e Valores Especiais](#10-tipos-de-dados-e-valores-especiais)
 - [11. Configuração de Retry](#11-configuração-de-retry)
@@ -617,6 +623,358 @@ steps:
 |-------------------|---------------|
 | `true` (padrão) | Variáveis capturadas ficam em namespace `{{step-id.variable}}` |
 | `false` | Variáveis capturadas mesclam diretamente no escopo do chamador |
+
+---
+
+### 9.1. Sistema de Lifecycle Hooks
+
+**Novidade na versão 2.0!** 🎉
+
+O Flow Test Engine introduz um sistema abrangente de **Lifecycle Hooks** que permite injetar lógica customizada em pontos específicos do ciclo de vida de execução dos testes. Inspirado em padrões de frameworks populares como Express.js, NestJS e Jest.
+
+#### 9.1.1 Visão Geral
+
+Lifecycle Hooks permitem executar ações em momentos estratégicos durante a execução de um step:
+
+- **Computar variáveis** dinamicamente (timestamps, IDs únicos, cálculos)
+- **Validar condições** com mensagens customizadas
+- **Emitir logs** estruturados para auditoria
+- **Coletar métricas** para monitoramento e performance
+- **Executar scripts** JavaScript arbitrários
+- **Chamar outros steps** ou suites
+- **Adicionar delays** estratégicos
+
+#### 9.1.2 Filosofia de Design
+
+- **Não-intrusivo**: Hooks não quebram a execução se falharem (a menos que configurado)
+- **Composável**: Múltiplos hooks podem ser executados em sequência
+- **Contextual**: Cada hook tem acesso ao contexto completo (variáveis, response, etc.)
+- **Declarativo**: Configurados em YAML de forma limpa e legível
+
+---
+
+### 9.2. Hook Actions (Ações)
+
+Cada hook pode executar uma ou mais **ações**. Todas as ações são opcionais dentro de um hook.
+
+| Ação | Descrição | Use Case | Exemplo |
+|------|-----------|----------|---------|
+| `compute` | Calcula variáveis usando interpolação/JavaScript | Timestamps, IDs, transformações | `{timestamp: "{{$js:Date.now()}}"}` |
+| `validate` | Valida condições com severidade configurável | Pré-condições, regras de negócio | Ver seção 9.2.2 |
+| `log` | Emite mensagem de log estruturado | Auditoria, debugging | `{level: "info", message: "Starting..."}` |
+| `metric` | Emite métrica para telemetria | Monitoramento, dashboards | `{name: "api_call_count", value: 1}` |
+| `script` | Executa JavaScript arbitrário | Lógica complexa customizada | `"console.log('Hello')"` |
+| `call` | Chama outro step ou suite | Reuso de lógica | `{test: "./setup.yaml", step: "init"}` |
+| `wait` | Adiciona delay em milissegundos | Rate limiting, timing | `500` |
+
+#### 9.2.1 Compute Action
+
+```yaml
+hooks_pre_request:
+  - compute:
+      request_id: "{{$js:crypto.randomUUID()}}"
+      timestamp: "{{$js:Date.now()}}"
+      user_agent: "Flow-Test-Engine/2.0"
+      calculated_price: "{{$js:product.price * (1 + tax_rate)}}"
+```
+
+**Características:**
+- Variáveis são computadas usando interpolação do VariableService
+- Suporta `{{$js:...}}`, `{{$faker:...}}`, `{{$env:...}}`
+- Variáveis ficam disponíveis imediatamente para steps seguintes
+
+#### 9.2.2 Validate Action
+
+```yaml
+hooks_pre_request:
+  - validate:
+      - expression: "user_id && auth_token"
+        message: "Authentication required"
+        severity: "error"  # error | warning | info
+      - expression: "quantity > 0 && quantity <= 100"
+        message: "Quantity must be between 1 and 100"
+        severity: "warning"
+```
+
+**Severidades:**
+- `error`: Falha o hook (mas não quebra o teste por padrão)
+- `warning`: Loga warning mas continua
+- `info`: Apenas informativo
+
+#### 9.2.3 Log Action
+
+```yaml
+hooks_post_request:
+  - log:
+      level: "info"  # debug | info | warn | error
+      message: "API call completed in {{response_time}}ms"
+      metadata:
+        endpoint: "{{request.url}}"
+        status: "{{response.status}}"
+```
+
+#### 9.2.4 Metric Action
+
+```yaml
+hooks_post_assertion:
+  - metric:
+      name: "api_response_time_ms"
+      value: "{{response_time_ms}}"
+      tags:
+        endpoint: "/users"
+        method: "POST"
+        status_code: "{{response.status}}"
+```
+
+#### 9.2.5 Script Action
+
+```yaml
+hooks_post_capture:
+  - script: |
+      console.log('='.repeat(60));
+      console.log('CAPTURED VARIABLES');
+      console.log('='.repeat(60));
+      Object.keys(variables).forEach(k => {
+        console.log(`${k}: ${JSON.stringify(variables[k])}`);
+      });
+      return { summary: 'Variables logged' };
+```
+
+**Contexto disponível:**
+- `variables`: Todas as variáveis do escopo
+- `response`: Objeto de resposta (quando aplicável)
+- `request`: Objeto de request (quando aplicável)
+- `console.log/warn/error`: Para logging
+
+#### 9.2.6 Call Action
+
+```yaml
+hooks_pre_request:
+  - call:
+      test: "./utils/rate-limiter.yaml"
+      step: "enforce-limit"
+      variables:
+        endpoint: "{{request.url}}"
+```
+
+#### 9.2.7 Wait Action
+
+```yaml
+hooks_post_iteration:
+  - wait: 1000  # Espera 1 segundo entre iterações
+```
+
+---
+
+### 9.3. Hook Points (Pontos de Execução)
+
+Cada **step** pode ter hooks em 10 pontos diferentes do ciclo de vida:
+
+| Hook Point | Quando Executa | Contexto Disponível | Use Case |
+|------------|----------------|---------------------|----------|
+| `hooks_pre_input` | **Antes** de solicitar input do usuário | `variables` | Valores default, pré-validações |
+| `hooks_post_input` | **Depois** de receber input | `variables`, `inputs`, `captured` | Sanitização, transformação |
+| `hooks_pre_iteration` | **Antes** de cada iteração em loop | `variables`, `iteration` | Setup por iteração, contadores |
+| `hooks_post_iteration` | **Depois** de cada iteração | `variables`, `iteration`, `result` | Cleanup, agregação, delays |
+| `hooks_pre_request` | **Antes** de executar request HTTP | `variables` | Headers dinâmicos, timestamps |
+| `hooks_post_request` | **Depois** de request HTTP | `variables`, `response` | Métricas, logs, validações extras |
+| `hooks_pre_assertion` | **Antes** de executar assertions | `variables`, `response` | Preparar dados, logs |
+| `hooks_post_assertion` | **Depois** de assertions | `variables`, `response`, `assertions` | Métricas de falhas, alertas |
+| `hooks_pre_capture` | **Antes** de capturar variáveis | `variables`, `response` | Validações estruturais |
+| `hooks_post_capture` | **Depois** de capturar variáveis | `variables`, `captured` | Transformações, exports |
+
+#### 9.3.1 Contextos Adicionais
+
+**Para `iteration` hooks:**
+```typescript
+iteration: {
+  index: 0,          // Índice atual (0-based)
+  total: 10,         // Total de iterações
+  isFirst: true,     // Se é a primeira iteração
+  isLast: false,     // Se é a última iteração
+  value: {...}       // Valor atual do item
+}
+```
+
+**Para `response` context:**
+```typescript
+response: {
+  status: 200,
+  status_code: 200,
+  headers: {...},
+  body: {...},
+  data: {...},       // Alias para body
+  response_time_ms: 245
+}
+```
+
+**Para `assertions` context:**
+```typescript
+assertions: [
+  {
+    path: "body.success",
+    expected: true,
+    actual: true,
+    passed: true
+  },
+  ...
+]
+```
+
+---
+
+### 9.4. Exemplos Práticos de Hooks
+
+#### 9.4.1 Auditoria Completa
+
+```yaml
+steps:
+  - name: "Create user"
+    hooks_pre_request:
+      - compute:
+          request_id: "{{$js:crypto.randomUUID()}}"
+          timestamp: "{{$js:new Date().toISOString()}}"
+      - log:
+          level: "info"
+          message: "REQUEST: {{request_id}} - Creating user at {{timestamp}}"
+          metadata:
+            endpoint: "/users"
+            method: "POST"
+
+    hooks_post_request:
+      - compute:
+          duration_ms: "{{$js:Date.now() - Date.parse(timestamp)}}"
+      - metric:
+          name: "user_creation_duration_ms"
+          value: "{{duration_ms}}"
+          tags:
+            success: "{{response.status === 201}}"
+      - log:
+          level: "info"
+          message: "RESPONSE: {{request_id}} - Status {{response.status}} in {{duration_ms}}ms"
+          metadata:
+            user_id: "{{response.body.id}}"
+
+    request:
+      method: POST
+      url: "/users"
+      body:
+        name: "John Doe"
+```
+
+#### 9.4.2 Rate Limiting Entre Iterações
+
+```yaml
+steps:
+  - name: "Process items {{item.id}}"
+    iterate:
+      over: "{{items}}"
+      as: "item"
+
+    hooks_pre_iteration:
+      - log:
+          level: "info"
+          message: "Processing item {{_iteration.index + 1}}/{{_iteration.total}}"
+
+    hooks_post_iteration:
+      - wait: 500  # 500ms entre cada request
+      - metric:
+          name: "items_processed"
+          value: 1
+          tags:
+            item_id: "{{item.id}}"
+
+    request:
+      method: GET
+      url: "/items/{{item.id}}"
+```
+
+#### 9.4.3 Validação de Regras de Negócio
+
+```yaml
+steps:
+  - name: "Checkout cart"
+    hooks_pre_request:
+      - validate:
+          - expression: "cart_total > 0"
+            message: "Cart must have items"
+            severity: "error"
+          - expression: "cart_total < 10000"
+            message: "Cart total exceeds maximum allowed"
+            severity: "error"
+          - expression: "user.is_verified"
+            message: "User must be verified to checkout"
+            severity: "warning"
+      - compute:
+          discount: "{{$js:user.is_premium ? cart_total * 0.10 : 0}}"
+          final_total: "{{$js:cart_total - discount}}"
+
+    hooks_post_assertion:
+      - validate:
+          - expression: "response.body.order_id"
+            message: "Order must have an ID"
+            severity: "error"
+      - log:
+          level: "info"
+          message: "Order {{response.body.order_id}} created: ${{final_total}}"
+
+    request:
+      method: POST
+      url: "/checkout"
+```
+
+#### 9.4.4 Transformação de Dados Capturados
+
+```yaml
+steps:
+  - name: "Get users"
+    request:
+      method: GET
+      url: "/users"
+
+    capture:
+      raw_users: "body.users"
+
+    hooks_post_capture:
+      - compute:
+          user_count: "{{$js:raw_users.length}}"
+          admin_users: "{{$js:raw_users.filter(u => u.role === 'admin')}}"
+          user_ids: "{{$js:raw_users.map(u => u.id)}}"
+          users_summary: "{{$js:raw_users.map(u => ({id: u.id, name: u.name}))}}"
+      - log:
+          level: "info"
+          message: "Captured {{user_count}} users ({{admin_users.length}} admins)"
+```
+
+#### 9.4.5 Reuso com Call Action
+
+```yaml
+# File: utils/auth-check.yaml
+steps:
+  - name: "Verify auth"
+    step_id: "verify-auth"
+    hooks_pre_request:
+      - validate:
+          - expression: "auth_token"
+            message: "Missing authentication token"
+            severity: "error"
+
+# File: main-test.yaml
+steps:
+  - name: "Protected operation"
+    hooks_pre_request:
+      - call:
+          test: "./utils/auth-check.yaml"
+          step: "verify-auth"
+          variables:
+            auth_token: "{{auth_token}}"
+
+    request:
+      method: POST
+      url: "/protected-resource"
+      headers:
+        Authorization: "Bearer {{auth_token}}"
+```
 
 ---
 

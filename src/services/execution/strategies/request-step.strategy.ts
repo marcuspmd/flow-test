@@ -156,10 +156,13 @@ export class RequestStepStrategy implements StepExecutionStrategy {
       let capturedVariables: Record<string, any> = {};
       let assertionResults: any[] = [];
 
-      // **1. Execute pre-request script**
+      // **1. Execute pre-request hooks**
+      await this.executeHooks(context, step.hooks_pre_request, "pre_request");
+
+      // **2. Execute pre-request script**
       await this.executePreRequestScript(context);
 
-      // **2. Interpolate variables and apply certificate**
+      // **3. Interpolate variables and apply certificate**
       const rawRequestUrl = step.request.url;
       const interpolatedRequest = globalVariables.interpolate(step.request);
 
@@ -176,7 +179,7 @@ export class RequestStepStrategy implements StepExecutionStrategy {
         logger.debug(`Using step-level certificate for request: ${step.name}`);
       }
 
-      // **3. Execute HTTP request**
+      // **4. Execute HTTP request**
       const httpResult = await context.httpService.executeRequest(
         step.name,
         interpolatedRequest
@@ -185,17 +188,51 @@ export class RequestStepStrategy implements StepExecutionStrategy {
       // Attach raw URL for debugging
       this.attachRawUrl(httpResult, rawRequestUrl);
 
-      // **4. Execute post-request script**
+      // **5. Execute post-request hooks**
+      await this.executeHooks(
+        context,
+        step.hooks_post_request,
+        "post_request",
+        {
+          response: {
+            status: httpResult.response_details?.status_code,
+            status_code: httpResult.response_details?.status_code,
+            headers: httpResult.response_details?.headers || {},
+            body: httpResult.response_details?.body,
+            data: httpResult.response_details?.body,
+            response_time_ms: httpResult.duration_ms || 0,
+          },
+        }
+      );
+
+      // **6. Execute post-request script**
       await this.executePostRequestScript(
         context,
         httpResult,
         interpolatedRequest
       );
 
-      // **5. Process conditional scenarios**
+      // **7. Process conditional scenarios**
       await this.processScenarios(context, httpResult);
 
-      // **6. Execute assertions**
+      // **8. Execute pre-assertion hooks**
+      await this.executeHooks(
+        context,
+        step.hooks_pre_assertion,
+        "pre_assertion",
+        {
+          response: {
+            status: httpResult.response_details?.status_code,
+            status_code: httpResult.response_details?.status_code,
+            headers: httpResult.response_details?.headers || {},
+            body: httpResult.response_details?.body,
+            data: httpResult.response_details?.body,
+            response_time_ms: httpResult.duration_ms || 0,
+          },
+        }
+      );
+
+      // **9. Execute assertions**
       assertionResults = await this.executeAssertions(context, httpResult);
       httpResult.assertions_results = assertionResults;
 
@@ -206,8 +243,48 @@ export class RequestStepStrategy implements StepExecutionStrategy {
         httpResult.error_message = `${failedAssertions.length} assertion(s) failed`;
       }
 
-      // **7. Capture variables**
+      // **10. Execute post-assertion hooks**
+      await this.executeHooks(
+        context,
+        step.hooks_post_assertion,
+        "post_assertion",
+        {
+          response: {
+            status: httpResult.response_details?.status_code,
+            status_code: httpResult.response_details?.status_code,
+            headers: httpResult.response_details?.headers || {},
+            body: httpResult.response_details?.body,
+            data: httpResult.response_details?.body,
+            response_time_ms: httpResult.duration_ms || 0,
+          },
+          assertions: assertionResults,
+        }
+      );
+
+      // **11. Execute pre-capture hooks**
+      await this.executeHooks(context, step.hooks_pre_capture, "pre_capture", {
+        response: {
+          status: httpResult.response_details?.status_code,
+          status_code: httpResult.response_details?.status_code,
+          headers: httpResult.response_details?.headers || {},
+          body: httpResult.response_details?.body,
+          data: httpResult.response_details?.body,
+          response_time_ms: httpResult.duration_ms || 0,
+        },
+      });
+
+      // **12. Capture variables**
       capturedVariables = await this.captureVariables(context, httpResult);
+
+      // **13. Execute post-capture hooks**
+      await this.executeHooks(
+        context,
+        step.hooks_post_capture,
+        "post_capture",
+        {
+          captured: capturedVariables,
+        }
+      );
 
       // **8. Process input if present (hybrid request+input step)**
       let inputResults: any[] | undefined;
@@ -772,5 +849,60 @@ export class RequestStepStrategy implements StepExecutionStrategy {
     }
 
     return errorResult;
+  }
+
+  /**
+   * Executes lifecycle hooks at the appropriate point
+   *
+   * @param context - Execution context
+   * @param hooks - Array of hook actions to execute
+   * @param hookPoint - Name of the hook point (for logging)
+   * @param additionalContext - Additional context data (e.g., response, captured vars)
+   * @private
+   */
+  private async executeHooks(
+    context: StepExecutionContext,
+    hooks: import("../../../types/hook.types").HookAction[] | undefined,
+    hookPoint: string,
+    additionalContext?: Record<string, any>
+  ): Promise<void> {
+    if (!hooks || hooks.length === 0) {
+      return;
+    }
+
+    const { hookExecutorService, step, globalVariables, logger } = context;
+
+    try {
+      logger.debug(
+        `[Hook] Executing ${hooks.length} hook(s) at ${hookPoint} for step '${step.name}'`
+      );
+
+      const hookContext: import("../../../types/hook.types").HookExecutionContext =
+        {
+          stepName: step.name,
+          stepIndex: context.stepIndex,
+          variables: globalVariables.getAllVariables(),
+          ...additionalContext,
+        };
+
+      const result = await hookExecutorService.executeHooks(hooks, hookContext);
+
+      if (!result.success) {
+        logger.warn(
+          `[Hook] Hook execution at ${hookPoint} encountered issues: ${result.error}`
+        );
+      } else {
+        logger.debug(
+          `[Hook] Successfully executed hooks at ${hookPoint} in ${result.duration_ms}ms`
+        );
+      }
+    } catch (error) {
+      logger.error(
+        `[Hook] Failed to execute hooks at ${hookPoint}: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
+      // Don't throw - hooks should not break test execution
+    }
   }
 }

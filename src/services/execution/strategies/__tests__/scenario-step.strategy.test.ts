@@ -671,7 +671,7 @@ describe("ScenarioStepStrategy", () => {
         suite: mockSuite,
         globalVariables: {
           getAllVariables: jest.fn().mockReturnValue({
-            public_var: "visible",
+            captured_public: "visible", // Changed from public_var to match "captured_" pattern
             _internal_var: "hidden",
             _another_internal: "also_hidden",
             test: 1,
@@ -684,7 +684,7 @@ describe("ScenarioStepStrategy", () => {
       const result = await strategy.execute(context);
 
       expect(result.available_variables).toEqual({
-        public_var: "visible",
+        captured_public: "visible",
         test: 1,
       });
       expect(result.available_variables).not.toHaveProperty("_internal_var");

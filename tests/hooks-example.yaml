@@ -1,0 +1,436 @@
+# ==================================================================
+# Flow Test Engine - Lifecycle Hooks Example
+# ==================================================================
+# This file demonstrates the new lifecycle hooks system that replaces
+# ComputedService and DynamicExpressionService with a unified,
+# intuitive hook-based approach.
+#
+# Hook Pattern: pre_* / post_*
+# Inspired by: Express.js, NestJS, Jest
+# ==================================================================
+
+suite_name: "E-commerce API - Complete Flow with Hooks"
+node_id: "ecommerce-hooks-demo"
+base_url: "https://dummyjson.com"
+
+variables:
+  user_tier: "premium"
+  discount_rate: 0.15
+
+exports: ["auth_token", "cart_id", "order_id"]
+
+metadata:
+  priority: "high"
+  tags: ["hooks", "demo", "ecommerce"]
+  description: "Demonstrates all lifecycle hook types with practical examples"
+
+steps:
+  # ================================================================
+  # Step 1: User Authentication with pre/post request hooks
+  # ================================================================
+  - name: "User login with request hooks"
+    step_id: "login"
+
+    # Hook: Executed BEFORE the HTTP request
+    hooks_pre_request:
+      # Action 1: Compute variables dynamically
+      - compute:
+          timestamp: "{{$js:Date.now()}}"
+          request_id: "{{$js:crypto.randomUUID()}}"
+          user_agent: "Flow-Test-Engine/2.0"
+
+      # Action 2: Validate prerequisites
+      - validate:
+          - expression: "user_tier"
+            message: "User tier must be defined"
+            severity: "error"
+          - expression: "discount_rate >= 0 && discount_rate <= 1"
+            message: "Discount rate must be between 0 and 1"
+            severity: "warning"
+
+      # Action 3: Log audit trail
+      - log:
+          level: "info"
+          message: "Attempting login at {{timestamp}} with request {{request_id}}"
+          metadata:
+            user_tier: "{{user_tier}}"
+            client: "flow-test"
+
+    request:
+      method: POST
+      url: "/auth/login"
+      headers:
+        X-Request-ID: "{{request_id}}"
+        X-Timestamp: "{{timestamp}}"
+        User-Agent: "{{user_agent}}"
+      body:
+        username: "emilys"
+        password: "emilyspass"
+        expiresInMins: 30
+
+    # Hook: Executed AFTER the HTTP request
+    hooks_post_request:
+      # Action 1: Compute derived values from response
+      - compute:
+          response_time: "{{$js:Date.now() - timestamp}}"
+          expires_at: "{{$js:Date.now() + (30 * 60 * 1000)}}"
+          token_length: "{{$js:response.body.token.length}}"
+
+      # Action 2: Emit metrics for monitoring
+      - metric:
+          name: "api_login_duration_ms"
+          value: "{{response_time}}"
+          tags:
+            endpoint: "/auth/login"
+            status: "success"
+            user_tier: "{{user_tier}}"
+
+      # Action 3: Conditional logging based on performance
+      - validate:
+          - expression: "response_time < 2000"
+            message: "Login took {{response_time}}ms - Performance acceptable"
+            severity: "info"
+          - expression: "response_time < 5000"
+            message: "Login took {{response_time}}ms - Performance degraded!"
+            severity: "warning"
+
+      # Action 4: Log success with details
+      - log:
+          level: "info"
+          message: "Login successful in {{response_time}}ms, token expires at {{expires_at}}"
+          metadata:
+            token_length: "{{token_length}}"
+            user_id: "{{$js:response.body.id}}"
+
+    assert:
+      status_code: 200
+      body:
+        token: { exists: true, type: "string" }
+        id: { exists: true, type: "number" }
+
+    capture:
+      auth_token: "body.token"
+      user_id: "body.id"
+      user_email: "body.email"
+
+  # ================================================================
+  # Step 2: Interactive Input with pre/post input hooks
+  # ================================================================
+  - name: "Select product with input hooks"
+    step_id: "select-product"
+
+    # Hook: Executed BEFORE requesting user input
+    hooks_pre_input:
+      # Compute default values
+      - compute:
+          default_product_id: "{{$js:Math.floor(Math.random() * 100) + 1}}"
+          input_timestamp: "{{$js:Date.now()}}"
+
+      # Validate auth state
+      - validate:
+          - expression: "auth_token"
+            message: "Must be authenticated before selecting products"
+            severity: "error"
+
+      # Log input request
+      - log:
+          level: "info"
+          message: "Requesting product selection (default: {{default_product_id}})"
+
+    input:
+      prompt: "Enter product ID to add to cart"
+      variable: "selected_product_id"
+      type: "number"
+      default: "{{default_product_id}}"
+      required: true
+      validation:
+        min: 1
+        max: 100
+
+    # Hook: Executed AFTER receiving user input
+    hooks_post_input:
+      # Sanitize and validate input
+      - compute:
+          sanitized_product_id: "{{$js:Math.max(1, Math.min(100, parseInt(selected_product_id) || 1))}}"
+          input_duration_ms: "{{$js:Date.now() - input_timestamp}}"
+
+      # Emit metric for input time
+      - metric:
+          name: "user_input_duration_ms"
+          value: "{{input_duration_ms}}"
+          tags:
+            input_type: "product_selection"
+            has_default: "true"
+
+      # Log sanitized value
+      - log:
+          level: "debug"
+          message: "Product ID selected: {{sanitized_product_id}} (input took {{input_duration_ms}}ms)"
+
+  # ================================================================
+  # Step 3: Add products to cart with iteration hooks
+  # ================================================================
+  - name: "Add product {{product.id}} to cart"
+    step_id: "add-to-cart"
+
+    iterate:
+      over: "[{id: 1, qty: 2}, {id: 5, qty: 1}, {id: \"{{sanitized_product_id}}\", qty: 3}]"
+      as: "product"
+
+    # Hook: Executed BEFORE each iteration
+    hooks_pre_iteration:
+      # Compute iteration-specific variables
+      - compute:
+          iteration_start: "{{$js:Date.now()}}"
+          item_number: "{{$js:_iteration.index + 1}}"
+          is_first: "{{$js:_iteration.isFirst}}"
+          is_last: "{{$js:_iteration.isLast}}"
+
+      # Log iteration start
+      - log:
+          level: "info"
+          message: "Processing item {{item_number}}: Product {{product.id}} (qty: {{product.qty}})"
+          metadata:
+            is_first_item: "{{is_first}}"
+            is_last_item: "{{is_last}}"
+
+    hooks_pre_request:
+      # Compute cart-specific values
+      - compute:
+          discounted_qty: "{{$js:user_tier === 'premium' ? product.qty + 1 : product.qty}}"
+
+      # Validate product data
+      - validate:
+          - expression: "product.id && product.qty > 0"
+            message: "Valid product ID and quantity required"
+            severity: "error"
+
+    request:
+      method: POST
+      url: "/carts/add"
+      headers:
+        Authorization: "Bearer {{auth_token}}"
+        X-User-Tier: "{{user_tier}}"
+      body:
+        userId: "{{user_id}}"
+        products:
+          - id: "{{product.id}}"
+            quantity: "{{discounted_qty}}"
+
+    hooks_post_request:
+      # Track per-item metrics
+      - metric:
+          name: "cart_item_added"
+          value: 1
+          tags:
+            product_id: "{{product.id}}"
+            quantity: "{{discounted_qty}}"
+            user_tier: "{{user_tier}}"
+
+    # Hook: Executed AFTER each iteration
+    hooks_post_iteration:
+      # Compute iteration summary
+      - compute:
+          iteration_duration: "{{$js:Date.now() - iteration_start}}"
+
+      # Log iteration completion
+      - log:
+          level: "info"
+          message: "Item {{item_number}} added in {{iteration_duration}}ms"
+
+      # Small delay between iterations to avoid rate limiting
+      - wait: 500
+
+    assert:
+      status_code: 200
+      body:
+        id: { exists: true }
+        products: { type: "array" }
+
+    capture:
+      cart_id: "body.id"
+      cart_total: "body.total"
+      items_count: "body.totalProducts"
+
+  # ================================================================
+  # Step 4: Checkout with assertion hooks
+  # ================================================================
+  - name: "Checkout cart with assertion hooks"
+    step_id: "checkout"
+
+    hooks_pre_request:
+      # Validate cart state
+      - validate:
+          - expression: "cart_id"
+            message: "Cart ID is required for checkout"
+            severity: "error"
+          - expression: "items_count > 0"
+            message: "Cart must have items to checkout"
+            severity: "error"
+
+      # Compute checkout details
+      - compute:
+          checkout_timestamp: "{{$js:Date.now()}}"
+          expected_discount: "{{$js:cart_total * discount_rate}}"
+          final_total: "{{$js:cart_total * (1 - discount_rate)}}"
+
+      # Log checkout initiation
+      - log:
+          level: "info"
+          message: "Initiating checkout for cart {{cart_id}} ({{items_count}} items, total: ${{cart_total}})"
+          metadata:
+            expected_discount: "{{expected_discount}}"
+            final_total: "{{final_total}}"
+
+    request:
+      method: POST
+      url: "/carts/{{cart_id}}/checkout"
+      headers:
+        Authorization: "Bearer {{auth_token}}"
+      body:
+        paymentMethod: "credit_card"
+        applyDiscount: true
+        discountRate: "{{discount_rate}}"
+
+    # Hook: Executed BEFORE assertions
+    hooks_pre_assertion:
+      # Compute actual vs expected
+      - compute:
+          actual_total: "{{$js:response.body.finalTotal || 0}}"
+          total_diff: "{{$js:Math.abs(final_total - (response.body.finalTotal || 0))}}"
+
+      # Log assertion context
+      - log:
+          level: "debug"
+          message: "Validating checkout: expected ${{final_total}}, got ${{actual_total}}"
+
+    assert:
+      status_code: 200
+      body:
+        success: { equals: true }
+        orderId: { exists: true, type: "string" }
+        finalTotal: { type: "number" }
+
+    # Hook: Executed AFTER assertions
+    hooks_post_assertion:
+      # Emit business metrics
+      - metric:
+          name: "checkout_completed"
+          value: "{{actual_total}}"
+          tags:
+            user_tier: "{{user_tier}}"
+            items_count: "{{items_count}}"
+            discount_applied: "true"
+
+      # Validate business rules
+      - validate:
+          - expression: "total_diff < 1"
+            message: "Price calculation mismatch: difference is ${{total_diff}}"
+            severity: "warning"
+
+      # Log checkout success
+      - log:
+          level: "info"
+          message: "Checkout successful: Order {{$js:response.body.orderId}}, Total: ${{actual_total}}"
+          metadata:
+            items_purchased: "{{items_count}}"
+            discount_saved: "{{expected_discount}}"
+
+    capture:
+      order_id: "body.orderId"
+      final_amount: "body.finalTotal"
+
+  # ================================================================
+  # Step 5: Verify order with capture hooks
+  # ================================================================
+  - name: "Verify order details with capture hooks"
+    step_id: "verify-order"
+
+    # Hook: Executed BEFORE variable capture
+    hooks_pre_capture:
+      # Validate response structure before capture
+      - validate:
+          - expression: "response.body && response.body.order"
+            message: "Response must contain order data"
+            severity: "error"
+
+      # Log capture intent
+      - log:
+          level: "debug"
+          message: "Preparing to capture order verification data"
+
+    request:
+      method: GET
+      url: "/orders/{{order_id}}"
+      headers:
+        Authorization: "Bearer {{auth_token}}"
+
+    assert:
+      status_code: 200
+      body:
+        order:
+          id: { equals: "{{order_id}}" }
+          status: { in: ["pending", "confirmed", "processing"] }
+
+    capture:
+      order_status: "body.order.status"
+      order_date: "body.order.createdAt"
+      order_items: "body.order.items[*].{id: productId, qty: quantity}"
+
+    # Hook: Executed AFTER variable capture
+    hooks_post_capture:
+      # Transform captured data
+      - compute:
+          order_items_count: "{{$js:order_items.length}}"
+          status_uppercase: "{{$js:(order_status || '').toUpperCase()}}"
+          days_since_order: "{{$js:Math.floor((Date.now() - new Date(order_date).getTime()) / (1000 * 60 * 60 * 24))}}"
+
+      # Emit capture metrics
+      - metric:
+          name: "order_verification_completed"
+          value: 1
+          tags:
+            order_status: "{{order_status}}"
+            items_count: "{{order_items_count}}"
+
+      # Log captured data summary
+      - log:
+          level: "info"
+          message: "Order captured: Status={{status_uppercase}}, Items={{order_items_count}}, Age={{days_since_order}} days"
+          metadata:
+            order_id: "{{order_id}}"
+            captured_variables: ["order_status", "order_date", "order_items"]
+
+      # Final summary script
+      - script: |
+          console.log('='.repeat(60));
+          console.log('ORDER SUMMARY');
+          console.log('='.repeat(60));
+          console.log(`Order ID: ${order_id}`);
+          console.log(`Status: ${order_status}`);
+          console.log(`Items: ${order_items_count}`);
+          console.log(`Total: $${final_amount}`);
+          console.log('='.repeat(60));
+          return { summary: 'Order processed successfully' };
+
+# ==================================================================
+# Expected Output Log (example):
+# ==================================================================
+# [INFO] [Hook] Attempting login at 1735052400000 with request 123e4567-e89b-12d3-a456-426614174000
+# [INFO] [Hook] Login successful in 245ms, token expires at 1735054200000
+# [INFO] [Hook] Metric: api_login_duration_ms = 245
+# [INFO] [Hook] Requesting product selection (default: 42)
+# [DEBUG] [Hook] Product ID selected: 42 (input took 1523ms)
+# [INFO] [Hook] Processing item 1: Product 1 (qty: 2)
+# [INFO] [Hook] Item 1 added in 312ms
+# [INFO] [Hook] Initiating checkout for cart 5 (3 items, total: $299.97)
+# [INFO] [Hook] Checkout successful: Order ORD-789, Total: $254.97
+# [INFO] [Hook] Order captured: Status=CONFIRMED, Items=3, Age=0 days
+# =============================================================
+# ORDER SUMMARY
+# =============================================================
+# Order ID: ORD-789
+# Status: confirmed
+# Items: 3
+# Total: $254.97
+# =============================================================

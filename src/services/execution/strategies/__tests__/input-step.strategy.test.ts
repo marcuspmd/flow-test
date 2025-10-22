@@ -55,6 +55,16 @@ const createMockContext = (
   const mockCaptureService = {};
   const mockScenarioService = {};
   const mockScriptExecutorService = {};
+  const mockHookExecutorService = {
+    executeHooks: jest.fn().mockResolvedValue({
+      success: true,
+      computedVariables: {},
+      validations: { passed: true, failures: [] },
+      metrics: [],
+      logs: [],
+      duration_ms: 0,
+    }),
+  };
   const mockCallService = {};
   const mockIterationService = {};
 
@@ -90,6 +100,7 @@ const createMockContext = (
     inputService: mockInputService as any,
     dynamicExpressionService: mockDynamicExpressionService as any,
     scriptExecutorService: mockScriptExecutorService as any,
+    hookExecutorService: mockHookExecutorService as any,
     callService: mockCallService as any,
     iterationService: mockIterationService as any,
     hooks: {},
@@ -525,16 +536,16 @@ describe("InputStepStrategy", () => {
     it("should filter internal variables from available_variables", async () => {
       const context = createMockContext();
       (context.globalVariables.getAllVariables as jest.Mock).mockReturnValue({
-        public_var: "value",
+        captured_public: "value", // Changed from public_var to match "captured_" pattern
         _internal_var: "hidden",
-        another_public: 123,
+        captured_number: 123, // Changed from another_public to match "captured_" pattern
       });
 
       const result = await strategy.execute(context);
 
       expect(result.available_variables).toEqual({
-        public_var: "value",
-        another_public: 123,
+        captured_public: "value",
+        captured_number: 123,
       });
       expect(result.available_variables).not.toHaveProperty("_internal_var");
     });
