@@ -99,9 +99,15 @@ export class InputStepStrategy extends BaseStepStrategy {
       );
 
       // **4. Execute post-input hooks**
+      // Convert inputResults array to a single object for the input context
+      const inputContext = inputResults.reduce((acc, result) => {
+        acc[result.variable] = result.value;
+        return acc;
+      }, {} as Record<string, any>);
+
       await this.executeHooks(context, step.hooks_post_input, "post_input", {
-        inputs: inputResults,
-        captured: capturedVariables,
+        input: inputContext,
+        capturedVariables: capturedVariables,
       });
 
       // **5. Build success result**

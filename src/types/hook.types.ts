@@ -153,6 +153,8 @@ export interface HookMetricConfig {
  *
  * **Available Actions:**
  * - `compute`: Calculate and store variables (replaces ComputedService)
+ * - `capture`: Extract data using JMESPath from execution context
+ * - `exports`: Export variables to global scope
  * - `validate`: Validate conditions with custom messages
  * - `log`: Custom structured logging
  * - `metric`: Emit metrics/telemetry
@@ -170,6 +172,21 @@ export interface HookMetricConfig {
  *   log: {
  *     level: "info",
  *     message: "Request {{request_id}} at {{timestamp}}"
+ *   }
+ * };
+ * ```
+ *
+ * @example Capture and export from response
+ * ```typescript
+ * const hookAction: HookAction = {
+ *   capture: {
+ *     user_id: "response.body.data.user.id",
+ *     token: "response.body.token",
+ *     status_code: "response.status_code"
+ *   },
+ *   exports: ["user_id", "token"],
+ *   log: {
+ *     message: "Captured user_id={{user_id}} and exported to global scope"
  *   }
  * };
  * ```
@@ -212,6 +229,73 @@ export interface HookAction {
    * ```
    */
   compute?: Record<string, any>;
+
+  /**
+   * Capture data using JMESPath expressions from execution context
+   *
+   * @remarks
+   * Extract and store values from the execution context using JMESPath queries.
+   * Available context varies by hook point:
+   * - `response`: Available in post_request and later hooks (body, headers, status_code)
+   * - `variables`: Available in all hooks
+   * - `call_result`: Available in post_call hooks
+   * - `input`: Available in post_input and later hooks
+   * - `capturedVariables`: Available in post_capture hooks
+   * - `assertionResults`: Available in post_assertion hooks
+   *
+   * @example Capture from response
+   * ```yaml
+   * capture:
+   *   user_id: "response.body.data.user.id"
+   *   token: "response.body.token"
+   *   status: "response.status_code"
+   *   content_type: "response.headers.\"content-type\""
+   * ```
+   *
+   * @example Capture from variables
+   * ```yaml
+   * capture:
+   *   user_email: "variables.current_user.email"
+   *   item_count: "variables.items | length(@)"
+   * ```
+   *
+   * @example Capture from call result
+   * ```yaml
+   * capture:
+   *   remote_user_id: "call_result.propagated_variables.user_id"
+   *   call_status: "call_result.status"
+   * ```
+   */
+  capture?: Record<string, string>;
+
+  /**
+   * Export variables to global scope
+   *
+   * @remarks
+   * Array of variable names to export to the global variable registry.
+   * Variables must exist in runtime context (from compute, capture, or previous steps).
+   * Exported variables become available to all subsequent test suites.
+   *
+   * @example Export captured variables
+   * ```yaml
+   * capture:
+   *   auth_token: "response.body.token"
+   *   user_id: "response.body.user.id"
+   * exports:
+   *   - auth_token
+   *   - user_id
+   * ```
+   *
+   * @example Export computed variables
+   * ```yaml
+   * compute:
+   *   session_id: "{{$js:crypto.randomUUID()}}"
+   *   timestamp: "{{$js:Date.now()}}"
+   * exports:
+   *   - session_id
+   * ```
+   */
+  exports?: string[];
 
   /**
    * Validate conditions
@@ -487,6 +571,21 @@ export interface HookExecutionContext {
   capturedVariables?: Record<string, any>;
 
   /**
+   * Call result data (available in post_call hooks)
+   */
+  call_result?: {
+    success: boolean;
+    status?: string;
+    suite_name?: string;
+    propagated_variables?: Record<string, any>;
+    request_details?: any;
+    response_details?: any;
+    assertions_results?: any[];
+    error?: string;
+    [key: string]: any;
+  };
+
+  /**
    * Metadata for context tracking
    */
   metadata?: Record<string, any>;
@@ -496,8 +595,8 @@ export interface HookExecutionContext {
  * Result of hook execution
  *
  * @remarks
- * Contains computed variables, validation results, metrics, and logs
- * generated during hook execution.
+ * Contains computed variables, captured variables, validation results,
+ * metrics, logs, and export information generated during hook execution.
  *
  * @public
  */
@@ -508,9 +607,19 @@ export interface HookExecutionResult {
   success: boolean;
 
   /**
-   * Variables computed during hook execution
+   * Variables computed during hook execution (from compute action)
    */
   computedVariables: Record<string, any>;
+
+  /**
+   * Variables captured during hook execution (from capture action using JMESPath)
+   */
+  capturedVariables: Record<string, any>;
+
+  /**
+   * Names of variables that were exported to global scope
+   */
+  exportedVariables: string[];
 
   /**
    * Validation results

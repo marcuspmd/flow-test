@@ -37,6 +37,19 @@ describe("HookExecutorService", () => {
       executeExpression: jest.fn(() => ({ result: true, error: null })),
     } as any;
 
+    const mockCaptureService = {
+      captureFromObject: jest.fn(() => ({})),
+      captureVariables: jest.fn(() => ({})),
+    } as any;
+
+    const mockGlobalRegistry = {
+      setExportedVariable: jest.fn(),
+      getExportedVariable: jest.fn(),
+      hasExportedVariable: jest.fn(() => false),
+      getNodeVariables: jest.fn(() => ({})),
+      getAllExportedVariables: jest.fn(() => ({})),
+    } as any;
+
     mockCallService = {
       executeStepCall: jest.fn(),
     } as any;
@@ -44,6 +57,8 @@ describe("HookExecutorService", () => {
     hookExecutor = new HookExecutorService(
       mockVariableService,
       mockJavaScriptService,
+      mockCaptureService,
+      mockGlobalRegistry,
       mockCallService
     );
 
@@ -633,9 +648,14 @@ describe("HookExecutorService", () => {
     });
 
     it("should handle call without CallService", async () => {
+      const mockCaptureService = { captureFromObject: jest.fn(() => ({})) } as any;
+      const mockGlobalRegistry = { setExportedVariable: jest.fn() } as any;
+
       const hooksExecutorWithoutCall = new HookExecutorService(
         mockVariableService,
-        mockJavaScriptService
+        mockJavaScriptService,
+        mockCaptureService,
+        mockGlobalRegistry
         // No CallService
       );
 
@@ -892,6 +912,269 @@ describe("HookExecutorService", () => {
       expect(result.validations.failures[0].message).toContain(
         "Unexpected token"
       );
+    });
+  });
+
+  describe("capture action", () => {
+    it("should capture variables from response context using JMESPath", async () => {
+      const mockCaptureService = {
+        captureFromObject: jest.fn(() => ({
+          user_id: "12345",
+          user_email: "test@example.com",
+        })),
+      };
+
+      const hookExecutorWithCapture = new (HookExecutorService as any)(
+        mockVariableService,
+        mockJavaScriptService,
+        mockCaptureService,
+        { setExportedVariable: jest.fn() } as any
+      );
+
+      const hooks: HookAction[] = [
+        {
+          capture: {
+            user_id: "response.body.user.id",
+            user_email: "response.body.user.email",
+          },
+        },
+      ];
+
+      const context = createContext({
+        response: {
+          status: 200,
+          status_code: 200,
+          headers: {},
+          body: { user: { id: "12345", email: "test@example.com" } },
+          response_time_ms: 100,
+        },
+      });
+
+      const result = await hookExecutorWithCapture.executeHooks(hooks, context);
+
+      expect(result.success).toBe(true);
+      expect(result.capturedVariables).toEqual({
+        user_id: "12345",
+        user_email: "test@example.com",
+      });
+      expect(mockCaptureService.captureFromObject).toHaveBeenCalledWith(
+        { user_id: "response.body.user.id", user_email: "response.body.user.email" },
+        expect.objectContaining({
+          response: expect.any(Object),
+          variables: expect.any(Object),
+        }),
+        expect.any(Object)
+      );
+    });
+
+    it("should handle capture failures gracefully", async () => {
+      const mockCaptureService = {
+        captureFromObject: jest.fn(() => {
+          throw new Error("JMESPath evaluation failed");
+        }),
+      };
+
+      const hookExecutorWithCapture = new (HookExecutorService as any)(
+        mockVariableService,
+        mockJavaScriptService,
+        mockCaptureService,
+        { setExportedVariable: jest.fn() } as any
+      );
+
+      const hooks: HookAction[] = [
+        {
+          capture: {
+            invalid_path: "response.nonexistent.path",
+          },
+        },
+      ];
+
+      const context = createContext({
+        response: {
+          status: 200,
+          status_code: 200,
+          headers: {},
+          body: {},
+          response_time_ms: 100,
+        },
+      });
+
+      const result = await hookExecutorWithCapture.executeHooks(hooks, context);
+
+      expect(result.success).toBe(true); // Capture failures should not fail the hook
+      expect(result.capturedVariables).toEqual({});
+    });
+
+    it("should capture from multiple context sources", async () => {
+      const mockCaptureService = {
+        captureFromObject: jest.fn(() => ({
+          from_response: "data1",
+          from_variables: "data2",
+          from_call: "data3",
+        })),
+      };
+
+      const hookExecutorWithCapture = new (HookExecutorService as any)(
+        mockVariableService,
+        mockJavaScriptService,
+        mockCaptureService,
+        { setExportedVariable: jest.fn() } as any
+      );
+
+      const hooks: HookAction[] = [
+        {
+          capture: {
+            from_response: "response.body.value",
+            from_variables: "variables.test_var",
+            from_call: "call_result.success",
+          },
+        },
+      ];
+
+      const context = createContext({
+        response: { status: 200, status_code: 200, headers: {}, body: { value: "data1" }, response_time_ms: 100 },
+        call_result: { success: true },
+      });
+
+      const result = await hookExecutorWithCapture.executeHooks(hooks, context);
+
+      expect(result.success).toBe(true);
+      expect(mockCaptureService.captureFromObject).toHaveBeenCalledWith(
+        expect.any(Object),
+        expect.objectContaining({
+          response: expect.any(Object),
+          variables: expect.any(Object),
+          call_result: expect.any(Object),
+        }),
+        expect.any(Object)
+      );
+    });
+  });
+
+  describe("exports action", () => {
+    it("should export variables to global registry", async () => {
+      const mockGlobalRegistry = {
+        setExportedVariable: jest.fn(),
+      };
+
+      mockVariableService.getAllVariables.mockReturnValue({
+        auth_token: "abc123",
+        user_id: "user_456",
+        local_var: "local",
+      });
+
+      const hookExecutorWithExports = new (HookExecutorService as any)(
+        mockVariableService,
+        mockJavaScriptService,
+        { captureFromObject: jest.fn(() => ({})) } as any,
+        mockGlobalRegistry
+      );
+
+      const hooks: HookAction[] = [
+        {
+          exports: ["auth_token", "user_id"],
+        },
+      ];
+
+      const context = createContext();
+      const result = await hookExecutorWithExports.executeHooks(hooks, context);
+
+      expect(result.success).toBe(true);
+      expect(result.exportedVariables).toEqual(["auth_token", "user_id"]);
+      expect(mockGlobalRegistry.setExportedVariable).toHaveBeenCalledTimes(2);
+      expect(mockGlobalRegistry.setExportedVariable).toHaveBeenCalledWith(
+        expect.any(String),
+        "auth_token",
+        "abc123"
+      );
+      expect(mockGlobalRegistry.setExportedVariable).toHaveBeenCalledWith(
+        expect.any(String),
+        "user_id",
+        "user_456"
+      );
+    });
+
+    it("should skip exporting non-existent variables", async () => {
+      const mockGlobalRegistry = {
+        setExportedVariable: jest.fn(),
+      };
+
+      mockVariableService.getAllVariables.mockReturnValue({
+        existing_var: "value1",
+      });
+
+      const hookExecutorWithExports = new (HookExecutorService as any)(
+        mockVariableService,
+        mockJavaScriptService,
+        { captureFromObject: jest.fn(() => ({})) } as any,
+        mockGlobalRegistry
+      );
+
+      const hooks: HookAction[] = [
+        {
+          exports: ["existing_var", "non_existent_var"],
+        },
+      ];
+
+      const context = createContext();
+      const result = await hookExecutorWithExports.executeHooks(hooks, context);
+
+      expect(result.success).toBe(true);
+      expect(result.exportedVariables).toEqual(["existing_var"]);
+      expect(mockGlobalRegistry.setExportedVariable).toHaveBeenCalledTimes(1);
+    });
+
+    it("should export captured and computed variables", async () => {
+      const mockGlobalRegistry = {
+        setExportedVariable: jest.fn(),
+      };
+
+      const mockCaptureService = {
+        captureFromObject: jest.fn(() => ({
+          captured_token: "token123",
+        })),
+      };
+
+      mockVariableService.getAllVariables.mockReturnValue({
+        timestamp: 1234567890,
+        captured_token: "token123",
+      });
+
+      const hookExecutorWithAll = new (HookExecutorService as any)(
+        mockVariableService,
+        mockJavaScriptService,
+        mockCaptureService,
+        mockGlobalRegistry
+      );
+
+      const hooks: HookAction[] = [
+        {
+          compute: {
+            timestamp: "{{$js:Date.now()}}",
+          },
+          capture: {
+            captured_token: "response.body.token",
+          },
+          exports: ["timestamp", "captured_token"],
+        },
+      ];
+
+      const context = createContext({
+        response: {
+          status: 200,
+          status_code: 200,
+          headers: {},
+          body: { token: "token123" },
+          response_time_ms: 100,
+        },
+      });
+
+      const result = await hookExecutorWithAll.executeHooks(hooks, context);
+
+      expect(result.success).toBe(true);
+      expect(result.exportedVariables).toContain("timestamp");
+      expect(result.exportedVariables).toContain("captured_token");
+      expect(mockGlobalRegistry.setExportedVariable).toHaveBeenCalledTimes(2);
     });
   });
 });

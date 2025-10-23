@@ -1187,6 +1187,46 @@ export class SchemaGeneratorService {
             { request_id: "{{$js:crypto.randomUUID()}}" },
           ],
         },
+        capture: {
+          name: "capture",
+          type: "object",
+          description:
+            "Capture data from context using JMESPath (response, variables, call_result, input)",
+          required: false,
+          interpolable: false,
+          documentation:
+            "Available context: response (post_request+), variables (all hooks), call_result (post_call), input (post_input+), capturedVariables (post_capture), assertionResults (post_assertion)",
+          examples: [
+            {
+              user_id: "response.body.data.user.id",
+              token: "response.body.token",
+              status: "response.status_code",
+            },
+            {
+              user_email: "variables.current_user.email",
+              item_count: "variables.items | length(@)",
+            },
+            {
+              remote_data: "call_result.propagated_variables.user_id",
+              call_success: "call_result.success",
+            },
+          ],
+        },
+        exports: {
+          name: "exports",
+          type: "array",
+          description:
+            "Export variables to global scope (array of variable names)",
+          required: false,
+          interpolable: false,
+          documentation:
+            "Variables must exist in runtime context (from compute, capture, or previous steps). Exported variables become available to all subsequent test suites.",
+          examples: [
+            ["auth_token", "user_id"],
+            ["session_id"],
+            ["api_key", "refresh_token", "expires_at"],
+          ],
+        },
         validate: {
           name: "validate",
           type: "array",
