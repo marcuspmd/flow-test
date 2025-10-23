@@ -1187,8 +1187,19 @@ export class ExecutionService implements IExecutionService {
    */
   private evaluateSkipCondition(skipExpression: string): boolean {
     try {
+      // First check for literal boolean values (without interpolation)
+      const trimmed = skipExpression.trim();
+      if (trimmed === "true") return true;
+      if (trimmed === "false") return false;
+
       // Get all current variables for context
       const variables = this.globalVariables.getAllVariables();
+
+      // Check if it's a direct boolean value after interpolation
+      const interpolatedForCheck =
+        this.globalVariables.interpolateString(skipExpression);
+      if (interpolatedForCheck === "true") return true;
+      if (interpolatedForCheck === "false") return false;
 
       // Check if this looks like a JavaScript expression (has JS operators)
       const looksLikeJavaScript =
@@ -1230,6 +1241,13 @@ export class ExecutionService implements IExecutionService {
         // For JMESPath, use the original expression (not interpolated)
         let processedCondition = skipExpression;
 
+        // Fix string comparisons with single quotes: var == 'value' -> var == `value`
+        // Remove the quotes and wrap in backticks for JMESPath literal
+        processedCondition = processedCondition.replace(
+          /(==|!=)\s*'([^']+)'/g,
+          "$1 `$2`"
+        );
+
         // Fix numbers without backticks: "status_code == 200" -> "status_code == `200`"
         processedCondition = processedCondition.replace(
           /(==|!=|>=|<=|>|<)\s*(\d+)(?![`])/g,
@@ -1255,12 +1273,6 @@ export class ExecutionService implements IExecutionService {
           `Failed to evaluate skip condition as JMESPath: ${jmesError}`
         );
       }
-
-      // If both fail, check if it's a direct boolean value after interpolation
-      const interpolatedForCheck =
-        this.globalVariables.interpolateString(skipExpression);
-      if (interpolatedForCheck === "true") return true;
-      if (interpolatedForCheck === "false") return false;
 
       // Default to not skipping if we can't evaluate
       this.logger.warn(

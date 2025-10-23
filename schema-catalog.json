@@ -1,13 +1,13 @@
 
-> flow-test-engine@2.0.0 dev
+> flow-test-engine@2.0.1 dev
 > ts-node src/cli.ts schema generate
 
 {
-  "version": "2.0.0",
-  "generatedAt": "2025-10-23T12:12:31.159Z",
+  "version": "2.0.1",
+  "generatedAt": "2025-10-23T12:47:58.142Z",
   "engine": {
     "name": "Flow Test Engine",
-    "version": "2.0.0",
+    "version": "2.0.1",
     "description": "Declarative API testing framework with YAML-based test definitions"
   },
   "structures": {
@@ -328,10 +328,14 @@
           "required": false,
           "interpolable": true,
           "examples": [
+            "true",
+            "false",
             "{{environment}} === \"prod\"",
             "environment == 'production'",
+            "selected_product_code != 'rcc'",
             "!{{enable_debug}}",
-            "{{items_count}} > 1000"
+            "{{items_count}} > 1000",
+            "{{dry_run}} === true"
           ]
         },
         "metadata": {
@@ -1630,6 +1634,17 @@
         "logging"
       ],
       "yaml": "suite_name: \"Hooks Example\"\nnode_id: \"hooks-demo\"\n\nsteps:\n  - name: \"API call with hooks\"\n    hooks_pre_request:\n      - compute:\n          request_id: \"{{$js:crypto.randomUUID()}}\"\n          timestamp: \"{{$js:Date.now()}}\"\n      - log:\n          level: \"info\"\n          message: \"Starting request {{request_id}}\"\n\n    hooks_post_request:\n      - metric:\n          name: \"api_response_time\"\n          value: \"{{response_time_ms}}\"\n          tags:\n            endpoint: \"{{request.url}}\"\n\n    request:\n      method: GET\n      url: \"/api/data\""
+    },
+    {
+      "name": "Conditional Step Execution",
+      "description": "Skip steps based on conditions (v2.0+)",
+      "category": "conditionals",
+      "complexity": "intermediate",
+      "features": [
+        "skip",
+        "conditional execution"
+      ],
+      "yaml": "suite_name: \"Skip Condition Example\"\nnode_id: \"skip-example\"\n\nvariables:\n  environment: \"development\"\n  selected_product: \"rmc\"\n  enable_debug: false\n\nsteps:\n  # Skip with literal boolean\n  - name: \"Disabled step\"\n    skip: \"true\"\n    request:\n      method: GET\n      url: \"/disabled-feature\"\n\n  # Skip with JavaScript expression\n  - name: \"Production-only step\"\n    skip: \"{{environment}} === 'production'\"\n    request:\n      method: GET\n      url: \"/prod-only\"\n\n  # Skip with JMESPath string comparison\n  - name: \"RCC-specific feature\"\n    skip: \"selected_product != 'rcc'\"\n    request:\n      method: POST\n      url: \"/rcc/feature\"\n\n  # Skip with boolean variable\n  - name: \"Debug endpoint\"\n    skip: \"!{{enable_debug}}\"\n    request:\n      method: GET\n      url: \"/debug\""
     }
   ],
   "interpolation": {

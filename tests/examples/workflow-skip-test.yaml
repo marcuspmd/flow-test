@@ -1,0 +1,42 @@
+# Teste do caso de uso real do workflow
+node_id: "workflow-skip-test"
+suite_name: "Workflow Skip Test"
+description: "Testa skip com casos de uso do workflow de empréstimo"
+
+base_url: "https://httpbin.org"
+
+variables:
+  selected_product_code: "rmc"  # Diferente de 'rcc'
+
+steps:
+  # Este step DEVE ser pulado porque selected_product_code != 'rcc'
+  - name: "Production Step nao rodar"
+    skip: "true"
+    request:
+      method: GET
+      url: "/status/200"
+
+  # Este step NÃO deve ser pulado porque skip é false
+  - name: "Production Step"
+    skip: "false"
+    request:
+      method: GET
+      url: "/status/201"
+    assert:
+      status_code: 201
+
+  # Este step DEVE ser pulado porque selected_product_code é 'rmc', não 'rcc'
+  - name: "RCC-only feature"
+    skip: "selected_product_code != 'rcc'"
+    request:
+      method: GET
+      url: "/status/202"
+
+  # Este step NÃO deve ser pulado porque selected_product_code é 'rmc'
+  - name: "RMC feature"
+    skip: "selected_product_code != 'rmc'"
+    request:
+      method: GET
+      url: "/status/203"
+    assert:
+      status_code: 203

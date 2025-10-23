@@ -1,0 +1,66 @@
+# Teste de correções do skip condition
+node_id: "skip-test-fixes"
+suite_name: "Skip Condition Fixes Test"
+description: "Testa as correções para skip com booleanos literais e comparações de strings"
+
+base_url: "https://httpbin.org"
+
+variables:
+  selected_product_code: "rmc"
+  environment: "production"
+  enable_feature: true
+
+steps:
+  # Teste 1: Booleano literal "true" - deve pular
+  - name: "Should skip - literal true"
+    skip: "true"
+    request:
+      method: GET
+      url: "/get"
+
+  # Teste 2: Booleano literal "false" - NÃO deve pular
+  - name: "Should execute - literal false"
+    skip: "false"
+    request:
+      method: GET
+      url: "/status/200"
+    assert:
+      status_code: 200
+
+  # Teste 3: Comparação JMESPath com string usando aspas simples - deve pular
+  - name: "Should skip - JMESPath string comparison (!=)"
+    skip: "selected_product_code != 'rcc'"
+    request:
+      method: GET
+      url: "/get"
+
+  # Teste 4: Comparação JMESPath com string usando aspas simples - NÃO deve pular
+  - name: "Should execute - JMESPath string comparison (==)"
+    skip: "selected_product_code == 'rcc'"
+    request:
+      method: GET
+      url: "/status/201"
+    assert:
+      status_code: 201
+
+  # Teste 5: Variável booleana interpolada - deve pular
+  - name: "Should skip - boolean variable true"
+    skip: "{{enable_feature}}"
+    request:
+      method: GET
+      url: "/get"
+
+  # Teste 6: Comparação JMESPath com string - deve pular
+  - name: "Should skip - environment is production"
+    skip: "environment == 'production'"
+    request:
+      method: GET
+      url: "/get"
+
+  # Teste 7: Step que sempre executa
+  - name: "Always execute"
+    request:
+      method: GET
+      url: "/status/202"
+    assert:
+      status_code: 202

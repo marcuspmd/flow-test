@@ -583,6 +583,13 @@ steps:
       method: POST
       url: "/users"
 
+  # Skip baseado em comparação de string
+  - name: "RCC-specific feature"
+    skip: "selected_product_code != 'rcc'"
+    request:
+      method: GET
+      url: "/rcc/feature"
+
   # Skip baseado em comparação
   - name: "Premium feature"
     skip: "account_type != 'premium'"
@@ -591,7 +598,33 @@ steps:
       url: "/premium/dashboard"
 ```
 
-#### 7.4.4 Comportamento e Logs
+#### 7.4.3.1 Exemplos com Booleanos Literais
+
+```yaml
+steps:
+  # Skip sempre (booleano literal true)
+  - name: "Disabled step"
+    skip: "true"
+    request:
+      method: GET
+      url: "/disabled-endpoint"
+
+  # Nunca skip (booleano literal false)
+  - name: "Always run"
+    skip: "false"
+    request:
+      method: GET
+      url: "/always-enabled"
+
+  # Skip com variável booleana
+  - name: "Feature gated"
+    skip: "{{disable_feature}}"
+    request:
+      method: GET
+      url: "/feature"
+```
+
+#### 7.4.5 Comportamento e Logs
 
 Quando um step é pulado:
 
@@ -605,14 +638,14 @@ Quando um step é pulado:
 5. **Hooks**: `onStepStart` e `onStepEnd` são chamados normalmente
 6. **Execução**: Fluxo continua para o próximo step
 
-#### 7.4.5 Diferença entre `skip` e `continue_on_failure`
+#### 7.4.6 Diferença entre `skip` e `continue_on_failure`
 
 | Propriedade | Quando usar | Comportamento |
 |-------------|-------------|---------------|
 | `skip` | Pular step **antes** da execução baseado em condição | Step não executa, status `skipped` |
 | `continue_on_failure` | Continuar **após** falha na execução | Step executa, se falhar não interrompe suíte |
 
-#### 7.4.6 Casos de Uso Comuns
+#### 7.4.7 Casos de Uso Comuns
 
 ```yaml
 # 1. Skip em ambientes específicos

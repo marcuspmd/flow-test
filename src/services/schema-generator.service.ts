@@ -361,10 +361,14 @@ export class SchemaGeneratorService {
           required: false,
           interpolable: true,
           examples: [
+            "true",
+            "false",
             '{{environment}} === "prod"',
             "environment == 'production'",
+            "selected_product_code != 'rcc'",
             "!{{enable_debug}}",
             "{{items_count}} > 1000",
+            "{{dry_run}} === true",
           ],
         },
         metadata: {
@@ -1563,6 +1567,49 @@ steps:
     request:
       method: GET
       url: "/api/data"`,
+      },
+      {
+        name: "Conditional Step Execution",
+        description: "Skip steps based on conditions (v2.0+)",
+        category: "conditionals",
+        complexity: "intermediate",
+        features: ["skip", "conditional execution"],
+        yaml: `suite_name: "Skip Condition Example"
+node_id: "skip-example"
+
+variables:
+  environment: "development"
+  selected_product: "rmc"
+  enable_debug: false
+
+steps:
+  # Skip with literal boolean
+  - name: "Disabled step"
+    skip: "true"
+    request:
+      method: GET
+      url: "/disabled-feature"
+
+  # Skip with JavaScript expression
+  - name: "Production-only step"
+    skip: "{{environment}} === 'production'"
+    request:
+      method: GET
+      url: "/prod-only"
+
+  # Skip with JMESPath string comparison
+  - name: "RCC-specific feature"
+    skip: "selected_product != 'rcc'"
+    request:
+      method: POST
+      url: "/rcc/feature"
+
+  # Skip with boolean variable
+  - name: "Debug endpoint"
+    skip: "!{{enable_debug}}"
+    request:
+      method: GET
+      url: "/debug"`,
       },
     ];
   }
