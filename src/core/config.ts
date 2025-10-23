@@ -13,11 +13,14 @@ import fs from "fs";
 import path from "path";
 import yaml from "js-yaml";
 import * as dotenv from "dotenv";
+import { injectable } from "inversify";
+import "reflect-metadata";
 import {
   EngineConfig,
   EngineExecutionOptions,
   ReportFormat,
 } from "../types/engine.types";
+import { IConfigManager } from "../interfaces/services/IConfigManager";
 import { getLogger } from "../services/logger.service";
 
 /**
@@ -93,9 +96,26 @@ import { getLogger } from "../services/logger.service";
  * @public
  * @since 1.0.0
  */
-export class ConfigManager {
+/**
+ * Extended configuration type with runtime-only fields
+ * These fields are added at runtime and not part of the configuration file
+ */
+interface ExtendedConfig extends EngineConfig {
+  /** Runtime filters passed via execution options */
+  _runtime_filters?: {
+    priority?: string[];
+    node_ids?: string[];
+    suite_names?: string[];
+    tags?: string[];
+    file_patterns?: string[];
+    step_ids?: string[];
+  };
+}
+
+@injectable()
+export class ConfigManager implements IConfigManager {
   /** Configuração completa carregada e processada */
-  private config: EngineConfig;
+  private config: ExtendedConfig;
 
   /** Caminho absoluto do arquivo de configuração utilizado */
   private configFilePath: string;
@@ -455,7 +475,7 @@ export class ConfigManager {
 
     if (options.filters) {
       // Armazena filtros para uso posterior
-      (this.config as any)._runtime_filters = options.filters;
+      this.config._runtime_filters = options.filters;
     }
 
     if (options.reporting) {
@@ -653,8 +673,8 @@ export class ConfigManager {
    *
    * @public
    */
-  getRuntimeFilters(): any {
-    return (this.config as any)._runtime_filters || {};
+  getRuntimeFilters(): NonNullable<ExtendedConfig['_runtime_filters']> {
+    return this.config._runtime_filters || {};
   }
 
   /**

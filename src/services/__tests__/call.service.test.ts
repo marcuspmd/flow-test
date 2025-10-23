@@ -27,7 +27,7 @@ describe("CallService", () => {
       success: true,
       status: "success",
     }));
-    callService = new CallService(handlerMock);
+    callService = new CallService();
   });
 
   afterEach(() => {
@@ -67,6 +67,7 @@ steps:
       callerSuitePath: callerPath,
       allowedRoot: tempDir,
       callStack: [],
+      stepExecutionHandler: handlerMock,
     };
 
     await callService.executeStepCall(request, options);
@@ -97,6 +98,7 @@ steps: []
       callerSuitePath: callerPath,
       allowedRoot: tempDir,
       callStack: [],
+      stepExecutionHandler: handlerMock,
     };
 
     await expect(callService.executeStepCall(request, options)).rejects.toThrow(
@@ -141,6 +143,7 @@ steps:
       callerSuitePath: callerPath,
       allowedRoot: tempDir,
       callStack: [identifier],
+      stepExecutionHandler: handlerMock,
     };
 
     await expect(callService.executeStepCall(request, options)).rejects.toThrow(

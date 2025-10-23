@@ -142,6 +142,7 @@ export class RequestStepStrategy extends BaseStepStrategy {
   async execute(context: StepExecutionContext): Promise<StepExecutionResult> {
     const startTime = Date.now();
     const { step, suite, identifiers, globalVariables, logger } = context;
+    let interpolatedRequest: any = null; // Track request for error handling
 
     try {
       // Validate step configuration
@@ -162,7 +163,7 @@ export class RequestStepStrategy extends BaseStepStrategy {
 
       // **3. Interpolate variables and apply certificate**
       const rawRequestUrl = step.request.url;
-      const interpolatedRequest = globalVariables.interpolate(step.request);
+      interpolatedRequest = globalVariables.interpolate(step.request);
 
       // Apply suite-level certificate if no request-specific certificate
       if (!interpolatedRequest.certificate && suite.certificate) {
@@ -320,7 +321,8 @@ export class RequestStepStrategy extends BaseStepStrategy {
           ? { dynamic_assignments: dynamicAssignments }
           : {}),
         available_variables: this.filterAvailableVariables(
-          globalVariables.getAllVariables()
+          globalVariables.getAllVariables(),
+          { stepType: "request", stepName: step.name }
         ),
         scenarios_meta: (httpResult as any).scenarios_meta,
         error_message: httpResult.error_message,
@@ -329,7 +331,19 @@ export class RequestStepStrategy extends BaseStepStrategy {
       return result;
     } catch (error) {
       // **10. Build failure result**
-      return this.buildFailureResult(context, error, startTime);
+      const failureResult = this.buildFailureResult(context, error, startTime);
+
+      // Add request_details if we have interpolatedRequest
+      if (interpolatedRequest) {
+        (failureResult as any).request_details = {
+          method: interpolatedRequest.method || "GET",
+          url: interpolatedRequest.url || "",
+          headers: interpolatedRequest.headers || {},
+          body: interpolatedRequest.body,
+        };
+      }
+
+      return failureResult;
     }
   }
 
@@ -766,88 +780,8 @@ export class RequestStepStrategy extends BaseStepStrategy {
    * @remarks
    * Uses smart filtering to show only relevant variables for HTTP request context.
    */
-  private filterAvailableVariables(
-    variables: Record<string, any>
-  ): Record<string, any> {
-    const {
-      smartFilterAndMask,
-    } = require("../../../utils/variable-masking.utils");
-
-    // Extract recently captured variables from current context
-    const recentCaptures = new Set<string>();
-    for (const key of Object.keys(variables)) {
-      if (
-        key.startsWith("captured_") ||
-        key.includes("_response") ||
-        key.includes("_result")
-      ) {
-        recentCaptures.add(key);
-      }
-    }
-
-    return smartFilterAndMask(
-      variables,
-      {
-        stepType: "request",
-        recentCaptures,
-        isFirstStep: false,
-      },
-      {
-        alwaysInclude: ["base_url", "auth_token", "api_key"],
-        alwaysExclude: ["PATH", "HOME", "USER", "SHELL", "PWD", "LANG"],
-        maxPerCategory: 6,
-      },
-      {
-        maxDepth: 2,
-        maxObjectSize: 15,
-        maxArrayLength: 3,
-        maxStringLength: 150,
-      }
-    );
-  }
-
-  /**
-   * Builds failure result when step execution fails.
-   *
-   * @param context - Execution context
-   * @param error - Error that caused failure
-   * @param startTime - Step start timestamp
-   * @returns Failure result
-   * @private
-   */
-  private buildFailureResult(
-    context: StepExecutionContext,
-    error: any,
-    startTime: number
-  ): StepExecutionResult {
-    const { step, identifiers, globalVariables, httpService } = context;
-    const duration = Date.now() - startTime;
-
-    const errorResult: StepExecutionResult = {
-      step_id: identifiers.stepId,
-      qualified_step_id: identifiers.qualifiedStepId,
-      step_name: step.name,
-      status: "failure",
-      duration_ms: duration,
-      error_message: `Step execution error: ${error}`,
-      captured_variables: {},
-      available_variables: this.filterAvailableVariables(
-        globalVariables.getAllVariables()
-      ),
-    };
-
-    // Add request details if available
-    if (step.request?.url) {
-      errorResult.request_details = {
-        method: step.request.method || "GET",
-        url: step.request.url,
-        raw_url: step.request.url,
-        base_url: httpService.getBaseUrl(),
-      };
-    }
-
-    return errorResult;
-  }
+  // filterAvailableVariables and buildFailureResult methods moved to BaseStepStrategy
+  // to eliminate code duplication across all strategies
 
   /**
    * Executes lifecycle hooks at the appropriate point

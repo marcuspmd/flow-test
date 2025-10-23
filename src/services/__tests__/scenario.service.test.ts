@@ -45,6 +45,16 @@ describe("ScenarioService", () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
+    const mockLogger = {
+      debug: jest.fn(),
+      info: jest.fn(),
+      warn: jest.fn(),
+      error: jest.fn(),
+      log: jest.fn(),
+      startGroup: jest.fn(),
+      endGroup: jest.fn(),
+    };
+
     mockAssertionService = {
       validateAssertions: jest.fn(),
     } as any;
@@ -60,13 +70,18 @@ describe("ScenarioService", () => {
       CaptureService as jest.MockedClass<typeof CaptureService>
     ).mockImplementation(() => mockCaptureService);
 
-    scenarioService = new ScenarioService();
+    scenarioService = new ScenarioService(
+      mockLogger as any,
+      mockAssertionService,
+      mockCaptureService
+    );
   });
 
   describe("constructor", () => {
     it("should initialize with AssertionService and CaptureService", () => {
-      expect(AssertionService).toHaveBeenCalledTimes(1);
-      expect(CaptureService).toHaveBeenCalledTimes(1);
+      expect(scenarioService).toBeDefined();
+      expect(mockAssertionService).toBeDefined();
+      expect(mockCaptureService).toBeDefined();
     });
   });
 

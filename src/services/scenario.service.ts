@@ -1,9 +1,12 @@
+import { injectable, inject } from "inversify";
 import * as jmespath from "jmespath";
+import { TYPES } from "../di/identifiers";
+import type { ILogger } from "../interfaces/services/ILogger";
+import type { IAssertionService } from "../interfaces/services/IAssertionService";
+import type { ICaptureService } from "../interfaces/services/ICaptureService";
+import type { IScenarioService } from "../interfaces/services/IScenarioService";
 import { ConditionalScenario, Assertions } from "../types/engine.types";
 import { StepExecutionResult } from "../types/config.types";
-import { AssertionService } from "./assertion";
-import { CaptureService } from "./capture.service";
-import { getLogger } from "./logger.service";
 import { ResponseContextBuilder, ErrorHandler } from "../utils";
 
 /**
@@ -15,14 +18,20 @@ import { ResponseContextBuilder, ErrorHandler } from "../utils";
  *
  * @since 1.0.0
  */
-export class ScenarioService {
-  private readonly assertionService: AssertionService;
-  private readonly captureService: CaptureService;
-  private readonly logger = getLogger();
+@injectable()
+export class ScenarioService implements IScenarioService {
+  private readonly logger: ILogger;
+  private readonly assertionService: IAssertionService;
+  private readonly captureService: ICaptureService;
 
-  constructor() {
-    this.assertionService = new AssertionService();
-    this.captureService = new CaptureService();
+  constructor(
+    @inject(TYPES.ILogger) logger: ILogger,
+    @inject(TYPES.IAssertionService) assertionService: IAssertionService,
+    @inject(TYPES.ICaptureService) captureService: ICaptureService
+  ) {
+    this.logger = logger;
+    this.assertionService = assertionService;
+    this.captureService = captureService;
   }
 
   /**

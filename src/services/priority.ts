@@ -9,8 +9,11 @@
  * @packageDocumentation
  */
 
-import { ConfigManager } from "../core/config";
-import { getLogger } from "./logger.service";
+import { injectable, inject } from "inversify";
+import { TYPES } from "../di/identifiers";
+import type { ILogger } from "../interfaces/services/ILogger";
+import type { IConfigManager } from "../interfaces/services/IConfigManager";
+import type { IPriorityService } from "../interfaces/services/IPriorityService";
 import { DiscoveredTest } from "../types/engine.types";
 
 /**
@@ -94,11 +97,17 @@ import { DiscoveredTest } from "../types/engine.types";
  * @public
  * @since 1.0.0
  */
-export class PriorityService {
-  private configManager: ConfigManager;
+@injectable()
+export class PriorityService implements IPriorityService {
+  private logger: ILogger;
+  private configManager: IConfigManager;
   private priorityWeights: Map<string, number> = new Map();
 
-  constructor(configManager: ConfigManager) {
+  constructor(
+    @inject(TYPES.ILogger) logger: ILogger,
+    @inject(TYPES.IConfigManager) configManager: IConfigManager
+  ) {
+    this.logger = logger;
     this.configManager = configManager;
     this.initializePriorityWeights();
   }
@@ -197,7 +206,7 @@ export class PriorityService {
       if (readyTests.length === 0) {
         // Detects circular dependency or dependency not found
         const stuck = Array.from(remaining)[0];
-        getLogger().warn(
+        this.logger.warn(
           `⚠️  Warning: Possible circular dependency detected. Forcing execution of '${stuck.suite_name}'`
         );
         readyTests.push(stuck);

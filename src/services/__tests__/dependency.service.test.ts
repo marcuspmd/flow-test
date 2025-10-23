@@ -20,9 +20,18 @@ function createMockDependencyResult(
 
 describe("DependencyService", () => {
   let service: DependencyService;
+  const mockLogger = {
+    debug: jest.fn(),
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+    log: jest.fn(),
+    startGroup: jest.fn(),
+    endGroup: jest.fn(),
+  };
 
   beforeEach(() => {
-    service = new DependencyService();
+    service = new DependencyService(mockLogger as any);
   });
 
   describe("constructor", () => {
@@ -216,7 +225,9 @@ describe("DependencyService", () => {
     });
 
     it("should warn about missing dependencies", () => {
-      const consoleSpy = jest.spyOn(console, "warn").mockImplementation();
+      const loggerWarnSpy = jest
+        .spyOn(service["logger"], "warn")
+        .mockImplementation();
 
       const tests: DiscoveredTest[] = [
         {
@@ -229,11 +240,11 @@ describe("DependencyService", () => {
 
       service.buildDependencyGraph(tests);
 
-      expect(consoleSpy).toHaveBeenCalledWith(
+      expect(loggerWarnSpy).toHaveBeenCalledWith(
         expect.stringContaining("Dependency")
       );
 
-      consoleSpy.mockRestore();
+      loggerWarnSpy.mockRestore();
     });
 
     it("should clear existing graph before building new one", () => {
@@ -1033,7 +1044,9 @@ describe("DependencyService", () => {
     });
 
     it("should handle invalid dependency objects", () => {
-      const consoleSpy = jest.spyOn(console, "warn").mockImplementation();
+      const loggerWarnSpy = jest
+        .spyOn(service["logger"], "warn")
+        .mockImplementation();
 
       const tests: DiscoveredTest[] = [
         {
@@ -1046,8 +1059,8 @@ describe("DependencyService", () => {
 
       service.buildDependencyGraph(tests);
 
-      expect(consoleSpy).toHaveBeenCalled();
-      consoleSpy.mockRestore();
+      expect(loggerWarnSpy).toHaveBeenCalled();
+      loggerWarnSpy.mockRestore();
     });
 
     it("should handle large dependency graphs efficiently", () => {
@@ -1150,12 +1163,14 @@ describe("DependencyService", () => {
       ];
 
       // Should not throw and warn about missing dependency
-      const consoleSpy = jest.spyOn(console, "warn").mockImplementation();
+      const loggerWarnSpy = jest
+        .spyOn(service["logger"], "warn")
+        .mockImplementation();
       service.buildDependencyGraph(dependencies);
-      expect(consoleSpy).toHaveBeenCalledWith(
+      expect(loggerWarnSpy).toHaveBeenCalledWith(
         expect.stringContaining('Dependency \'{"path":""}\' not found')
       );
-      consoleSpy.mockRestore();
+      loggerWarnSpy.mockRestore();
     });
 
     it("should handle nodeId calculation from basename of file path", () => {

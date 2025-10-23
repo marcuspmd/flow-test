@@ -56,7 +56,8 @@ describe("CertificateService", () => {
     });
 
     it("should create instance with certificates", () => {
-      const service = new CertificateService([
+      const service = new CertificateService();
+      service.setCertificates([
         {
           name: "Test Cert",
           cert_path: "./test.crt",
@@ -192,7 +193,8 @@ describe("CertificateService", () => {
     });
 
     it("should apply global certificate by domain - exact match", () => {
-      const service = new CertificateService([
+      const service = new CertificateService();
+      service.setCertificates([
         {
           name: "Test Cert",
           cert_path: "tests/fixtures/certs/test.crt",
@@ -212,7 +214,8 @@ describe("CertificateService", () => {
     });
 
     it("should apply global certificate by domain - wildcard match", () => {
-      const service = new CertificateService([
+      const service = new CertificateService();
+      service.setCertificates([
         {
           name: "Wildcard Cert",
           cert_path: "tests/fixtures/certs/test.crt",
@@ -232,7 +235,8 @@ describe("CertificateService", () => {
     });
 
     it("should not apply certificate for non-matching domain", () => {
-      const service = new CertificateService([
+      const service = new CertificateService();
+      service.setCertificates([
         {
           name: "Specific Cert",
           cert_path: "tests/fixtures/certs/test.crt",
@@ -252,7 +256,8 @@ describe("CertificateService", () => {
     });
 
     it("should apply certificate without domain restrictions", () => {
-      const service = new CertificateService([
+      const service = new CertificateService();
+      service.setCertificates([
         {
           name: "Global Cert",
           cert_path: "tests/fixtures/certs/test.crt",
@@ -272,7 +277,8 @@ describe("CertificateService", () => {
     });
 
     it("should prioritize request certificate over global", () => {
-      const service = new CertificateService([
+      const service = new CertificateService();
+      service.setCertificates([
         {
           name: "Global Cert",
           cert_path: "tests/fixtures/certs/test.crt",
@@ -314,7 +320,8 @@ describe("CertificateService", () => {
     });
 
     it("should match multiple domain patterns", () => {
-      const service = new CertificateService([
+      const service = new CertificateService();
+      service.setCertificates([
         {
           name: "Multi-domain Cert",
           cert_path: "tests/fixtures/certs/test.crt",
@@ -356,7 +363,8 @@ describe("CertificateService", () => {
     });
 
     it("should return correct count", () => {
-      const service = new CertificateService([
+      const service = new CertificateService();
+      service.setCertificates([
         { name: "Cert 1", cert_path: "./a.crt", key_path: "./a.key" },
         { name: "Cert 2", pfx_path: "./b.pfx" },
       ]);

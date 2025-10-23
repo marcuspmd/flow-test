@@ -44,7 +44,6 @@ const createMockContext = (
   const mockCaptureService = {};
   const mockScenarioService = {};
   const mockInputService = {};
-  const mockDynamicExpressionService = {};
   const mockScriptExecutorService = {};
   const mockHookExecutorService = {
     executeHooks: jest.fn().mockResolvedValue({
@@ -87,7 +86,6 @@ const createMockContext = (
     captureService: mockCaptureService as any,
     scenarioService: mockScenarioService as any,
     inputService: mockInputService as any,
-    dynamicExpressionService: mockDynamicExpressionService as any,
     scriptExecutorService: mockScriptExecutorService as any,
     hookExecutorService: mockHookExecutorService as any,
     callService: mockCallService as any,

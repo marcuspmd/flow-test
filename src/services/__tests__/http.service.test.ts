@@ -60,34 +60,32 @@ describe("HttpService", () => {
   });
 
   describe("Constructor", () => {
-    test("should create instance with baseUrl and default timeout", () => {
-      httpService = new HttpService("https://api.example.com");
+    test("should create instance with logger", () => {
+      httpService = new HttpService(mockLogger as any);
 
       expect(httpService).toBeInstanceOf(HttpService);
-      expect(httpService["baseUrl"]).toBe("https://api.example.com");
       expect(httpService["timeout"]).toBe(60000);
     });
 
-    test("should create instance with custom timeout", () => {
-      httpService = new HttpService("https://api.example.com", 10000);
+    test("should create instance with logger (previous timeout test)", () => {
+      httpService = new HttpService(mockLogger as any);
 
       expect(httpService).toBeInstanceOf(HttpService);
-      expect(httpService["baseUrl"]).toBe("https://api.example.com");
-      expect(httpService["timeout"]).toBe(10000);
+      expect(httpService["timeout"]).toBe(60000);
     });
 
-    test("should criar instância sem baseUrl", () => {
-      httpService = new HttpService();
+    test("should criar instância com logger", () => {
+      httpService = new HttpService(mockLogger as any);
 
       expect(httpService).toBeInstanceOf(HttpService);
-      expect(httpService["baseUrl"]).toBeUndefined();
       expect(httpService["timeout"]).toBe(60000);
     });
   });
 
   describe("executeRequest - Success Cases", () => {
     beforeEach(() => {
-      httpService = new HttpService("https://api.example.com");
+      httpService = new HttpService(mockLogger as any);
+      httpService.setBaseUrl("https://api.example.com");
     });
 
     test("should executar GET request com sucesso", async () => {
@@ -132,7 +130,7 @@ describe("HttpService", () => {
     });
 
     test("should usar URL absoluta quando não há baseUrl", async () => {
-      httpService = new HttpService(); // Sem baseUrl
+      httpService = new HttpService(mockLogger as any);
 
       const request: RequestDetails = {
         method: "GET",
@@ -195,7 +193,7 @@ describe("HttpService", () => {
 
   describe("executeRequest - Error Cases", () => {
     beforeEach(() => {
-      httpService = new HttpService("https://api.example.com");
+      httpService = new HttpService(mockLogger as any);
     });
 
     test("should tratar AxiosError com response", async () => {
@@ -275,7 +273,8 @@ describe("HttpService", () => {
 
   describe("URL Building", () => {
     test("should combinar baseUrl com URL relativa", async () => {
-      httpService = new HttpService("https://api.example.com");
+      httpService = new HttpService(mockLogger as any);
+      httpService.setBaseUrl("https://api.example.com");
 
       const mockResponse: AxiosResponse = {
         status: 200,
@@ -301,7 +300,7 @@ describe("HttpService", () => {
     });
 
     test("should usar URL absoluta quando fornecida", async () => {
-      httpService = new HttpService("https://api.example.com");
+      httpService = new HttpService(mockLogger as any);
 
       const mockResponse: AxiosResponse = {
         status: 200,
@@ -329,7 +328,7 @@ describe("HttpService", () => {
 
   describe("Headers Handling", () => {
     beforeEach(() => {
-      httpService = new HttpService("https://api.example.com");
+      httpService = new HttpService(mockLogger as any);
 
       const mockResponse: AxiosResponse = {
         status: 200,
@@ -367,7 +366,7 @@ describe("HttpService", () => {
 
   describe("Response Processing", () => {
     beforeEach(() => {
-      httpService = new HttpService("https://api.example.com");
+      httpService = new HttpService(mockLogger as any);
     });
 
     test("should calcular tamanho da resposta corretamente", async () => {
@@ -421,7 +420,8 @@ describe("HttpService", () => {
 
   describe("Generated Content", () => {
     beforeEach(() => {
-      httpService = new HttpService("https://api.example.com");
+      httpService = new HttpService(mockLogger as any);
+      httpService.setBaseUrl("https://api.example.com");
 
       const mockResponse: AxiosResponse = {
         status: 201,
@@ -488,7 +488,7 @@ describe("HttpService", () => {
 
   describe("Configuration Methods", () => {
     beforeEach(() => {
-      httpService = new HttpService("https://api.example.com");
+      httpService = new HttpService(mockLogger as any);
     });
 
     test("should alterar timeout com setTimeout", () => {
@@ -519,7 +519,7 @@ describe("HttpService", () => {
 
   describe("ValidateStatus Function Coverage", () => {
     beforeEach(() => {
-      httpService = new HttpService("https://api.example.com");
+      httpService = new HttpService(mockLogger as any);
     });
 
     test("should exercitar função validateStatus através de request", async () => {

@@ -1,0 +1,197 @@
+node_id: "auth-flow"
+suite_name: "Authentication Flow Tests"
+description: "Complete authentication flow with login, token management, and protected endpoints"
+
+base_url: "{{base_url}}"
+
+variables:
+  test_username: "{{$faker.internet.userName}}"
+  test_email: "{{$faker.internet.email}}"
+  test_password: "Test@123!Password"
+
+# Export auth_token for other test suites to use
+exports:
+  - auth_token
+  - user_id
+
+metadata:
+  priority: "critical"
+  tags:
+    - auth
+    - security
+    - smoke
+  timeout: 30000
+
+steps:
+  - name: "Register new user"
+    request:
+      method: "POST"
+      url: "/auth/register"
+      headers:
+        Content-Type: "application/json"
+      body:
+        username: "{{test_username}}"
+        email: "{{test_email}}"
+        password: "{{test_password}}"
+    assert:
+      status_code: 201
+      body:
+        id:
+          type: "number"
+          greater_than: 0
+          exists: true
+        username:
+          equals: "{{test_username}}"
+        email:
+          equals: "{{test_email}}"
+          regex: "^[\\w-\\.]+@([\\w-]+\\.)+[\\w-]{2,4}$"
+        created_at:
+          type: "string"
+          notEmpty: true
+      response_time_ms:
+        less_than: 2000
+    capture:
+      user_id: "body.id"
+      registration_timestamp: "body.created_at"
+    metadata:
+      priority: "critical"
+      tags: ["registration"]
+      description: "Creates a new user account"
+
+  - name: "Login with valid credentials"
+    request:
+      method: "POST"
+      url: "/auth/login"
+      headers:
+        Content-Type: "application/json"
+      body:
+        email: "{{test_email}}"
+        password: "{{test_password}}"
+    assert:
+      status_code: 200
+      body:
+        token:
+          type: "string"
+          notEmpty: true
+          minLength: 20
+        user:
+          type: "object"
+          exists: true
+        user.id:
+          equals: "{{user_id}}"
+        user.email:
+          equals: "{{test_email}}"
+      headers:
+        content-type:
+          contains: "application/json"
+      response_time_ms:
+        less_than: 1500
+    capture:
+      auth_token: "body.token"
+      user_data: "body.user"
+    metadata:
+      priority: "critical"
+      tags: ["login", "authentication"]
+      description: "Authenticates user and captures JWT token"
+
+  - name: "Access protected endpoint with token"
+    request:
+      method: "GET"
+      url: "/api/users/me"
+      headers:
+        Authorization: "Bearer {{auth_token}}"
+        Content-Type: "application/json"
+    assert:
+      status_code: 200
+      body:
+        id:
+          equals: "{{user_id}}"
+        email:
+          equals: "{{test_email}}"
+        username:
+          equals: "{{test_username}}"
+      response_time_ms:
+        less_than: 1000
+    metadata:
+      priority: "high"
+      tags: ["protected", "authorization"]
+      depends_on: ["Login with valid credentials"]
+      description: "Verifies token authentication works for protected routes"
+
+  - name: "Login with invalid credentials"
+    request:
+      method: "POST"
+      url: "/auth/login"
+      headers:
+        Content-Type: "application/json"
+      body:
+        email: "{{test_email}}"
+        password: "wrong_password"
+    assert:
+      status_code: 401
+      body:
+        error:
+          type: "object"
+          exists: true
+        message:
+          type: "string"
+          contains: "Invalid"
+    continue_on_failure: true
+    metadata:
+      priority: "high"
+      tags: ["error-handling", "security"]
+      description: "Verifies authentication fails with wrong credentials"
+
+  - name: "Access protected endpoint without token"
+    request:
+      method: "GET"
+      url: "/api/users/me"
+      headers:
+        Content-Type: "application/json"
+    assert:
+      status_code: 401
+      body:
+        error:
+          exists: true
+    continue_on_failure: true
+    metadata:
+      priority: "high"
+      tags: ["error-handling", "authorization"]
+      description: "Verifies protected routes require authentication"
+
+  - name: "Refresh authentication token"
+    request:
+      method: "POST"
+      url: "/auth/refresh"
+      headers:
+        Authorization: "Bearer {{auth_token}}"
+        Content-Type: "application/json"
+    assert:
+      status_code: 200
+      body:
+        token:
+          type: "string"
+          notEmpty: true
+    capture:
+      refreshed_token: "body.token"
+    metadata:
+      priority: "medium"
+      tags: ["token-refresh"]
+      description: "Refreshes authentication token"
+
+  - name: "Logout"
+    request:
+      method: "POST"
+      url: "/auth/logout"
+      headers:
+        Authorization: "Bearer {{auth_token}}"
+        Content-Type: "application/json"
+    assert:
+      status_code: 200
+      body:
+        message:
+          contains: "success"
+    metadata:
+      priority: "medium"
+      tags: ["logout"]
+      description: "Logs out the user"

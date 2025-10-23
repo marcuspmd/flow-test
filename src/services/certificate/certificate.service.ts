@@ -3,6 +3,8 @@
  * @module services/certificate
  */
 
+import { injectable } from "inversify";
+import "reflect-metadata";
 import { AxiosRequestConfig } from "axios";
 import * as https from "https";
 import {
@@ -10,6 +12,7 @@ import {
   CertificateEntry,
   toCertificateConfig,
 } from "../../types/certificate.types";
+import { ICertificateService } from "../../interfaces/services/ICertificateService";
 import { getLogger } from "../logger.service";
 import {
   LoaderRegistry,
@@ -45,27 +48,38 @@ import {
  *
  * @public
  */
-export class CertificateService {
+@injectable()
+export class CertificateService implements ICertificateService {
   private logger = getLogger();
   private globalCertificates: CertificateEntry[] = [];
   private loaderRegistry: LoaderRegistry;
 
   /**
-   * Initialize with global certificates from config
+   * Initialize CertificateService
+   *
+   * @remarks
+   * For DI usage, use the parameterless constructor and call setCertificates()
+   * if needed. For legacy usage, you can still pass certificates directly.
+   */
+  constructor() {
+    this.loaderRegistry = getDefaultLoaders();
+  }
+
+  /**
+   * Set global certificates after construction
    *
    * @param certificates - Array of global certificate entries
-   * @param loaderRegistry - Optional custom loader registry (defaults to standard loaders)
+   * @param loaderRegistry - Optional custom loader registry
    */
-  constructor(
-    certificates?: CertificateEntry[],
+  public setCertificates(
+    certificates: CertificateEntry[],
     loaderRegistry?: LoaderRegistry
-  ) {
-    if (certificates) {
-      this.globalCertificates = certificates;
-      this.logger.info(`Loaded ${certificates.length} global certificate(s)`);
+  ): void {
+    this.globalCertificates = certificates;
+    if (loaderRegistry) {
+      this.loaderRegistry = loaderRegistry;
     }
-
-    this.loaderRegistry = loaderRegistry || getDefaultLoaders();
+    this.logger.info(`Loaded ${certificates.length} global certificate(s)`);
   }
 
   /**

@@ -9,12 +9,16 @@
  * @packageDocumentation
  */
 
+import { injectable, inject, optional } from "inversify";
 import * as jmespath from "jmespath";
 import { Assertions, AssertionChecks } from "../../types/engine.types";
 import { AssertionResult, StepExecutionResult } from "../../types/config.types";
 import { getLogger } from "../logger.service";
 import { StrategyRegistry } from "./strategies";
 import { AssertionContext } from "./strategies/assertion-strategy.interface";
+import { TYPES } from "../../di/identifiers";
+import { ILogger } from "../../interfaces/services/ILogger";
+import { IAssertionService } from "../../interfaces/services/IAssertionService";
 
 /**
  * Comprehensive assertion validation service for HTTP response testing.
@@ -82,12 +86,21 @@ import { AssertionContext } from "./strategies/assertion-strategy.interface";
  * @public
  * @since 1.0.0
  */
-export class AssertionService {
-  private logger = getLogger();
+@injectable()
+export class AssertionService implements IAssertionService {
+  private logger: ILogger;
   private strategyRegistry: StrategyRegistry;
 
-  constructor(strategyRegistry?: StrategyRegistry) {
-    this.strategyRegistry = strategyRegistry || new StrategyRegistry();
+  constructor(@inject(TYPES.ILogger) logger: ILogger) {
+    this.logger = logger;
+    this.strategyRegistry = new StrategyRegistry();
+  }
+
+  /**
+   * Sets a custom strategy registry (for testing or customization)
+   */
+  setStrategyRegistry(strategyRegistry: StrategyRegistry): void {
+    this.strategyRegistry = strategyRegistry;
   }
 
   /**

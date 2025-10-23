@@ -182,8 +182,7 @@ export class TestDiscovery {
     const discoveredTests: DiscoveredTest[] = [];
 
     const filePatterns = runtimeFilters.file_patterns || [];
-    const excludePatterns =
-      runtimeFilters.exclude_patterns || config.discovery!.exclude;
+    const excludePatterns = config.discovery!.exclude || [];
 
     if (filePatterns.length > 0) {
       const filteredTests = await this.discoverTestsByFilePatterns(

@@ -9,6 +9,7 @@
  * @packageDocumentation
  */
 
+import { injectable, inject } from "inversify";
 import { GlobalVariableContext } from "../types/config.types";
 import { GlobalRegistryService } from "./global-registry.service";
 import { JavaScriptExecutionContext } from "./javascript.service";
@@ -18,6 +19,11 @@ import {
   InterpolationContext,
 } from "./interpolation.service";
 import { ConfigManager } from "../core/config";
+import { TYPES } from "../di/identifiers";
+import { ILogger } from "../interfaces/services/ILogger";
+import { IGlobalRegistryService } from "../interfaces/services/IGlobalRegistryService";
+import { IConfigManager } from "../interfaces/services/IConfigManager";
+import { IVariableService } from "../interfaces/services/IVariableService";
 
 /**
  * Service responsible for variable interpolation and resolution
@@ -42,18 +48,19 @@ import { ConfigManager } from "../core/config";
  * // Results in: 'xyz789' (imported variable)
  * ```
  */
-export class VariableService {
+@injectable()
+export class VariableService implements IVariableService {
   /** Hierarchical context of variables with different scopes */
   private context: GlobalVariableContext;
 
   /** Global registry service for exported variables */
-  private globalRegistry?: GlobalRegistryService;
+  private globalRegistry?: IGlobalRegistryService;
 
   /** Current execution context for JavaScript expressions */
   private currentExecutionContext: JavaScriptExecutionContext = {};
 
   /** Logger service */
-  private logger = getLogger();
+  private logger: ILogger;
 
   /** Interpolation cache for performance optimization */
   private interpolationCache: Map<string, any> = new Map();
@@ -65,22 +72,41 @@ export class VariableService {
   private dependencies: string[] = [];
 
   /** Optional ConfigManager for loading global variables */
-  private configManager?: ConfigManager;
+  private configManager?: IConfigManager;
 
   /**
-   * VariableService constructor
+   * VariableService constructor with Dependency Injection
    *
-   * @param contextOrConfigManager - Either a GlobalVariableContext or ConfigManager instance
+   * @param logger - Logger service instance
+   * @param configManager - Optional config manager for loading global variables
    * @param globalRegistry - Optional global registry for exported variables
    */
   constructor(
+    @inject(TYPES.ILogger) logger: ILogger,
+    @inject(TYPES.IConfigManager) configManager?: IConfigManager,
+    @inject(TYPES.IGlobalRegistryService)
+    globalRegistry?: IGlobalRegistryService
+  ) {
+    this.logger = logger;
+    this.configManager = configManager;
+    this.globalRegistry = globalRegistry;
+    this.context = this.initializeContext();
+  }
+
+  /**
+   * Legacy constructor support for backward compatibility
+   * Use setContext() after instantiation when using legacy approach
+   */
+  setContext(
     contextOrConfigManager: GlobalVariableContext | ConfigManager,
     globalRegistry?: GlobalRegistryService
-  ) {
+  ): void {
     // Check if it's a ConfigManager instance
     if (contextOrConfigManager instanceof ConfigManager) {
-      this.configManager = contextOrConfigManager;
-      this.globalRegistry = globalRegistry;
+      this.configManager = contextOrConfigManager as any;
+      if (globalRegistry) {
+        this.globalRegistry = globalRegistry as any;
+      }
       this.context = this.initializeContext();
     } else {
       // Legacy: direct context initialization
@@ -89,7 +115,9 @@ export class VariableService {
       if (!this.context.environment) {
         this.context.environment = this.loadEnvironmentVariables();
       }
-      this.globalRegistry = globalRegistry;
+      if (globalRegistry) {
+        this.globalRegistry = globalRegistry as any;
+      }
     }
   }
 

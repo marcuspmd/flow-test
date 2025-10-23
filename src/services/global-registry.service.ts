@@ -9,6 +9,9 @@
  * @packageDocumentation
  */
 
+import { injectable } from "inversify";
+import "reflect-metadata";
+import { IGlobalRegistryService } from "../interfaces/services/IGlobalRegistryService";
 import { getLogger } from "./logger.service";
 
 /**
@@ -190,7 +193,8 @@ interface NodeNamespace {
  * @public
  * @since 1.0.0
  */
-export class GlobalRegistryService {
+@injectable()
+export class GlobalRegistryService implements IGlobalRegistryService {
   /** Main registry mapping node ID to its namespace */
   private registry: Map<string, NodeNamespace> = new Map();
 

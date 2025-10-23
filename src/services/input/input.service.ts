@@ -9,6 +9,11 @@
  * @packageDocumentation
  */
 
+import { injectable, inject, unmanaged } from "inversify";
+import { TYPES } from "../../di/identifiers";
+import type { ILogger } from "../../interfaces/services/ILogger";
+import type { IInputService } from "../../interfaces/services/IInputService";
+import { VariableService } from "../variable.service";
 import * as readline from "readline";
 import * as jmespath from "jmespath";
 import {
@@ -19,8 +24,6 @@ import {
   RunnerInputEvent,
 } from "../../types/engine.types";
 import { InputValidationExpression } from "../../types/common.types";
-import { getLogger } from "../logger.service";
-import { VariableService } from "../variable.service";
 import { javascriptService } from "../javascript.service";
 import {
   InputTypeRegistry,
@@ -67,8 +70,9 @@ import { convertValue } from "./helpers/conversion.helper";
  *
  * @public
  */
-export class InputService {
-  private logger = getLogger();
+@injectable()
+export class InputService implements IInputService {
+  private readonly logger: ILogger;
   private isCI: boolean;
   private runnerInteractiveMode: boolean;
   private executionContext?: InputExecutionContext;
@@ -76,10 +80,12 @@ export class InputService {
   private promptStyleRegistry: PromptStyleRegistry;
 
   constructor(
-    runnerInteractiveMode = false,
-    inputTypeRegistry?: InputTypeRegistry,
-    promptStyleRegistry?: PromptStyleRegistry
+    @inject(TYPES.ILogger) logger: ILogger,
+    @unmanaged() runnerInteractiveMode = false,
+    @unmanaged() inputTypeRegistry?: InputTypeRegistry,
+    @unmanaged() promptStyleRegistry?: PromptStyleRegistry
   ) {
+    this.logger = logger;
     // Detect CI environment
     const autoInputEnv = process.env.FLOW_TEST_AUTO_INPUT;
     const autoInputEnabled =
@@ -111,6 +117,15 @@ export class InputService {
    */
   setExecutionContext(context: InputExecutionContext): void {
     this.executionContext = context;
+  }
+
+  /**
+   * Sets runner interactive mode for input prompts
+   *
+   * @param enabled - Whether runner interactive mode is enabled
+   */
+  setRunnerInteractiveMode(enabled: boolean): void {
+    this.runnerInteractiveMode = enabled;
   }
 
   /**
@@ -282,7 +297,9 @@ export class InputService {
     config: InputConfig,
     variables: Record<string, any>
   ): InputConfig {
-    const variableService = new VariableService({
+    // Create a lightweight VariableService for interpolation
+    const variableService = new VariableService(this.logger);
+    variableService.setContext({
       environment: {},
       global: {},
       suite: {},

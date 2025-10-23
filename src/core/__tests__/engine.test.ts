@@ -98,7 +98,14 @@ describe("FlowTestEngine", () => {
     }));
 
     DependencyService.mockImplementation(() => ({
+      buildDependencyGraph: jest.fn(),
+      resolveExecutionOrder: jest.fn().mockImplementation((tests) => tests),
+      detectCircularDependencies: jest.fn().mockReturnValue([]),
+      clearGraph: jest.fn(),
+      markResolved: jest.fn(),
+      markExecuting: jest.fn(),
       resolveDependencies: jest.fn().mockImplementation((tests) => tests),
+      getCachedResult: jest.fn().mockReturnValue(null),
     }));
 
     GlobalRegistryService.mockImplementation(() => ({
@@ -125,6 +132,7 @@ describe("FlowTestEngine", () => {
         tests_failed: 0,
         total_duration_ms: 1000,
       }),
+      getCachedResult: jest.fn().mockReturnValue(null),
     }));
 
     mockFs.readFileSync.mockReturnValue(`
@@ -214,22 +222,17 @@ suite_name: Test Suite
     });
 
     it("should handle execution errors", async () => {
-      const { ExecutionService } = require("../../services/execution");
+      // Use spy on existing instance instead of trying to mock the constructor
+      const executionService = (engine as any).executionService;
       const error = new Error("Test execution failed");
 
-      ExecutionService.mockImplementation(() => ({
-        executeTests: jest.fn().mockRejectedValue(error),
-        getPerformanceSummary: jest.fn().mockReturnValue(null),
-        getExecutionStats: jest.fn().mockReturnValue({
-          total_tests: 0,
-          tests_passed: 0,
-          tests_failed: 0,
-          total_duration_ms: 0,
-        }),
-      }));
+      const executeTestsSpy = jest
+        .spyOn(executionService, "executeTests")
+        .mockRejectedValue(error);
 
-      engine = new FlowTestEngine();
       await expect(engine.run()).rejects.toThrow("Test execution failed");
+
+      executeTestsSpy.mockRestore();
     });
 
     it("should calculate correct metrics for mixed results", async () => {
@@ -604,21 +607,29 @@ suite_name: Test Suite
       expect(aggregated.failed_tests).toBe(1);
     });
 
-    it("should include global variables and performance summary", () => {
-      const startTime = new Date();
-      const endTime = new Date();
-      const results = [mockSuiteResult];
+    it("should include global variables and performance summary", async () => {
+      // Spy on the execution service method and mock its return value
+      const executionService = (engine as any).executionService;
+      const getPerformanceSummarySpy = jest
+        .spyOn(executionService, "getPerformanceSummary")
+        .mockReturnValue({
+          total_requests: 1,
+          average_response_time_ms: 500,
+          min_response_time_ms: 200,
+          max_response_time_ms: 800,
+          requests_per_second: 1.0,
+          slowest_endpoints: [],
+        });
 
-      const aggregated = (engine as any).buildAggregatedResult(
-        startTime,
-        endTime,
-        1,
-        results
-      );
+      // Run full engine to ensure mocks are applied correctly
+      const result = await engine.run();
 
-      expect(aggregated.global_variables_final_state).toBeDefined();
-      expect(aggregated.performance_summary).toBeDefined();
-      expect(aggregated.performance_summary.total_requests).toBe(1);
+      expect(result.global_variables_final_state).toBeDefined();
+      expect(getPerformanceSummarySpy).toHaveBeenCalled();
+      expect(result.performance_summary).toBeDefined();
+      expect(result.performance_summary?.total_requests).toBe(1);
+
+      getPerformanceSummarySpy.mockRestore();
     });
   });
 
@@ -795,36 +806,27 @@ suite_name: Test Suite
     });
 
     it("should trigger stats update callback during execution", async () => {
-      const { ExecutionService } = require("../../services/execution");
+      // Spy on executeTests to capture the callback argument
+      const executionService = (engine as any).executionService;
+      let capturedCallback: any = null;
 
-      let callbackFn: any = null;
-
-      ExecutionService.mockImplementation(() => ({
-        executeTests: jest.fn().mockImplementation((tests, callback) => {
-          callbackFn = callback;
+      const executeTestsSpy = jest
+        .spyOn(executionService, "executeTests")
+        .mockImplementation((tests: any, callback: any) => {
+          capturedCallback = callback;
           // Simulate calling the callback
           if (callback) {
             callback({ tests_completed: 1, tests_successful: 1 });
           }
           return Promise.resolve([mockSuiteResult]);
-        }),
-        getPerformanceSummary: jest.fn().mockReturnValue({
-          total_requests: 1,
-          average_response_time_ms: 500,
-          requests_per_second: 2.0,
-        }),
-        getExecutionStats: jest.fn().mockReturnValue({
-          total_tests: 1,
-          tests_passed: 1,
-          tests_failed: 0,
-          total_duration_ms: 1000,
-        }),
-      }));
+        });
 
-      engine = new FlowTestEngine();
       await engine.run();
 
-      expect(callbackFn).toBeTruthy();
+      expect(capturedCallback).toBeTruthy();
+      expect(executeTestsSpy).toHaveBeenCalled();
+
+      executeTestsSpy.mockRestore();
     });
 
     it("should filter by priority when priority filter is set", () => {

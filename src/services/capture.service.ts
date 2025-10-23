@@ -9,11 +9,15 @@
  * @packageDocumentation
  */
 
+import { injectable, inject } from "inversify";
 import * as jmespath from "jmespath";
 import { StepExecutionResult } from "../types/config.types";
 import { getLogger } from "./logger.service";
 import { InterpolationService } from "./interpolation.service";
 import { ResponseContextBuilder, ErrorHandler } from "../utils";
+import { TYPES } from "../di/identifiers";
+import { ILogger } from "../interfaces/services/ILogger";
+import { ICaptureService } from "../interfaces/services/ICaptureService";
 
 /**
  * Service responsible for capturing variables from HTTP responses
@@ -34,11 +38,13 @@ import { ResponseContextBuilder, ErrorHandler } from "../utils";
  * console.log(captured.user_id); // Value extracted from body.data.user.id
  * ```
  */
-export class CaptureService {
-  private logger = getLogger();
+@injectable()
+export class CaptureService implements ICaptureService {
+  private logger: ILogger;
   private interpolationService: InterpolationService;
 
-  constructor() {
+  constructor(@inject(TYPES.ILogger) logger: ILogger) {
+    this.logger = logger;
     this.interpolationService = new InterpolationService();
   }
 

@@ -18,6 +18,16 @@ jest.mock("../logger.service", () => ({
 import { VariableService } from "../variable.service";
 import { GlobalVariableContext } from "../../types/config.types";
 
+// Helper function to create VariableService with context
+function createVariableServiceWithContext(
+  context: GlobalVariableContext,
+  globalRegistry?: any
+): VariableService {
+  const service = new VariableService(mockLogger as any);
+  service.setContext(context as any, globalRegistry);
+  return service;
+}
+
 describe("VariableService", () => {
   let service: VariableService;
   let baseContext: GlobalVariableContext;
@@ -46,7 +56,8 @@ describe("VariableService", () => {
       environment: {},
     };
 
-    service = new VariableService(baseContext, mockGlobalRegistry);
+    service = new VariableService(mockLogger as any);
+    service.setContext(baseContext as any, mockGlobalRegistry);
   });
 
   describe("constructor", () => {
@@ -55,7 +66,8 @@ describe("VariableService", () => {
     });
 
     it("should create without global registry", () => {
-      const serviceWithoutRegistry = new VariableService(baseContext);
+      const serviceWithoutRegistry = new VariableService(mockLogger as any);
+      serviceWithoutRegistry.setContext(baseContext as any);
       expect(serviceWithoutRegistry).toBeDefined();
     });
   });
@@ -201,7 +213,8 @@ describe("VariableService", () => {
     });
 
     it("should work without global registry", () => {
-      const serviceWithoutRegistry = new VariableService(baseContext);
+      const serviceWithoutRegistry =
+        createVariableServiceWithContext(baseContext);
       const result = serviceWithoutRegistry.interpolate(
         "Value: {{global.var}}"
       );
@@ -211,14 +224,15 @@ describe("VariableService", () => {
 
   describe("Variable hierarchy", () => {
     it("should prioritize runtime over suite", () => {
-      // Both have the same variable, runtime should have priority
       const contextWithConflict = {
-        ...baseContext,
         runtime: { shared_var: "runtime_value" },
         suite: { shared_var: "suite_value" },
+        environment: {},
+        global: {},
+        imported: {},
       };
-
-      const serviceWithConflict = new VariableService(contextWithConflict);
+      const serviceWithConflict =
+        createVariableServiceWithContext(contextWithConflict);
       const result = serviceWithConflict.interpolate("{{shared_var}}");
       expect(result).toBe("runtime_value");
     });
@@ -230,7 +244,8 @@ describe("VariableService", () => {
         imported: { flow: { test_var: "imported_value" } },
       };
 
-      const serviceWithConflict = new VariableService(contextWithConflict);
+      const serviceWithConflict =
+        createVariableServiceWithContext(contextWithConflict);
       const result = serviceWithConflict.interpolate("{{test_var}}");
       expect(result).toBe("suite_value");
     });
@@ -242,7 +257,8 @@ describe("VariableService", () => {
         imported: { flow: { test_var: "imported_value" } },
       };
 
-      const serviceWithConflict = new VariableService(contextWithConflict);
+      const serviceWithConflict =
+        createVariableServiceWithContext(contextWithConflict);
       const result = serviceWithConflict.interpolate("{{flow.test_var}}");
       expect(result).toBe("imported_value");
     });
@@ -255,7 +271,8 @@ describe("VariableService", () => {
         runtime: { zero: 0, false_val: false, empty_string: "" },
       };
 
-      const serviceWithFalsy = new VariableService(contextWithFalsy);
+      const serviceWithFalsy =
+        createVariableServiceWithContext(contextWithFalsy);
 
       expect(serviceWithFalsy.interpolate("{{zero}}")).toBe(0);
       expect(serviceWithFalsy.interpolate("{{false_val}}")).toBe(false);
@@ -271,7 +288,8 @@ describe("VariableService", () => {
         },
       };
 
-      const serviceWithSpecial = new VariableService(contextWithSpecial);
+      const serviceWithSpecial =
+        createVariableServiceWithContext(contextWithSpecial);
 
       expect(serviceWithSpecial.interpolate("{{var-with-dashes}}")).toBe(
         "dash_value"
@@ -292,7 +310,8 @@ describe("VariableService", () => {
         runtime: { spaced_var: "  spaced value  " },
       };
 
-      const serviceWithSpaces = new VariableService(contextWithSpaces);
+      const serviceWithSpaces =
+        createVariableServiceWithContext(contextWithSpaces);
       const result = serviceWithSpaces.interpolate("Value: '{{spaced_var}}'");
       expect(result).toBe("Value: '  spaced value  '");
     });
@@ -308,7 +327,8 @@ describe("VariableService", () => {
         runtime: { circular_ref: circular },
       };
 
-      const serviceWithCircular = new VariableService(contextWithCircular);
+      const serviceWithCircular =
+        createVariableServiceWithContext(contextWithCircular);
 
       expect(() => {
         serviceWithCircular.interpolate("{{circular_ref}}");
@@ -484,7 +504,7 @@ describe("VariableService", () => {
         },
       };
 
-      const serviceWithImports = new VariableService(
+      const serviceWithImports = createVariableServiceWithContext(
         contextWithMultipleImports
       );
 
@@ -510,7 +530,8 @@ describe("VariableService", () => {
         },
       };
 
-      const serviceWithNested = new VariableService(contextWithNested);
+      const serviceWithNested =
+        createVariableServiceWithContext(contextWithNested);
       const result = serviceWithNested.interpolate(
         "{{complex.nested.deep.value}}"
       );
@@ -570,7 +591,8 @@ describe("VariableService", () => {
     });
 
     it("should return empty object when no global registry", () => {
-      const serviceWithoutRegistry = new VariableService(baseContext);
+      const serviceWithoutRegistry =
+        createVariableServiceWithContext(baseContext);
       const result = serviceWithoutRegistry.getGlobalExportedVariables();
       expect(result).toEqual({});
     });

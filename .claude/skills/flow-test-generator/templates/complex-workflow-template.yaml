@@ -1,0 +1,423 @@
+node_id: "e-commerce-checkout-workflow"
+suite_name: "E-Commerce Checkout Workflow Tests"
+description: "Complete end-to-end e-commerce checkout flow with cart, inventory, and payment"
+
+base_url: "{{base_url}}"
+
+# Dependencies on other test suites
+depends:
+  - path: "./auth-template.yaml"
+    required: true
+    cache: 300
+  - path: "./crud-template.yaml"
+    required: false
+    cache: 600
+    on_error: "warn"
+
+variables:
+  # Customer data
+  customer_name: "{{$faker.person.fullName}}"
+  customer_email: "{{$faker.internet.email}}"
+  customer_phone: "{{$faker.phone.number}}"
+
+  # Shipping data
+  shipping_address: "{{$faker.location.streetAddress}}"
+  shipping_city: "{{$faker.location.city}}"
+  shipping_zip: "{{$faker.location.zipCode}}"
+  shipping_country: "Brazil"
+
+  # Payment data (test card)
+  card_number: "4111111111111111"
+  card_cvv: "123"
+  card_expiry: "12/25"
+
+  # Product quantities
+  product_quantity: 2
+
+exports:
+  - order_id
+  - payment_id
+  - cart_total
+
+metadata:
+  priority: "critical"
+  tags:
+    - e-commerce
+    - checkout
+    - integration
+    - end-to-end
+  timeout: 60000
+  estimated_duration_ms: 45000
+
+steps:
+  - name: "Search for products"
+    request:
+      method: "GET"
+      url: "/api/products"
+      params:
+        category: "electronics"
+        in_stock: true
+        limit: 5
+    assert:
+      status_code: 200
+      body:
+        products:
+          type: "array"
+          length:
+            greater_than: 0
+        products[0].id:
+          type: "number"
+          exists: true
+        products[0].price:
+          type: "number"
+          greater_than: 0
+        products[0].stock:
+          type: "number"
+          greater_than: 0
+    capture:
+      available_products: "body.products"
+      first_product_id: "body.products[0].id"
+      first_product_price: "body.products[0].price"
+      first_product_name: "body.products[0].name"
+    metadata:
+      priority: "critical"
+      tags: ["search", "products"]
+
+  - name: "Create shopping cart"
+    request:
+      method: "POST"
+      url: "/api/cart"
+      headers:
+        Authorization: "Bearer {{auth_token}}"
+        Content-Type: "application/json"
+      body:
+        customer_id: "{{user_id}}"
+    assert:
+      status_code: 201
+      body:
+        cart_id:
+          type: "string"
+          notEmpty: true
+        items:
+          type: "array"
+          length:
+            equals: 0
+        total:
+          equals: 0
+    capture:
+      cart_id: "body.cart_id"
+    metadata:
+      priority: "critical"
+      tags: ["cart", "create"]
+
+  - name: "Add multiple products to cart"
+    iterate:
+      over: "{{available_products}}"
+      as: "product"
+    request:
+      method: "POST"
+      url: "/api/cart/{{cart_id}}/items"
+      headers:
+        Authorization: "Bearer {{auth_token}}"
+        Content-Type: "application/json"
+      body:
+        product_id: "{{product.id}}"
+        quantity: "{{product_quantity}}"
+    assert:
+      status_code: 200
+      body:
+        cart_id:
+          equals: "{{cart_id}}"
+        item:
+          type: "object"
+          exists: true
+        item.product_id:
+          equals: "{{product.id}}"
+        item.quantity:
+          equals: "{{product_quantity}}"
+    scenarios:
+      - name: "Track cart total after each addition"
+        condition: "body.cart_total > 0"
+        then:
+          capture:
+            current_cart_total: "body.cart_total"
+    metadata:
+      priority: "high"
+      tags: ["cart", "items", "iteration"]
+
+  - name: "Get cart summary"
+    request:
+      method: "GET"
+      url: "/api/cart/{{cart_id}}"
+      headers:
+        Authorization: "Bearer {{auth_token}}"
+    assert:
+      status_code: 200
+      body:
+        cart_id:
+          equals: "{{cart_id}}"
+        items:
+          type: "array"
+          length:
+            greater_than: 0
+        subtotal:
+          type: "number"
+          greater_than: 0
+        tax:
+          type: "number"
+          greater_than: 0
+        total:
+          type: "number"
+          greater_than: 0
+    capture:
+      cart_subtotal: "body.subtotal"
+      cart_tax: "body.tax"
+      cart_total: "body.total"
+      cart_items_count: "body.items | length(@)"
+    metadata:
+      priority: "high"
+      tags: ["cart", "summary"]
+
+  - name: "Apply discount code"
+    input:
+      prompt: "Enter discount code (or leave empty):"
+      variable: "discount_code"
+      type: "text"
+      required: false
+      default: "SAVE10"
+      ci_default: "SAVE10"
+      condition: "cart_total > 100"
+    request:
+      method: "POST"
+      url: "/api/cart/{{cart_id}}/discount"
+      headers:
+        Authorization: "Bearer {{auth_token}}"
+        Content-Type: "application/json"
+      body:
+        code: "{{discount_code}}"
+    assert:
+      status_code: 200
+      body:
+        discount_applied:
+          type: "boolean"
+          equals: true
+        discount_amount:
+          type: "number"
+          greater_than: 0
+        new_total:
+          type: "number"
+          less_than: "{{cart_total}}"
+    capture:
+      discount_amount: "body.discount_amount"
+      discounted_total: "body.new_total"
+    continue_on_failure: true
+    metadata:
+      priority: "medium"
+      tags: ["discount", "promo"]
+
+  - name: "Add shipping address"
+    request:
+      method: "POST"
+      url: "/api/cart/{{cart_id}}/shipping"
+      headers:
+        Authorization: "Bearer {{auth_token}}"
+        Content-Type: "application/json"
+      body:
+        address:
+          street: "{{shipping_address}}"
+          city: "{{shipping_city}}"
+          zip_code: "{{shipping_zip}}"
+          country: "{{shipping_country}}"
+        phone: "{{customer_phone}}"
+    assert:
+      status_code: 200
+      body:
+        shipping_cost:
+          type: "number"
+          greater_than: 0
+        estimated_delivery:
+          type: "string"
+          notEmpty: true
+    capture:
+      shipping_cost: "body.shipping_cost"
+      estimated_delivery: "body.estimated_delivery"
+      final_total: "body.total_with_shipping"
+    metadata:
+      priority: "high"
+      tags: ["shipping"]
+
+  - name: "Get payment methods"
+    request:
+      method: "GET"
+      url: "/api/payment/methods"
+      headers:
+        Authorization: "Bearer {{auth_token}}"
+    assert:
+      status_code: 200
+      body:
+        methods:
+          type: "array"
+          notEmpty: true
+    capture:
+      available_payment_methods: "body.methods[*].type"
+      default_payment_method: "body.methods[0].type"
+    metadata:
+      priority: "medium"
+      tags: ["payment"]
+
+  - name: "Process payment"
+    request:
+      method: "POST"
+      url: "/api/payment/process"
+      headers:
+        Authorization: "Bearer {{auth_token}}"
+        Content-Type: "application/json"
+      body:
+        cart_id: "{{cart_id}}"
+        payment_method: "credit_card"
+        card_details:
+          number: "{{card_number}}"
+          cvv: "{{card_cvv}}"
+          expiry: "{{card_expiry}}"
+          holder_name: "{{customer_name}}"
+        amount: "{{final_total}}"
+      timeout: 30000
+    assert:
+      status_code: 200
+      body:
+        payment_id:
+          type: "string"
+          notEmpty: true
+        status:
+          equals: "approved"
+        amount_charged:
+          equals: "{{final_total}}"
+        transaction_id:
+          type: "string"
+          notEmpty: true
+      response_time_ms:
+        less_than: 5000
+    capture:
+      payment_id: "body.payment_id"
+      transaction_id: "body.transaction_id"
+    scenarios:
+      - name: "Payment approved"
+        condition: "body.status == 'approved'"
+        then:
+          capture:
+            payment_approved: true
+            payment_approved_at: "body.approved_at"
+        else:
+          capture:
+            payment_approved: false
+            payment_error: "body.error_message"
+    metadata:
+      priority: "critical"
+      tags: ["payment", "transaction"]
+      retry:
+        max_attempts: 2
+        delay_ms: 2000
+
+  - name: "Create order"
+    request:
+      method: "POST"
+      url: "/api/orders"
+      headers:
+        Authorization: "Bearer {{auth_token}}"
+        Content-Type: "application/json"
+      body:
+        cart_id: "{{cart_id}}"
+        payment_id: "{{payment_id}}"
+        customer:
+          name: "{{customer_name}}"
+          email: "{{customer_email}}"
+          phone: "{{customer_phone}}"
+    assert:
+      status_code: 201
+      body:
+        order_id:
+          type: "string"
+          notEmpty: true
+        status:
+          equals: "confirmed"
+        total:
+          equals: "{{final_total}}"
+        items:
+          type: "array"
+          length:
+            greater_than: 0
+        created_at:
+          type: "string"
+          notEmpty: true
+      headers:
+        location:
+          exists: true
+    capture:
+      order_id: "body.order_id"
+      order_number: "body.order_number"
+      order_status: "body.status"
+    metadata:
+      priority: "critical"
+      tags: ["order", "create"]
+      depends_on: ["Process payment"]
+
+  - name: "Send order confirmation email"
+    call:
+      suite_path: "./notifications/email-service.yaml"
+      step: "send_order_confirmation"
+      variables:
+        email: "{{customer_email}}"
+        order_id: "{{order_id}}"
+        order_number: "{{order_number}}"
+      isolate_context: true
+      on_error: "warn"
+    continue_on_failure: true
+    metadata:
+      priority: "medium"
+      tags: ["notification", "email"]
+
+  - name: "Track order status"
+    request:
+      method: "GET"
+      url: "/api/orders/{{order_id}}/status"
+      headers:
+        Authorization: "Bearer {{auth_token}}"
+    assert:
+      status_code: 200
+      body:
+        order_id:
+          equals: "{{order_id}}"
+        current_status:
+          in: ["confirmed", "processing", "shipped"]
+        status_history:
+          type: "array"
+          notEmpty: true
+    metadata:
+      priority: "medium"
+      tags: ["order", "tracking"]
+
+  - name: "Get order details"
+    request:
+      method: "GET"
+      url: "/api/orders/{{order_id}}"
+      headers:
+        Authorization: "Bearer {{auth_token}}"
+    assert:
+      status_code: 200
+      body:
+        order_id:
+          equals: "{{order_id}}"
+        customer.email:
+          equals: "{{customer_email}}"
+        payment.transaction_id:
+          equals: "{{transaction_id}}"
+        shipping.estimated_delivery:
+          equals: "{{estimated_delivery}}"
+        total:
+          equals: "{{final_total}}"
+    metadata:
+      priority: "high"
+      tags: ["order", "verification"]
+      description: "Final verification of complete order"
+
+    delay: 1000

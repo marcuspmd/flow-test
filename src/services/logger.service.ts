@@ -10,7 +10,9 @@
  */
 
 import chalk from "chalk";
+import { injectable } from "inversify";
 import { LogStreamingService, LogLevel } from "./log-streaming.service";
+import { ILogger } from "../interfaces/services/ILogger";
 
 /**
  * Context information for structured logging operations.
@@ -487,7 +489,10 @@ export class ConsoleLoggerAdapter implements Logger {
 
     if (typeof value === "object" && value !== null) {
       return Object.keys(value).reduce((masked, currentKey) => {
-        masked[currentKey] = this.maskSensitiveValue(currentKey, value[currentKey]);
+        masked[currentKey] = this.maskSensitiveValue(
+          currentKey,
+          value[currentKey]
+        );
         return masked;
       }, {} as Record<string, any>);
     }
@@ -530,7 +535,6 @@ export class ConsoleLoggerAdapter implements Logger {
         return chalk.white;
     }
   }
-
 }
 
 /**
@@ -783,34 +787,70 @@ export class JestStyleLoggerAdapter implements Logger {
 }
 
 /**
- * Logger service with configurable adapter
+ * Logger service with configurable adapter and DI support
+ *
+ * @remarks
+ * Provides logging capabilities with support for both dependency injection
+ * and the legacy singleton pattern for backward compatibility.
+ *
+ * @example DI usage (recommended)
+ * ```typescript
+ * @injectable()
+ * class MyService {
+ *   constructor(@inject(TYPES.ILogger) private logger: ILogger) {}
+ *
+ *   doSomething(): void {
+ *     this.logger.info('Operation started');
+ *   }
+ * }
+ * ```
+ *
+ * @example Legacy singleton usage (deprecated)
+ * ```typescript
+ * const logger = getLogger();
+ * logger.info('Legacy usage');
+ * ```
  */
-export class LoggerService {
+@injectable()
+export class LoggerService implements ILogger {
   private static instance: LoggerService;
   private logger: Logger;
   private logStream: LogStreamingService;
 
-  private constructor(logger: Logger) {
-    this.logger = logger;
+  constructor() {
+    // Default logger for DI
+    this.logger = new ConsoleLoggerAdapter("simple");
     this.logStream = LogStreamingService.getInstance();
   }
 
+  /**
+   * Set a custom logger adapter (for advanced use cases)
+   * @param logger - Logger adapter to use
+   */
+  setLoggerAdapter(logger: Logger): void {
+    this.logger = logger;
+  }
+
+  /**
+   * Get singleton instance (legacy support)
+   * @deprecated Use dependency injection instead
+   */
   static getInstance(logger?: Logger): LoggerService {
     if (!LoggerService.instance) {
-      if (!logger) {
-        // Default to console logger with 'simple' verbosity
-        logger = new ConsoleLoggerAdapter("simple");
+      LoggerService.instance = new LoggerService();
+      if (logger) {
+        LoggerService.instance.setLoggerAdapter(logger);
       }
-      LoggerService.instance = new LoggerService(logger);
     }
     return LoggerService.instance;
   }
 
   static setLogger(logger: Logger): void {
     if (LoggerService.instance) {
-      LoggerService.instance.logger = logger;
+      LoggerService.instance.setLoggerAdapter(logger);
     } else {
-      LoggerService.instance = new LoggerService(logger);
+      LoggerService.instance = new LoggerService();
+      LoggerService.instance.setLoggerAdapter(logger);
     }
   }
 
@@ -850,6 +890,44 @@ export class LoggerService {
       // Não propagamos erros de streaming para não interromper o fluxo principal de logs
     }
   }
+
+  // ========================================
+  // ILogger Interface Implementation
+  // ========================================
+
+  /**
+   * Set the log level
+   * @param level - The log level to set
+   */
+  setLogLevel(level: "debug" | "info" | "warn" | "error"): void {
+    // Map to verbosity for ConsoleLoggerAdapter
+    const verbosityMap: Record<string, any> = {
+      debug: "verbose",
+      info: "simple",
+      warn: "simple",
+      error: "silent",
+    };
+
+    if (this.logger instanceof ConsoleLoggerAdapter) {
+      // Create new adapter with appropriate verbosity
+      this.logger = new ConsoleLoggerAdapter(verbosityMap[level] || "simple");
+    }
+  }
+
+  /**
+   * Get current log level
+   * @returns Current log level as string
+   */
+  getLogLevel(): string {
+    if (this.logger instanceof ConsoleLoggerAdapter) {
+      return (this.logger as any).verbosity || "simple";
+    }
+    return "info";
+  }
+
+  // ========================================
+  // Legacy Display Methods
+  // ========================================
 
   // Delegate new display methods to the underlying logger if it supports them
   displayCapturedVariables(

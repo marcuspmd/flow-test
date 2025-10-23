@@ -11,15 +11,20 @@
 
 import fs from "fs";
 import yaml from "js-yaml";
+import { Container } from "inversify";
+import { createContainer } from "../di/container";
+import { TYPES } from "../di/identifiers";
 import { ConfigManager } from "./config";
 import { TestDiscovery } from "./discovery";
-import { VariableService } from "../services/variable.service";
-import { PriorityService } from "../services/priority";
-import { DependencyService } from "../services/dependency.service";
-import { GlobalRegistryService } from "../services/global-registry.service";
 import { ReportingService } from "../services/reporting";
-import { ExecutionService } from "../services/execution";
 import { getLogger } from "../services/logger.service";
+import type { IConfigManager } from "../interfaces/services/IConfigManager";
+import type { IVariableService } from "../interfaces/services/IVariableService";
+import type { IPriorityService } from "../interfaces/services/IPriorityService";
+import type { IDependencyService } from "../interfaces/services/IDependencyService";
+import type { IGlobalRegistryService } from "../interfaces/services/IGlobalRegistryService";
+import type { IExecutionService } from "../interfaces/services/IExecutionService";
+import type { ILogger } from "../interfaces/services/ILogger";
 import {
   EngineExecutionOptions,
   AggregatedResult,
@@ -124,29 +129,35 @@ import {
  * @since 1.0.0
  */
 export class FlowTestEngine {
+  /** DI Container for service resolution */
+  private container: Container;
+
   /** Configuration manager responsible for loading and validating configurations */
-  private configManager: ConfigManager;
+  private configManager: IConfigManager;
 
   /** Discovery service responsible for locating test files */
   private testDiscovery: TestDiscovery;
 
   /** Global variables management service for inter-suite communication */
-  private globalVariables: VariableService;
+  private globalVariables: IVariableService;
 
   /** Priority-based sorting and execution service */
-  private priorityService: PriorityService;
+  private priorityService: IPriorityService;
 
   /** Dependency management service for test interdependencies */
-  private dependencyService: DependencyService;
+  private dependencyService: IDependencyService;
 
   /** Global registry for exported variables between flows */
-  private globalRegistry: GlobalRegistryService;
+  private globalRegistry: IGlobalRegistryService;
 
   /** Report generation service */
   private reportingService: ReportingService;
 
   /** Main test execution service */
-  private executionService: ExecutionService;
+  private executionService: IExecutionService;
+
+  /** Logger service */
+  private logger: ILogger;
 
   /** Custom hooks for lifecycle events */
   private hooks: EngineHooks;
@@ -255,28 +266,51 @@ export class FlowTestEngine {
     this.stats = this.initializeStats();
     this.executionOptions = options;
 
-    // Initialize services in dependency order
-    this.configManager = new ConfigManager(options);
-    this.testDiscovery = new TestDiscovery(this.configManager);
-    this.dependencyService = new DependencyService(
-      this.configManager.getConfig().test_directory
+    // Create DI container
+    this.container = createContainer();
+
+    // Bind execution options and hooks to container (runtime values)
+    this.container.bind<EngineHooks>("EngineHooks").toConstantValue(hooks);
+    this.container
+      .bind<EngineExecutionOptions>("EngineExecutionOptions")
+      .toConstantValue(options);
+
+    // Get logger first
+    this.logger = this.container.get<ILogger>(TYPES.ILogger);
+
+    // Override ConfigManager with runtime options
+    this.container.unbind(TYPES.IConfigManager);
+    this.container
+      .bind<IConfigManager>(TYPES.IConfigManager)
+      .toConstantValue(new ConfigManager(options));
+
+    // Resolve services from DI container
+    this.configManager = this.container.get<IConfigManager>(
+      TYPES.IConfigManager
     );
-    this.globalRegistry = new GlobalRegistryService();
-    this.globalVariables = new VariableService(
-      this.configManager,
-      this.globalRegistry
+    this.globalRegistry = this.container.get<IGlobalRegistryService>(
+      TYPES.IGlobalRegistryService
     );
-    this.priorityService = new PriorityService(this.configManager);
-    this.reportingService = new ReportingService(this.configManager);
-    this.executionService = new ExecutionService(
-      this.configManager,
-      this.globalVariables,
-      this.priorityService,
-      this.dependencyService,
-      this.globalRegistry,
-      this.hooks,
-      this.executionOptions
+    this.globalVariables = this.container.get<IVariableService>(
+      TYPES.IVariableService
     );
+    this.priorityService = this.container.get<IPriorityService>(
+      TYPES.IPriorityService
+    );
+    this.dependencyService = this.container.get<IDependencyService>(
+      TYPES.IDependencyService
+    );
+    this.executionService = this.container.get<IExecutionService>(
+      TYPES.IExecutionService
+    );
+
+    // Services not yet in DI container
+    this.testDiscovery = new TestDiscovery(this.configManager as ConfigManager);
+    this.reportingService = new ReportingService(
+      this.configManager as ConfigManager
+    );
+
+    this.logger.debug("FlowTestEngine initialized with DI container");
   }
 
   /**

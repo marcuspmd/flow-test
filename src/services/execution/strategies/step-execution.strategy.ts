@@ -28,7 +28,6 @@ import type { AssertionService } from "../../assertion";
 import type { CaptureService } from "../../capture.service";
 import type { ScenarioService } from "../../scenario.service";
 import type { InputService } from "../../input";
-import type { DynamicExpressionService } from "../../dynamic-expression.service";
 import type { ScriptExecutorService } from "../../script-executor.service";
 import type { CallService } from "../../call.service";
 import type { IterationService } from "../../iteration.service";
@@ -82,37 +81,34 @@ export interface StepExecutionContext {
   // Core Services (injected once, reused across strategies)
 
   /** Global variables service for variable interpolation and scoping */
-  readonly globalVariables: VariableService;
+  readonly globalVariables: import("../../../interfaces/services/IVariableService").IVariableService;
 
   /** HTTP service for executing requests */
-  readonly httpService: HttpService;
+  readonly httpService: import("../../../interfaces/services/IHttpService").IHttpService;
 
   /** Assertion service for validating responses */
-  readonly assertionService: AssertionService;
+  readonly assertionService: import("../../../interfaces/services/IAssertionService").IAssertionService;
 
   /** Capture service for extracting data with JMESPath */
-  readonly captureService: CaptureService;
+  readonly captureService: import("../../../interfaces/services/ICaptureService").ICaptureService;
 
   /** Scenario service for conditional execution */
-  readonly scenarioService: ScenarioService;
+  readonly scenarioService: import("../../../interfaces/services/IScenarioService").IScenarioService;
 
   /** Input service for interactive prompts */
-  readonly inputService: InputService;
-
-  /** Dynamic expression service for computed variables */
-  readonly dynamicExpressionService: DynamicExpressionService;
+  readonly inputService: import("../../../interfaces/services/IInputService").IInputService;
 
   /** Script executor service for pre/post-request scripts */
-  readonly scriptExecutorService: ScriptExecutorService;
+  readonly scriptExecutorService: import("../../../interfaces/services/IScriptExecutorService").IScriptExecutorService;
 
   /** Hook executor service for lifecycle hooks */
-  readonly hookExecutorService: import("../hook-executor.service").HookExecutorService;
+  readonly hookExecutorService: import("../../../interfaces/services/IHookExecutorService").IHookExecutorService;
 
   /** Call service for cross-suite step invocation */
-  readonly callService: CallService;
+  readonly callService: import("../../../interfaces/services/ICallService").ICallService;
 
   /** Iteration service for loop execution */
-  readonly iterationService: IterationService;
+  readonly iterationService: import("../../../interfaces/services/IIterationService").IIterationService;
 
   // Configuration and State
 
@@ -121,6 +117,9 @@ export interface StepExecutionContext {
 
   /** Step call stack for loop detection (used by CallStepStrategy) */
   readonly stepCallStack?: string[];
+
+  /** Execution service instance (for getting step execution handler) */
+  readonly executionService?: import("../../../interfaces/services/IExecutionService").IExecutionService;
 
   // Hooks and Logging
 

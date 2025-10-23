@@ -7,6 +7,8 @@
  * @since 1.0.0
  */
 
+import { injectable } from "inversify";
+import type { IIterationService } from "../interfaces/services/IIterationService";
 import {
   IterationConfig,
   ArrayIterationConfig,
@@ -14,7 +16,8 @@ import {
   IterationContext,
 } from "../types/engine.types";
 
-export class IterationService {
+@injectable()
+export class IterationService implements IIterationService {
   /**
    * Determines if an iteration configuration is for array iteration
    */

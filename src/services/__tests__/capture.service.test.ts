@@ -28,11 +28,20 @@ const mockJmespath = jmespath as jest.Mocked<typeof jmespath>;
 describe("CaptureService", () => {
   let captureService: CaptureService;
   let mockResult: StepExecutionResult;
+  const mockLogger = {
+    debug: jest.fn(),
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+    log: jest.fn(),
+    startGroup: jest.fn(),
+    endGroup: jest.fn(),
+  };
 
   beforeEach(() => {
     jest.clearAllMocks();
 
-    captureService = new CaptureService();
+    captureService = new CaptureService(mockLogger as any);
 
     mockResult = {
       step_name: "Test Step",

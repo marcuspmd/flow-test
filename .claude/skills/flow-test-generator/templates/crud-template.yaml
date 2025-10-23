@@ -1,0 +1,293 @@
+node_id: "resource-crud-operations"
+suite_name: "Resource CRUD Operations Tests"
+description: "Complete CRUD (Create, Read, Update, Delete) operations for API resources"
+
+base_url: "{{base_url}}"
+
+# Depends on authentication
+depends:
+  - path: "./auth-template.yaml"
+    required: true
+    cache: 300
+
+variables:
+  resource_name: "{{$faker.commerce.productName}}"
+  resource_description: "{{$faker.commerce.productDescription}}"
+  resource_price: "{{$faker.number.float}}"
+  updated_name: "Updated {{$faker.commerce.productName}}"
+
+exports:
+  - resource_id
+  - created_resource
+
+metadata:
+  priority: "high"
+  tags:
+    - crud
+    - integration
+    - resource-management
+  timeout: 30000
+
+steps:
+  - name: "Create resource"
+    request:
+      method: "POST"
+      url: "/api/resources"
+      headers:
+        Authorization: "Bearer {{auth_token}}"
+        Content-Type: "application/json"
+      body:
+        name: "{{resource_name}}"
+        description: "{{resource_description}}"
+        price: "{{resource_price}}"
+        active: true
+        metadata:
+          created_by: "automated_test"
+          tags:
+            - test
+            - automated
+    assert:
+      status_code: 201
+      body:
+        id:
+          type: "number"
+          greater_than: 0
+          exists: true
+        name:
+          equals: "{{resource_name}}"
+        description:
+          equals: "{{resource_description}}"
+        price:
+          type: "number"
+          equals: "{{resource_price}}"
+        active:
+          type: "boolean"
+          equals: true
+        created_at:
+          type: "string"
+          notEmpty: true
+        updated_at:
+          type: "string"
+          notEmpty: true
+      headers:
+        content-type:
+          contains: "application/json"
+        location:
+          exists: true
+      response_time_ms:
+        less_than: 2000
+    capture:
+      resource_id: "body.id"
+      created_resource: "body"
+      created_at: "body.created_at"
+    metadata:
+      priority: "critical"
+      tags: ["create", "post"]
+      description: "Creates a new resource and captures its ID"
+
+  - name: "Read created resource"
+    request:
+      method: "GET"
+      url: "/api/resources/{{resource_id}}"
+      headers:
+        Authorization: "Bearer {{auth_token}}"
+    assert:
+      status_code: 200
+      body:
+        id:
+          equals: "{{resource_id}}"
+        name:
+          equals: "{{resource_name}}"
+        description:
+          equals: "{{resource_description}}"
+        price:
+          equals: "{{resource_price}}"
+        active:
+          equals: true
+      response_time_ms:
+        less_than: 1000
+    metadata:
+      priority: "critical"
+      tags: ["read", "get"]
+      depends_on: ["Create resource"]
+      description: "Retrieves the created resource by ID"
+
+  - name: "List all resources"
+    request:
+      method: "GET"
+      url: "/api/resources"
+      headers:
+        Authorization: "Bearer {{auth_token}}"
+      params:
+        page: 1
+        limit: 10
+    assert:
+      status_code: 200
+      body:
+        data:
+          type: "array"
+          notEmpty: true
+        pagination:
+          type: "object"
+          exists: true
+        pagination.page:
+          equals: 1
+        pagination.limit:
+          equals: 10
+        pagination.total:
+          type: "number"
+          greater_than: 0
+      response_time_ms:
+        less_than: 1500
+    scenarios:
+      - name: "Check if created resource is in list"
+        condition: "body.data[?id==`{{resource_id}}`] | length(@) > `0`"
+        then:
+          capture:
+            resource_found_in_list: true
+        else:
+          variables:
+            resource_found_in_list: false
+    metadata:
+      priority: "high"
+      tags: ["list", "pagination"]
+      description: "Lists all resources with pagination"
+
+  - name: "Update resource"
+    request:
+      method: "PUT"
+      url: "/api/resources/{{resource_id}}"
+      headers:
+        Authorization: "Bearer {{auth_token}}"
+        Content-Type: "application/json"
+      body:
+        name: "{{updated_name}}"
+        description: "Updated description"
+        price: 99.99
+        active: false
+    assert:
+      status_code: 200
+      body:
+        id:
+          equals: "{{resource_id}}"
+        name:
+          equals: "{{updated_name}}"
+        description:
+          contains: "Updated"
+        price:
+          equals: 99.99
+        active:
+          equals: false
+        updated_at:
+          type: "string"
+          notEmpty: true
+      response_time_ms:
+        less_than: 1500
+    capture:
+      updated_at: "body.updated_at"
+    metadata:
+      priority: "high"
+      tags: ["update", "put"]
+      depends_on: ["Create resource"]
+      description: "Updates the resource with new values"
+
+  - name: "Verify resource was updated"
+    request:
+      method: "GET"
+      url: "/api/resources/{{resource_id}}"
+      headers:
+        Authorization: "Bearer {{auth_token}}"
+    assert:
+      status_code: 200
+      body:
+        id:
+          equals: "{{resource_id}}"
+        name:
+          equals: "{{updated_name}}"
+        active:
+          equals: false
+    metadata:
+      priority: "medium"
+      tags: ["verification"]
+      depends_on: ["Update resource"]
+      description: "Confirms the update was persisted"
+
+  - name: "Partial update resource (PATCH)"
+    request:
+      method: "PATCH"
+      url: "/api/resources/{{resource_id}}"
+      headers:
+        Authorization: "Bearer {{auth_token}}"
+        Content-Type: "application/json"
+      body:
+        active: true
+    assert:
+      status_code: 200
+      body:
+        id:
+          equals: "{{resource_id}}"
+        active:
+          equals: true
+        name:
+          equals: "{{updated_name}}"
+    metadata:
+      priority: "medium"
+      tags: ["patch", "partial-update"]
+      description: "Performs partial update using PATCH"
+
+  - name: "Delete resource"
+    request:
+      method: "DELETE"
+      url: "/api/resources/{{resource_id}}"
+      headers:
+        Authorization: "Bearer {{auth_token}}"
+    assert:
+      status_code: 204
+    metadata:
+      priority: "high"
+      tags: ["delete"]
+      depends_on: ["Create resource"]
+      description: "Deletes the resource"
+
+  - name: "Verify resource was deleted"
+    request:
+      method: "GET"
+      url: "/api/resources/{{resource_id}}"
+      headers:
+        Authorization: "Bearer {{auth_token}}"
+    assert:
+      status_code: 404
+      body:
+        error:
+          exists: true
+    continue_on_failure: true
+    metadata:
+      priority: "medium"
+      tags: ["verification", "error-handling"]
+      depends_on: ["Delete resource"]
+      description: "Confirms the resource no longer exists"
+
+  - name: "Test create validation error"
+    request:
+      method: "POST"
+      url: "/api/resources"
+      headers:
+        Authorization: "Bearer {{auth_token}}"
+        Content-Type: "application/json"
+      body:
+        name: ""
+        description: "Missing required fields"
+    assert:
+      status_code: 400
+      body:
+        error:
+          type: "object"
+          exists: true
+        message:
+          type: "string"
+          notEmpty: true
+    continue_on_failure: true
+    metadata:
+      priority: "medium"
+      tags: ["error-handling", "validation"]
+      description: "Tests validation for required fields"

@@ -10,8 +10,11 @@
  * @packageDocumentation
  */
 
+import { injectable, inject, unmanaged } from "inversify";
 import path from "path";
-import { getLogger } from "./logger.service";
+import { TYPES } from "../di/identifiers";
+import type { ILogger } from "../interfaces/services/ILogger";
+import type { IDependencyService } from "../interfaces/services/IDependencyService";
 import {
   DiscoveredTest,
   FlowDependency,
@@ -140,13 +143,19 @@ interface DependencyNode {
  * @public
  * @since 1.0.0
  */
-export class DependencyService {
+@injectable()
+export class DependencyService implements IDependencyService {
+  private logger: ILogger;
   private graph: Map<string, DependencyNode> = new Map();
   private cache: Map<string, DependencyResult> = new Map();
   private cacheEnabled: boolean = true;
   private testDirectory?: string;
 
-  constructor(testDirectory?: string) {
+  constructor(
+    @inject(TYPES.ILogger) logger: ILogger,
+    @unmanaged() testDirectory?: string
+  ) {
+    this.logger = logger;
     this.graph = new Map();
     this.cache = new Map();
     this.testDirectory = testDirectory;
@@ -194,7 +203,7 @@ export class DependencyService {
             dependencyNodeId = configuredNodeId;
           } else {
             if (configuredNodeId && !this.graph.has(configuredNodeId)) {
-              getLogger().warn(
+              this.logger.warn(
                 `⚠️  Dependency node_id '${configuredNodeId}' not found for test '${test.node_id}' (${test.suite_name})`
               );
             }
@@ -209,7 +218,7 @@ export class DependencyService {
               if (resolvedNodeId && this.graph.has(resolvedNodeId)) {
                 dependencyNodeId = resolvedNodeId;
                 dependency.node_id = resolvedNodeId;
-                getLogger().debug(
+                this.logger.debug(
                   `✅ Resolved dependency path '${dependencyPath}' to node_id '${resolvedNodeId}' for test '${test.node_id}'`
                 );
               }
@@ -220,7 +229,7 @@ export class DependencyService {
             node.dependencies.add(dependencyNodeId);
             this.graph.get(dependencyNodeId)!.dependents.add(test.node_id);
           } else {
-            getLogger().warn(
+            this.logger.warn(
               `⚠️  Dependency '${JSON.stringify(
                 dependency
               )}' not found for test '${test.node_id}' (${test.suite_name})`
@@ -249,7 +258,7 @@ export class DependencyService {
     if (pathType === "absolute" && this.testDirectory) {
       const absolutePath = path.resolve(this.testDirectory, dependencyPath);
       normalizedCandidates.add(path.normalize(absolutePath));
-      getLogger().debug(
+      this.logger.debug(
         `Resolving absolute path '${dependencyPath}' from test_directory: ${absolutePath}`
       );
     }
@@ -285,7 +294,7 @@ export class DependencyService {
 
         const normalizedNodePath = path.normalize(nodePath);
         if (normalizedNodePath === candidate) {
-          getLogger().debug(
+          this.logger.debug(
             `✅ Resolved dependency path '${dependencyPath}' to node_id '${nodeId}' using normalized match`
           );
           return nodeId;
@@ -296,7 +305,7 @@ export class DependencyService {
           path.relative(path.dirname(normalizedNodePath), candidate)
         );
         if (relativeToNode === "" || relativeToNode === ".") {
-          getLogger().debug(
+          this.logger.debug(
             `✅ Resolved dependency path '${dependencyPath}' to node_id '${nodeId}' using directory-relative match`
           );
           return nodeId;
@@ -343,7 +352,7 @@ export class DependencyService {
 
     for (const possibleId of possibleIds) {
       if (this.graph.has(possibleId)) {
-        getLogger().debug(
+        this.logger.debug(
           `✅ Resolved dependency path '${dependencyPath}' to node_id '${possibleId}'`
         );
         return possibleId;
@@ -353,7 +362,7 @@ export class DependencyService {
     // Try partial matches with existing node IDs
     for (const [nodeId] of this.graph) {
       if (nodeId.includes(filename) || filename.includes(nodeId)) {
-        getLogger().debug(
+        this.logger.debug(
           `✅ Resolved dependency path '${dependencyPath}' to node_id '${nodeId}' via partial match`
         );
         return nodeId;
@@ -672,5 +681,13 @@ export class DependencyService {
       node.resolved = false;
       node.executing = false;
     }
+  }
+
+  /**
+   * Clear the dependency graph (IDependencyService interface method)
+   */
+  clearGraph(): void {
+    this.graph.clear();
+    this.cache.clear();
   }
 }

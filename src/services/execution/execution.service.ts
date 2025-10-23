@@ -9,13 +9,14 @@
  * @packageDocumentation
  */
 
-import { injectable, inject } from "inversify";
+import { injectable, inject, optional } from "inversify";
 import fs from "fs";
 import path from "path";
 import yaml from "js-yaml";
 import { TYPES } from "../../di/identifiers";
 import type { ILogger } from "../../interfaces/services/ILogger";
 import type { IConfigManager } from "../../interfaces/services/IConfigManager";
+import type { LoggerService } from "../logger.service";
 import type { IGlobalRegistryService } from "../../interfaces/services/IGlobalRegistryService";
 import type { IHttpService } from "../../interfaces/services/IHttpService";
 import type { IVariableService } from "../../interfaces/services/IVariableService";
@@ -24,6 +25,13 @@ import type { ICaptureService } from "../../interfaces/services/ICaptureService"
 import type { IExecutionService } from "../../interfaces/services/IExecutionService";
 import type { IPriorityService } from "../../interfaces/services/IPriorityService";
 import type { IDependencyService } from "../../interfaces/services/IDependencyService";
+import type { IScenarioService } from "../../interfaces/services/IScenarioService";
+import type { IIterationService } from "../../interfaces/services/IIterationService";
+import type { IInputService } from "../../interfaces/services/IInputService";
+import type { ICallService } from "../../interfaces/services/ICallService";
+import type { IScriptExecutorService } from "../../interfaces/services/IScriptExecutorService";
+import type { IJavaScriptService } from "../../interfaces/services/IJavaScriptService";
+import type { IHookExecutorService } from "../../interfaces/services/IHookExecutorService";
 import { ConfigManager } from "../../core/config";
 import { VariableService } from "../variable.service";
 import { PriorityService } from "../priority";
@@ -60,6 +68,7 @@ import {
 import type {
   StepCallResult,
   StepExecutionHandlerInput,
+  StepExecutionHandler,
 } from "../../types/call.types";
 import { DelayConfig } from "../../types/common.types";
 import { CallService } from "../call.service";
@@ -188,13 +197,13 @@ export class ExecutionService implements IExecutionService {
   private dependencyService: IDependencyService;
   private certificateService?: CertificateService;
   private hooks: EngineHooks;
-  private scenarioService: ScenarioService;
-  private iterationService: IterationService;
-  private inputService: InputService;
-  private callService: CallService;
-  private scriptExecutorService: ScriptExecutorService;
-  private javascriptService: JavaScriptService;
-  private hookExecutorService: HookExecutorService;
+  private scenarioService: IScenarioService;
+  private iterationService: IIterationService;
+  private inputService: IInputService;
+  private callService: ICallService;
+  private scriptExecutorService: IScriptExecutorService;
+  private javascriptService: IJavaScriptService;
+  private hookExecutorService: IHookExecutorService;
   private stepCallStack: string[] = [];
   private stepStrategyFactory: StepStrategyFactory;
 
@@ -220,7 +229,18 @@ export class ExecutionService implements IExecutionService {
     @inject(TYPES.ICaptureService) captureService: ICaptureService,
     @inject(TYPES.IPriorityService) priorityService: IPriorityService,
     @inject(TYPES.IDependencyService) dependencyService: IDependencyService,
-    hooks: EngineHooks = {},
+    @inject(TYPES.IScenarioService) scenarioService: IScenarioService,
+    @inject(TYPES.IIterationService) iterationService: IIterationService,
+    @inject(TYPES.IInputService) inputService: IInputService,
+    @inject(TYPES.ICallService) callService: ICallService,
+    @inject(TYPES.IScriptExecutorService)
+    scriptExecutorService: IScriptExecutorService,
+    @inject(TYPES.IJavaScriptService) javascriptService: IJavaScriptService,
+    @inject(TYPES.IHookExecutorService)
+    hookExecutorService: IHookExecutorService,
+    @inject("EngineHooks") @optional() hooks: EngineHooks = {},
+    @inject("EngineExecutionOptions")
+    @optional()
     executionOptions?: EngineExecutionOptions
   ) {
     this.logger = logger;
@@ -234,7 +254,19 @@ export class ExecutionService implements IExecutionService {
     // DI services now fully migrated
     this.priorityService = priorityService;
     this.dependencyService = dependencyService;
+    this.scenarioService = scenarioService;
+    this.iterationService = iterationService;
+    this.inputService = inputService;
+    this.callService = callService;
+    this.scriptExecutorService = scriptExecutorService;
+    this.javascriptService = javascriptService;
+    this.hookExecutorService = hookExecutorService;
     this.hooks = hooks;
+
+    // Configure runner interactive mode if provided
+    if (executionOptions?.runner_interactive_mode) {
+      this.inputService.setRunnerInteractiveMode(true);
+    }
 
     const config = configManager.getConfig();
 
@@ -251,19 +283,6 @@ export class ExecutionService implements IExecutionService {
         "Certificate service initialized (no global certificates)"
       );
     }
-    this.iterationService = new IterationService();
-    this.scenarioService = new ScenarioService();
-    this.inputService = new InputService(
-      executionOptions?.runner_interactive_mode || false
-    );
-    this.callService = new CallService(this.executeResolvedStepCall.bind(this));
-    this.scriptExecutorService = new ScriptExecutorService(this.logger as any); // TODO: Remove cast when ScriptExecutorService uses ILogger
-    this.javascriptService = new JavaScriptService();
-    this.hookExecutorService = new HookExecutorService(
-      this.globalVariables as any, // TODO: Remove cast when HookExecutorService uses IVariableService
-      this.javascriptService,
-      this.callService
-    );
 
     // Initialize Strategy Pattern factory and register strategies
     this.stepStrategyFactory = new StepStrategyFactory();
@@ -282,6 +301,16 @@ export class ExecutionService implements IExecutionService {
       requests: [],
       start_time: Date.now(),
     };
+  }
+
+  /**
+   * Returns the step execution handler bound to this ExecutionService instance.
+   * Used by CallService to execute resolved steps.
+   *
+   * @returns Bound step execution handler function
+   */
+  public getStepExecutionHandler(): StepExecutionHandler {
+    return this.executeResolvedStepCall.bind(this);
   }
 
   private buildStepFilter(stepIds?: string[]): StepFilterSets | undefined {
@@ -754,8 +783,8 @@ export class ExecutionService implements IExecutionService {
       // Fires suite start hook
       await this.hooks.onSuiteStart?.(suite);
 
-      // Display test metadata
-      (this.logger as any).displayTestMetadata?.(suite);
+      // Display test metadata (optional method on Logger implementation)
+      (this.logger as LoggerService).displayTestMetadata?.(suite);
 
       // CRITICAL: Register node in GlobalRegistry BEFORE executing steps
       // This ensures that capture/export operations can find the node
@@ -864,7 +893,7 @@ export class ExecutionService implements IExecutionService {
               stepResult.captured_variables &&
               Object.keys(stepResult.captured_variables).length > 0
             ) {
-              (this.logger as any).displayCapturedVariables?.(
+              (this.logger as LoggerService).displayCapturedVariables?.(
                 stepResult.captured_variables,
                 {
                   stepName: step.name,
@@ -877,7 +906,7 @@ export class ExecutionService implements IExecutionService {
 
             // Display error details for failed step
             if (stepResult.error_message) {
-              (this.logger as any).displayErrorContext?.(
+              (this.logger as LoggerService).displayErrorContext?.(
                 new Error(stepResult.error_message),
                 {
                   stepName: step.name,
@@ -915,7 +944,7 @@ export class ExecutionService implements IExecutionService {
           });
 
           // Display detailed error context
-          (this.logger as any).displayErrorContext?.(error as Error, {
+          (this.logger as LoggerService).displayErrorContext?.(error as Error, {
             stepName: step.name,
           });
 
@@ -1004,7 +1033,7 @@ export class ExecutionService implements IExecutionService {
       };
 
       // Display final results in Jest style
-      (this.logger as any).displayJestStyle?.(result);
+      (this.logger as LoggerService).displayJestStyle?.(result);
 
       // Fires suite end hook
       await this.hooks.onSuiteEnd?.(suite, result);
@@ -1220,13 +1249,13 @@ export class ExecutionService implements IExecutionService {
         identifiers: {
           stepId: identifiers.stepId,
           qualifiedStepId: identifiers.qualifiedStepId,
-          stepNumber: stepIndex + 1,
-        } as any,
+          normalizedQualifiedStepId: identifiers.normalizedQualifiedStepId,
+        },
         logger: this.logger,
-        globalVariables: this.globalVariables as any, // TODO: Strategies should use interfaces
-        httpService: this.httpService as any, // TODO: Strategies should use interfaces
-        assertionService: this.assertionService as any, // TODO: Strategies should use interfaces
-        captureService: this.captureService as any, // TODO: Strategies should use interfaces
+        globalVariables: this.globalVariables as VariableService,
+        httpService: this.httpService as HttpService,
+        assertionService: this.assertionService as AssertionService,
+        captureService: this.captureService as CaptureService,
         scenarioService: this.scenarioService,
         callService: this.callService,
         inputService: this.inputService,
@@ -1234,9 +1263,10 @@ export class ExecutionService implements IExecutionService {
         scriptExecutorService: this.scriptExecutorService,
         hookExecutorService: this.hookExecutorService,
         hooks: this.hooks,
-        configManager: this.configManager as any, // TODO: Strategies should use interfaces
+        configManager: this.configManager as ConfigManager,
         stepCallStack: this.stepCallStack,
-        discoveredTest: discoveredTest as any,
+        discoveredTest: discoveredTest,
+        executionService: this,
       };
 
       // Execute step using strategy
@@ -1298,8 +1328,7 @@ export class ExecutionService implements IExecutionService {
 
         // Variáveis do call têm prioridade sobre as da suite
         if (request.variables && Object.keys(request.variables).length > 0) {
-          // TODO: Add setRuntimeVariables to IVariableService interface
-          (this.globalVariables as any).setRuntimeVariables(request.variables);
+          this.globalVariables.setRuntimeVariables(request.variables);
         }
       } else {
         // Modo não-isolado: mantém contexto atual
@@ -1319,21 +1348,19 @@ export class ExecutionService implements IExecutionService {
             const interpolatedVars = this.globalVariables.interpolate(
               this.cloneData(suiteVarsToAdd)
             );
-            // TODO: Add setRuntimeVariables to IVariableService interface
-            (this.globalVariables as any).setRuntimeVariables(interpolatedVars);
+            this.globalVariables.setRuntimeVariables(interpolatedVars);
           }
         }
 
         // Variáveis do call sempre têm prioridade
         if (request.variables && Object.keys(request.variables).length > 0) {
-          // TODO: Add setRuntimeVariables to IVariableService interface
-          (this.globalVariables as any).setRuntimeVariables(request.variables);
+          this.globalVariables.setRuntimeVariables(request.variables);
         }
       }
 
       const baseUrl = resolved.suite.base_url
         ? this.globalVariables.interpolateString(resolved.suite.base_url)
-        : (previousHttpService as any).getBaseUrl(); // TODO: Add getBaseUrl to IHttpService
+        : previousHttpService.getBaseUrl();
       const timeout =
         request.timeout ??
         this.configManager.getConfig().execution?.timeout ??
@@ -1727,7 +1754,7 @@ export class ExecutionService implements IExecutionService {
     }
 
     const baseUrl =
-      result.request_details.base_url || (this.httpService as any).getBaseUrl(); // TODO: Add getBaseUrl to IHttpService
+      result.request_details.base_url || this.httpService.getBaseUrl();
 
     if (baseUrl && !result.request_details.base_url) {
       result.request_details.base_url = baseUrl;

@@ -136,12 +136,17 @@ export class CallStepStrategy extends BaseStepStrategy {
         context.configManager?.getConfig().test_directory || "./tests"
       );
 
+      // **6.5. Get step execution handler from ExecutionService**
+      const stepExecutionHandler =
+        context.executionService?.getStepExecutionHandler();
+
       const callOptions: StepCallExecutionOptions = {
         callerSuitePath,
         callerNodeId: suite.node_id,
         callerSuiteName: suite.suite_name,
         allowedRoot,
         callStack: context.stepCallStack || [],
+        stepExecutionHandler,
       };
 
       const callLabel = `${resolvedTestPath}::${resolvedStepKey}`;

@@ -105,6 +105,8 @@ export interface StepCallExecutionOptions {
   callStack?: string[];
   /** Profundidade máxima permitida */
   maxDepth?: number;
+  /** Handler para executar o step resolvido */
+  stepExecutionHandler?: StepExecutionHandler;
 }
 
 export interface ResolvedStepCall {

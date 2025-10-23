@@ -360,16 +360,22 @@ export class ScenarioStepStrategy extends BaseStepStrategy {
         evaluations
       );
     } catch (error: any) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       logger.error(
-        `❌ Error executing scenario step '${step.name}': ${error.message}`
+        `❌ Error executing scenario step '${step.name}': ${errorMessage}`
       );
 
+      // Create error with descriptive prefix for scenario execution failures
+      const scenarioError = new Error(
+        `Scenario execution error: ${errorMessage}`
+      );
+
+      // Use inherited buildFailureResult from BaseStepStrategy
       return this.buildFailureResult(
-        identifiers,
-        step,
-        error,
-        Date.now() - stepStartTime,
-        globalVariables.getAllVariables()
+        context,
+        scenarioError,
+        Date.now() - stepStartTime
       );
     }
   }
@@ -445,7 +451,10 @@ export class ScenarioStepStrategy extends BaseStepStrategy {
       status: "success",
       duration_ms: Date.now() - stepStartTime,
       captured_variables: {},
-      available_variables: this.filterAvailableVariables(availableVariables),
+      available_variables: this.filterAvailableVariables(availableVariables, {
+        stepType: "scenario",
+        stepName: step.name,
+      }),
       scenarios_meta: {
         has_scenarios: true,
         executed_count: 0,
@@ -471,7 +480,10 @@ export class ScenarioStepStrategy extends BaseStepStrategy {
       status: "skipped",
       duration_ms: duration,
       captured_variables: {},
-      available_variables: this.filterAvailableVariables(availableVariables),
+      available_variables: this.filterAvailableVariables(availableVariables, {
+        stepType: "scenario",
+        stepName: step.name,
+      }),
       error_message: "No matching scenario conditions",
       scenarios_meta: {
         has_scenarios: true,
@@ -504,7 +516,10 @@ export class ScenarioStepStrategy extends BaseStepStrategy {
       response_details: httpResult?.response_details,
       assertions_results: assertionResults,
       captured_variables: capturedVariables,
-      available_variables: this.filterAvailableVariables(availableVariables),
+      available_variables: this.filterAvailableVariables(availableVariables, {
+        stepType: "scenario",
+        stepName: step.name,
+      }),
       scenarios_meta: {
         has_scenarios: true,
         executed_count: 1,
@@ -517,65 +532,6 @@ export class ScenarioStepStrategy extends BaseStepStrategy {
   /**
    * Builds failure result when scenario encounters an error.
    */
-  private buildFailureResult(
-    identifiers: any,
-    step: TestStep,
-    error: Error,
-    duration: number,
-    availableVariables: Record<string, any>
-  ): StepExecutionResult {
-    return {
-      step_id: identifiers.stepId,
-      qualified_step_id: identifiers.qualifiedStepId,
-      step_name: step.name,
-      status: "failure",
-      duration_ms: duration,
-      error_message: `Scenario execution error: ${error.message}`,
-      captured_variables: {},
-      available_variables: this.filterAvailableVariables(availableVariables),
-    };
-  }
-
-  /**
-   * Intelligently filters and masks available variables for scenario step context
-   */
-  private filterAvailableVariables(
-    variables: Record<string, any>
-  ): Record<string, any> {
-    const {
-      smartFilterAndMask,
-    } = require("../../../utils/variable-masking.utils");
-
-    // Extract recently captured variables from current context
-    const recentCaptures = new Set<string>();
-    for (const key of Object.keys(variables)) {
-      if (
-        key.startsWith("captured_") ||
-        key.includes("_condition") ||
-        key.includes("_scenario")
-      ) {
-        recentCaptures.add(key);
-      }
-    }
-
-    return smartFilterAndMask(
-      variables,
-      {
-        stepType: "scenario",
-        recentCaptures,
-        isFirstStep: false,
-      },
-      {
-        alwaysInclude: ["condition", "scenario_name", "branch"],
-        alwaysExclude: ["PATH", "HOME", "USER", "SHELL", "PWD", "LANG"],
-        maxPerCategory: 4,
-      },
-      {
-        maxDepth: 1,
-        maxObjectSize: 8,
-        maxArrayLength: 2,
-        maxStringLength: 80,
-      }
-    );
-  }
+  // filterAvailableVariables and buildFailureResult methods moved to BaseStepStrategy
+  // to eliminate code duplication across all strategies
 }

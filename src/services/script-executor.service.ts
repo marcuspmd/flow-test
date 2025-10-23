@@ -1,3 +1,4 @@
+import { injectable, inject } from "inversify";
 import vm from "vm";
 import * as crypto from "crypto";
 import * as path from "path";
@@ -9,6 +10,9 @@ import {
   PostRequestScriptContext,
 } from "../types/common.types";
 import { LoggerService } from "./logger.service";
+import type { IScriptExecutorService } from "../interfaces/services/IScriptExecutorService";
+import { TYPES } from "../di/identifiers";
+import type { ILogger } from "../interfaces/services/ILogger";
 
 /**
  * Result of script execution including any variables set during execution.
@@ -29,8 +33,9 @@ interface SandboxOptions {
   additionalGlobals?: Record<string, any>;
 }
 
-export class ScriptExecutorService {
-  constructor(private readonly logger: LoggerService) {}
+@injectable()
+export class ScriptExecutorService implements IScriptExecutorService {
+  constructor(@inject(TYPES.ILogger) private readonly logger: ILogger) {}
 
   async executePreRequestScript(
     config: ScriptConfig,
@@ -254,7 +259,11 @@ export class ScriptExecutorService {
         if (typeof arg === "string") {
           return arg;
         }
-        if (typeof arg === "number" || typeof arg === "boolean" || arg === null) {
+        if (
+          typeof arg === "number" ||
+          typeof arg === "boolean" ||
+          arg === null
+        ) {
           return String(arg);
         }
         if (Buffer.isBuffer(arg)) {

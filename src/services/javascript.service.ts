@@ -9,7 +9,9 @@
  * @packageDocumentation
  */
 
+import { injectable } from "inversify";
 import { ErrorHandler } from "../utils";
+import type { IJavaScriptService } from "../interfaces/services/IJavaScriptService";
 
 /**
  * Execution context available in JavaScript expressions with comprehensive data access.
@@ -93,7 +95,8 @@ export interface JavaScriptConfig {
 /**
  * Service for safely executing JavaScript expressions in a sandboxed environment
  */
-export class JavaScriptService {
+@injectable()
+export class JavaScriptService implements IJavaScriptService {
   private static instance: JavaScriptService;
   private config: JavaScriptConfig;
 
@@ -107,6 +110,7 @@ export class JavaScriptService {
 
   /**
    * Gets singleton instance of JavaScriptService
+   * @deprecated Use DI container instead
    */
   public static getInstance(config?: JavaScriptConfig): JavaScriptService {
     if (!JavaScriptService.instance) {

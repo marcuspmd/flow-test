@@ -12,46 +12,64 @@ import { PromptStyleRegistry } from "../input/strategies/prompt-styles";
 
 describe("InputService", () => {
   let service: InputService;
+  const mockLogger = {
+    debug: jest.fn(),
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+    log: jest.fn(),
+    startGroup: jest.fn(),
+    endGroup: jest.fn(),
+  };
 
   beforeEach(() => {
     jest.clearAllMocks();
-    service = new InputService();
+    service = new InputService(mockLogger as any);
   });
 
   describe("Constructor", () => {
     it("should create instance with default registries", () => {
-      const instance = new InputService();
+      const instance = new InputService(mockLogger as any);
       expect(instance).toBeInstanceOf(InputService);
     });
 
     it("should detect CI environment from CI env var", () => {
       process.env.CI = "true";
-      const ciService = new InputService();
+      const ciService = new InputService(mockLogger as any);
       expect((ciService as any).isCI).toBe(true);
       delete process.env.CI;
     });
 
     it("should detect CI from FLOW_TEST_AUTO_INPUT", () => {
       process.env.FLOW_TEST_AUTO_INPUT = "true";
-      const ciService = new InputService();
+      const ciService = new InputService(mockLogger as any);
       expect((ciService as any).isCI).toBe(true);
       delete process.env.FLOW_TEST_AUTO_INPUT;
     });
 
     it("should set runnerInteractiveMode when provided", () => {
-      const interactiveService = new InputService(true);
+      const interactiveService = new InputService(mockLogger as any, true);
       expect((interactiveService as any).runnerInteractiveMode).toBe(true);
     });
 
     it("should accept custom InputTypeRegistry", () => {
       const mockRegistry = new InputTypeRegistry();
-      const customService = new InputService(false, mockRegistry);
+      const customService = new InputService(
+        mockLogger as any,
+        false,
+        mockRegistry
+      );
       expect((customService as any).inputTypeRegistry).toBe(mockRegistry);
     });
 
     it("should accept custom PromptStyleRegistry", () => {
       const mockRegistry = new PromptStyleRegistry();
-      const customService = new InputService(false, undefined, mockRegistry);
+      const customService = new InputService(
+        mockLogger as any,
+        false,
+        undefined,
+        mockRegistry
+      );
       expect((customService as any).promptStyleRegistry).toBe(mockRegistry);
     });
   });

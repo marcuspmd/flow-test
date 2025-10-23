@@ -8,11 +8,16 @@
  * @packageDocumentation
  */
 
+import { injectable, inject } from "inversify";
+import "reflect-metadata";
 import axios, { AxiosResponse, AxiosError } from "axios";
 import { RequestDetails } from "../types/engine.types";
 import { StepExecutionResult } from "../types/engine.types";
+import { TYPES } from "../di/identifiers";
+import { ILogger } from "../interfaces/services/ILogger";
+import { ICertificateService } from "../interfaces/services/ICertificateService";
+import { IHttpService } from "../interfaces/services/IHttpService";
 import { getLogger } from "./logger.service";
-import { CertificateService } from "./certificate";
 
 /**
  * HTTP service for executing API requests with comprehensive monitoring and error handling.
@@ -83,7 +88,8 @@ import { CertificateService } from "./certificate";
  * @public
  * @since 1.0.0
  */
-export class HttpService {
+@injectable()
+export class HttpService implements IHttpService {
   /** Base URL for constructing complete URLs from relative paths */
   private baseUrl?: string;
 
@@ -91,48 +97,27 @@ export class HttpService {
   private timeout: number;
 
   /** Certificate service for HTTPS client authentication */
-  private certificateService?: CertificateService;
+  private certificateService?: ICertificateService;
 
-  private logger = getLogger();
+  private logger: ILogger;
 
   /**
    * Creates a new HttpService instance
    *
-   * @param baseUrl - Optional base URL to prefix relative request URLs
-   * @param timeout - Request timeout in milliseconds
-   * @param certificateService - Optional certificate service for client certificate authentication
+   * @param logger - Logger service injected via DI
+   * @param certificateService - Certificate service injected via DI (optional)
    *
-   * @defaultValue timeout - 60000ms (60 seconds)
-   *
-   * @example Constructor with base URL
-   * ```typescript
-   * const service = new HttpService('https://api.example.com');
-   * ```
-   *
-   * @example Constructor with custom timeout
-   * ```typescript
-   * const service = new HttpService('https://api.example.com', 60000);
-   * ```
-   *
-   * @example Constructor without base URL (absolute URLs only)
-   * ```typescript
-   * const service = new HttpService();
-   * ```
-   *
-   * @example Constructor with certificate service
-   * ```typescript
-   * const certService = new CertificateService([...]);
-   * const service = new HttpService('https://api.example.com', 60000, certService);
-   * ```
+   * @remarks
+   * For DI usage, dependencies are injected automatically.
+   * Use setBaseUrl() and setTimeout() to configure after construction.
    */
   constructor(
-    baseUrl?: string,
-    timeout: number = 60000,
-    certificateService?: CertificateService
+    @inject(TYPES.ILogger) logger: ILogger,
+    @inject(TYPES.ICertificateService) certificateService?: ICertificateService
   ) {
-    this.baseUrl = baseUrl;
-    this.timeout = timeout;
+    this.logger = logger;
     this.certificateService = certificateService;
+    this.timeout = 60000; // Default timeout
   }
 
   /**
@@ -178,7 +163,7 @@ export class HttpService {
       // Configures the request
       const axiosConfig = {
         method: request.method.toLowerCase() as any,
-        url: fullUrl,
+        url: fullUrl, // Use the full URL that was already built
         headers: this.sanitizeHeaders(request.headers || {}),
         data: request.body,
         params: request.params,
@@ -220,7 +205,8 @@ export class HttpService {
 
       const rawResponse = this.generateRawResponse(response);
 
-      this.logger.displayRawHttpResponse(rawResponse, {
+      // Log raw response for debugging (verbose mode)
+      this.logger.debug(`Raw HTTP Response:\n${rawResponse}`, {
         stepName,
         metadata: { type: "http_response_raw", internal: true },
       });
@@ -374,6 +360,18 @@ export class HttpService {
   }
 
   /**
+   * Constructs a full URL from a relative or absolute URL
+   *
+   * @param url - URL to construct (relative or absolute)
+   * @returns Full URL
+   *
+   * @public
+   */
+  constructUrl(url: string): string {
+    return this.buildFullUrl(url);
+  }
+
+  /**
    * Sanitizes headers to remove invalid characters
    * @private
    */
@@ -456,11 +454,25 @@ export class HttpService {
    * Generates raw HTTP request text
    */
   private generateRawRequest(url: string, request: RequestDetails): string {
-    const urlObj = new URL(url);
-    const path = urlObj.pathname + urlObj.search;
+    // Handle relative URLs by using a dummy base URL
+    let urlObj: URL;
+    let host: string;
+    let path: string;
+
+    try {
+      urlObj = new URL(url);
+      host = urlObj.host;
+      path = urlObj.pathname + urlObj.search;
+    } catch (error) {
+      // If URL is relative, use a dummy base
+      const dummyBase = "http://api.example.com";
+      urlObj = new URL(url, dummyBase);
+      host = "api.example.com";
+      path = urlObj.pathname + urlObj.search;
+    }
 
     let rawRequest = `${request.method} ${path} HTTP/1.1\r\n`;
-    rawRequest += `Host: ${urlObj.host}\r\n`;
+    rawRequest += `Host: ${host}\r\n`;
 
     // Add headers
     const headers = request.headers || {};

@@ -15,9 +15,18 @@ const mockJmespathSearch = jmespath.search as jest.MockedFunction<
 
 describe("AssertionService", () => {
   let assertionService: AssertionService;
+  const mockLogger = {
+    debug: jest.fn(),
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+    log: jest.fn(),
+    startGroup: jest.fn(),
+    endGroup: jest.fn(),
+  };
 
   beforeEach(() => {
-    assertionService = new AssertionService();
+    assertionService = new AssertionService(mockLogger as any);
     jest.clearAllMocks();
   });
 

@@ -17,11 +17,14 @@ import {
   HookMetricConfig,
   HookValidationSeverity,
 } from "../../types/hook.types";
+import { injectable, inject, optional } from "inversify";
 import { getLogger } from "../logger.service";
-import { VariableService } from "../variable.service";
-import { JavaScriptService } from "../javascript.service";
-import { CallService } from "../call.service";
 import { ErrorHandler } from "../../utils";
+import { TYPES } from "../../di/identifiers";
+import type { IHookExecutorService } from "../../interfaces/services/IHookExecutorService";
+import type { IVariableService } from "../../interfaces/services/IVariableService";
+import type { IJavaScriptService } from "../../interfaces/services/IJavaScriptService";
+import type { ICallService } from "../../interfaces/services/ICallService";
 
 /**
  * Service responsible for executing lifecycle hooks
@@ -63,7 +66,8 @@ import { ErrorHandler } from "../../utils";
  * @public
  * @since 2.0.0
  */
-export class HookExecutorService {
+@injectable()
+export class HookExecutorService implements IHookExecutorService {
   private logger = getLogger();
 
   /**
@@ -74,9 +78,13 @@ export class HookExecutorService {
    * @param callService - Optional service for step/suite calls
    */
   constructor(
-    private readonly variableService: VariableService,
-    private readonly javascriptService: JavaScriptService,
-    private readonly callService?: CallService
+    @inject(TYPES.IVariableService)
+    private readonly variableService: IVariableService,
+    @inject(TYPES.IJavaScriptService)
+    private readonly javascriptService: IJavaScriptService,
+    @inject(TYPES.ICallService)
+    @optional()
+    private readonly callService?: ICallService
   ) {}
 
   /**
@@ -115,7 +123,7 @@ export class HookExecutorService {
     try {
       // Execute each hook action sequentially
       for (const hook of hooks) {
-        const hookResult = await this.executeHookAction(hook, context);
+        const hookResult = await this.executeHook(hook, context);
 
         // Merge results
         Object.assign(result.computedVariables, hookResult.computedVariables);
@@ -161,9 +169,9 @@ export class HookExecutorService {
    * @param context - Execution context
    * @returns Result of this specific hook action
    *
-   * @internal
+   * @public
    */
-  private async executeHookAction(
+  async executeHook(
     hook: HookAction,
     context: HookExecutionContext
   ): Promise<HookExecutionResult> {
