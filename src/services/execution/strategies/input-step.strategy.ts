@@ -178,6 +178,52 @@ export class InputStepStrategy extends BaseStepStrategy {
 
         // Add to captured variables
         capturedVariables[result.variable] = result.value;
+
+        // **Process dynamic.computed if present**
+        if (config.dynamic?.computed) {
+          logger.debug(
+            `[Dynamic] Processing computed variables for input '${result.variable}'`
+          );
+
+          // Update execution context with ALL current variables (including the input just captured)
+          // This is CRITICAL for JavaScript expressions to have access to variables
+          globalVariables.setExecutionContext({
+            variables: globalVariables.getAllVariables(),
+          });
+
+          for (const [varName, expression] of Object.entries(
+            config.dynamic.computed
+          )) {
+            try {
+              // Now interpolate - the JavaScript context has access to all variables
+              const interpolatedValue = globalVariables.interpolate(
+                expression,
+                false
+              );
+
+              // Store computed variable in runtime scope
+              globalVariables.setRuntimeVariable(varName, interpolatedValue);
+
+              const valuePreview =
+                typeof interpolatedValue === "object"
+                  ? JSON.stringify(interpolatedValue).substring(0, 100)
+                  : String(interpolatedValue);
+              logger.info(
+                `[Dynamic] ✅ Computed: ${varName} = ${valuePreview}`
+              );
+
+              // Add to captured variables
+              capturedVariables[varName] = interpolatedValue;
+            } catch (error) {
+              logger.error(
+                `[Dynamic] ❌ Failed to compute '${varName}': ${
+                  error instanceof Error ? error.message : String(error)
+                }`
+              );
+              // Continue processing other computed variables
+            }
+          }
+        }
       } else {
         logger.error(
           `❌ Input validation failed for ${result.variable}: ${result.validation_error}`

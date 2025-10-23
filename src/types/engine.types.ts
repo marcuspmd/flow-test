@@ -745,6 +745,12 @@ export interface TestStep {
 
   /** Hook executed after variable capture */
   hooks_post_capture?: import("./hook.types").HookAction[];
+
+  /** Hook executed before cross-suite call step */
+  hooks_pre_call?: import("./hook.types").HookAction[];
+
+  /** Hook executed after cross-suite call step */
+  hooks_post_call?: import("./hook.types").HookAction[];
 }
 
 /**

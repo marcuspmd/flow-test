@@ -131,7 +131,32 @@ fest --config ./flow-tests/staging.yml # Point to another config file
 fest --report json,csv                 # Produce multiple report formats
 fest graph mermaid --output discovery.mmd # Generate Mermaid discovery graph file
 fest graph --direction LR --no-orphans    # Print graph left-to-right skipping orphans
+fest schema --format json              # Export engine schema for IDE extensions
 ```
+
+### Schema Export for IDE Extensions
+
+The Flow Test Engine exposes a complete **schema catalog** that IDE extensions can use to provide rich autocomplete, validation, and documentation:
+
+```bash
+# Export schema to file
+fest schema --format json > flow-test-engine.schema.json
+
+# Inspect specific structures
+fest schema --format json | jq '.structures.TestSuite'
+
+# View available examples
+fest schema --format json | jq '.examples[].name'
+```
+
+The schema includes:
+- ✅ Complete structure definitions (TestSuite, TestStep, Assertions, etc.)
+- ✅ All supported properties with types, descriptions, and examples
+- ✅ Interpolation patterns (Faker, JavaScript, environment variables)
+- ✅ Complete YAML examples categorized by complexity
+- ✅ CLI documentation (commands, flags, usage)
+
+**For extension developers:** See [guides/12.schema-catalog-guide.md](guides/12.schema-catalog-guide.md) for detailed integration examples.
 
 ## 5. Integration Recipes by Ecosystem
 

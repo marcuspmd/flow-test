@@ -1,0 +1,1781 @@
+/**
+ * @fileoverview Service for generating Flow Test Engine schema catalog.
+ *
+ * @remarks
+ * This service introspects the engine's type system and generates a complete
+ * JSON schema catalog that can be consumed by external tools (like the VS Code
+ * extension) to provide autocomplete, validation, and documentation.
+ *
+ * The generated schema includes:
+ * - Structure definitions (TestSuite, TestStep, etc.)
+ * - Property metadata with types, descriptions, and constraints
+ * - Reusable type definitions (enums, unions)
+ * - Complete examples
+ * - Interpolation patterns and helpers
+ * - CLI documentation
+ *
+ * @packageDocumentation
+ */
+
+import { readFileSync } from "fs";
+import { join } from "path";
+import {
+  FlowTestSchema,
+  StructureDefinition,
+  PropertyDefinition,
+  TypeDefinition,
+  ExampleDefinition,
+  InterpolationCatalog,
+  CLIDefinition,
+  EnumValue,
+} from "../types/schema.types";
+
+/**
+ * Service responsible for generating the Flow Test Engine schema catalog.
+ */
+export class SchemaGeneratorService {
+  private version: string;
+  private generatedAt: string;
+
+  constructor() {
+    // Load version from package.json
+    const packageJson = JSON.parse(
+      readFileSync(join(__dirname, "../../package.json"), "utf-8")
+    );
+    this.version = packageJson.version;
+    this.generatedAt = new Date().toISOString();
+  }
+
+  /**
+   * Generates the complete Flow Test Engine schema.
+   *
+   * @returns Complete schema catalog
+   */
+  public generateSchema(): FlowTestSchema {
+    return {
+      version: this.version,
+      generatedAt: this.generatedAt,
+      engine: this.getEngineMetadata(),
+      structures: this.getStructureDefinitions(),
+      types: this.getTypeDefinitions(),
+      examples: this.getExamples(),
+      interpolation: this.getInterpolationCatalog(),
+      cli: this.getCLIDefinition(),
+    };
+  }
+
+  /**
+   * Gets engine metadata.
+   */
+  private getEngineMetadata() {
+    return {
+      name: "Flow Test Engine",
+      version: this.version,
+      description:
+        "Declarative API testing framework with YAML-based test definitions",
+    };
+  }
+
+  /**
+   * Gets all structure definitions (TestSuite, TestStep, etc.).
+   */
+  private getStructureDefinitions(): Record<string, StructureDefinition> {
+    return {
+      TestSuite: this.getTestSuiteDefinition(),
+      TestStep: this.getTestStepDefinition(),
+      RequestDetails: this.getRequestDetailsDefinition(),
+      Assertions: this.getAssertionsDefinition(),
+      AssertionChecks: this.getAssertionChecksDefinition(),
+      InputConfig: this.getInputConfigDefinition(),
+      IterationConfig: this.getIterationConfigDefinition(),
+      ConditionalScenario: this.getConditionalScenarioDefinition(),
+      StepCallConfig: this.getStepCallConfigDefinition(),
+      FlowDependency: this.getFlowDependencyDefinition(),
+      CertificateConfig: this.getCertificateConfigDefinition(),
+      HookAction: this.getHookActionDefinition(),
+    };
+  }
+
+  /**
+   * TestSuite structure definition.
+   */
+  private getTestSuiteDefinition(): StructureDefinition {
+    return {
+      name: "TestSuite",
+      description: "Top-level test suite definition",
+      documentation:
+        "Defines a complete test suite with metadata, variables, dependencies, and test steps.",
+      required: ["node_id", "suite_name", "steps"],
+      properties: {
+        node_id: {
+          name: "node_id",
+          type: "string",
+          description: "Unique identifier for the suite (kebab-case)",
+          required: true,
+          interpolable: false,
+          examples: ["user-auth-test", "api-integration"],
+          constraints: {
+            pattern: "^[a-z0-9-]+$",
+          },
+        },
+        suite_name: {
+          name: "suite_name",
+          type: "string",
+          description: "Human-readable name for the suite",
+          required: true,
+          interpolable: true,
+          examples: ["User Authentication Tests", "API Integration Suite"],
+        },
+        description: {
+          name: "description",
+          type: "string",
+          description: "Optional description of the suite purpose",
+          required: false,
+          interpolable: true,
+          examples: ["Complete authentication flow testing"],
+        },
+        base_url: {
+          name: "base_url",
+          type: "string",
+          description: "Base URL for relative request URLs",
+          required: false,
+          interpolable: true,
+          examples: [
+            "https://api.example.com",
+            "{{api_base_url}}",
+            "{{$env.API_URL}}",
+          ],
+        },
+        execution_mode: {
+          name: "execution_mode",
+          type: "string",
+          description: "Execution mode for steps",
+          required: false,
+          default: "sequential",
+          enum: ["sequential", "parallel"],
+          interpolable: false,
+        },
+        variables: {
+          name: "variables",
+          type: "object",
+          description: "Suite-local variables",
+          required: false,
+          interpolable: false,
+          examples: [
+            { user_id: 123, api_key: "abc123" },
+            { test_user: "john@example.com" },
+          ],
+        },
+        exports: {
+          name: "exports",
+          type: "array",
+          description: "Variables to export globally for other suites",
+          required: false,
+          items: { type: "string" },
+          interpolable: false,
+          examples: [["auth_token", "user_id"], ["session_id"]],
+        },
+        exports_optional: {
+          name: "exports_optional",
+          type: "array",
+          description: "Optional exports (no warnings if not captured)",
+          required: false,
+          items: { type: "string" },
+          interpolable: false,
+        },
+        depends: {
+          name: "depends",
+          type: "array",
+          description: "Dependencies on other test suites",
+          required: false,
+          items: { $ref: "FlowDependency" },
+          interpolable: false,
+        },
+        steps: {
+          name: "steps",
+          type: "array",
+          description: "Array of test steps to execute",
+          required: true,
+          items: { $ref: "TestStep" },
+          interpolable: false,
+        },
+        metadata: {
+          name: "metadata",
+          type: "object",
+          description: "Suite metadata (priority, tags, timeout)",
+          required: false,
+          properties: {
+            priority: {
+              name: "priority",
+              type: "string",
+              description: "Priority level",
+              required: false,
+              enum: ["critical", "high", "medium", "low"],
+              interpolable: false,
+            },
+            tags: {
+              name: "tags",
+              type: "array",
+              description: "Tags for categorization",
+              required: false,
+              items: { type: "string" },
+              interpolable: false,
+            },
+            timeout: {
+              name: "timeout",
+              type: "number",
+              description: "Suite-wide timeout in milliseconds",
+              required: false,
+              interpolable: true,
+            },
+          },
+          interpolable: false,
+        },
+        certificate: {
+          name: "certificate",
+          type: "object",
+          description: "Client certificate configuration for mTLS",
+          required: false,
+          $ref: "CertificateConfig",
+          interpolable: false,
+        },
+      },
+      relations: [
+        {
+          target: "TestStep",
+          type: "contains",
+          via: "steps",
+          description: "A suite contains multiple test steps",
+        },
+        {
+          target: "FlowDependency",
+          type: "references",
+          via: "depends",
+          description: "A suite can depend on other suites",
+        },
+      ],
+    };
+  }
+
+  /**
+   * TestStep structure definition.
+   */
+  private getTestStepDefinition(): StructureDefinition {
+    return {
+      name: "TestStep",
+      description: "Individual test step within a suite",
+      documentation:
+        "Represents a single test operation - can be HTTP request, input prompt, or cross-suite call.",
+      required: ["name"],
+      properties: {
+        name: {
+          name: "name",
+          type: "string",
+          description: "Descriptive name for the step",
+          required: true,
+          interpolable: true,
+          examples: ["Login user", "Create resource {{resource_name}}"],
+        },
+        step_id: {
+          name: "step_id",
+          type: "string",
+          description: "Optional unique identifier for the step",
+          required: false,
+          interpolable: false,
+          examples: ["login-step", "create-user"],
+        },
+        request: {
+          name: "request",
+          type: "object",
+          description: "HTTP request configuration",
+          required: false,
+          $ref: "RequestDetails",
+          interpolable: false,
+        },
+        assert: {
+          name: "assert",
+          type: "object",
+          description: "Validation rules for response",
+          required: false,
+          $ref: "Assertions",
+          interpolable: false,
+        },
+        capture: {
+          name: "capture",
+          type: "object",
+          description: "Extract data from response using JMESPath",
+          required: false,
+          interpolable: false,
+          examples: [
+            { token: "body.access_token" },
+            { user_id: "body.user.id", user_name: "body.user.name" },
+            { all_ids: "body.items[*].id" },
+          ],
+        },
+        input: {
+          name: "input",
+          type: ["object", "array"],
+          description: "Interactive user input configuration",
+          required: false,
+          items: { $ref: "InputConfig" },
+          $ref: "InputConfig",
+          interpolable: false,
+        },
+        call: {
+          name: "call",
+          type: "object",
+          description: "Call step from another suite",
+          required: false,
+          $ref: "StepCallConfig",
+          interpolable: false,
+        },
+        iterate: {
+          name: "iterate",
+          type: "object",
+          description: "Execute step in a loop",
+          required: false,
+          $ref: "IterationConfig",
+          interpolable: false,
+        },
+        scenarios: {
+          name: "scenarios",
+          type: "array",
+          description: "Conditional scenarios based on response",
+          required: false,
+          items: { $ref: "ConditionalScenario" },
+          interpolable: false,
+        },
+        continue_on_failure: {
+          name: "continue_on_failure",
+          type: "boolean",
+          description: "Continue execution even if step fails",
+          required: false,
+          default: false,
+          interpolable: false,
+        },
+        metadata: {
+          name: "metadata",
+          type: "object",
+          description: "Step metadata (priority, tags, timeout, retry)",
+          required: false,
+          interpolable: false,
+        },
+        hooks_pre_request: {
+          name: "hooks_pre_request",
+          type: "array",
+          description: "Hooks to execute before HTTP request",
+          required: false,
+          items: { $ref: "HookAction" },
+          since: "2.0",
+          interpolable: false,
+        },
+        hooks_post_request: {
+          name: "hooks_post_request",
+          type: "array",
+          description: "Hooks to execute after HTTP request",
+          required: false,
+          items: { $ref: "HookAction" },
+          since: "2.0",
+          interpolable: false,
+        },
+        hooks_pre_assertion: {
+          name: "hooks_pre_assertion",
+          type: "array",
+          description: "Hooks to execute before assertions",
+          required: false,
+          items: { $ref: "HookAction" },
+          since: "2.0",
+          interpolable: false,
+        },
+        hooks_post_assertion: {
+          name: "hooks_post_assertion",
+          type: "array",
+          description: "Hooks to execute after assertions",
+          required: false,
+          items: { $ref: "HookAction" },
+          since: "2.0",
+          interpolable: false,
+        },
+        hooks_pre_capture: {
+          name: "hooks_pre_capture",
+          type: "array",
+          description: "Hooks to execute before data capture",
+          required: false,
+          items: { $ref: "HookAction" },
+          since: "2.0",
+          interpolable: false,
+        },
+        hooks_post_capture: {
+          name: "hooks_post_capture",
+          type: "array",
+          description: "Hooks to execute after data capture",
+          required: false,
+          items: { $ref: "HookAction" },
+          since: "2.0",
+          interpolable: false,
+        },
+        hooks_pre_input: {
+          name: "hooks_pre_input",
+          type: "array",
+          description: "Hooks to execute before input prompt",
+          required: false,
+          items: { $ref: "HookAction" },
+          since: "2.0",
+          interpolable: false,
+        },
+        hooks_post_input: {
+          name: "hooks_post_input",
+          type: "array",
+          description: "Hooks to execute after input received",
+          required: false,
+          items: { $ref: "HookAction" },
+          since: "2.0",
+          interpolable: false,
+        },
+        hooks_pre_iteration: {
+          name: "hooks_pre_iteration",
+          type: "array",
+          description: "Hooks to execute before each iteration",
+          required: false,
+          items: { $ref: "HookAction" },
+          since: "2.0",
+          interpolable: false,
+        },
+        hooks_post_iteration: {
+          name: "hooks_post_iteration",
+          type: "array",
+          description: "Hooks to execute after each iteration",
+          required: false,
+          items: { $ref: "HookAction" },
+          since: "2.0",
+          interpolable: false,
+        },
+        hooks_pre_call: {
+          name: "hooks_pre_call",
+          type: "array",
+          description: "Hooks to execute before cross-suite call step",
+          required: false,
+          items: { $ref: "HookAction" },
+          since: "2.0",
+          interpolable: false,
+        },
+        hooks_post_call: {
+          name: "hooks_post_call",
+          type: "array",
+          description: "Hooks to execute after cross-suite call step",
+          required: false,
+          items: { $ref: "HookAction" },
+          since: "2.0",
+          interpolable: false,
+        },
+      },
+    };
+  }
+
+  /**
+   * RequestDetails structure definition.
+   */
+  private getRequestDetailsDefinition(): StructureDefinition {
+    return {
+      name: "RequestDetails",
+      description: "HTTP request configuration",
+      required: ["method", "url"],
+      properties: {
+        method: {
+          name: "method",
+          type: "string",
+          description: "HTTP method",
+          required: true,
+          enum: ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"],
+          interpolable: true,
+        },
+        url: {
+          name: "url",
+          type: "string",
+          description: "Request URL (absolute or relative to base_url)",
+          required: true,
+          interpolable: true,
+          examples: [
+            "/api/users",
+            "https://api.example.com/users",
+            "/users/{{user_id}}",
+          ],
+        },
+        headers: {
+          name: "headers",
+          type: "object",
+          description: "HTTP headers",
+          required: false,
+          interpolable: true,
+          examples: [
+            { "Content-Type": "application/json" },
+            { Authorization: "Bearer {{auth_token}}" },
+          ],
+        },
+        body: {
+          name: "body",
+          type: ["object", "string", "array"],
+          description: "Request body (for POST/PUT/PATCH)",
+          required: false,
+          interpolable: true,
+          examples: [
+            { name: "John", email: "john@example.com" },
+            '{"key": "value"}',
+          ],
+        },
+        params: {
+          name: "params",
+          type: "object",
+          description: "Query string parameters",
+          required: false,
+          interpolable: true,
+          examples: [{ page: 1, limit: 10 }, { filter: "active" }],
+        },
+        timeout: {
+          name: "timeout",
+          type: "number",
+          description: "Request timeout in milliseconds",
+          required: false,
+          default: 30000,
+          interpolable: true,
+        },
+        certificate: {
+          name: "certificate",
+          type: "object",
+          description: "Request-specific client certificate (overrides suite)",
+          required: false,
+          $ref: "CertificateConfig",
+          interpolable: false,
+        },
+      },
+    };
+  }
+
+  /**
+   * Assertions structure definition.
+   */
+  private getAssertionsDefinition(): StructureDefinition {
+    return {
+      name: "Assertions",
+      description: "Response validation rules",
+      required: [],
+      properties: {
+        status_code: {
+          name: "status_code",
+          type: ["number", "object"],
+          description: "Expected HTTP status code",
+          required: false,
+          $ref: "AssertionChecks",
+          interpolable: true,
+          examples: [200, { equals: 200 }, { in: [200, 201] }],
+        },
+        body: {
+          name: "body",
+          type: "object",
+          description: "Body field validations",
+          required: false,
+          interpolable: false,
+          examples: [
+            {
+              success: { equals: true },
+              data: { exists: true, type: "object" },
+            },
+          ],
+        },
+        headers: {
+          name: "headers",
+          type: "object",
+          description: "Header validations",
+          required: false,
+          interpolable: false,
+          examples: [{ "content-type": { contains: "application/json" } }],
+        },
+        response_time_ms: {
+          name: "response_time_ms",
+          type: "object",
+          description: "Response time validation",
+          required: false,
+          $ref: "AssertionChecks",
+          interpolable: false,
+          examples: [
+            { less_than: 1000 },
+            { greater_than: 10, less_than: 2000 },
+          ],
+        },
+        custom: {
+          name: "custom",
+          type: "array",
+          description: "Custom assertion expressions",
+          required: false,
+          interpolable: false,
+          examples: [
+            [
+              {
+                name: "Valid user ID",
+                condition: "body.user.id && typeof body.user.id === 'number'",
+                message: "User ID must be a number",
+              },
+            ],
+          ],
+        },
+      },
+    };
+  }
+
+  /**
+   * AssertionChecks type definition with all available operators.
+   */
+  private getAssertionChecksDefinition(): StructureDefinition {
+    return {
+      name: "AssertionChecks",
+      description: "Validation operators for assertions",
+      required: [],
+      properties: {
+        equals: {
+          name: "equals",
+          type: ["string", "number", "boolean", "null"],
+          description: "Exact equality check",
+          required: false,
+          interpolable: true,
+          examples: [200, "success", true],
+        },
+        not_equals: {
+          name: "not_equals",
+          type: ["string", "number", "boolean", "null"],
+          description: "Not equal check",
+          required: false,
+          interpolable: true,
+        },
+        contains: {
+          name: "contains",
+          type: ["string", "number", "boolean"],
+          description: "Contains substring or array element",
+          required: false,
+          interpolable: true,
+          examples: ["success", "error"],
+        },
+        not_contains: {
+          name: "not_contains",
+          type: ["string", "number", "boolean"],
+          description: "Does not contain substring or element",
+          required: false,
+          interpolable: true,
+        },
+        greater_than: {
+          name: "greater_than",
+          type: "number",
+          description: "Greater than comparison",
+          required: false,
+          interpolable: true,
+        },
+        less_than: {
+          name: "less_than",
+          type: "number",
+          description: "Less than comparison",
+          required: false,
+          interpolable: true,
+        },
+        greater_than_or_equal: {
+          name: "greater_than_or_equal",
+          type: "number",
+          description: "Greater than or equal comparison",
+          required: false,
+          interpolable: true,
+        },
+        less_than_or_equal: {
+          name: "less_than_or_equal",
+          type: "number",
+          description: "Less than or equal comparison",
+          required: false,
+          interpolable: true,
+        },
+        regex: {
+          name: "regex",
+          type: "string",
+          description: "Regular expression pattern match",
+          required: false,
+          interpolable: true,
+          examples: ["^[a-z]+$", "\\d{3}-\\d{4}"],
+        },
+        pattern: {
+          name: "pattern",
+          type: "string",
+          description: "Alias for regex",
+          required: false,
+          interpolable: true,
+        },
+        exists: {
+          name: "exists",
+          type: "boolean",
+          description: "Field existence check",
+          required: false,
+          interpolable: false,
+        },
+        not_exists: {
+          name: "not_exists",
+          type: "boolean",
+          description: "Field non-existence check (alias for exists: false)",
+          required: false,
+          interpolable: false,
+        },
+        type: {
+          name: "type",
+          type: "string",
+          description: "Type validation",
+          required: false,
+          enum: ["string", "number", "boolean", "array", "object", "null"],
+          interpolable: false,
+        },
+        length: {
+          name: "length",
+          type: "object",
+          description: "Length validation (strings/arrays)",
+          required: false,
+          $ref: "AssertionChecks",
+          interpolable: false,
+        },
+        minLength: {
+          name: "minLength",
+          type: "number",
+          description: "Minimum length (strings/arrays)",
+          required: false,
+          interpolable: true,
+        },
+        notEmpty: {
+          name: "notEmpty",
+          type: "boolean",
+          description: "Not empty check",
+          required: false,
+          interpolable: false,
+        },
+        in: {
+          name: "in",
+          type: "array",
+          description: "Value must be in list",
+          required: false,
+          interpolable: true,
+          examples: [
+            ["active", "pending"],
+            [200, 201, 202],
+          ],
+        },
+        not_in: {
+          name: "not_in",
+          type: "array",
+          description: "Value must not be in list",
+          required: false,
+          interpolable: true,
+        },
+      },
+    };
+  }
+
+  /**
+   * InputConfig structure definition.
+   */
+  private getInputConfigDefinition(): StructureDefinition {
+    return {
+      name: "InputConfig",
+      description: "Interactive user input configuration",
+      required: ["prompt", "variable", "type"],
+      properties: {
+        prompt: {
+          name: "prompt",
+          type: "string",
+          description: "Message displayed to user",
+          required: true,
+          interpolable: true,
+          examples: ["Enter your API key:", "Select environment:"],
+        },
+        variable: {
+          name: "variable",
+          type: "string",
+          description: "Variable name to store input",
+          required: true,
+          interpolable: false,
+          examples: ["api_key", "selected_env"],
+        },
+        type: {
+          name: "type",
+          type: "string",
+          description: "Input type",
+          required: true,
+          enum: [
+            "text",
+            "password",
+            "number",
+            "email",
+            "url",
+            "select",
+            "multiselect",
+            "confirm",
+            "multiline",
+          ],
+          interpolable: false,
+        },
+        description: {
+          name: "description",
+          type: "string",
+          description: "Detailed description",
+          required: false,
+          interpolable: true,
+        },
+        default: {
+          name: "default",
+          type: ["string", "number", "boolean"],
+          description: "Default value",
+          required: false,
+          interpolable: true,
+        },
+        required: {
+          name: "required",
+          type: "boolean",
+          description: "Whether input is required",
+          required: false,
+          default: true,
+          interpolable: false,
+        },
+        ci_default: {
+          name: "ci_default",
+          type: ["string", "number", "boolean"],
+          description: "Default value in CI/CD environments",
+          required: false,
+          interpolable: true,
+        },
+        options: {
+          name: "options",
+          type: ["array", "string"],
+          description: "Options for select/multiselect (array or expression)",
+          required: false,
+          interpolable: true,
+          examples: [
+            [
+              { value: "dev", label: "Development" },
+              { value: "prod", label: "Production" },
+            ],
+            "{{environments_list}}",
+          ],
+        },
+        validation: {
+          name: "validation",
+          type: "object",
+          description: "Validation rules",
+          required: false,
+          interpolable: false,
+        },
+        timeout_seconds: {
+          name: "timeout_seconds",
+          type: "number",
+          description: "Timeout before using default",
+          required: false,
+          interpolable: true,
+        },
+      },
+    };
+  }
+
+  /**
+   * IterationConfig structure definition.
+   */
+  private getIterationConfigDefinition(): StructureDefinition {
+    return {
+      name: "IterationConfig",
+      description: "Loop iteration configuration",
+      required: ["as"],
+      properties: {
+        over: {
+          name: "over",
+          type: "string",
+          description: "Array expression to iterate over",
+          required: false,
+          interpolable: true,
+          examples: ["{{users_list}}", "{{test_data}}"],
+        },
+        range: {
+          name: "range",
+          type: "string",
+          description: 'Range expression (format: "start..end")',
+          required: false,
+          interpolable: true,
+          examples: ["1..10", "0..100"],
+        },
+        as: {
+          name: "as",
+          type: "string",
+          description: "Variable name for current item/index",
+          required: true,
+          interpolable: false,
+          examples: ["user", "item", "page"],
+        },
+      },
+    };
+  }
+
+  /**
+   * ConditionalScenario structure definition.
+   */
+  private getConditionalScenarioDefinition(): StructureDefinition {
+    return {
+      name: "ConditionalScenario",
+      description: "Conditional execution based on response",
+      required: ["condition"],
+      properties: {
+        name: {
+          name: "name",
+          type: "string",
+          description: "Scenario name",
+          required: false,
+          interpolable: true,
+        },
+        condition: {
+          name: "condition",
+          type: "string",
+          description: "JMESPath condition expression",
+          required: true,
+          interpolable: false,
+          examples: [
+            "status_code == `200`",
+            "body.success == true",
+            "body.user.role == 'admin'",
+          ],
+        },
+        then: {
+          name: "then",
+          type: "object",
+          description: "Actions if condition is true",
+          required: false,
+          interpolable: false,
+        },
+        else: {
+          name: "else",
+          type: "object",
+          description: "Actions if condition is false",
+          required: false,
+          interpolable: false,
+        },
+      },
+    };
+  }
+
+  /**
+   * StepCallConfig structure definition.
+   */
+  private getStepCallConfigDefinition(): StructureDefinition {
+    return {
+      name: "StepCallConfig",
+      description: "Call step from another suite",
+      required: ["test", "step"],
+      properties: {
+        test: {
+          name: "test",
+          type: "string",
+          description: "Path to target test suite file",
+          required: true,
+          interpolable: true,
+          examples: ["../auth/login.yaml", "common/setup.yaml"],
+        },
+        path_type: {
+          name: "path_type",
+          type: "string",
+          description: "Path resolution type",
+          required: false,
+          default: "relative",
+          enum: ["relative", "absolute"],
+          interpolable: false,
+        },
+        step: {
+          name: "step",
+          type: "string",
+          description: "Step ID or name to call",
+          required: true,
+          interpolable: true,
+        },
+        variables: {
+          name: "variables",
+          type: "object",
+          description: "Variables to inject into called step",
+          required: false,
+          interpolable: true,
+        },
+        isolate_context: {
+          name: "isolate_context",
+          type: "boolean",
+          description: "Isolate execution context",
+          required: false,
+          default: true,
+          interpolable: false,
+        },
+        on_error: {
+          name: "on_error",
+          type: "string",
+          description: "Error handling strategy",
+          required: false,
+          default: "fail",
+          enum: ["fail", "continue", "warn"],
+          interpolable: false,
+        },
+      },
+    };
+  }
+
+  /**
+   * FlowDependency structure definition.
+   */
+  private getFlowDependencyDefinition(): StructureDefinition {
+    return {
+      name: "FlowDependency",
+      description: "Dependency on another test suite",
+      required: [],
+      properties: {
+        path: {
+          name: "path",
+          type: "string",
+          description: "Path to dependency suite file",
+          required: false,
+          interpolable: true,
+          examples: ["./auth/setup.yaml", "../common/init.yaml"],
+        },
+        node_id: {
+          name: "node_id",
+          type: "string",
+          description: "Direct reference by node ID",
+          required: false,
+          interpolable: false,
+        },
+        path_type: {
+          name: "path_type",
+          type: "string",
+          description: "Path resolution type",
+          required: false,
+          default: "relative",
+          enum: ["relative", "absolute"],
+          interpolable: false,
+        },
+        required: {
+          name: "required",
+          type: "boolean",
+          description: "Whether dependency is mandatory",
+          required: false,
+          default: true,
+          interpolable: false,
+        },
+        cache: {
+          name: "cache",
+          type: ["boolean", "number"],
+          description: "Cache results (true/false or TTL in seconds)",
+          required: false,
+          interpolable: false,
+          examples: [true, false, 300],
+        },
+        condition: {
+          name: "condition",
+          type: "string",
+          description: "JMESPath condition for conditional execution",
+          required: false,
+          interpolable: false,
+        },
+        variables: {
+          name: "variables",
+          type: "object",
+          description: "Variables to override in dependency",
+          required: false,
+          interpolable: true,
+        },
+        retry: {
+          name: "retry",
+          type: "object",
+          description: "Retry configuration",
+          required: false,
+          interpolable: false,
+        },
+      },
+    };
+  }
+
+  /**
+   * CertificateConfig structure definition.
+   */
+  private getCertificateConfigDefinition(): StructureDefinition {
+    return {
+      name: "CertificateConfig",
+      description: "Client certificate configuration for mTLS authentication",
+      required: [],
+      properties: {
+        cert_path: {
+          name: "cert_path",
+          type: "string",
+          description: "Path to client certificate file (.crt, .pem)",
+          required: false,
+          interpolable: true,
+          examples: ["./certs/client.crt", "{{$env.CERT_PATH}}"],
+        },
+        key_path: {
+          name: "key_path",
+          type: "string",
+          description: "Path to private key file (.key, .pem)",
+          required: false,
+          interpolable: true,
+        },
+        pfx_path: {
+          name: "pfx_path",
+          type: "string",
+          description: "Path to PFX/P12 certificate file",
+          required: false,
+          interpolable: true,
+        },
+        passphrase: {
+          name: "passphrase",
+          type: "string",
+          description: "Certificate passphrase (use {{$env.VAR}} for security)",
+          required: false,
+          interpolable: true,
+        },
+        ca_path: {
+          name: "ca_path",
+          type: "string",
+          description: "Path to CA certificate",
+          required: false,
+          interpolable: true,
+        },
+        verify: {
+          name: "verify",
+          type: "boolean",
+          description: "Verify SSL certificate (disable only for testing)",
+          required: false,
+          default: true,
+          interpolable: false,
+        },
+        min_version: {
+          name: "min_version",
+          type: "string",
+          description: "Minimum TLS version",
+          required: false,
+          enum: ["TLSv1", "TLSv1.1", "TLSv1.2", "TLSv1.3"],
+          interpolable: false,
+        },
+        max_version: {
+          name: "max_version",
+          type: "string",
+          description: "Maximum TLS version",
+          required: false,
+          enum: ["TLSv1", "TLSv1.1", "TLSv1.2", "TLSv1.3"],
+          interpolable: false,
+        },
+      },
+    };
+  }
+
+  /**
+   * HookAction structure definition.
+   */
+  private getHookActionDefinition(): StructureDefinition {
+    return {
+      name: "HookAction",
+      description: "Lifecycle hook action (v2.0+)",
+      documentation:
+        "Hooks allow executing custom logic at specific points in the test lifecycle.",
+      required: [],
+      properties: {
+        compute: {
+          name: "compute",
+          type: "object",
+          description: "Compute variables using interpolation/JavaScript",
+          required: false,
+          interpolable: true,
+          examples: [
+            { timestamp: "{{$js:Date.now()}}" },
+            { request_id: "{{$js:crypto.randomUUID()}}" },
+          ],
+        },
+        validate: {
+          name: "validate",
+          type: "array",
+          description: "Validation expressions with severity levels",
+          required: false,
+          interpolable: false,
+          examples: [
+            [
+              {
+                expression: "user_id && auth_token",
+                message: "Authentication required",
+                severity: "error",
+              },
+            ],
+          ],
+        },
+        log: {
+          name: "log",
+          type: "object",
+          description: "Emit structured log message",
+          required: false,
+          interpolable: true,
+          examples: [
+            {
+              level: "info",
+              message: "Starting request to {{request.url}}",
+            },
+          ],
+        },
+        metric: {
+          name: "metric",
+          type: "object",
+          description: "Emit metric for telemetry",
+          required: false,
+          interpolable: true,
+          examples: [
+            {
+              name: "api_response_time_ms",
+              value: "{{response_time_ms}}",
+              tags: { endpoint: "/users" },
+            },
+          ],
+        },
+        script: {
+          name: "script",
+          type: "string",
+          description: "Execute arbitrary JavaScript",
+          required: false,
+          interpolable: true,
+          examples: ["console.log('Custom logic here')"],
+        },
+        call: {
+          name: "call",
+          type: "object",
+          description: "Call another step or suite",
+          required: false,
+          $ref: "StepCallConfig",
+          interpolable: false,
+        },
+        wait: {
+          name: "wait",
+          type: "number",
+          description: "Delay in milliseconds",
+          required: false,
+          interpolable: true,
+          examples: [1000, 500],
+        },
+      },
+      since: "2.0",
+    };
+  }
+
+  /**
+   * Gets reusable type definitions.
+   */
+  private getTypeDefinitions(): Record<string, TypeDefinition> {
+    return {
+      HttpMethod: {
+        name: "HttpMethod",
+        kind: "enum",
+        description: "HTTP request methods",
+        values: [
+          { value: "GET", description: "Retrieve resource" },
+          { value: "POST", description: "Create resource" },
+          { value: "PUT", description: "Replace resource" },
+          { value: "PATCH", description: "Partially update resource" },
+          { value: "DELETE", description: "Delete resource" },
+          { value: "HEAD", description: "Retrieve headers only" },
+          { value: "OPTIONS", description: "Get supported methods" },
+        ],
+      },
+      PriorityLevel: {
+        name: "PriorityLevel",
+        kind: "enum",
+        description: "Test priority levels",
+        values: [
+          {
+            value: "critical",
+            description: "Critical tests (smoke, core features)",
+          },
+          { value: "high", description: "High priority tests" },
+          { value: "medium", description: "Medium priority tests" },
+          { value: "low", description: "Low priority tests (edge cases)" },
+        ],
+      },
+      ExecutionMode: {
+        name: "ExecutionMode",
+        kind: "enum",
+        description: "Step execution modes",
+        values: [
+          {
+            value: "sequential",
+            description: "Execute steps in order (supports input)",
+          },
+          {
+            value: "parallel",
+            description: "Execute steps concurrently (no input)",
+          },
+        ],
+      },
+      InputType: {
+        name: "InputType",
+        kind: "enum",
+        description: "Interactive input types",
+        values: [
+          { value: "text", description: "Simple text input" },
+          { value: "password", description: "Masked password input" },
+          { value: "number", description: "Numeric input" },
+          { value: "email", description: "Email with validation" },
+          { value: "url", description: "URL with validation" },
+          { value: "select", description: "Single selection dropdown" },
+          { value: "multiselect", description: "Multiple selection" },
+          { value: "confirm", description: "Yes/No confirmation" },
+          { value: "multiline", description: "Multi-line text input" },
+        ],
+      },
+    };
+  }
+
+  /**
+   * Gets complete examples.
+   */
+  private getExamples(): ExampleDefinition[] {
+    return [
+      {
+        name: "Basic Authentication Flow",
+        description: "Simple login with token capture and reuse",
+        category: "authentication",
+        complexity: "basic",
+        features: ["capture", "interpolation", "assertions"],
+        yaml: `suite_name: "Auth Flow"
+node_id: "auth-flow"
+base_url: "https://api.example.com"
+
+exports: ["auth_token"]
+
+steps:
+  - name: "Login"
+    request:
+      method: POST
+      url: "/auth/login"
+      body:
+        email: "test@example.com"
+        password: "password123"
+    assert:
+      status_code: 200
+      body:
+        token: { exists: true, type: "string" }
+    capture:
+      auth_token: "body.token"
+
+  - name: "Get Profile"
+    request:
+      method: GET
+      url: "/profile"
+      headers:
+        Authorization: "Bearer {{auth_token}}"
+    assert:
+      status_code: 200`,
+      },
+      {
+        name: "Iteration Over Array",
+        description: "Process multiple items in a loop",
+        category: "iteration",
+        complexity: "intermediate",
+        features: ["iterate", "interpolation", "capture"],
+        yaml: `suite_name: "Bulk Operations"
+node_id: "bulk-ops"
+
+variables:
+  users:
+    - { name: "Alice", email: "alice@example.com" }
+    - { name: "Bob", email: "bob@example.com" }
+
+steps:
+  - name: "Create user {{user.name}}"
+    iterate:
+      over: "{{users}}"
+      as: "user"
+    request:
+      method: POST
+      url: "/users"
+      body:
+        name: "{{user.name}}"
+        email: "{{user.email}}"
+    assert:
+      status_code: 201`,
+      },
+      {
+        name: "Conditional Scenarios",
+        description: "Handle different response scenarios",
+        category: "conditionals",
+        complexity: "advanced",
+        features: ["scenarios", "conditional logic"],
+        yaml: `suite_name: "Conditional Test"
+node_id: "conditional"
+
+steps:
+  - name: "Create resource"
+    request:
+      method: POST
+      url: "/resources"
+      body:
+        name: "Test Resource"
+
+    scenarios:
+      - name: "Resource created"
+        condition: "status_code == \`201\`"
+        then:
+          assert:
+            body:
+              id: { exists: true }
+          capture:
+            resource_id: "body.id"
+
+      - name: "Resource already exists"
+        condition: "status_code == \`409\`"
+        then:
+          capture:
+            existing_id: "body.existing_id"`,
+      },
+      {
+        name: "Interactive Input",
+        description: "Prompt user for input during execution",
+        category: "input",
+        complexity: "intermediate",
+        features: ["input", "validation", "ci_default"],
+        yaml: `suite_name: "Interactive Test"
+node_id: "interactive"
+
+steps:
+  - name: "Get user input"
+    input:
+      prompt: "Enter API key:"
+      variable: "api_key"
+      type: "password"
+      required: true
+      ci_default: "{{$env.TEST_API_KEY}}"
+      validation:
+        min_length: 20
+        pattern: "^sk-[a-zA-Z0-9_-]+$"
+
+  - name: "Use API key"
+    request:
+      method: GET
+      url: "/protected"
+      headers:
+        Authorization: "Bearer {{api_key}}"`,
+      },
+      {
+        name: "Client Certificate Authentication",
+        description: "mTLS with client certificates",
+        category: "authentication",
+        complexity: "advanced",
+        features: ["certificates", "mtls", "security"],
+        yaml: `suite_name: "mTLS API Test"
+node_id: "mtls-test"
+base_url: "https://secure-api.example.com"
+
+certificate:
+  pfx_path: "./certs/client.pfx"
+  passphrase: "{{$env.CERT_PASSWORD}}"
+  verify: true
+  min_version: "TLSv1.2"
+
+steps:
+  - name: "Secure request"
+    request:
+      method: GET
+      url: "/secure-data"
+    assert:
+      status_code: 200`,
+      },
+      {
+        name: "Lifecycle Hooks",
+        description: "Use hooks for custom logic (v2.0+)",
+        category: "hooks",
+        complexity: "advanced",
+        features: ["hooks", "compute", "metrics", "logging"],
+        yaml: `suite_name: "Hooks Example"
+node_id: "hooks-demo"
+
+steps:
+  - name: "API call with hooks"
+    hooks_pre_request:
+      - compute:
+          request_id: "{{$js:crypto.randomUUID()}}"
+          timestamp: "{{$js:Date.now()}}"
+      - log:
+          level: "info"
+          message: "Starting request {{request_id}}"
+
+    hooks_post_request:
+      - metric:
+          name: "api_response_time"
+          value: "{{response_time_ms}}"
+          tags:
+            endpoint: "{{request.url}}"
+
+    request:
+      method: GET
+      url: "/api/data"`,
+      },
+    ];
+  }
+
+  /**
+   * Gets interpolation catalog.
+   */
+  private getInterpolationCatalog(): InterpolationCatalog {
+    return {
+      description:
+        "Variable interpolation system supporting multiple sources and expressions",
+      patterns: [
+        {
+          name: "Basic Variable",
+          syntax: "{{variable}}",
+          description: "Reference to a local or captured variable",
+          examples: ["{{user_id}}", "{{auth_token}}"],
+          applicableTo: ["url", "headers", "body", "params"],
+        },
+        {
+          name: "Nested Property",
+          syntax: "{{object.property}}",
+          description: "Access nested object properties",
+          examples: ["{{user.profile.name}}", "{{response.data.items[0]}}"],
+        },
+        {
+          name: "Global Export",
+          syntax: "{{suite-id.variable}}",
+          description: "Variable exported from another suite",
+          examples: ["{{auth-login.auth_token}}", "{{setup.user_id}}"],
+        },
+        {
+          name: "Environment Variable",
+          syntax: "{{$env.VAR_NAME}}",
+          description: "Environment variable (requires FLOW_TEST_ prefix)",
+          examples: ["{{$env.API_KEY}}", "{{$env.BASE_URL}}"],
+        },
+        {
+          name: "Faker Data",
+          syntax: "{{$faker.category.method}}",
+          description: "Generate fake data using Faker.js",
+          examples: [
+            "{{$faker.internet.email}}",
+            "{{$faker.person.firstName}}",
+          ],
+        },
+        {
+          name: "JavaScript Expression",
+          syntax: "{{$js:expression}}",
+          description: "Execute JavaScript expression",
+          examples: ["{{$js:Date.now()}}", "{{$js:Math.random()}}"],
+        },
+      ],
+      faker: {
+        categories: [
+          {
+            name: "person",
+            description: "Person-related data",
+            methods: [
+              {
+                name: "firstName",
+                description: "Generate first name",
+                example: "John",
+                syntax: "{{$faker.person.firstName}}",
+              },
+              {
+                name: "lastName",
+                description: "Generate last name",
+                example: "Doe",
+                syntax: "{{$faker.person.lastName}}",
+              },
+              {
+                name: "fullName",
+                description: "Generate full name",
+                example: "John Doe",
+                syntax: "{{$faker.person.fullName}}",
+              },
+            ],
+          },
+          {
+            name: "internet",
+            description: "Internet-related data",
+            methods: [
+              {
+                name: "email",
+                description: "Generate email address",
+                example: "john.doe@example.com",
+                syntax: "{{$faker.internet.email}}",
+              },
+              {
+                name: "url",
+                description: "Generate URL",
+                example: "https://example.com",
+                syntax: "{{$faker.internet.url}}",
+              },
+              {
+                name: "userName",
+                description: "Generate username",
+                example: "john.doe123",
+                syntax: "{{$faker.internet.userName}}",
+              },
+            ],
+          },
+          {
+            name: "string",
+            description: "String generation",
+            methods: [
+              {
+                name: "uuid",
+                description: "Generate UUID",
+                example: "a3d7f1b2-5c8e-4f9a-b2e1-3c4d5e6f7a8b",
+                syntax: "{{$faker.string.uuid}}",
+              },
+              {
+                name: "alphanumeric",
+                description: "Generate alphanumeric string",
+                example: "aB3xY9",
+                syntax: "{{$faker.string.alphanumeric}}",
+              },
+            ],
+          },
+          {
+            name: "number",
+            description: "Number generation",
+            methods: [
+              {
+                name: "int",
+                description: "Generate integer",
+                example: "42",
+                syntax: "{{$faker.number.int}}",
+              },
+            ],
+          },
+        ],
+      },
+      javascript: {
+        description: "Execute JavaScript expressions inline",
+        globals: ["Date", "Math", "JSON", "Buffer", "crypto"],
+        patterns: [
+          {
+            name: "Current Timestamp",
+            syntax: "{{$js:Date.now()}}",
+            description: "Unix timestamp in milliseconds",
+            example: "1704110400000",
+          },
+          {
+            name: "ISO Date",
+            syntax: "{{$js:new Date().toISOString()}}",
+            description: "Current date in ISO 8601 format",
+            example: "2024-01-01T12:00:00.000Z",
+          },
+          {
+            name: "Random Number",
+            syntax: "{{$js:Math.random()}}",
+            description: "Random number between 0 and 1",
+            example: "0.123456",
+          },
+          {
+            name: "UUID",
+            syntax: "{{$js:crypto.randomUUID()}}",
+            description: "Generate RFC 4122 UUID",
+            example: "550e8400-e29b-41d4-a716-446655440000",
+          },
+          {
+            name: "Base64 Encode",
+            syntax: "{{$js:Buffer.from('text').toString('base64')}}",
+            description: "Encode string to base64",
+            example: "dGV4dA==",
+          },
+        ],
+      },
+      environment: {
+        description:
+          "Environment variables loaded from .env files or system environment",
+        prefix: "FLOW_TEST_",
+        examples: [
+          {
+            name: "API_KEY",
+            description: "API authentication key",
+            example: "{{$env.API_KEY}} reads FLOW_TEST_API_KEY",
+          },
+          {
+            name: "BASE_URL",
+            description: "API base URL",
+            example: "{{$env.BASE_URL}} reads FLOW_TEST_BASE_URL",
+          },
+          {
+            name: "CERT_PASSWORD",
+            description: "Certificate passphrase",
+            example: "{{$env.CERT_PASSWORD}} reads FLOW_TEST_CERT_PASSWORD",
+          },
+        ],
+      },
+    };
+  }
+
+  /**
+   * Gets CLI definition.
+   */
+  private getCLIDefinition(): CLIDefinition {
+    return {
+      command: "flow-test",
+      description:
+        "Flow Test Engine CLI - Execute API tests from YAML definitions",
+      flags: [
+        {
+          name: "--config",
+          alias: "-c",
+          type: "string",
+          description: "Path to configuration file",
+          example: "flow-test-engine --config ./flow-test.config.yml",
+        },
+        {
+          name: "--verbose",
+          alias: "-v",
+          type: "boolean",
+          description: "Enable verbose output",
+          default: false,
+          example: "flow-test-engine --verbose",
+        },
+        {
+          name: "--dry-run",
+          type: "boolean",
+          description: "Plan execution without running tests",
+          default: false,
+          example: "flow-test-engine --dry-run",
+        },
+        {
+          name: "--priority",
+          type: "string",
+          description: "Filter by priority levels (comma-separated)",
+          example: "flow-test-engine --priority critical,high",
+        },
+        {
+          name: "--tags",
+          type: "string",
+          description: "Filter by tags (comma-separated)",
+          example: "flow-test-engine --tags smoke,auth",
+        },
+        {
+          name: "--format",
+          type: "string",
+          description: "Output format (json, junit, html)",
+          default: "json",
+          example: "flow-test-engine --format html",
+        },
+      ],
+      subcommands: [
+        {
+          name: "schema",
+          description: "Export engine schema catalog",
+          flags: [
+            {
+              name: "--format",
+              type: "string",
+              description: "Schema output format (json only)",
+              default: "json",
+            },
+          ],
+          example: "flow-test-engine schema --format json",
+        },
+        {
+          name: "init",
+          description: "Initialize a new Flow Test project",
+          example: "flow-test-engine init",
+        },
+      ],
+    };
+  }
+}

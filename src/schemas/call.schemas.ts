@@ -93,6 +93,14 @@ export const StepCallConfigSchema = z.object({
   /** Variables to pass to the called step context */
   variables: z.record(z.string(), z.any()).optional().describe("Variables"),
 
+  /**
+   * Alias to prefix captured variables (optional)
+   * - If defined: variables will be prefixed with "alias." (e.g., "auth.access_token")
+   * - If not defined: variables will be prefixed with "node_id." (e.g., "func_auth.access_token")
+   * - Useful to avoid long prefixes and improve readability
+   */
+  alias: z.string().optional().describe("Variable prefix alias"),
+
   /** Execute in isolated context (default: true) */
   isolate_context: z.boolean().optional().describe("Isolate context"),
 
@@ -123,6 +131,9 @@ export const StepCallRequestSchema = z.object({
 
   /** Variables to pass */
   variables: z.record(z.string(), z.any()).optional().describe("Variables"),
+
+  /** Alias to prefix captured variables */
+  alias: z.string().optional().describe("Variable prefix alias"),
 
   /** Execute in isolated context */
   isolate_context: z.boolean().optional().describe("Isolate context"),
@@ -176,7 +187,10 @@ export const StepCallResultSchema = z.object({
   error: z.string().optional().describe("Error message"),
 
   /** Variables captured during step execution */
-  captured_variables: z.record(z.string(), z.any()).optional().describe("Captured variables"),
+  captured_variables: z
+    .record(z.string(), z.any())
+    .optional()
+    .describe("Captured variables"),
 
   /** Variables ready to be propagated to caller (after namespace adjustments) */
   propagated_variables: z
@@ -185,7 +199,10 @@ export const StepCallResultSchema = z.object({
     .describe("Propagated variables"),
 
   /** All available variables after execution */
-  available_variables: z.record(z.string(), z.any()).optional().describe("Available variables"),
+  available_variables: z
+    .record(z.string(), z.any())
+    .optional()
+    .describe("Available variables"),
 
   /** Execution time in milliseconds */
   executionTime: z.number().nonnegative().optional().describe("Execution time"),

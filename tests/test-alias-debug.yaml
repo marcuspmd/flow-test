@@ -1,0 +1,30 @@
+suite_name: "Test Alias Debug"
+node_id: "test-alias-debug"
+base_url: "http://localhost:8080"
+
+variables:
+  input_value: "test-value-123"
+
+steps:
+  # Call with alias
+  - name: "Call helper with alias"
+    call:
+      test: "./call-alias-helper.yaml"
+      step: "capture-data"
+      alias: "helper"
+      isolate_context: true
+      variables:
+        input_value: "{{input_value}}"
+
+  # Use variable with alias prefix
+  - name: "Use captured data with alias"
+    request:
+      method: GET
+      url: "/headers"
+      headers:
+        X-Captured-Value: "{{helper.captured_data}}"
+    assert:
+      status_code: 200
+      body:
+        headers:
+          X-Captured-Value: {contains: "test-value-123"}

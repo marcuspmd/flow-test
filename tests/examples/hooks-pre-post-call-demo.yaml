@@ -1,0 +1,148 @@
+# ============================================================================
+# Hooks Pre/Post Call Demo - Flow Test Engine v2.0
+# ============================================================================
+#
+# Este exemplo demonstra o uso dos novos hooks de lifecycle:
+# - hooks_pre_call: Executado ANTES da chamada cross-suite
+# - hooks_post_call: Executado DEPOIS da chamada cross-suite
+#
+# Use Case: Monitoramento, validação e métricas em chamadas cross-suite
+# ============================================================================
+
+suite_name: "Hooks Pre/Post Call Demo"
+node_id: "hooks-call-demo"
+base_url: "https://httpbin.org"
+
+variables:
+  username: "test_user"
+  password: "test_pass"
+
+steps:
+  # ============================================================================
+  # Step 1: Call com hooks completos de monitoramento
+  # ============================================================================
+  - name: "Execute login flow with full monitoring"
+
+    # Hooks PRÉ-CALL: Preparação e validação antes da chamada
+    hooks_pre_call:
+      # Computar variáveis antes da chamada
+      - compute:
+          call_started_at: "{{$js:Date.now()}}"
+          call_request_id: "{{$js:crypto.randomUUID()}}"
+          timestamp_iso: "{{$js:new Date().toISOString()}}"
+
+      # Validar pré-condições
+      - validate:
+          - expression: "username && password"
+            message: "Username and password are required for authentication"
+            severity: "error"
+          - expression: "username.length >= 3"
+            message: "Username must be at least 3 characters"
+            severity: "warning"
+
+      # Log de início da chamada
+      - log:
+          level: "info"
+          message: "🚀 Starting auth call - Request ID: {{call_request_id}}"
+          metadata:
+            timestamp: "{{timestamp_iso}}"
+            username: "{{username}}"
+            target_suite: "./auth-setup-demo.yaml"
+
+    # CALL: Executar chamada cross-suite
+    call:
+      test: "./auth-setup-demo.yaml"
+      step: "login-step"
+      alias: "auth"
+      isolate_context: true
+      variables:
+        username: "{{username}}"
+        password: "{{password}}"
+
+    # Hooks PÓS-CALL: Validação e métricas após a chamada
+    hooks_post_call:
+      # Computar duração
+      - compute:
+          call_duration_ms: "{{$js:Date.now() - call_started_at}}"
+
+      # Validar variáveis propagadas (capturas do call)
+      - validate:
+          - expression: "auth.access_token"
+            message: "Access token must be captured from auth call"
+            severity: "error"
+          - expression: "auth.user_id"
+            message: "User ID must be captured from auth call"
+            severity: "error"
+
+      # Emitir métricas de telemetria
+      - metric:
+          name: "auth_call_duration_ms"
+          value: "{{call_duration_ms}}"
+          tags:
+            has_token: "{{$js:!!auth.access_token}}"
+            request_id: "{{call_request_id}}"
+
+      # Log de conclusão com resumo
+      - log:
+          level: "info"
+          message: "✅ Auth call completed - Duration: {{call_duration_ms}}ms"
+          metadata:
+            request_id: "{{call_request_id}}"
+            token_captured: "{{auth.access_token}}"
+            user_id_captured: "{{auth.user_id}}"
+
+  # ============================================================================
+  # Step 2: Usar variáveis propagadas pelo call anterior
+  # ============================================================================
+  - name: "Verify authentication with captured token"
+    request:
+      method: GET
+      url: "/bearer"
+      headers:
+        Authorization: "Bearer {{auth.access_token}}"
+
+    assert:
+      status_code: 200
+      body:
+        authenticated: {equals: true}
+        token: {equals: "{{auth.access_token}}"}
+
+    hooks_post_request:
+      - log:
+          level: "info"
+          message: "🔐 Authentication verified successfully"
+          metadata:
+            token: "{{auth.access_token}}"
+            user_id: "{{auth.user_id}}"
+
+  # ============================================================================
+  # Step 3: Exemplo simples de hooks pre/post call
+  # ============================================================================
+  - name: "Simple call with hooks"
+
+    hooks_pre_call:
+      - log:
+          level: "info"
+          message: "� Starting simple authenticated call"
+
+    call:
+      test: "./auth-setup-demo.yaml"
+      step: "login-step"
+      alias: "simple_auth"
+      variables:
+        username: "simple_user"
+        password: "simple_pass"
+
+    hooks_post_call:
+      # Validar que variáveis foram propagadas
+      - validate:
+          - expression: "simple_auth.access_token"
+            message: "Token must be captured"
+            severity: "error"
+
+      # Log de sucesso
+      - log:
+          level: "info"
+          message: "✅ Call completed successfully - Token: {{simple_auth.access_token}}"
+          metadata:
+            user_id: "{{simple_auth.user_id}}"

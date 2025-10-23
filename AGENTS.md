@@ -591,6 +591,7 @@ scenarios:
 | `path_type` | `"relative" \| "absolute"` | ❌ Não | Tipo de resolução (padrão: `relative`) | `"relative"` |
 | `step` | `string` | ✅ Sim | ID ou nome do step a chamar | `"login-step"` |
 | `variables` | `Record<string, any>` | ❌ Não | Variáveis para injetar | `{username: "test", password: "pass"}` |
+| `alias` | `string` | ❌ Não | Prefixo para variáveis capturadas | `"auth"` (cria `{{auth.variable}}`) |
 | `isolate_context` | `boolean` | ❌ Não | Isolar contexto (padrão: `true`) | `true` |
 | `on_error` | `"fail" \| "continue" \| "warn"` | ❌ Não | Estratégia de erro (padrão: `fail`) | `"fail"` |
 | `timeout` | `number` | ❌ Não | Timeout em ms | `30000` |
@@ -598,15 +599,25 @@ scenarios:
 
 ```yaml
 steps:
+  # Com alias (variáveis acessíveis como {{auth.variable}})
   - name: "Execute login flow"
     call:
       test: "../auth/login.yaml"
       step: "login-step"
+      alias: "auth"
       variables:
         username: "{{test_user}}"
         password: "{{test_password}}"
       isolate_context: true
       on_error: fail
+
+  # Usar variáveis do step anterior com alias
+  - name: "Get user profile"
+    request:
+      method: GET
+      url: "/users/{{auth.user_id}}"
+      headers:
+        Authorization: "Bearer {{auth.access_token}}"
 
   # Com contexto não-isolado (variáveis mesclam no escopo pai)
   - name: "Setup auth"
@@ -621,8 +632,13 @@ steps:
 
 | `isolate_context` | Comportamento |
 |-------------------|---------------|
-| `true` (padrão) | Variáveis capturadas ficam em namespace `{{step-id.variable}}` |
+| `true` (padrão) | Variáveis capturadas ficam em namespace `{{step-id.variable}}` ou `{{alias.variable}}` (se `alias` for definido) |
 | `false` | Variáveis capturadas mesclam diretamente no escopo do chamador |
+
+**Nota sobre `alias`:**
+- Quando `alias` é definido e `isolate_context: true`, variáveis capturadas são prefixadas com o alias (ex: `{{auth.access_token}}`)
+- Quando `alias` é definido e `isolate_context: false`, o alias é ignorado e variáveis mesclam diretamente
+- Quando `alias` NÃO é definido e `isolate_context: true`, variáveis são prefixadas com o `node_id` do step chamado (ex: `{{func_auth.access_token}}`)
 
 ---
 
@@ -768,7 +784,7 @@ hooks_post_iteration:
 
 ### 9.3. Hook Points (Pontos de Execução)
 
-Cada **step** pode ter hooks em 10 pontos diferentes do ciclo de vida:
+Cada **step** pode ter hooks em 12 pontos diferentes do ciclo de vida:
 
 | Hook Point | Quando Executa | Contexto Disponível | Use Case |
 |------------|----------------|---------------------|----------|
@@ -782,6 +798,8 @@ Cada **step** pode ter hooks em 10 pontos diferentes do ciclo de vida:
 | `hooks_post_assertion` | **Depois** de assertions | `variables`, `response`, `assertions` | Métricas de falhas, alertas |
 | `hooks_pre_capture` | **Antes** de capturar variáveis | `variables`, `response` | Validações estruturais |
 | `hooks_post_capture` | **Depois** de capturar variáveis | `variables`, `captured` | Transformações, exports |
+| `hooks_pre_call` | **Antes** de executar chamada cross-suite | `variables` | Setup de contexto, validações |
+| `hooks_post_call` | **Depois** de chamada cross-suite | `variables`, `call_result`, `propagated_variables` | Logs, métricas, transformações |
 
 #### 9.3.1 Contextos Adicionais
 
@@ -819,6 +837,23 @@ assertions: [
   },
   ...
 ]
+```
+
+**Para `call_result` context (hooks_post_call):**
+```typescript
+call_result: {
+  success: true,
+  status: "success",         // "success" | "failure" | "skipped"
+  propagated_variables: {    // Variáveis capturadas do step chamado
+    auth_token: "...",
+    user_id: 123
+  },
+  suite_name: "auth-setup",
+  error?: string,            // Mensagem de erro se houver falha
+  request_details?: {...},   // Detalhes da requisição do step chamado
+  response_details?: {...},  // Detalhes da resposta do step chamado
+  assertions_results?: [...] // Resultados de assertions do step chamado
+}
 ```
 
 ---
@@ -974,6 +1009,68 @@ steps:
       url: "/protected-resource"
       headers:
         Authorization: "Bearer {{auth_token}}"
+```
+
+#### 9.4.6 Hooks em Call Steps (Pre/Post Call)
+
+```yaml
+steps:
+  - name: "Execute authentication flow with monitoring"
+
+    # Hooks antes da chamada cross-suite
+    hooks_pre_call:
+      - compute:
+          call_started_at: "{{$js:Date.now()}}"
+          call_request_id: "{{$js:crypto.randomUUID()}}"
+      - validate:
+          - expression: "username && password"
+            message: "Username and password are required for auth call"
+            severity: "error"
+      - log:
+          level: "info"
+          message: "Starting auth call with request ID: {{call_request_id}}"
+          metadata:
+            username: "{{username}}"
+
+    call:
+      test: "./auth/login.yaml"
+      step: "login-step"
+      alias: "auth"
+      variables:
+        username: "{{username}}"
+        password: "{{password}}"
+
+    # Hooks depois da chamada cross-suite
+    hooks_post_call:
+      - compute:
+          call_duration: "{{$js:Date.now() - call_started_at}}"
+      - validate:
+          - expression: "call_result.success"
+            message: "Authentication call failed"
+            severity: "warning"
+          - expression: "auth.access_token"
+            message: "Access token not captured from auth flow"
+            severity: "error"
+      - metric:
+          name: "auth_call_duration_ms"
+          value: "{{call_duration}}"
+          tags:
+            success: "{{call_result.success}}"
+            suite: "{{call_result.suite_name}}"
+      - log:
+          level: "info"
+          message: "Auth call completed in {{call_duration}}ms - Status: {{call_result.status}}"
+          metadata:
+            propagated_vars: "{{$js:Object.keys(call_result.propagated_variables || {}).join(', ')}}"
+            success: "{{call_result.success}}"
+
+  # Usar variáveis do call anterior (com alias)
+  - name: "Get user profile"
+    request:
+      method: GET
+      url: "/users/{{auth.user_id}}"
+      headers:
+        Authorization: "Bearer {{auth.access_token}}"
 ```
 
 ---

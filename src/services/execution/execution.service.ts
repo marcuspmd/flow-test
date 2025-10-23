@@ -1657,6 +1657,20 @@ export class ExecutionService implements IExecutionService {
       processedVariables[finalName] = value;
     }
 
+    this.logger.debug(
+      `processCapturedVariables: ${
+        Object.keys(capturedVariables).length
+      } variables, applyNamespace=${applyNamespace}, alias=${alias}`,
+      {
+        metadata: {
+          type: "variable_processing",
+          internal: true,
+          input: Object.keys(capturedVariables),
+          output: Object.keys(processedVariables),
+        },
+      }
+    );
+
     return processedVariables;
   }
 

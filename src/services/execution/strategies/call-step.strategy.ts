@@ -165,11 +165,98 @@ export class CallStepStrategy extends BaseStepStrategy {
         }
       );
 
+      // **6.8. Execute pre-call hooks**
+      await this.executeHooks(context, step.hooks_pre_call, "pre_call");
+
       // **7. Execute the call**
       const callResult = await callService.executeStepCall(
         callRequest,
         callOptions
       );
+
+      // **7.5. Propagate variables BEFORE hooks_post_call**
+      //       This ensures hooks can access captured variables via {{alias.variable}}
+      const propagatedVariables = callResult.propagated_variables;
+      if (propagatedVariables && Object.keys(propagatedVariables).length > 0) {
+        logger.debug(
+          `Propagating ${
+            Object.keys(propagatedVariables).length
+          } variables from call (alias=${alias}, isolate=${isolateContext})`,
+          {
+            stepName: step.name,
+            metadata: {
+              type: "step_call_propagate",
+              internal: true,
+              variables: Object.keys(propagatedVariables),
+            },
+          }
+        );
+
+        // Set runtime variables immediately so hooks can access them
+        globalVariables.setRuntimeVariables(propagatedVariables);
+
+        if (alias && isolateContext) {
+          const aliasPrefix = `${alias}.`;
+          const variablesToExport: string[] = [];
+          const unprefixedVariables: Record<string, any> = {};
+
+          for (const [key, value] of Object.entries(propagatedVariables)) {
+            // Variables already come with alias prefix from processCapturedVariables
+            if (key.startsWith(aliasPrefix)) {
+              // Remove the alias prefix to get the original variable name
+              const unprefixedKey = key.substring(aliasPrefix.length);
+              variablesToExport.push(unprefixedKey);
+              unprefixedVariables[unprefixedKey] = value;
+            } else {
+              // Fallback: if for some reason the variable doesn't have the prefix
+              // (shouldn't happen with isolate_context: true), export it as-is
+              logger.debug(
+                `Variable '${key}' does not have expected alias prefix '${aliasPrefix}'`,
+                {
+                  stepName: step.name,
+                  metadata: { type: "step_call", internal: true, alias: alias },
+                }
+              );
+              variablesToExport.push(key);
+              unprefixedVariables[key] = value;
+            }
+          }
+
+          if (variablesToExport.length > 0) {
+            globalVariables.exportVariables(
+              alias,
+              callResult.suite_name || suite.suite_name,
+              variablesToExport,
+              unprefixedVariables
+            );
+
+            logger.debug(
+              `Registered ${
+                variablesToExport.length
+              } variable(s) under alias '${alias}' BEFORE hooks_post_call: ${variablesToExport.join(
+                ", "
+              )}`,
+              {
+                stepName: step.name,
+                metadata: {
+                  type: "step_call",
+                  internal: true,
+                  alias: alias,
+                  variables: variablesToExport,
+                },
+              }
+            );
+          }
+        }
+      }
+
+      // **7.6. Execute post-call hooks with call result context**
+      await this.executeHooks(context, step.hooks_post_call, "post_call", {
+        call_result: callResult,
+        propagated_variables: propagatedVariables,
+        success: callResult.success,
+        status: this.determineStatus(callResult),
+      });
 
       const duration = Date.now() - startTime;
       const status = this.determineStatus(callResult);
@@ -198,57 +285,8 @@ export class CallStepStrategy extends BaseStepStrategy {
         );
       }
 
-      // **9. Propagate variables if successful**
-      const propagatedVariables = callResult.propagated_variables;
-      if (propagatedVariables && Object.keys(propagatedVariables).length > 0) {
-        // Always set runtime variables (even on failure, as captures might be partial)
-        globalVariables.setRuntimeVariables(propagatedVariables);
-
-        // **9.1. Register aliased variables in global registry**
-        // When using alias with isolate_context, variables are prefixed (e.g., "auth.token")
-        // We need to register them in the global registry so they can be accessed via {{alias.variable}}
-        if (alias && isolateContext) {
-          // Extract the non-prefixed variable names and their values
-          const aliasPrefix = `${alias}.`;
-          const variablesToExport: string[] = [];
-          const unprefixedVariables: Record<string, any> = {};
-
-          for (const [key, value] of Object.entries(propagatedVariables)) {
-            if (key.startsWith(aliasPrefix)) {
-              const unprefixedKey = key.substring(aliasPrefix.length);
-              variablesToExport.push(unprefixedKey);
-              unprefixedVariables[unprefixedKey] = value;
-            }
-          }
-
-          // Register and export variables under the alias
-          if (variablesToExport.length > 0) {
-            globalVariables.exportVariables(
-              alias,
-              callResult.suite_name || suite.suite_name,
-              variablesToExport,
-              unprefixedVariables
-            );
-
-            logger.debug(
-              `Registered ${
-                variablesToExport.length
-              } variable(s) under alias '${alias}': ${variablesToExport.join(
-                ", "
-              )}`,
-              {
-                stepName: step.name,
-                metadata: {
-                  type: "step_call",
-                  internal: true,
-                  alias: alias,
-                  variables: variablesToExport,
-                },
-              }
-            );
-          }
-        }
-      }
+      // **9. Variables already propagated in step 7.5 (before hooks_post_call)**
+      //     This section was moved earlier to ensure hooks have access to captured variables
 
       // **10. Build success result**
       const result: StepExecutionResult = {
@@ -378,6 +416,61 @@ export class CallStepStrategy extends BaseStepStrategy {
     callResult: StepCallResult
   ): "success" | "failure" | "skipped" {
     return callResult.status ?? (callResult.success ? "success" : "failure");
+  }
+
+  /**
+   * Executes lifecycle hooks at specified hook points.
+   *
+   * @param context - Step execution context
+   * @param hooks - Array of hooks to execute
+   * @param hookPoint - Name of the hook point (e.g., "pre_call", "post_call")
+   * @param additionalContext - Additional context data to pass to hooks
+   * @private
+   */
+  private async executeHooks(
+    context: StepExecutionContext,
+    hooks: import("../../../types/hook.types").HookAction[] | undefined,
+    hookPoint: string,
+    additionalContext?: Record<string, any>
+  ): Promise<void> {
+    if (!hooks || hooks.length === 0) {
+      return;
+    }
+
+    const { hookExecutorService, step, globalVariables, logger } = context;
+
+    try {
+      logger.debug(
+        `[Hook] Executing ${hooks.length} hook(s) at ${hookPoint} for step '${step.name}'`
+      );
+
+      const hookContext: import("../../../types/hook.types").HookExecutionContext =
+        {
+          stepName: step.name,
+          stepIndex: context.stepIndex,
+          variables: globalVariables.getAllVariables(),
+          ...additionalContext,
+        };
+
+      const result = await hookExecutorService.executeHooks(hooks, hookContext);
+
+      if (!result.success) {
+        logger.warn(
+          `[Hook] Hook execution at ${hookPoint} encountered issues: ${result.error}`
+        );
+      } else {
+        logger.debug(
+          `[Hook] Successfully executed hooks at ${hookPoint} in ${result.duration_ms}ms`
+        );
+      }
+    } catch (error) {
+      logger.error(
+        `[Hook] Failed to execute hooks at ${hookPoint}: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
+      // Don't throw - hooks should not break test execution
+    }
   }
 
   // filterAvailableVariables and buildFailureResult methods moved to BaseStepStrategy

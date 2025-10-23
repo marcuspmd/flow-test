@@ -1,0 +1,67 @@
+# ============================================================================
+# Auth Setup Demo - Auxiliary suite for hooks-pre-post-call-demo.yaml
+# ============================================================================
+#
+# Esta suite fornece steps de autenticação que são chamados via cross-suite
+# call pela demo de hooks pre/post call.
+# ============================================================================
+
+suite_name: "Auth Setup Demo"
+node_id: "auth-setup-demo"
+base_url: "https://httpbin.org"
+
+exports: ["access_token", "user_id", "token_expiry"]
+
+steps:
+  # ============================================================================
+  # Step principal: Simular login e capturar token
+  # ============================================================================
+  - name: "Login and capture auth token"
+    step_id: "login-step"
+
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        username: "{{username}}"
+        password: "{{password}}"
+        grant_type: "password"
+
+    assert:
+      status_code: 200
+      body:
+        json:
+          username: {exists: true}
+          password: {exists: true}
+
+    capture:
+      # Simular captura de token (usando dados do request echo)
+      access_token: "body.json.username"  # httpbin retorna o que enviamos
+      user_id: "body.json.username"       # Simula user_id
+      token_expiry: "{{$js:Date.now() + 3600000}}"  # 1h de validade
+
+    hooks_post_capture:
+      - log:
+          level: "info"
+          message: "🔑 Auth credentials captured successfully"
+          metadata:
+            access_token: "{{access_token}}"
+            user_id: "{{user_id}}"
+            expiry: "{{token_expiry}}"
+
+  # ============================================================================
+  # Step secundário: Operação "arriscada" para demonstrar error handling
+  # ============================================================================
+  - name: "Risky operation that may fail"
+    step_id: "risky-operation"
+
+    request:
+      method: GET
+      url: "/status/500"  # Força um erro 500
+
+    assert:
+      status_code: 200  # Vai falhar propositalmente
+
+    continue_on_failure: true

@@ -42,7 +42,7 @@ import {
   ImportOptions,
 } from "./services/swagger-import.service";
 import { handleInitCommand } from "./commands/init";
-import { handleGraphCommand } from "./commands/graph";
+import { handleSchemaCommand, displaySchemaHelp } from "./commands/schema";
 import { PostmanCollectionService } from "./services/postman-collection.service";
 import {
   setupLogger,
@@ -279,9 +279,33 @@ async function main() {
     return;
   }
 
-  if (args[0] === "graph") {
-    await handleGraphCommand(args.slice(1));
-    return;
+  // Handle schema command
+  if (args[0] === "schema") {
+    const restArgs = args.slice(1);
+
+    // Check for help flag
+    if (restArgs.includes("--help") || restArgs.includes("-h")) {
+      displaySchemaHelp();
+      return;
+    }
+
+    // Parse format option
+    let format: "json" = "json";
+    const formatIndex = restArgs.indexOf("--format");
+    if (formatIndex !== -1 && formatIndex + 1 < restArgs.length) {
+      const requestedFormat = restArgs[formatIndex + 1];
+      if (requestedFormat === "json") {
+        format = "json";
+      } else {
+        console.error(
+          `Error: Unsupported format '${requestedFormat}'. Only 'json' is supported.`
+        );
+        process.exit(1);
+      }
+    }
+
+    const exitCode = await handleSchemaCommand({ format, pretty: true });
+    process.exit(exitCode);
   }
 
   // Parsing dos argumentos
@@ -302,7 +326,6 @@ async function main() {
   let postmanImportOutput: string | undefined;
   let postmanPreserveFolders = false;
   let postmanAnalyzeDeps = false;
-  let dashboardCommand: string | undefined;
   let liveEventsPath: string | undefined;
   let runnerInteractiveMode = false;
   let disableReporting = false;
@@ -399,8 +422,11 @@ async function main() {
       case "-f":
       case "--format":
         if (i + 1 < args.length) {
-          const formats = args[++i].split(",").map(f => f.trim()) as ReportFormat[];
-          const reportingOptions = (options.reporting = options.reporting ?? {});
+          const formats = args[++i]
+            .split(",")
+            .map((f) => f.trim()) as ReportFormat[];
+          const reportingOptions = (options.reporting =
+            options.reporting ?? {});
           reportingOptions.formats = formats;
         }
         break;
@@ -528,17 +554,6 @@ async function main() {
         postmanAnalyzeDeps = true;
         break;
 
-      case "dashboard":
-        if (i + 1 < args.length) {
-          dashboardCommand = args[++i];
-        } else {
-          getLogger().error(
-            "❌ Dashboard command requires a subcommand: install, dev, build, preview, serve"
-          );
-          process.exit(1);
-        }
-        break;
-
       case "-h":
       case "--help":
         showHelp = true;
@@ -609,12 +624,6 @@ async function main() {
       getLogger().error("❌ Provided inline YAML content is empty.");
       process.exit(1);
     }
-  }
-
-  // Handle dashboard commands if requested
-  if (dashboardCommand) {
-    await handleDashboardCommand(dashboardCommand);
-    process.exit(0);
   }
 
   // Handle Postman export from results if requested
@@ -1495,13 +1504,11 @@ function printHelp() {
 🚀 Flow Test Engine v${version}
 
 USAGE:
-  fest [COMMAND] [TEST_FILE | -c CONFIG_FILE] [OPTIONS]
   flow-test-engine [COMMAND] [TEST_FILE | -c CONFIG_FILE] [OPTIONS]
 
 COMMANDS:
   init                       Initialize configuration file interactively
-  dashboard <subcommand>     Manage report dashboard (install, dev, build, preview, serve)
-  graph [format]             Generate discovery graphs (Mermaid) from test discovery
+  schema [--format json]     Export engine schema catalog for IDE extensions
 
   (no command)               Run tests with specified options
 
@@ -1561,15 +1568,6 @@ POSTMAN COLLECTIONS:
   --postman-preserve-folders Preserve folder structure, creating multiple YAML files (one per folder)
   --postman-analyze-deps     Analyze and add 'depends' directives based on variable dependencies
 
-GRAPH GENERATION:
-  graph mermaid [options]    Print a Mermaid graph of discovered suites to stdout
-    --direction <dir>        Choose layout direction (TD, LR, BT, RL)
-    --priority <list>        Filter suites by priority levels
-    --tag <list>             Filter suites by metadata tags
-    --suite <list>           Filter suites by suite names
-    --node <list>            Filter suites by node IDs
-    --output <file>          Write the generated graph to a file
-    --no-orphans             Disable orphan node highlighting
 
 OTHER:
   -h, --help             Show this help message
@@ -1577,35 +1575,30 @@ OTHER:
 
 EXAMPLES:
   # Configuration
-  fest init                               # Interactive configuration setup (short form)
   flow-test-engine init                   # Interactive configuration setup (full form)
-  fest init --template basic             # Use basic template
-  fest init --help                       # Show init command help
+  flow-test-engine init --template basic             # Use basic template
+  flow-test-engine init --help                       # Show init command help
 
-  # Dashboard Management
-  fest dashboard install                  # Install dashboard dependencies
-  fest dashboard dev                      # Start dashboard in development mode
-  fest dashboard build                    # Build dashboard for production
-  fest dashboard preview                  # Preview built dashboard
-  fest dashboard serve                    # Build and serve dashboard
+  # Schema Export
+  flow-test-engine schema --format json              # Export schema catalog to stdout
+  flow-test-engine schema > flow-test-engine.schema.json  # Save schema to file
 
   # Running Tests
-  fest                                    # Run with default config (short form)
-  fest my-test.yaml                       # Run specific test file
-  fest -c my-config.yml                   # Run with specific config file
-  fest --priority critical,high          # Run only critical and high priority tests
-  fest --dry-run                         # Show what would be executed
-  fest --directory ./api-tests --verbose # Run from specific directory with verbose output
-  fest --environment staging --silent    # Run in staging environment silently
-  fest --format qa                       # Generate QA-friendly report
-  fest --format json,html,qa             # Generate all report formats
-  fest --swagger-import api.json         # Import OpenAPI spec and generate tests
-  fest --swagger-import api.yaml --swagger-output ./tests/api # Import with custom output
-  fest --postman-export tests/auth-flows-test.yaml --postman-output ./exports/auth.postman_collection.json
-  fest --postman-export-from-results results/latest.json --postman-output ./exports/
-  fest --postman-import ./postman/collection.json --postman-import-output ./tests/imported-postman
-  fest --postman-import ./postman/api.json --postman-preserve-folders --postman-analyze-deps --postman-import-output ./tests/api
-  fest graph mermaid --output discovery.mmd     # Generate Mermaid graph for documentation
+  flow-test-engine                                    # Run with default config (short form)
+  flow-test-engine my-test.yaml                       # Run specific test file
+  flow-test-engine -c my-config.yml                   # Run with specific config file
+  flow-test-engine --priority critical,high          # Run only critical and high priority tests
+  flow-test-engine --dry-run                         # Show what would be executed
+  flow-test-engine --directory ./api-tests --verbose # Run from specific directory with verbose output
+  flow-test-engine --environment staging --silent    # Run in staging environment silently
+  flow-test-engine --format qa                       # Generate QA-friendly report
+  flow-test-engine --format json,html,qa             # Generate all report formats
+  flow-test-engine --swagger-import api.json         # Import OpenAPI spec and generate tests
+  flow-test-engine --swagger-import api.yaml --swagger-output ./tests/api # Import with custom output
+  flow-test-engine --postman-export tests/auth-flows-test.yaml --postman-output ./exports/auth.postman_collection.json
+  flow-test-engine --postman-export-from-results results/latest.json --postman-output ./exports/
+  flow-test-engine --postman-import ./postman/collection.json --postman-import-output ./tests/imported-postman
+  flow-test-engine --postman-import ./postman/api.json --postman-preserve-folders --postman-analyze-deps --postman-import-output ./tests/api
 
 CONFIGURATION:
   The engine looks for configuration files in this order:
@@ -1820,129 +1813,6 @@ async function handlePostmanImport(
     getLogger().error("❌ Unexpected error during Postman import:", {
       error: error as Error,
     });
-    process.exit(1);
-  }
-}
-
-async function handleDashboardCommand(command: string): Promise<void> {
-  const { spawn } = require("child_process");
-  const path = require("path");
-
-  // Get the directory where the CLI is installed
-  const cliDir = path.dirname(path.dirname(__filename));
-  const dashboardDir = path.join(cliDir, "report-dashboard");
-
-  // Get the current project directory (where flow-test was called from)
-  const projectDir = process.cwd();
-
-  getLogger().info(`🎯 Running dashboard command: ${command}`);
-
-  let npmCommand: string;
-  let args: string[] = [];
-
-  switch (command) {
-    case "install":
-      npmCommand = "npm";
-      args = ["install"];
-      break;
-    case "dev":
-      npmCommand = "npm";
-      args = ["run", "dev"];
-      break;
-    case "build":
-      npmCommand = "npm";
-      args = ["run", "build"];
-      break;
-    case "preview":
-      // Preview needs build first, so we build and then preview
-      npmCommand = "npm";
-      args = ["run", "build"];
-      break;
-    case "serve":
-      npmCommand = "npm";
-      args = ["run", "build"];
-      break;
-    default:
-      getLogger().error(`❌ Unknown dashboard command: ${command}`);
-      getLogger().error(
-        "Available commands: install, dev, build, preview, serve"
-      );
-      process.exit(1);
-  }
-
-  try {
-    // Check if dashboard directory exists
-    const fs = require("fs");
-    if (!fs.existsSync(dashboardDir)) {
-      getLogger().error(`❌ Dashboard directory not found: ${dashboardDir}`);
-      getLogger().error(
-        "Make sure the report-dashboard is included in the package."
-      );
-      process.exit(1);
-    }
-
-    getLogger().info(`📁 Working directory: ${dashboardDir}`);
-    getLogger().info(`📍 Project directory: ${projectDir}`);
-
-    // Set environment variable so dashboard can find project results
-    const env = {
-      ...process.env,
-      FLOW_TEST_PROJECT_DIR: projectDir,
-      FLOW_TEST_CLI_DIR: cliDir, // Add CLI directory for finding guides
-      ...(command === "preview" && { FLOW_TEST_PREVIEW: "true" }), // Add preview flag
-    };
-
-    const child = spawn(npmCommand, args, {
-      cwd: dashboardDir,
-      stdio: "inherit",
-      env: env,
-    });
-
-    child.on("error", (error: Error) => {
-      getLogger().error(
-        `❌ Failed to start dashboard command: ${error.message}`
-      );
-      process.exit(1);
-    });
-
-    child.on("close", (code: number | null) => {
-      if (command === "serve" && code === 0) {
-        // After build succeeds, start the serve command
-        getLogger().info("🚀 Starting server...");
-        const serveChild = spawn("npx", ["serve", "dist", "--single"], {
-          cwd: dashboardDir,
-          stdio: "inherit",
-          env: env,
-        });
-
-        serveChild.on("error", (error: Error) => {
-          getLogger().error(`❌ Failed to start server: ${error.message}`);
-          process.exit(1);
-        });
-      } else if (command === "preview" && code === 0) {
-        // After build succeeds, start the preview command
-        getLogger().info("🚀 Starting preview server...");
-        const previewChild = spawn("npm", ["run", "preview"], {
-          cwd: dashboardDir,
-          stdio: "inherit",
-          env: env,
-        });
-
-        previewChild.on("error", (error: Error) => {
-          getLogger().error(`❌ Failed to start preview: ${error.message}`);
-          process.exit(1);
-        });
-      } else if (code !== 0) {
-        getLogger().error(`❌ Dashboard command failed with exit code ${code}`);
-        process.exit(code || 1);
-      } else {
-        getLogger().info(
-          `✅ Dashboard command '${command}' completed successfully`
-        );
-      }
-    });
-  } catch (error) {
-    getLogger().error(`❌ Error executing dashboard command: ${error}`);
     process.exit(1);
   }
 }

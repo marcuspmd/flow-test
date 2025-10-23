@@ -1,0 +1,66 @@
+suite_name: "Test Hooks Post Input (SOLUÇÃO CORRETA)"
+node_id: "test-hooks-post-input"
+base_url: "https://httpbin.org"
+
+variables:
+  beneficios_teste:
+    - { index: 0, bn: "1042948850", cpf: "128.098.454-68", cpf_numerico: "12809845468", nome: "NERIVALDO EUCLIDES DE MOURA" }
+    - { index: 1, bn: "1058696774", cpf: "027.531.188-09", cpf_numerico: "02753118809", nome: "HERMES LIMA BRITO" }
+    - { index: 2, bn: "1122373675", cpf: "510.409.216-04", cpf_numerico: "51040921604", nome: "DONIZETTI APARECIDA DA SILVA SANTOS" }
+
+steps:
+  - name: "Select beneficiary (using hooks_post_input)"
+    step_id: "select_with_hooks"
+
+    input:
+      prompt: "Escolha um benefício:"
+      variable: "selected_beneficio_index"
+      type: "select"
+      required: true
+      ci_default: 2
+      options:
+        - { value: 0, label: "BN: 1042948850 - NERIVALDO EUCLIDES DE MOURA" }
+        - { value: 1, label: "BN: 1058696774 - HERMES LIMA BRITO" }
+        - { value: 2, label: "BN: 1122373675 - DONIZETTI APARECIDA DA SILVA SANTOS" }
+
+    # ✅ SOLUÇÃO: Use hooks_post_input com compute action
+    hooks_post_input:
+      - compute:
+          selected_beneficio: "{{$js:beneficios_teste[selected_beneficio_index]}}"
+          selected_cpf: "{{$js:beneficios_teste[selected_beneficio_index].cpf}}"
+          selected_cpf_numerico: "{{$js:beneficios_teste[selected_beneficio_index].cpf_numerico}}"
+          selected_bn: "{{$js:beneficios_teste[selected_beneficio_index].bn}}"
+          selected_nome: "{{$js:beneficios_teste[selected_beneficio_index].nome}}"
+
+      - log:
+          level: "info"
+          message: "✅ Beneficiário selecionado: {{selected_nome}} (CPF: {{selected_cpf_numerico}})"
+
+  - name: "Verify computed variables work"
+    step_id: "verify_computed"
+    request:
+      method: POST
+      url: "/post"
+      body:
+        test_name: "hooks_post_input_test"
+        selected_index: "{{selected_beneficio_index}}"
+        selected_object: "{{selected_beneficio}}"
+        selected_cpf: "{{selected_cpf}}"
+        selected_cpf_numerico: "{{selected_cpf_numerico}}"
+        selected_bn: "{{selected_bn}}"
+        selected_nome: "{{selected_nome}}"
+    assert:
+      status_code: 200
+      body:
+        json:
+          selected_index: { equals: 2 }
+          selected_object:
+            exists: true
+            type: "object"
+          selected_object.bn: { equals: "1122373675" }
+          selected_object.cpf: { equals: "510.409.216-04" }
+          selected_object.cpf_numerico: { equals: "51040921604" }
+          selected_cpf: { equals: "510.409.216-04" }
+          selected_cpf_numerico: { equals: "51040921604" }
+          selected_bn: { equals: "1122373675" }
+          selected_nome: { equals: "DONIZETTI APARECIDA DA SILVA SANTOS" }
