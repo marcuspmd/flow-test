@@ -47,37 +47,37 @@ classDiagram
         +setNext(handler) ErrorHandler
         +handle(error, context) Promise~ErrorHandlingResult~
     }
-    
+
     class BaseErrorHandler {
         <<abstract>>
         #nextHandler ErrorHandler?
         +setNext(handler) ErrorHandler
         #passToNext(error, context) Promise~ErrorHandlingResult~
     }
-    
+
     class LoggingErrorHandler {
         -logger ILogger
         +handle(error, context) Promise~ErrorHandlingResult~
     }
-    
+
     class RetryErrorHandler {
         -retryableErrors Set~string~
         +handle(error, context) Promise~ErrorHandlingResult~
         -calculateBackoff(attempt) number
     }
-    
+
     class NotificationErrorHandler {
         -logger ILogger
         -notifiedErrors Set~string~
         +handle(error, context) Promise~ErrorHandlingResult~
     }
-    
+
     class ErrorHandlerChain {
         +createDefault() ErrorHandler
         +createWithRetry() ErrorHandler
         +create(...handlers) ErrorHandler
     }
-    
+
     ErrorHandler <|.. BaseErrorHandler
     BaseErrorHandler <|-- LoggingErrorHandler
     BaseErrorHandler <|-- RetryErrorHandler
@@ -153,12 +153,12 @@ class MyService {
 
     while (attemptCount < maxRetries) {
       attemptCount++;
-      
+
       try {
         // Sua operação aqui
         await this.riskyOperation();
         return; // Sucesso!
-        
+
       } catch (error) {
         const context: ErrorContext = {
           service: 'MyService',
@@ -464,7 +464,7 @@ jest.spyOn(Math, 'random').mockReturnValue(0.5);
 
 ---
 
-**Versão:** 1.0.0  
-**Última Atualização:** 2025-01-27  
-**Autor:** Architecture Team  
+**Versão:** 1.0.0
+**Última Atualização:** 2025-01-27
+**Autor:** Architecture Team
 **Status:** ✅ Phase 1 Complete | 🚧 Phase 2 Blocked (DI integration)

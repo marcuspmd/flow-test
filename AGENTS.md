@@ -22,6 +22,7 @@
 
 ### Controle de Fluxo
 - [7. Iteração (IterationConfig)](#7-iteração-iterationconfig)
+- [7.4. Skip Condition (Pular Step Condicionalmente)](#74-skip-condition-pular-step-condicionalmente)
 - [8. Cenários Condicionais](#8-cenários-condicionais-conditionalscenario)
 - [9. Step Call Cross-Suite](#9-step-call-cross-suite-stepcallconfig)
 
@@ -125,6 +126,7 @@ Criar uma documentação técnica completa que cubra todas as propriedades, tipo
 | `iterate` | `IterationConfig` | ❌ Não | Execução em loop | Ver seção Iterate |
 | `scenarios` | `ConditionalScenario[]` | ❌ Não | Cenários condicionais | Ver seção Scenarios |
 | `continue_on_failure` | `boolean` | ❌ Não | Continuar se o passo falhar | `true` ou `false` |
+| `skip` | `string` | ❌ Não | Condição para pular o step (JMESPath ou JavaScript) | `"{{environment}} === 'prod'"` ou `"environment == 'production'"` |
 | `metadata` | `TestStepMetadata` | ❌ Não | Metadados do passo | Ver seção Metadata |
 
 > **Nota:** `request` é opcional apenas se o step contém apenas `input` ou `call`.
@@ -150,7 +152,6 @@ Criar uma documentação técnica completa que cubra todas as propriedades, tipo
 | `retry` | `object` | Configuração de retry | `{max_attempts: 3, delay_ms: 1000}` |
 | `depends_on` | `string[]` | IDs de steps que devem executar antes | `["setup-step", "auth-step"]` |
 | `description` | `string` | Descrição do que o passo faz | `"Creates user account"` |
-| `skip` | `string` | Condição para pular o step | `"{{environment}} !== 'prod'"` |
 
 ---
 
@@ -515,6 +516,155 @@ steps:
 | `_iteration.index` | `number` | Índice atual (0-based) |
 | `_iteration.isFirst` | `boolean` | Se é a primeira iteração |
 | `_iteration.isLast` | `boolean` | Se é a última iteração |
+
+---
+
+### 7.4 Skip Condition (Pular Step Condicionalmente)
+
+A propriedade `skip` permite pular a execução de um step baseado em uma condição dinâmica. A expressão pode ser avaliada como **JMESPath** ou **JavaScript**.
+
+#### 7.4.1 Sintaxe e Avaliação
+
+| Característica | Descrição |
+|----------------|-----------|
+| **Tipo** | `string` - Expressão JMESPath ou JavaScript |
+| **Quando avaliado** | Antes de executar o step, após interpolação de variáveis |
+| **Resultado** | Se avaliar como `true`, o step é pulado e marcado como "skipped" |
+| **Ordem de avaliação** | 1) Interpolação de variáveis, 2) Tentativa JavaScript, 3) Fallback para JMESPath |
+
+#### 7.4.2 Exemplos com JavaScript
+
+```yaml
+steps:
+  # Skip em ambiente de produção
+  - name: "Debug request"
+    skip: "{{environment}} === 'prod'"
+    request:
+      method: GET
+      url: "/debug"
+
+  # Skip se variável não existe ou é falsa
+  - name: "Optional feature test"
+    skip: "!{{enable_beta_features}}"
+    request:
+      method: GET
+      url: "/beta/feature"
+
+  # Skip com lógica complexa
+  - name: "Admin operation"
+    skip: "{{user_role}} !== 'admin' || {{environment}} === 'test'"
+    request:
+      method: DELETE
+      url: "/admin/cleanup"
+
+  # Skip baseado em valor numérico
+  - name: "Expensive operation"
+    skip: "{{items_count}} > 1000"
+    request:
+      method: POST
+      url: "/batch-process"
+```
+
+#### 7.4.3 Exemplos com JMESPath
+
+```yaml
+steps:
+  # Skip se status anterior foi erro
+  - name: "Follow-up action"
+    skip: "previous_status == 'error'"
+    request:
+      method: POST
+      url: "/follow-up"
+
+  # Skip se campo existe
+  - name: "Create user"
+    skip: "user_id != `null`"
+    request:
+      method: POST
+      url: "/users"
+
+  # Skip baseado em comparação
+  - name: "Premium feature"
+    skip: "account_type != 'premium'"
+    request:
+      method: GET
+      url: "/premium/dashboard"
+```
+
+#### 7.4.4 Comportamento e Logs
+
+Quando um step é pulado:
+
+1. **Status**: Step é marcado como `"skipped"` no resultado
+2. **Duração**: `duration_ms` é `0`
+3. **Variáveis capturadas**: Nenhuma variável é capturada
+4. **Log**: Mensagem informativa é registrada:
+   ```
+   [INFO] Skipping step 'Step Name' (step-id) due to skip condition: {{environment}} === 'prod'
+   ```
+5. **Hooks**: `onStepStart` e `onStepEnd` são chamados normalmente
+6. **Execução**: Fluxo continua para o próximo step
+
+#### 7.4.5 Diferença entre `skip` e `continue_on_failure`
+
+| Propriedade | Quando usar | Comportamento |
+|-------------|-------------|---------------|
+| `skip` | Pular step **antes** da execução baseado em condição | Step não executa, status `skipped` |
+| `continue_on_failure` | Continuar **após** falha na execução | Step executa, se falhar não interrompe suíte |
+
+#### 7.4.6 Casos de Uso Comuns
+
+```yaml
+# 1. Skip em ambientes específicos
+steps:
+  - name: "Production-only validation"
+    skip: "{{environment}} !== 'production'"
+    request:
+      method: GET
+      url: "/prod-check"
+
+# 2. Skip se recurso já existe
+steps:
+  - name: "Setup resource"
+    request:
+      method: GET
+      url: "/resource/{{resource_id}}"
+    capture:
+      resource_exists: "status_code == `200`"
+
+  - name: "Create resource"
+    skip: "{{resource_exists}} === true"
+    request:
+      method: POST
+      url: "/resource"
+
+# 3. Skip etapas de limpeza em modo dry-run
+steps:
+  - name: "Cleanup test data"
+    skip: "{{dry_run}} === true"
+    request:
+      method: DELETE
+      url: "/test-data"
+
+# 4. Skip baseado em feature flag
+steps:
+  - name: "New feature test"
+    skip: "!{{feature_flags.new_api}}"
+    request:
+      method: POST
+      url: "/v2/endpoint"
+
+# 5. Skip se não há dados para processar
+steps:
+  - name: "Process items"
+    skip: "{{items.length}} === 0"
+    iterate:
+      over: "{{items}}"
+      as: "item"
+    request:
+      method: POST
+      url: "/process/{{item.id}}"
+```
 
 ---
 

@@ -1181,6 +1181,102 @@ export class ExecutionService implements IExecutionService {
   }
 
   /**
+   * Evaluates a skip condition expression (JMESPath or JavaScript)
+   * @param skipExpression - The skip condition expression to evaluate
+   * @returns true if the step should be skipped, false otherwise
+   */
+  private evaluateSkipCondition(skipExpression: string): boolean {
+    try {
+      // Get all current variables for context
+      const variables = this.globalVariables.getAllVariables();
+
+      // Check if this looks like a JavaScript expression (has JS operators)
+      const looksLikeJavaScript =
+        skipExpression.includes("===") ||
+        skipExpression.includes("!==") ||
+        skipExpression.includes("&&") ||
+        skipExpression.includes("||") ||
+        /^\s*!/.test(skipExpression); // Starts with negation
+
+      if (looksLikeJavaScript) {
+        try {
+          // For JavaScript, interpolate to get actual values
+          const interpolatedExpression =
+            this.globalVariables.interpolateString(skipExpression);
+
+          // Wrap expression in a return statement for evaluation
+          const wrappedExpression = `return (${interpolatedExpression});`;
+          const jsResult = this.javascriptService.executeExpression(
+            wrappedExpression,
+            { variables },
+            true // Execute as code block
+          );
+
+          return Boolean(jsResult);
+        } catch (jsError) {
+          this.logger.debug(
+            `Failed to evaluate skip condition as JavaScript: ${jsError}. Trying JMESPath...`
+          );
+        }
+      }
+
+      // Try to evaluate as JMESPath
+      try {
+        const jmespath = require("jmespath");
+
+        // Build context with all variables
+        const context = variables;
+
+        // For JMESPath, use the original expression (not interpolated)
+        let processedCondition = skipExpression;
+
+        // Fix numbers without backticks: "status_code == 200" -> "status_code == `200`"
+        processedCondition = processedCondition.replace(
+          /(==|!=|>=|<=|>|<)\s*(\d+)(?![`])/g,
+          "$1 `$2`"
+        );
+
+        // Fix boolean values without backticks: "enabled == true" -> "enabled == `true`"
+        processedCondition = processedCondition.replace(
+          /(==|!=)\s*(true|false)(?![`])/g,
+          "$1 `$2`"
+        );
+
+        // Fix null comparisons: "!= null" -> "!= `null`"
+        processedCondition = processedCondition.replace(
+          /(==|!=)\s*null(?![`])/g,
+          "$1 `null`"
+        );
+
+        const jmesResult = jmespath.search(context, processedCondition);
+        return Boolean(jmesResult);
+      } catch (jmesError) {
+        this.logger.warn(
+          `Failed to evaluate skip condition as JMESPath: ${jmesError}`
+        );
+      }
+
+      // If both fail, check if it's a direct boolean value after interpolation
+      const interpolatedForCheck =
+        this.globalVariables.interpolateString(skipExpression);
+      if (interpolatedForCheck === "true") return true;
+      if (interpolatedForCheck === "false") return false;
+
+      // Default to not skipping if we can't evaluate
+      this.logger.warn(
+        `Could not evaluate skip condition: ${skipExpression}. Defaulting to not skip.`
+      );
+      return false;
+    } catch (error) {
+      this.logger.error(
+        `Error evaluating skip condition '${skipExpression}': ${error}`
+      );
+      // On error, don't skip to avoid hiding execution issues
+      return false;
+    }
+  }
+
+  /**
    * Executes an individual step
    */
   private async executeStep(
@@ -1229,6 +1325,33 @@ export class ExecutionService implements IExecutionService {
 
       await this.hooks.onStepEnd?.(step, skippedResult, context);
       return skippedResult;
+    }
+
+    // Evaluate skip condition if present
+    if (step.skip) {
+      const shouldSkip = this.evaluateSkipCondition(step.skip);
+
+      if (shouldSkip) {
+        const skippedResult: StepExecutionResult = {
+          step_id: identifiers.stepId,
+          qualified_step_id: identifiers.qualifiedStepId,
+          step_name: step.name,
+          status: "skipped",
+          duration_ms: 0,
+          captured_variables: {},
+          available_variables: this.filterAvailableVariables(
+            this.globalVariables.getAllVariables(),
+            { stepName: step.name }
+          ),
+        };
+
+        this.logger.info(
+          `Skipping step '${step.name}' (${identifiers.stepId}) due to skip condition: ${step.skip}`
+        );
+
+        await this.hooks.onStepEnd?.(step, skippedResult, context);
+        return skippedResult;
+      }
     }
 
     // Execute step using Strategy Pattern

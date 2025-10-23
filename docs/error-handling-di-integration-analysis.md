@@ -59,7 +59,7 @@ graph TD
     H --> I[error-handler.ts]
     I --> J[getLogger mock]
     J -.->|circular| A
-    
+
     style D fill:#ff6b6b
     style J fill:#ff6b6b
 ```
@@ -104,7 +104,7 @@ export class LoggingErrorHandler extends BaseErrorHandler {
   constructor(private logger: ILogger) {
     super();
   }
-  
+
   async handle(error: Error, context: ErrorContext): Promise<ErrorHandlingResult> {
     this.logger.error(...); // Usa logger injetado
     return this.passToNext(error, context);
@@ -178,14 +178,14 @@ jest.mock('../../../di/container', () => ({
 ```typescript
 describe('HttpService', () => {
   let httpService: HttpService;
-  
+
   beforeEach(() => {
     jest.isolateModules(() => {
       // Mock setup
       jest.mock('../../utils/error-handling/handlers/logging-handler', () => ({
         LoggingErrorHandler: MockLoggingErrorHandler
       }));
-      
+
       // Import apenas dentro do isolateModules
       const { HttpService } = require('../http.service');
       httpService = new HttpService(...);
@@ -211,14 +211,14 @@ describe('HttpService', () => {
 ```typescript
 export class LoggingErrorHandler extends BaseErrorHandler {
   private _logger?: ILogger;
-  
+
   private get logger(): ILogger {
     if (!this._logger) {
       this._logger = container.get<ILogger>(TYPES.ILogger);
     }
     return this._logger;
   }
-  
+
   async handle(error: Error, context: ErrorContext): Promise<ErrorHandlingResult> {
     this.logger.error(...); // Só agora pega do container
     return this.passToNext(error, context);

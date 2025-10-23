@@ -709,6 +709,22 @@ export interface TestStep {
   /** Whether to continue test suite execution if this step fails */
   continue_on_failure?: boolean;
 
+  /**
+   * Condition to skip the step execution (JMESPath or JavaScript expression).
+   * If the expression evaluates to true, the step is skipped.
+   *
+   * @example Skip based on variable
+   * ```yaml
+   * skip: "{{environment}} === 'prod'"
+   * ```
+   *
+   * @example Skip with JMESPath
+   * ```yaml
+   * skip: "environment == 'production'"
+   * ```
+   */
+  skip?: string;
+
   /** Additional metadata for execution control and organization */
   metadata?: TestStepMetadata;
 

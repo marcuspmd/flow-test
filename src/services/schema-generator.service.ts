@@ -353,6 +353,20 @@ export class SchemaGeneratorService {
           default: false,
           interpolable: false,
         },
+        skip: {
+          name: "skip",
+          type: "string",
+          description:
+            "Condition to skip step execution (JMESPath or JavaScript expression). Step is skipped if evaluates to true.",
+          required: false,
+          interpolable: true,
+          examples: [
+            '{{environment}} === "prod"',
+            "environment == 'production'",
+            "!{{enable_debug}}",
+            "{{items_count}} > 1000",
+          ],
+        },
         metadata: {
           name: "metadata",
           type: "object",

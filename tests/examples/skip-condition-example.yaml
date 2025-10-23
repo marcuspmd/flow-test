@@ -1,0 +1,85 @@
+# Exemplo de uso da propriedade skip
+# Demonstra como pular steps condicionalmente usando JMESPath ou JavaScript
+
+node_id: "skip-condition-example"
+suite_name: "Skip Condition Examples"
+description: "Exemplos de uso da propriedade skip para execução condicional"
+
+base_url: "https://httpbin.org"
+
+variables:
+  environment: "development"
+  enable_debug: false  # Changed to false to test skip
+  user_role: "user"  # Changed to user to test skip
+  items_count: 15  # Changed to 15 to test skip
+  dry_run: true  # Changed to true to test skip
+
+steps:
+  # Exemplo 1: Skip com JavaScript - comparação de strings
+  - name: "Debug endpoint (only in dev)"
+    skip: "{{environment}} === 'production'"
+    request:
+      method: GET
+      url: "/get"
+    assert:
+      status_code: 200
+
+  # Exemplo 2: Skip com JavaScript - negação
+  - name: "Beta feature test"
+    skip: "!{{enable_debug}}"
+    request:
+      method: GET
+      url: "/status/200"
+    assert:
+      status_code: 200
+
+  # Exemplo 3: Skip com JavaScript - operadores lógicos
+  - name: "Admin operation"
+    skip: "{{user_role}} !== 'admin' || {{environment}} === 'test'"
+    request:
+      method: GET
+      url: "/status/201"
+    assert:
+      status_code: 201
+
+  # Exemplo 4: Skip com JavaScript - comparação numérica
+  - name: "Batch operation"
+    skip: "{{items_count}} > 10"
+    request:
+      method: GET
+      url: "/status/202"
+    assert:
+      status_code: 202
+
+  # Exemplo 5: Skip com JMESPath - comparação simples
+  - name: "Production-only check"
+    skip: "environment == 'development'"
+    request:
+      method: GET
+      url: "/status/203"
+    assert:
+      status_code: 203
+
+  # Exemplo 6: Skip com JMESPath - comparação booleana
+  - name: "Cleanup step"
+    skip: "dry_run == `true`"
+    request:
+      method: DELETE
+      url: "/delete"
+
+  # Exemplo 7: Step sem skip (sempre executa)
+  - name: "Always execute"
+    request:
+      method: GET
+      url: "/get"
+    assert:
+      status_code: 200
+    capture:
+      final_status: "status_code"
+
+  # Exemplo 8: Skip baseado em variável capturada
+  - name: "Conditional follow-up"
+    skip: "{{final_status}} !== 200"
+    request:
+      method: GET
+      url: "/status/{{final_status}}"
