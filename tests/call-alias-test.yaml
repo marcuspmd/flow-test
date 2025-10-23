@@ -1,0 +1,22 @@
+suite_name: "Call Alias Test"
+node_id: "call-alias-test"
+base_url: "https://httpbin.org"
+
+variables:
+  httpbin_url: "https://httpbin.org"
+
+steps:
+  - name: "Call step with alias"
+    call:
+      test: "./start-flow.yaml"
+      step: "Enviar dados via POST e capturar valores"
+      alias: "auth"
+      isolate_context: true
+
+  - name: "Use captured variable with alias"
+    request:
+      method: GET
+      url: "/get"
+      params:
+        # Deveria funcionar com alias: auth.captured_username
+        username: "{{auth.captured_username}}"

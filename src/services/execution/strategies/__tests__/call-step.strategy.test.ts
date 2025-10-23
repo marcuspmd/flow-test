@@ -593,5 +593,146 @@ describe("CallStepStrategy", () => {
 
       expect(result.status).toBe("skipped");
     });
+
+    it("should register aliased variables in global registry when isolate_context is true", async () => {
+      const context = createMockContext();
+      const mockExportVariables = jest.fn();
+      context.globalVariables.exportVariables = mockExportVariables;
+
+      context.step.call = {
+        test: "./other.yaml",
+        step: "step-1",
+        alias: "auth",
+        isolate_context: true,
+      };
+
+      // Simulate propagated variables with alias prefix
+      (context.callService.executeStepCall as jest.Mock).mockResolvedValue({
+        success: true,
+        suite_name: "Other Suite",
+        propagated_variables: {
+          "auth.token": "abc123",
+          "auth.user_id": 456,
+        },
+      });
+
+      await strategy.execute(context);
+
+      // Should set runtime variables
+      expect(context.globalVariables.setRuntimeVariables).toHaveBeenCalledWith({
+        "auth.token": "abc123",
+        "auth.user_id": 456,
+      });
+
+      // Should export variables under alias
+      expect(mockExportVariables).toHaveBeenCalledWith(
+        "auth",
+        "Other Suite",
+        ["token", "user_id"],
+        {
+          token: "abc123",
+          user_id: 456,
+        }
+      );
+    });
+
+    it("should not register variables in global registry when alias is not provided", async () => {
+      const context = createMockContext();
+      const mockExportVariables = jest.fn();
+      context.globalVariables.exportVariables = mockExportVariables;
+
+      context.step.call = {
+        test: "./other.yaml",
+        step: "step-1",
+        isolate_context: true,
+      };
+
+      (context.callService.executeStepCall as jest.Mock).mockResolvedValue({
+        success: true,
+        propagated_variables: {
+          "suite-id.token": "abc123",
+        },
+      });
+
+      await strategy.execute(context);
+
+      // Should set runtime variables
+      expect(context.globalVariables.setRuntimeVariables).toHaveBeenCalled();
+
+      // Should NOT export variables (no alias provided)
+      expect(mockExportVariables).not.toHaveBeenCalled();
+    });
+
+    it("should register variables even when call fails if propagated_variables exist", async () => {
+      const context = createMockContext();
+      const mockExportVariables = jest.fn();
+      context.globalVariables.exportVariables = mockExportVariables;
+
+      context.step.call = {
+        test: "./other.yaml",
+        step: "step-1",
+        alias: "partial",
+        isolate_context: true,
+      };
+
+      // Call fails but has some captured variables
+      (context.callService.executeStepCall as jest.Mock).mockResolvedValue({
+        success: false,
+        error: "Assertion failed",
+        suite_name: "Other Suite",
+        propagated_variables: {
+          "partial.data": "some-value",
+        },
+      });
+
+      await strategy.execute(context);
+
+      // Should still register variables
+      expect(mockExportVariables).toHaveBeenCalledWith(
+        "partial",
+        "Other Suite",
+        ["data"],
+        {
+          data: "some-value",
+        }
+      );
+    });
+
+    it("should interpolate alias before using it", async () => {
+      const context = createMockContext();
+      const mockExportVariables = jest.fn();
+      context.globalVariables.exportVariables = mockExportVariables;
+
+      context.step.call = {
+        test: "./other.yaml",
+        step: "step-1",
+        alias: "{{dynamic_alias}}",
+        isolate_context: true,
+      };
+
+      (context.globalVariables.interpolateString as jest.Mock)
+        .mockReturnValueOnce("./other.yaml")
+        .mockReturnValueOnce("step-1")
+        .mockReturnValueOnce("computed_alias");
+
+      (context.callService.executeStepCall as jest.Mock).mockResolvedValue({
+        success: true,
+        suite_name: "Other Suite",
+        propagated_variables: {
+          "computed_alias.value": 123,
+        },
+      });
+
+      await strategy.execute(context);
+
+      expect(mockExportVariables).toHaveBeenCalledWith(
+        "computed_alias",
+        "Other Suite",
+        ["value"],
+        {
+          value: 123,
+        }
+      );
+    });
   });
 });

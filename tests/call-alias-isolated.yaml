@@ -1,0 +1,40 @@
+suite_name: "Call Alias Test - Isolated"
+node_id: "call-alias-isolated"
+base_url: "https://httpbin.org"
+
+steps:
+  # Step 1: Criar uma variável para testar
+  - name: "Setup test data"
+    request:
+      method: GET
+      url: "/get"
+      params:
+        test: "alias-demo"
+    assert:
+      status_code: 200
+    capture:
+      test_value: "body.args.test"
+
+  # Step 2: Chamar outro step com alias
+  - name: "Call with alias"
+    call:
+      test: "./call-alias-helper.yaml"
+      step: "capture-data"
+      alias: "helper"
+      isolate_context: true
+      variables:
+        input_value: "{{test_value}}"
+
+  # Step 3: Usar a variável capturada via alias
+  - name: "Use aliased variable"
+    request:
+      method: GET
+      url: "/get"
+      params:
+        # Esta variável deve vir do call com alias "helper"
+        captured_from_helper: "{{helper.captured_data}}"
+    assert:
+      status_code: 200
+      body:
+        args:
+          captured_from_helper: {equals: "{{helper.captured_data}}"}

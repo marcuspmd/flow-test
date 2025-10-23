@@ -200,8 +200,54 @@ export class CallStepStrategy extends BaseStepStrategy {
 
       // **9. Propagate variables if successful**
       const propagatedVariables = callResult.propagated_variables;
-      if (callResult.success && propagatedVariables) {
+      if (propagatedVariables && Object.keys(propagatedVariables).length > 0) {
+        // Always set runtime variables (even on failure, as captures might be partial)
         globalVariables.setRuntimeVariables(propagatedVariables);
+
+        // **9.1. Register aliased variables in global registry**
+        // When using alias with isolate_context, variables are prefixed (e.g., "auth.token")
+        // We need to register them in the global registry so they can be accessed via {{alias.variable}}
+        if (alias && isolateContext) {
+          // Extract the non-prefixed variable names and their values
+          const aliasPrefix = `${alias}.`;
+          const variablesToExport: string[] = [];
+          const unprefixedVariables: Record<string, any> = {};
+
+          for (const [key, value] of Object.entries(propagatedVariables)) {
+            if (key.startsWith(aliasPrefix)) {
+              const unprefixedKey = key.substring(aliasPrefix.length);
+              variablesToExport.push(unprefixedKey);
+              unprefixedVariables[unprefixedKey] = value;
+            }
+          }
+
+          // Register and export variables under the alias
+          if (variablesToExport.length > 0) {
+            globalVariables.exportVariables(
+              alias,
+              callResult.suite_name || suite.suite_name,
+              variablesToExport,
+              unprefixedVariables
+            );
+
+            logger.debug(
+              `Registered ${
+                variablesToExport.length
+              } variable(s) under alias '${alias}': ${variablesToExport.join(
+                ", "
+              )}`,
+              {
+                stepName: step.name,
+                metadata: {
+                  type: "step_call",
+                  internal: true,
+                  alias: alias,
+                  variables: variablesToExport,
+                },
+              }
+            );
+          }
+        }
       }
 
       // **10. Build success result**

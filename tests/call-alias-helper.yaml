@@ -1,0 +1,16 @@
+suite_name: "Call Alias Helper"
+node_id: "call-alias-helper"
+base_url: "https://httpbin.org"
+
+steps:
+  - name: "Capture data from input"
+    step_id: "capture-data"
+    request:
+      method: GET
+      url: "/get"
+      params:
+        data: "{{input_value}}-processed"
+    assert:
+      status_code: 200
+    capture:
+      captured_data: "body.args.data"
