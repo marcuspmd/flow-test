@@ -1,9 +1,9 @@
-import { BaseErrorHandler } from '../error-handler.interface';
-import { ErrorContext } from '../error-context';
-import { ErrorHandlingResult } from '../error-result';
-import { LoggerService } from '../../../services/logger.service';
-import { TYPES } from '../../../di/identifiers';
-import { container } from '../../../di/container';
+import { BaseErrorHandler } from "../error-handler.interface";
+import { ErrorContext } from "../error-context";
+import { ErrorHandlingResult } from "../error-result";
+import { LoggerService } from "../../../services/logger.service";
+import { TYPES } from "../../../di/identifiers";
+import { container } from "../../../di/container";
 
 /**
  * Error handler that logs errors with structured context
@@ -21,7 +21,10 @@ export class LoggingErrorHandler extends BaseErrorHandler {
   /**
    * Handle error by logging with structured context
    */
-  async handle(error: Error, context: ErrorContext): Promise<ErrorHandlingResult> {
+  async handle(
+    error: Error,
+    context: ErrorContext
+  ): Promise<ErrorHandlingResult> {
     const logLevel = this.getLogLevel(context.severity);
     const logMessage = this.formatLogMessage(error, context);
 
@@ -40,21 +43,21 @@ export class LoggingErrorHandler extends BaseErrorHandler {
         attemptCount: context.attemptCount,
         maxRetries: context.maxRetries,
         severity: context.severity,
-      }
+      },
     };
 
     // Log based on severity
     switch (logLevel) {
-      case 'error':
+      case "error":
         this.logger.error(logMessage, logContext);
         break;
-      case 'warn':
+      case "warn":
         this.logger.warn(logMessage, logContext);
         break;
-      case 'info':
+      case "info":
         this.logger.info(logMessage, logContext);
         break;
-      case 'debug':
+      case "debug":
         this.logger.debug(logMessage, logContext);
         break;
     }
@@ -70,31 +73,31 @@ export class LoggingErrorHandler extends BaseErrorHandler {
     const parts = [
       `[${context.service}]`,
       context.operation,
-      'failed:',
-      error.message
+      "failed:",
+      error.message,
     ];
 
     if (context.attemptCount && context.maxRetries) {
       parts.push(`(attempt ${context.attemptCount}/${context.maxRetries})`);
     }
 
-    return parts.join(' ');
+    return parts.join(" ");
   }
 
   /**
    * Determine log level based on error severity
    */
-  private getLogLevel(severity?: string): 'debug' | 'info' | 'warn' | 'error' {
+  private getLogLevel(severity?: string): "debug" | "info" | "warn" | "error" {
     switch (severity) {
-      case 'critical':
-      case 'high':
-        return 'error';
-      case 'medium':
-        return 'warn';
-      case 'low':
-        return 'info';
+      case "critical":
+      case "high":
+        return "error";
+      case "medium":
+        return "warn";
+      case "low":
+        return "info";
       default:
-        return 'error';
+        return "error";
     }
   }
 }

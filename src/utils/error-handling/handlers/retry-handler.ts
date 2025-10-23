@@ -1,6 +1,6 @@
-import { BaseErrorHandler } from '../error-handler.interface';
-import { ErrorContext } from '../error-context';
-import { ErrorHandlingResult } from '../error-result';
+import { BaseErrorHandler } from "../error-handler.interface";
+import { ErrorContext } from "../error-context";
+import { ErrorHandlingResult } from "../error-result";
 
 /**
  * Error handler that implements retry logic with exponential backoff
@@ -8,19 +8,22 @@ import { ErrorHandlingResult } from '../error-result';
  */
 export class RetryErrorHandler extends BaseErrorHandler {
   private retryableErrors = new Set([
-    'ECONNRESET',
-    'ETIMEDOUT',
-    'ENOTFOUND',
-    'ECONNREFUSED',
-    'NetworkError',
-    'TimeoutError',
-    'RequestError',
+    "ECONNRESET",
+    "ETIMEDOUT",
+    "ENOTFOUND",
+    "ECONNREFUSED",
+    "NetworkError",
+    "TimeoutError",
+    "RequestError",
   ]);
 
   /**
    * Handle error by determining if retry is appropriate
    */
-  async handle(error: Error, context: ErrorContext): Promise<ErrorHandlingResult> {
+  async handle(
+    error: Error,
+    context: ErrorContext
+  ): Promise<ErrorHandlingResult> {
     const attemptCount = context.attemptCount || 1;
     const maxRetries = context.maxRetries || 3;
 
@@ -30,14 +33,14 @@ export class RetryErrorHandler extends BaseErrorHandler {
 
       return {
         handled: true,
-        action: 'retry',
+        action: "retry",
         delay,
         message: `Retrying in ${delay}ms (attempt ${attemptCount}/${maxRetries})`,
         metadata: {
           attemptCount,
           maxRetries,
           backoffDelay: delay,
-        }
+        },
       };
     }
 
@@ -48,7 +51,11 @@ export class RetryErrorHandler extends BaseErrorHandler {
   /**
    * Determine if error should be retried
    */
-  private shouldRetry(error: Error, attemptCount: number, maxRetries: number): boolean {
+  private shouldRetry(
+    error: Error,
+    attemptCount: number,
+    maxRetries: number
+  ): boolean {
     // Don't retry if max attempts reached
     if (attemptCount >= maxRetries) {
       return false;
@@ -66,9 +73,15 @@ export class RetryErrorHandler extends BaseErrorHandler {
     }
 
     // Check for network-related errors in message
-    const networkKeywords = ['network', 'timeout', 'connection', 'refused', 'reset'];
+    const networkKeywords = [
+      "network",
+      "timeout",
+      "connection",
+      "refused",
+      "reset",
+    ];
     const errorMessage = error.message.toLowerCase();
-    return networkKeywords.some(keyword => errorMessage.includes(keyword));
+    return networkKeywords.some((keyword) => errorMessage.includes(keyword));
   }
 
   /**
@@ -78,16 +91,13 @@ export class RetryErrorHandler extends BaseErrorHandler {
   private calculateBackoff(attemptCount: number): number {
     const baseDelay = 1000; // 1 second
     const maxDelay = 10000; // 10 seconds
-    
+
     // Exponential backoff: 1s, 2s, 4s, 8s, 10s (capped)
-    const delay = Math.min(
-      baseDelay * Math.pow(2, attemptCount - 1),
-      maxDelay
-    );
+    const delay = Math.min(baseDelay * Math.pow(2, attemptCount - 1), maxDelay);
 
     // Add jitter (±20%) to prevent thundering herd
     const jitter = delay * 0.2 * (Math.random() - 0.5);
-    
+
     return Math.round(delay + jitter);
   }
 

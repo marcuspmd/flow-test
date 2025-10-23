@@ -1,5 +1,5 @@
-import { ErrorContext } from './error-context';
-import { ErrorHandlingResult } from './error-result';
+import { ErrorContext } from "./error-context";
+import { ErrorHandlingResult } from "./error-result";
 
 /**
  * Base interface for error handlers in the Chain of Responsibility pattern
@@ -47,21 +47,27 @@ export abstract class BaseErrorHandler implements ErrorHandler {
   /**
    * Handle error - must be implemented by subclasses
    */
-  abstract handle(error: Error, context: ErrorContext): Promise<ErrorHandlingResult>;
+  abstract handle(
+    error: Error,
+    context: ErrorContext
+  ): Promise<ErrorHandlingResult>;
 
   /**
    * Pass error to next handler in chain
    */
-  protected async passToNext(error: Error, context: ErrorContext): Promise<ErrorHandlingResult> {
+  protected async passToNext(
+    error: Error,
+    context: ErrorContext
+  ): Promise<ErrorHandlingResult> {
     if (this.nextHandler) {
       return this.nextHandler.handle(error, context);
     }
-    
+
     // No next handler - return unhandled result
     return {
       handled: false,
-      action: 'rethrow',
-      message: 'No handler in chain could handle this error'
+      action: "rethrow",
+      message: "No handler in chain could handle this error",
     };
   }
 }

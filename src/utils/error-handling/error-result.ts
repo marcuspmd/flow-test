@@ -1,7 +1,7 @@
 /**
  * Action to take after error handling
  */
-export type ErrorAction = 'retry' | 'skip' | 'rethrow' | 'abort';
+export type ErrorAction = "retry" | "skip" | "rethrow" | "abort";
 
 /**
  * Result of error handling operation
@@ -18,7 +18,7 @@ export interface ErrorHandlingResult {
   delay?: number;
 
   /** Severity level determined by handler */
-  severity?: 'low' | 'medium' | 'high' | 'critical';
+  severity?: "low" | "medium" | "high" | "critical";
 
   /** Custom message from handler */
   message?: string;

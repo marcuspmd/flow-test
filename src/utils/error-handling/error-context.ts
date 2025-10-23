@@ -19,7 +19,7 @@ export interface ErrorContext {
   maxRetries?: number;
 
   /** Severity level of the error */
-  severity?: 'low' | 'medium' | 'high' | 'critical';
+  severity?: "low" | "medium" | "high" | "critical";
 
   /** Timestamp when error occurred (unix timestamp in ms) */
   timestamp?: number;

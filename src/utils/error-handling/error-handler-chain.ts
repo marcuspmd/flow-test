@@ -1,7 +1,7 @@
-import { ErrorHandler } from './error-handler.interface';
-import { LoggingErrorHandler } from './handlers/logging-handler';
-import { RetryErrorHandler } from './handlers/retry-handler';
-import { NotificationErrorHandler } from './handlers/notification-handler';
+import { ErrorHandler } from "./error-handler.interface";
+import { LoggingErrorHandler } from "./handlers/logging-handler";
+import { RetryErrorHandler } from "./handlers/retry-handler";
+import { NotificationErrorHandler } from "./handlers/notification-handler";
 
 /**
  * Builder for creating error handler chains
@@ -11,13 +11,13 @@ export class ErrorHandlerChain {
   /**
    * Create default error handler chain
    * Default chain: Logging → Retry → Notification
-   * 
+   *
    * @returns The first handler in the chain
-   * 
+   *
    * @example
    * ```typescript
    * const errorHandler = ErrorHandlerChain.createDefault();
-   * 
+   *
    * try {
    *   await someOperation();
    * } catch (error) {
@@ -43,11 +43,11 @@ export class ErrorHandlerChain {
   /**
    * Create custom error handler chain from handlers array
    * Handlers are chained in the order provided
-   * 
+   *
    * @param handlers - Array of error handlers to chain
    * @returns The first handler in the chain
    * @throws {Error} If no handlers provided
-   * 
+   *
    * @example
    * ```typescript
    * const chain = ErrorHandlerChain.create(
@@ -59,7 +59,7 @@ export class ErrorHandlerChain {
    */
   static create(...handlers: ErrorHandler[]): ErrorHandler {
     if (handlers.length === 0) {
-      throw new Error('At least one handler is required to create a chain');
+      throw new Error("At least one handler is required to create a chain");
     }
 
     // Chain handlers in order
@@ -73,7 +73,7 @@ export class ErrorHandlerChain {
   /**
    * Create chain with only logging (no retry or notification)
    * Useful for non-critical operations
-   * 
+   *
    * @returns Logging-only handler
    */
   static createLoggingOnly(): ErrorHandler {
@@ -83,30 +83,30 @@ export class ErrorHandlerChain {
   /**
    * Create chain with logging and retry (no notification)
    * Useful for operations that may fail transiently but are not critical
-   * 
+   *
    * @returns Handler chain with logging and retry
    */
   static createWithRetry(): ErrorHandler {
     const logger = new LoggingErrorHandler();
     const retry = new RetryErrorHandler();
-    
+
     logger.setNext(retry);
-    
+
     return logger;
   }
 
   /**
    * Create chain with logging and notification (no retry)
    * Useful for operations that should not be retried but need immediate attention
-   * 
+   *
    * @returns Handler chain with logging and notification
    */
   static createCriticalOnly(): ErrorHandler {
     const logger = new LoggingErrorHandler();
     const notify = new NotificationErrorHandler();
-    
+
     logger.setNext(notify);
-    
+
     return logger;
   }
 }
@@ -114,7 +114,7 @@ export class ErrorHandlerChain {
 /**
  * Fluent builder for creating customized error handler chains
  * Provides more control over chain composition
- * 
+ *
  * @example
  * ```typescript
  * const chain = new ErrorHandlerChainBuilder()
@@ -165,7 +165,7 @@ export class ErrorHandlerChainBuilder {
    */
   build(): ErrorHandler {
     if (this.handlers.length === 0) {
-      throw new Error('At least one handler must be added before building');
+      throw new Error("At least one handler must be added before building");
     }
 
     return ErrorHandlerChain.create(...this.handlers);
