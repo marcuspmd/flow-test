@@ -25,6 +25,8 @@ import type { IHookExecutorService } from "../../interfaces/services/IHookExecut
 import type { IVariableService } from "../../interfaces/services/IVariableService";
 import type { IJavaScriptService } from "../../interfaces/services/IJavaScriptService";
 import type { ICallService } from "../../interfaces/services/ICallService";
+import type { ICaptureService } from "../../interfaces/services/ICaptureService";
+import type { IGlobalRegistryService } from "../../interfaces/services/IGlobalRegistryService";
 
 /**
  * Service responsible for executing lifecycle hooks
@@ -75,6 +77,8 @@ export class HookExecutorService implements IHookExecutorService {
    *
    * @param variableService - Service for variable interpolation
    * @param javascriptService - Service for JavaScript execution
+   * @param captureService - Service for JMESPath data extraction
+   * @param globalRegistry - Service for global variable registry management
    * @param callService - Optional service for step/suite calls
    */
   constructor(
@@ -82,6 +86,10 @@ export class HookExecutorService implements IHookExecutorService {
     private readonly variableService: IVariableService,
     @inject(TYPES.IJavaScriptService)
     private readonly javascriptService: IJavaScriptService,
+    @inject(TYPES.ICaptureService)
+    private readonly captureService: ICaptureService,
+    @inject(TYPES.IGlobalRegistryService)
+    private readonly globalRegistry: IGlobalRegistryService,
     @inject(TYPES.ICallService)
     @optional()
     private readonly callService?: ICallService
@@ -114,6 +122,8 @@ export class HookExecutorService implements IHookExecutorService {
     const result: HookExecutionResult = {
       success: true,
       computedVariables: {},
+      capturedVariables: {},
+      exportedVariables: [],
       validations: { passed: true, failures: [] },
       metrics: [],
       logs: [],
@@ -127,6 +137,8 @@ export class HookExecutorService implements IHookExecutorService {
 
         // Merge results
         Object.assign(result.computedVariables, hookResult.computedVariables);
+        Object.assign(result.capturedVariables, hookResult.capturedVariables);
+        result.exportedVariables.push(...hookResult.exportedVariables);
         result.validations.failures.push(...hookResult.validations.failures);
         result.metrics.push(...hookResult.metrics);
         result.logs.push(...hookResult.logs);
@@ -145,8 +157,9 @@ export class HookExecutorService implements IHookExecutorService {
           break;
         }
 
-        // Update context with computed variables for next hook
+        // Update context with computed and captured variables for next hook
         Object.assign(context.variables, result.computedVariables);
+        Object.assign(context.variables, result.capturedVariables);
       }
     } catch (error) {
       result.success = false;
@@ -178,6 +191,8 @@ export class HookExecutorService implements IHookExecutorService {
     const result: HookExecutionResult = {
       success: true,
       computedVariables: {},
+      capturedVariables: {},
+      exportedVariables: [],
       validations: { passed: true, failures: [] },
       metrics: [],
       logs: [],
@@ -198,32 +213,43 @@ export class HookExecutorService implements IHookExecutorService {
         }
       }
 
-      // 2. Execute validate action
+      // 2. Execute capture action
+      if (hook.capture) {
+        const captured = await this.executeCapture(hook.capture, context);
+        Object.assign(result.capturedVariables, captured);
+
+        // Store captured variables in VariableService
+        for (const [key, value] of Object.entries(captured)) {
+          this.variableService.setRuntimeVariable(key, value);
+        }
+      }
+
+      // 3. Execute validate action
       if (hook.validate) {
         const validation = await this.executeValidate(hook.validate, context);
         result.validations = validation;
       }
 
-      // 3. Execute log action
+      // 4. Execute log action
       if (hook.log) {
         const log = await this.executeLog(hook.log, context);
         result.logs.push(log);
       }
 
-      // 4. Execute metric action
+      // 5. Execute metric action
       if (hook.metric) {
         const metric = await this.executeMetric(hook.metric, context);
         result.metrics.push(metric);
       }
 
-      // 5. Execute script action
+      // 6. Execute script action
       if (hook.script) {
         // Just execute the script, don't store result in computed variables
         // Scripts can modify context directly if needed
         await this.executeScript(hook.script, context);
       }
 
-      // 6. Execute call action
+      // 7. Execute call action
       if (hook.call) {
         if (!this.callService) {
           throw new Error("CallService not available for hook call action");
@@ -231,9 +257,15 @@ export class HookExecutorService implements IHookExecutorService {
         await this.executeCall(hook.call, context);
       }
 
-      // 7. Execute wait action
+      // 8. Execute wait action
       if (hook.wait !== undefined) {
         await this.executeWait(hook.wait);
+      }
+
+      // 9. Execute exports action (must be last to ensure all variables are available)
+      if (hook.exports && hook.exports.length > 0) {
+        const exported = await this.executeExports(hook.exports, context);
+        result.exportedVariables.push(...exported);
       }
     } catch (error) {
       // Propagate all errors - don't swallow them
@@ -578,5 +610,140 @@ export class HookExecutorService implements IHookExecutorService {
   private async executeWait(milliseconds: number): Promise<void> {
     this.logger.debug(`[Hook] Waiting ${milliseconds}ms`);
     await new Promise((resolve) => setTimeout(resolve, milliseconds));
+  }
+
+  /**
+   * Execute capture action - extract data using JMESPath from execution context
+   *
+   * @param captureConfig - Record of variable names to JMESPath expressions
+   * @param context - Execution context
+   * @returns Captured variables
+   *
+   * @internal
+   */
+  private async executeCapture(
+    captureConfig: Record<string, string>,
+    context: HookExecutionContext
+  ): Promise<Record<string, any>> {
+    const captured: Record<string, any> = {};
+
+    // Build context object for JMESPath queries
+    const captureContext: Record<string, any> = {
+      variables: context.variables,
+    };
+
+    // Add optional context fields if available
+    if (context.response) {
+      captureContext.response = context.response;
+    }
+    if (context.input) {
+      captureContext.input = context.input;
+    }
+    if (context.call_result) {
+      captureContext.call_result = context.call_result;
+    }
+    if (context.capturedVariables) {
+      captureContext.capturedVariables = context.capturedVariables;
+    }
+    if (context.assertionResults) {
+      captureContext.assertionResults = context.assertionResults;
+    }
+
+    // Execute captures using CaptureService
+    try {
+      const capturedVars = this.captureService.captureFromObject(
+        captureConfig,
+        captureContext,
+        context.variables
+      );
+
+      Object.assign(captured, capturedVars);
+
+      this.logger.debug(
+        `[Hook] Captured ${Object.keys(captured).length} variable(s): ${Object.keys(
+          captured
+        ).join(", ")}`,
+        { stepName: context.stepName }
+      );
+    } catch (error) {
+      this.logger.warn(
+        `[Hook] Failed to capture variables: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        { stepName: context.stepName }
+      );
+      // Continue execution - capture failures are not fatal
+    }
+
+    return captured;
+  }
+
+  /**
+   * Execute exports action - export variables to global scope
+   *
+   * @param exportList - Array of variable names to export
+   * @param context - Execution context
+   * @returns Array of successfully exported variable names
+   *
+   * @remarks
+   * Exports variables to the global registry, making them available to other
+   * test suites. Variables are exported in the format "node_id.variable_name".
+   * For hooks, we use a synthetic node identifier based on step context.
+   *
+   * @internal
+   */
+  private async executeExports(
+    exportList: string[],
+    context: HookExecutionContext
+  ): Promise<string[]> {
+    const exported: string[] = [];
+    const allVariables = this.variableService.getAllVariables();
+
+    // Create a synthetic node ID for hook exports (could be enhanced with suite context)
+    const hookNodeId = `hook_${context.stepName.replace(/\s+/g, "_").toLowerCase()}`;
+
+    for (const varName of exportList) {
+      try {
+        // Check if variable exists in current context
+        if (!(varName in allVariables)) {
+          this.logger.warn(
+            `[Hook] Cannot export '${varName}': variable not found in runtime context`,
+            { stepName: context.stepName }
+          );
+          continue;
+        }
+
+        const value = allVariables[varName];
+
+        // Export to global registry
+        // Note: Using synthetic node ID for hook exports
+        this.globalRegistry.setExportedVariable(hookNodeId, varName, value);
+        exported.push(varName);
+
+        this.logger.debug(`[Hook] Exported variable '${varName}' to global registry`, {
+          stepName: context.stepName,
+          metadata: { value, nodeId: hookNodeId },
+        });
+      } catch (error) {
+        this.logger.warn(
+          `[Hook] Failed to export '${varName}': ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+          { stepName: context.stepName }
+        );
+        // Continue with next export
+      }
+    }
+
+    if (exported.length > 0) {
+      this.logger.info(
+        `[Hook] Exported ${exported.length} variable(s) to global registry: ${exported.join(
+          ", "
+        )}`,
+        { stepName: context.stepName }
+      );
+    }
+
+    return exported;
   }
 }
