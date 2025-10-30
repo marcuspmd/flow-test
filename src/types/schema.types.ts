@@ -221,6 +221,8 @@ export interface InterpolationPattern {
   examples: string[];
   /** Where this pattern can be used */
   applicableTo?: string[];
+  /** Version when pattern was introduced */
+  since?: string;
 }
 
 /**

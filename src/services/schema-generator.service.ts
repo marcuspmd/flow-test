@@ -93,6 +93,7 @@ export class SchemaGeneratorService {
       FlowDependency: this.getFlowDependencyDefinition(),
       CertificateConfig: this.getCertificateConfigDefinition(),
       HookAction: this.getHookActionDefinition(),
+      SkipConfig: this.getSkipConfigDefinition(),
     };
   }
 
@@ -355,11 +356,13 @@ export class SchemaGeneratorService {
         },
         skip: {
           name: "skip",
-          type: "string",
+          type: ["string", "object"],
           description:
-            "Condition to skip step execution (JMESPath or JavaScript expression). Step is skipped if evaluates to true.",
+            "Condition to skip step execution. Can be a simple string expression (evaluated at pre_execution) or SkipConfig object with timing control (v2.1+). Step is skipped if condition evaluates to true.",
           required: false,
+          $ref: "SkipConfig",
           interpolable: true,
+          since: "2.1",
           examples: [
             "true",
             "false",
@@ -369,6 +372,14 @@ export class SchemaGeneratorService {
             "!{{enable_debug}}",
             "{{items_count}} > 1000",
             "{{dry_run}} === true",
+            {
+              when: "pre_execution",
+              condition: "{{environment}} === 'production'",
+            },
+            {
+              when: "post_capture",
+              condition: "{{response.status}} === 404",
+            },
           ],
         },
         metadata: {
@@ -960,16 +971,86 @@ export class SchemaGeneratorService {
         then: {
           name: "then",
           type: "object",
-          description: "Actions if condition is true",
+          description:
+            "Actions if condition is true (v2.1: supports nested steps up to 5 levels deep)",
           required: false,
           interpolable: false,
+          properties: {
+            assert: {
+              name: "assert",
+              type: "object",
+              description: "Additional assertions",
+              required: false,
+              $ref: "Assertions",
+              interpolable: false,
+            },
+            capture: {
+              name: "capture",
+              type: "object",
+              description: "Conditional data capture",
+              required: false,
+              interpolable: false,
+            },
+            variables: {
+              name: "variables",
+              type: "object",
+              description: "Variables to define",
+              required: false,
+              interpolable: true,
+            },
+            steps: {
+              name: "steps",
+              type: "array",
+              description:
+                "Nested test steps to execute (v2.1+, max depth: 5 levels)",
+              required: false,
+              items: { $ref: "TestStep" },
+              interpolable: false,
+              since: "2.1",
+            },
+          },
         },
         else: {
           name: "else",
           type: "object",
-          description: "Actions if condition is false",
+          description:
+            "Actions if condition is false (v2.1: supports nested steps up to 5 levels deep)",
           required: false,
           interpolable: false,
+          properties: {
+            assert: {
+              name: "assert",
+              type: "object",
+              description: "Additional assertions",
+              required: false,
+              $ref: "Assertions",
+              interpolable: false,
+            },
+            capture: {
+              name: "capture",
+              type: "object",
+              description: "Conditional data capture",
+              required: false,
+              interpolable: false,
+            },
+            variables: {
+              name: "variables",
+              type: "object",
+              description: "Variables to define",
+              required: false,
+              interpolable: true,
+            },
+            steps: {
+              name: "steps",
+              type: "array",
+              description:
+                "Nested test steps to execute (v2.1+, max depth: 5 levels)",
+              required: false,
+              items: { $ref: "TestStep" },
+              interpolable: false,
+              since: "2.1",
+            },
+          },
         },
       },
     };
@@ -1180,6 +1261,47 @@ export class SchemaGeneratorService {
           interpolable: false,
         },
       },
+    };
+  }
+
+  /**
+   * SkipConfig structure definition.
+   */
+  private getSkipConfigDefinition(): StructureDefinition {
+    return {
+      name: "SkipConfig",
+      description: "Skip configuration with timing control (v2.1+)",
+      documentation:
+        "Allows controlling when skip condition is evaluated: before execution (pre_execution) or after capture (post_capture). Use discriminator field 'when' to determine timing.",
+      required: ["condition"],
+      properties: {
+        when: {
+          name: "when",
+          type: "string",
+          description: "When to evaluate skip condition (discriminator field)",
+          required: false,
+          default: "pre_execution",
+          enum: ["pre_execution", "post_capture"],
+          interpolable: false,
+          examples: ["pre_execution", "post_capture"],
+        },
+        condition: {
+          name: "condition",
+          type: "string",
+          description:
+            "Skip condition expression (JMESPath or JavaScript). Step is skipped if evaluates to true.",
+          required: true,
+          interpolable: true,
+          examples: [
+            "{{environment}} === 'production'",
+            "{{response.status}} === 404",
+            "{{dry_run}} === true",
+            "environment == 'prod'",
+            "!{{resource_exists}}",
+          ],
+        },
+      },
+      since: "2.1",
     };
   }
 
@@ -1611,6 +1733,178 @@ steps:
       method: GET
       url: "/debug"`,
       },
+      {
+        name: "Skip with Timing Control",
+        description: "Skip steps with pre/post execution timing (v2.1+)",
+        category: "conditionals",
+        complexity: "advanced",
+        features: ["skip", "timing", "post_capture"],
+        yaml: `suite_name: "Skip Timing Example"
+node_id: "skip-timing"
+base_url: "https://api.example.com"
+
+variables:
+  dry_run: false
+  resource_id: "abc123"
+
+steps:
+  # Skip BEFORE execution (pre_execution - default)
+  - name: "Expensive operation"
+    skip:
+      when: "pre_execution"
+      condition: "{{dry_run}} === true"
+    request:
+      method: POST
+      url: "/expensive-operation"
+
+  # Try to fetch resource
+  - name: "Get resource"
+    request:
+      method: GET
+      url: "/resources/{{resource_id}}"
+    continue_on_failure: true
+    capture:
+      resource_exists: "status_code == \`200\`"
+
+  # Skip AFTER capture (post_capture)
+  - name: "Create resource if not exists"
+    skip:
+      when: "post_capture"
+      condition: "{{resource_exists}} === true"
+    request:
+      method: POST
+      url: "/resources"
+      body:
+        id: "{{resource_id}}"
+        name: "New Resource"
+
+  # Skip based on response status
+  - name: "Follow-up action"
+    request:
+      method: POST
+      url: "/action"
+    skip:
+      when: "post_capture"
+      condition: "{{response.status}} >= 400"`,
+      },
+      {
+        name: "Nested Scenarios with Steps",
+        description: "Conditional scenarios with nested step execution (v2.1+)",
+        category: "conditionals",
+        complexity: "advanced",
+        features: ["scenarios", "nested steps", "deep nesting"],
+        yaml: `suite_name: "Nested Scenario Flow"
+node_id: "nested-scenario"
+base_url: "https://api.example.com"
+
+steps:
+  - name: "Check user authentication"
+    request:
+      method: GET
+      url: "/auth/status"
+
+    scenarios:
+      # Authenticated user path with nested steps
+      - name: "Authenticated user"
+        condition: "status_code == \`200\` && body.authenticated == \`true\`"
+        then:
+          capture:
+            auth_level: "body.level"
+            user_id: "body.user_id"
+
+          # Nested steps - Level 1
+          steps:
+            - name: "Get user permissions"
+              request:
+                method: GET
+                url: "/users/{{user_id}}/permissions"
+
+              # Nested scenario - Level 2
+              scenarios:
+                - name: "Admin user"
+                  condition: "body.role == 'admin'"
+                  then:
+                    steps:
+                      - name: "Access admin dashboard"
+                        request:
+                          method: GET
+                          url: "/admin/dashboard"
+
+                      - name: "Get admin reports"
+                        request:
+                          method: GET
+                          url: "/admin/reports"
+
+                - name: "Regular user"
+                  condition: "body.role == 'user'"
+                  then:
+                    steps:
+                      - name: "Access user dashboard"
+                        request:
+                          method: GET
+                          url: "/user/dashboard"
+
+      # Unauthenticated path
+      - name: "Unauthenticated user"
+        condition: "status_code != \`200\`"
+        then:
+          steps:
+            - name: "Perform login"
+              request:
+                method: POST
+                url: "/auth/login"
+                body:
+                  username: "#faker.internet.email"
+                  password: "$crypto.randomUUID()"
+              capture:
+                auth_token: "body.token"`,
+      },
+      {
+        name: "Direct Interpolation Syntax",
+        description: "Using direct interpolation syntax (v2.0+)",
+        category: "interpolation",
+        complexity: "intermediate",
+        features: ["faker", "javascript", "jmespath", "direct syntax"],
+        yaml: `suite_name: "Direct Syntax Example"
+node_id: "direct-syntax"
+
+steps:
+  # Direct Faker syntax (recommended)
+  - name: "Create user with Faker"
+    request:
+      method: POST
+      url: "/users"
+      body:
+        email: "#faker.internet.email"
+        username: "#faker.internet.userName"
+        uuid: "#faker.string.uuid"
+        age: "#faker.number.int"
+        first_name: "#faker.person.firstName"
+
+  # Direct JavaScript syntax (recommended)
+  - name: "Timestamped request"
+    request:
+      method: POST
+      url: "/events"
+      body:
+        timestamp: "$Date.now()"
+        random_id: "$crypto.randomUUID()"
+        iso_date: "$new Date().toISOString()"
+        calculated: "$items.length * 2"
+
+  # Mix direct syntax with templates
+  - name: "Combined syntax"
+    request:
+      method: GET
+      url: "{{$env.BASE_URL}}/api/v{{version}}/users"
+      headers:
+        X-Request-ID: "$crypto.randomUUID()"
+        Authorization: "Bearer {{auth_token}}"
+    capture:
+      # Direct JMESPath in capture
+      user_ids: "@body.users[*].id"
+      active_users: "@body.users[?status=='active']"`,
+      },
     ];
   }
 
@@ -1648,19 +1942,59 @@ steps:
           examples: ["{{$env.API_KEY}}", "{{$env.BASE_URL}}"],
         },
         {
-          name: "Faker Data",
+          name: "Faker Data (Template)",
           syntax: "{{$faker.category.method}}",
-          description: "Generate fake data using Faker.js",
+          description:
+            "Generate fake data using Faker.js (legacy template syntax)",
           examples: [
             "{{$faker.internet.email}}",
             "{{$faker.person.firstName}}",
           ],
         },
         {
-          name: "JavaScript Expression",
+          name: "Faker Data (Direct)",
+          syntax: '"#faker.category.method"',
+          description:
+            "Generate fake data using Faker.js (v2.0+ recommended direct syntax, must be quoted in YAML)",
+          examples: [
+            '"#faker.internet.email"',
+            '"#faker.person.firstName"',
+            '"#faker.string.uuid"',
+            '"#faker.number.int"',
+          ],
+          since: "2.0",
+        },
+        {
+          name: "JavaScript Expression (Template)",
           syntax: "{{$js:expression}}",
-          description: "Execute JavaScript expression",
+          description: "Execute JavaScript expression (legacy template syntax)",
           examples: ["{{$js:Date.now()}}", "{{$js:Math.random()}}"],
+        },
+        {
+          name: "JavaScript Expression (Direct)",
+          syntax: '"$expression"',
+          description:
+            "Execute JavaScript expression (v2.0+ recommended direct syntax, must be quoted in YAML)",
+          examples: [
+            '"$Date.now()"',
+            '"$Math.random()"',
+            '"$crypto.randomUUID()"',
+            '"$items.length * 2"',
+            '"$user.age >= 18"',
+          ],
+          since: "2.0",
+        },
+        {
+          name: "JMESPath Query (Direct)",
+          syntax: '"@query"',
+          description:
+            "Execute JMESPath query on response/context (v2.0+ direct syntax, must be quoted in YAML)",
+          examples: [
+            '"@response.data[0].id"',
+            '"@body.items[*].name"',
+            "\"@body.users[?status=='active']\"",
+          ],
+          since: "2.0",
         },
       ],
       faker: {

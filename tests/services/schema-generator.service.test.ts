@@ -70,6 +70,7 @@ describe("SchemaGeneratorService", () => {
         "FlowDependency",
         "CertificateConfig",
         "HookAction",
+        "SkipConfig",
       ];
 
       expectedStructures.forEach((structureName) => {
@@ -267,6 +268,123 @@ describe("SchemaGeneratorService", () => {
         expect(hookAction.since).toBe("2.0");
       });
     });
+
+    describe("SkipConfig", () => {
+      it("should exist in structures", () => {
+        expect(schema.structures.SkipConfig).toBeDefined();
+      });
+
+      it("should have discriminator field 'when'", () => {
+        const skipConfig = schema.structures.SkipConfig;
+        expect(skipConfig.properties.when).toBeDefined();
+        expect(skipConfig.properties.when.enum).toEqual([
+          "pre_execution",
+          "post_capture",
+        ]);
+        expect(skipConfig.properties.when.default).toBe("pre_execution");
+      });
+
+      it("should have required condition field", () => {
+        const skipConfig = schema.structures.SkipConfig;
+        expect(skipConfig.required).toContain("condition");
+        expect(skipConfig.properties.condition).toBeDefined();
+        expect(skipConfig.properties.condition.interpolable).toBe(true);
+      });
+
+      it("should be marked as v2.1 feature", () => {
+        const skipConfig = schema.structures.SkipConfig;
+        expect(skipConfig.since).toBe("2.1");
+      });
+    });
+
+    describe("TestStep skip property", () => {
+      it("should accept both string and object types", () => {
+        const testStep = schema.structures.TestStep;
+        expect(testStep.properties.skip.type).toEqual(
+          expect.arrayContaining(["string", "object"])
+        );
+      });
+
+      it("should reference SkipConfig", () => {
+        const testStep = schema.structures.TestStep;
+        expect(testStep.properties.skip.$ref).toBe("SkipConfig");
+      });
+
+      it("should include examples for both formats", () => {
+        const testStep = schema.structures.TestStep;
+        const examples = testStep.properties.skip.examples;
+
+        expect(examples).toBeDefined();
+        expect(Array.isArray(examples)).toBe(true);
+
+        // Should have string examples
+        expect(examples).toContain("true");
+        expect(examples).toContain('{{environment}} === "prod"');
+
+        // Should have object examples
+        const objectExamples = examples!.filter(
+          (ex: any) => typeof ex === "object"
+        );
+        expect(objectExamples.length).toBeGreaterThan(0);
+
+        const preExecutionExample = objectExamples.find(
+          (ex: any) => ex.when === "pre_execution"
+        );
+        expect(preExecutionExample).toBeDefined();
+        expect(preExecutionExample.condition).toBeDefined();
+
+        const postCaptureExample = objectExamples.find(
+          (ex: any) => ex.when === "post_capture"
+        );
+        expect(postCaptureExample).toBeDefined();
+        expect(postCaptureExample.condition).toBeDefined();
+      });
+
+      it("should be marked as v2.1", () => {
+        const testStep = schema.structures.TestStep;
+        expect(testStep.properties.skip.since).toBe("2.1");
+      });
+    });
+
+    describe("ConditionalScenario nested steps", () => {
+      it("should have steps property in then action", () => {
+        const scenario = schema.structures.ConditionalScenario;
+        expect(scenario.properties.then.properties).toBeDefined();
+        expect(scenario.properties.then.properties!.steps).toBeDefined();
+      });
+
+      it("should have steps property in else action", () => {
+        const scenario = schema.structures.ConditionalScenario;
+        expect(scenario.properties.else.properties).toBeDefined();
+        expect(scenario.properties.else.properties!.steps).toBeDefined();
+      });
+
+      it("then.steps should reference TestStep", () => {
+        const scenario = schema.structures.ConditionalScenario;
+        const thenSteps = scenario.properties.then.properties!.steps;
+        expect(thenSteps.items).toBeDefined();
+        expect((thenSteps.items as any).$ref).toBe("TestStep");
+      });
+
+      it("else.steps should reference TestStep", () => {
+        const scenario = schema.structures.ConditionalScenario;
+        const elseSteps = scenario.properties.else.properties!.steps;
+        expect(elseSteps.items).toBeDefined();
+        expect((elseSteps.items as any).$ref).toBe("TestStep");
+      });
+
+      it("nested steps should be marked as v2.1", () => {
+        const scenario = schema.structures.ConditionalScenario;
+        expect(scenario.properties.then.properties!.steps.since).toBe("2.1");
+        expect(scenario.properties.else.properties!.steps.since).toBe("2.1");
+      });
+
+      it("should document max depth of 5 levels", () => {
+        const scenario = schema.structures.ConditionalScenario;
+        expect(scenario.properties.then.description).toContain("5 levels");
+        expect(scenario.properties.else.description).toContain("5 levels");
+      });
+    });
   });
 
   describe("types", () => {
@@ -335,6 +453,50 @@ describe("SchemaGeneratorService", () => {
       expect(hooksExample?.yaml).toContain("hooks_pre_request");
     });
 
+    it("should include skip with timing example", () => {
+      const skipTimingExample = schema.examples.find(
+        (ex) => ex.name === "Skip with Timing Control"
+      );
+      expect(skipTimingExample).toBeDefined();
+      expect(skipTimingExample?.category).toBe("conditionals");
+      expect(skipTimingExample?.complexity).toBe("advanced");
+      expect(skipTimingExample?.features).toContain("skip");
+      expect(skipTimingExample?.features).toContain("timing");
+      expect(skipTimingExample?.features).toContain("post_capture");
+      expect(skipTimingExample?.yaml).toContain("when:");
+      expect(skipTimingExample?.yaml).toContain("pre_execution");
+      expect(skipTimingExample?.yaml).toContain("post_capture");
+    });
+
+    it("should include nested scenarios example", () => {
+      const nestedExample = schema.examples.find(
+        (ex) => ex.name === "Nested Scenarios with Steps"
+      );
+      expect(nestedExample).toBeDefined();
+      expect(nestedExample?.category).toBe("conditionals");
+      expect(nestedExample?.complexity).toBe("advanced");
+      expect(nestedExample?.features).toContain("scenarios");
+      expect(nestedExample?.features).toContain("nested steps");
+      expect(nestedExample?.features).toContain("deep nesting");
+      expect(nestedExample?.yaml).toContain("scenarios:");
+      expect(nestedExample?.yaml).toContain("steps:");
+    });
+
+    it("should include direct interpolation syntax example", () => {
+      const directSyntaxExample = schema.examples.find(
+        (ex) => ex.name === "Direct Interpolation Syntax"
+      );
+      expect(directSyntaxExample).toBeDefined();
+      expect(directSyntaxExample?.category).toBe("interpolation");
+      expect(directSyntaxExample?.features).toContain("faker");
+      expect(directSyntaxExample?.features).toContain("javascript");
+      expect(directSyntaxExample?.features).toContain("jmespath");
+      expect(directSyntaxExample?.features).toContain("direct syntax");
+      expect(directSyntaxExample?.yaml).toContain("#faker");
+      expect(directSyntaxExample?.yaml).toContain("$Date.now()");
+      expect(directSyntaxExample?.yaml).toContain("@body");
+    });
+
     it("all examples should have required fields", () => {
       schema.examples.forEach((example) => {
         expect(example).toHaveProperty("name");
@@ -356,8 +518,36 @@ describe("SchemaGeneratorService", () => {
       const patternNames = schema.interpolation.patterns.map((p) => p.name);
       expect(patternNames).toContain("Basic Variable");
       expect(patternNames).toContain("Environment Variable");
-      expect(patternNames).toContain("Faker Data");
-      expect(patternNames).toContain("JavaScript Expression");
+      expect(patternNames).toContain("Faker Data (Template)");
+      expect(patternNames).toContain("Faker Data (Direct)");
+      expect(patternNames).toContain("JavaScript Expression (Template)");
+      expect(patternNames).toContain("JavaScript Expression (Direct)");
+      expect(patternNames).toContain("JMESPath Query (Direct)");
+    });
+
+    it("should include direct syntax patterns for v2.0+", () => {
+      const directPatterns = schema.interpolation.patterns.filter(
+        (p) => p.since === "2.0"
+      );
+      expect(directPatterns.length).toBeGreaterThan(0);
+
+      const fakerDirect = directPatterns.find(
+        (p) => p.name === "Faker Data (Direct)"
+      );
+      expect(fakerDirect).toBeDefined();
+      expect(fakerDirect?.syntax).toContain("#faker");
+
+      const jsDirect = directPatterns.find(
+        (p) => p.name === "JavaScript Expression (Direct)"
+      );
+      expect(jsDirect).toBeDefined();
+      expect(jsDirect?.syntax).toContain("$");
+
+      const jmesPathDirect = directPatterns.find(
+        (p) => p.name === "JMESPath Query (Direct)"
+      );
+      expect(jmesPathDirect).toBeDefined();
+      expect(jmesPathDirect?.syntax).toContain("@");
     });
 
     it("should include Faker catalog", () => {
