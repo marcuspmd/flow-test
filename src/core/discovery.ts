@@ -32,13 +32,13 @@ const logger = new LoggerService();
  *
  * @remarks
  * The TestDiscovery service provides comprehensive test file discovery capabilities
- * with support for directory scanning, YAML validation, dependency resolution,
+ * with support for directory scanning, YAML/JSON validation, dependency resolution,
  * and advanced filtering options. It serves as the foundation for test execution
  * planning and orchestration.
  *
  * **Key Features:**
- * - **Automatic Discovery**: Recursive scanning of directories for YAML test files
- * - **Structure Validation**: Comprehensive validation of test suite YAML structure
+ * - **Automatic Discovery**: Recursive scanning of directories for YAML and JSON test files
+ * - **Structure Validation**: Comprehensive validation of test suite YAML/JSON structure
  * - **Dependency Resolution**: Analysis and resolution of inter-suite dependencies
  * - **Advanced Filtering**: Multi-criteria filtering by priority, tags, and patterns
  * - **Error Handling**: Detailed error reporting for invalid test files
@@ -46,6 +46,7 @@ const logger = new LoggerService();
  *
  * **Supported File Patterns:**
  * - `**\/*.yaml` and `**\/*.yml` (all YAML files)
+ * - `**\/*.json` (all JSON files)
  * - Configurable inclusion/exclusion patterns
  * - Support for nested directory structures
  * - Automatic exclusion of common non-test directories
@@ -86,7 +87,7 @@ const logger = new LoggerService();
  *
  * // Override default patterns
  * const customTests = await discovery.discoverTests('./tests', {
- *   patterns: ['**\/*-test.yaml', '**\/*-spec.yml'],
+ *   patterns: ['**\/*-test.yaml', '**\/*-spec.yml', '**\/*-test.json'],
  *   exclude: ['**\/drafts\/**', '**\/templates\/**']
  * });
  *
@@ -99,13 +100,13 @@ const logger = new LoggerService();
  *
  * @remarks
  * The TestDiscovery service provides comprehensive test file discovery capabilities
- * with support for directory scanning, YAML validation, dependency resolution,
+ * with support for directory scanning, YAML/JSON validation, dependency resolution,
  * and advanced filtering options. It serves as the foundation for test execution
  * planning and orchestration.
  *
  * **Key Features:**
- * - **Automatic Discovery**: Recursive scanning of directories for YAML test files
- * - **Structure Validation**: Comprehensive validation of test suite YAML structure
+ * - **Automatic Discovery**: Recursive scanning of directories for YAML and JSON test files
+ * - **Structure Validation**: Comprehensive validation of test suite YAML/JSON structure
  * - **Dependency Resolution**: Analysis and resolution of inter-suite dependencies
  * - **Advanced Filtering**: Multi-criteria filtering by priority, tags, and patterns
  * - **Error Handling**: Detailed error reporting for invalid test files
@@ -113,6 +114,7 @@ const logger = new LoggerService();
  *
  * **Supported File Patterns:**
  * - All YAML files with .yaml and .yml extensions
+ * - All JSON files with .json extension
  * - Configurable inclusion/exclusion patterns
  * - Support for nested directory structures
  * - Automatic exclusion of common non-test directories
@@ -322,17 +324,26 @@ export class TestDiscovery {
   }
 
   /**
-   * Analisa um arquivo de teste individual
+   * Analisa um arquivo de teste individual (YAML ou JSON)
    */
   private async parseTestFile(
     filePath: string
   ): Promise<DiscoveredTest | null> {
     try {
       const fileContent = fs.readFileSync(filePath, "utf8");
-      const suite = yaml.load(fileContent) as TestSuite;
+      let suite: TestSuite;
+
+      // Detecta o formato do arquivo pela extensão
+      const isJsonFile = filePath.endsWith('.json');
+      
+      if (isJsonFile) {
+        suite = JSON.parse(fileContent) as TestSuite;
+      } else {
+        suite = yaml.load(fileContent) as TestSuite;
+      }
 
       if (!this.isLikelyTestSuite(suite)) {
-        // Ignore YAML files that don't resemble Flow Test suites without logging warnings
+        // Ignore files that don't resemble Flow Test suites without logging warnings
         return null;
       }
 

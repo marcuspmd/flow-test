@@ -21,8 +21,11 @@ globals:
 discovery:
   patterns:
     - '**/*.yaml'
+    - '**/*.json'
     - '**/tests/**/*.yaml'
+    - '**/tests/**/*.json'
     - '**/tests/*.yaml'
+    - '**/tests/*.json'
   exclude:
     - '**/temp/**'
     - '**/node_modules/**'
