@@ -43,7 +43,7 @@ steps:
       body:
         username: "{{test_credentials.username}}"
         password: "{{test_credentials.password}}"
-        # Simula para o httpbin.org/post retorne o token no response
+        # Simula para o localhost:8080/post retorne o token no response
         token: "{{mock_responses.jwt_login_success.access_token}}"
     assert:
       status_code: 200

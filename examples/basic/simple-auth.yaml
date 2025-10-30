@@ -6,7 +6,7 @@ suite_name: "Simple Authentication Flow"
 node_id: "simple-auth-example"
 description: "Login and use authentication token in subsequent requests"
 
-base_url: "https://httpbin.org"
+base_url: "http://localhost:8080"
 
 metadata:
   priority: "critical"

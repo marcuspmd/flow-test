@@ -5,7 +5,7 @@ suite_name: "Deterministic Parser Examples"
 node_id: "deterministic-parser-demo"
 description: "Demonstrates clear prefix-based expression parsing"
 
-base_url: "https://httpbin.org"
+base_url: "http://localhost:8080"
 
 metadata:
   priority: "medium"

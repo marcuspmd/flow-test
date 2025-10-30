@@ -6,7 +6,7 @@ suite_name: "CRUD Operations Flow"
 node_id: "crud-operations-example"
 description: "Complete CRUD flow demonstrating resource lifecycle management"
 
-base_url: "https://httpbin.org"
+base_url: "http://localhost:8080"
 
 metadata:
   priority: "high"

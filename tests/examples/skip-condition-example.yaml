@@ -5,7 +5,7 @@ node_id: "skip-condition-example"
 suite_name: "Skip Condition Examples"
 description: "Exemplos de uso da propriedade skip para execução condicional"
 
-base_url: "https://httpbin.org"
+base_url: "http://localhost:8080"
 
 variables:
   environment: "development"

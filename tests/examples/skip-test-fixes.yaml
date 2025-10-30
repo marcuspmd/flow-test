@@ -3,7 +3,7 @@ node_id: "skip-test-fixes"
 suite_name: "Skip Condition Fixes Test"
 description: "Testa as correções para skip com booleanos literais e comparações de strings"
 
-base_url: "https://httpbin.org"
+base_url: "http://localhost:8080"
 
 variables:
   selected_product_code: "rmc"

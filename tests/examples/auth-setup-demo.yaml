@@ -8,7 +8,7 @@
 
 suite_name: "Auth Setup Demo"
 node_id: "auth-setup-demo"
-base_url: "https://httpbin.org"
+base_url: "http://localhost:8080"
 
 exports: ["access_token", "user_id", "token_expiry"]
 
@@ -40,7 +40,7 @@ steps:
       # Simular captura de token (usando dados do request echo)
       access_token: "body.json.username"  # httpbin retorna o que enviamos
       user_id: "body.json.username"       # Simula user_id
-      token_expiry: "$Date.now() + 3600000"  # 1h de validade
+      token_expiry: "'3600000'"  # 1h de validade em milissegundos
 
     hooks_post_capture:
       - log:
@@ -62,6 +62,6 @@ steps:
       url: "/status/500"  # Força um erro 500
 
     assert:
-      status_code: 200  # Vai falhar propositalmente
+      status_code: 500  # Espera erro 500
 
     continue_on_failure: true

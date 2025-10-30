@@ -20,7 +20,7 @@ node_id: "syntax-showcase"
 suite_name: "Interpolation Syntax Complete Showcase"
 description: "Demonstrates all interpolation syntax variants (legacy + new)"
 
-base_url: "https://httpbin.org"
+base_url: "http://localhost:8080"
 
 metadata:
   priority: "high"

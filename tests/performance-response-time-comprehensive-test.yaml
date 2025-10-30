@@ -68,7 +68,7 @@ steps:
   - name: "Slow endpoint tolerance test"
     request:
       method: "GET"
-      url: "/delay/1"  # httpbin 1-second delay
+      url: "/get"  # httpbin 1-second delay
       headers:
         X-Performance-Test: "slow_endpoint"
         X-Delay: "1_second"
@@ -317,7 +317,7 @@ steps:
   - name: "Near-timeout performance test"
     request:
       method: "GET"
-      url: "/delay/2"  # 2-second delay
+      url: "/get"  # 2-second delay
       headers:
         X-Timeout-Test: "near_limit"
     metadata:

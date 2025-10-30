@@ -6,7 +6,7 @@ suite_name: "Dynamic Data Generation"
 node_id: "dynamic-data-pattern"
 description: "Generate realistic, random test data using Faker.js"
 
-base_url: "https://httpbin.org"
+base_url: "http://localhost:8080"
 
 metadata:
   priority: "medium"

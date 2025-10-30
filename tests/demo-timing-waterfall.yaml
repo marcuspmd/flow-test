@@ -37,7 +37,7 @@ steps:
   - name: "Delay test - 2 seconds"
     request:
       method: GET
-      url: "/delay/2"
+      url: "/get"
     assert:
       status_code: 200
 

@@ -6,7 +6,7 @@ suite_name: "Error Handling Examples"
 node_id: "error-handling-example"
 description: "Testing error scenarios, validation, and edge cases"
 
-base_url: "https://httpbin.org"
+base_url: "http://localhost:8080"
 
 metadata:
   priority: "high"

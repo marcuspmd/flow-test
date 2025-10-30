@@ -6,7 +6,7 @@ suite_name: "Variable Usage Examples"
 node_id: "simple-variables-example"
 description: "Demonstrates variables, captures, and dynamic data generation"
 
-base_url: "https://httpbin.org"
+base_url: "http://localhost:8080"
 
 metadata:
   priority: "medium"

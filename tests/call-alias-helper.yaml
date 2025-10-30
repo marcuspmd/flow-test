@@ -1,6 +1,6 @@
 suite_name: "Call Alias Helper"
 node_id: "call-alias-helper"
-base_url: "https://httpbin.org"
+base_url: "http://localhost:8080"
 
 steps:
   - name: "Capture data from input"

@@ -11,7 +11,7 @@
 
 suite_name: "Hooks Pre/Post Call Demo"
 node_id: "hooks-call-demo"
-base_url: "https://httpbin.org"
+base_url: "http://localhost:8080"
 
 variables:
   username: "test_user"

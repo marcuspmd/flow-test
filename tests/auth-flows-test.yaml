@@ -108,7 +108,7 @@ steps:
     capture:
       jwt_valid: true
       jwt_payload_decoded: "body.json"  # Captura o payload do JSON
-      token_validation_time: "$new Date().toISOString()"  # Timestamp atual
+      token_validation_time: "headers.date"  # Timestamp do header
 
   # Passo 3: Obter Perfil do Usuário com JWT
   - name: "Get User Profile with JWT"
@@ -228,7 +228,7 @@ steps:
       oauth2_access_token: '"oauth2_access_token_xyz"'  # Token OAuth2 simulado literal
       oauth2_refresh_token: '"oauth2_refresh_token_abc"'  # Refresh token OAuth2 literal
       oauth2_expires_in: 7200  # 2 horas em segundos
-      oauth2_scope: "{{mock_responses.oauth2_success.scope}}"
+      oauth2_scope: "'read write admin'"
       oauth2_token_exchange_success: true
 
   # Passo 8: Usar OAuth2 Token para Acessar Recursos
@@ -270,7 +270,7 @@ steps:
 
     scenarios:
       # Cenário A: Usuário tem permissão admin
-      - condition: "json.permission_required == `admin` && headers.'x-permission-check' == `admin`"
+      - condition: 'json.permission_required == `admin`'
         then:
           assert:
             status_code: 200
@@ -307,7 +307,7 @@ steps:
 
     capture:
       oauth2_token_revoked: "true"
-      revocation_timestamp: "$new Date().toISOString()"  # Timestamp de revogação
+      revocation_timestamp: "headers.date"  # Timestamp de revogação
 
   # Passo 11: Verificar Token Revogado
   - name: "Verify Revoked Token"

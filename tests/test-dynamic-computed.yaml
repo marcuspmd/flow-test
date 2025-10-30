@@ -1,6 +1,6 @@
 suite_name: "Test Dynamic Computed Variables"
 node_id: "test-dynamic-computed"
-base_url: "https://httpbin.org"
+base_url: "http://localhost:8080"
 
 variables:
   beneficios_teste:

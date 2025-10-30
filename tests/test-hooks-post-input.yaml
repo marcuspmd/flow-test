@@ -1,6 +1,6 @@
 suite_name: "Test Hooks Post Input (SOLUÇÃO CORRETA)"
 node_id: "test-hooks-post-input"
-base_url: "https://httpbin.org"
+base_url: "http://localhost:8080"
 
 variables:
   beneficios_teste:

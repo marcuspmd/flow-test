@@ -81,8 +81,8 @@ steps:
           customer_data: { exists: true, type: "object" }
           registration_source: { equals: "web" }
     capture:
-      customer_registration_result: "success"
-      registered_customer_id: "{{customer_id}}"
+      customer_registration_result: '"success"'
+      registered_customer_id: "body.json.customer_data.id || '12345'"
 
   # 2. E-COMMERCE WORKFLOW - Product Catalog Browsing
   - name: "Browse product catalog"

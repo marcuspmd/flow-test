@@ -96,7 +96,7 @@ steps:
         retry_webhook:
           original_event_id: "{{event_user_id}}"
           retry_attempt: 2
-          backoff_delay: 5000
+          backoff_delay: 100
     retry:
       max_attempts: 3
       delay_ms: 1000

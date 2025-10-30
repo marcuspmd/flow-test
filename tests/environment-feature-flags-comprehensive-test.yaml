@@ -72,7 +72,7 @@ steps:
         args:
           environment: { equals: "{{current_environment}}" }
     capture:
-      detected_environment: "{{current_environment}}"
+      detected_environment: "body.current_environment"
       environment_detection_result: "success"
 
   # 2. Development Environment Specific Tests

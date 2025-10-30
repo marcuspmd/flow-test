@@ -1,9 +1,9 @@
 suite_name: "Call Alias Test"
 node_id: "call-alias-test"
-base_url: "https://httpbin.org"
+base_url: "http://localhost:8080"
 
 variables:
-  httpbin_url: "https://httpbin.org"
+  httpbin_url: "http://localhost:8080"
 
 steps:
   - name: "Call step with alias"

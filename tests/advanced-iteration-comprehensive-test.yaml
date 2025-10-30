@@ -218,14 +218,14 @@ steps:
           assert:
             status_code: 200
           capture:
-            success_case: "{{test_case}}"
+            success_case: "body.test_case"
 
       - condition: "status_code == `500`"
         then:
           assert:
             status_code: 500
           capture:
-            error_case: "{{test_case}}"
+            error_case: "body.test_case"
     metadata:
       continue_on_failure: true
 

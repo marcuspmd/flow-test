@@ -6,7 +6,7 @@ suite_name: "Simple POST Request"
 node_id: "simple-post-example"
 description: "Demonstrates a POST request with JSON body and response validation"
 
-base_url: "https://httpbin.org"
+base_url: "http://localhost:8080"
 
 metadata:
   priority: "high"

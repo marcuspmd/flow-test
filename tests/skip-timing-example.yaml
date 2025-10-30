@@ -1,7 +1,7 @@
 # Exemplo demonstrando Skip com Timing (pre_execution e post_capture)
 suite_name: "Skip Timing Examples"
 node_id: "skip-timing-demo"
-base_url: "https://httpbin.org"
+base_url: "http://localhost:8080"
 
 metadata:
   priority: "high"

@@ -8,7 +8,7 @@ description: "Demonstrates a basic GET request with status and body assertions"
 
 # The base URL for all requests in this suite
 # You can use environment variables: {{$env.API_URL}}
-base_url: "https://httpbin.org"
+base_url: "http://localhost:8080"
 
 metadata:
   priority: "high"
@@ -45,7 +45,7 @@ steps:
 
         # Verify the URL that was called
         url:
-          contains: "httpbin.org/get"
+          contains: "localhost:8080/get"
 
     # Capture values from the response for use in later steps
     capture:

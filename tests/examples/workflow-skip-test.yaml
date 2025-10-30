@@ -3,7 +3,7 @@ node_id: "workflow-skip-test"
 suite_name: "Workflow Skip Test"
 description: "Testa skip com casos de uso do workflow de empréstimo"
 
-base_url: "https://httpbin.org"
+base_url: "http://localhost:8080"
 
 variables:
   selected_product_code: "rmc"  # Diferente de 'rcc'

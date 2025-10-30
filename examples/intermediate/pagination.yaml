@@ -6,7 +6,7 @@ suite_name: "Pagination Examples"
 node_id: "pagination-example"
 description: "Handling paginated API responses and iterating through pages"
 
-base_url: "https://httpbin.org"
+base_url: "http://localhost:8080"
 
 metadata:
   priority: "medium"

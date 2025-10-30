@@ -11,7 +11,7 @@ metadata:
 variables:
   retry_test_id: "retry-"#faker.string.uuid"
   max_retries: 3
-  base_delay: 1000
+  base_delay: 100
 
 steps:
   - name: "Test basic retry on failure"

@@ -6,7 +6,7 @@ suite_name: "Conditional Logic Examples"
 node_id: "conditional-logic-example"
 description: "Dynamic flow control with conditions and scenarios"
 
-base_url: "https://httpbin.org"
+base_url: "http://localhost:8080"
 
 metadata:
   priority: "medium"

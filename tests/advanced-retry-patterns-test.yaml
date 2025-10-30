@@ -11,7 +11,7 @@ metadata:
 variables:
   retry_test_id: "retry-"#faker.string.uuid"
   max_retries: 3
-  base_delay: 1000
+  base_delay: 100
 
 exports: ["retry_results", "backoff_measurements", "timeout_data"]
 
@@ -175,7 +175,7 @@ steps:
   - name: "Test retry with timeout constraints"
     request:
       method: "GET"
-      url: "/delay/1"  # 1 second delay from httpbin
+      url: "/get"  # 1 second delay from httpbin
       headers:
         X-Retry-Test: "timeout_retry_combo"
         X-Timeout: "short"

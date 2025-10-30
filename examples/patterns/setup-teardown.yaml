@@ -6,7 +6,7 @@ suite_name: "Setup and Teardown Pattern"
 node_id: "setup-teardown-pattern"
 description: "Test data lifecycle management with setup and cleanup"
 
-base_url: "https://httpbin.org"
+base_url: "http://localhost:8080"
 
 metadata:
   priority: "high"

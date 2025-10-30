@@ -6,7 +6,7 @@ suite_name: "Retry Pattern Examples"
 node_id: "retry-patterns-example"
 description: "Retry strategies for handling flaky endpoints and transient failures"
 
-base_url: "https://httpbin.org"
+base_url: "http://localhost:8080"
 
 metadata:
   priority: "medium"

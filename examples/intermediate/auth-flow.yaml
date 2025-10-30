@@ -6,7 +6,7 @@ suite_name: "Complete Authentication Flow"
 node_id: "auth-flow-complete"
 description: "Full authentication lifecycle with registration, login, refresh, and logout"
 
-base_url: "https://httpbin.org"
+base_url: "http://localhost:8080"
 
 metadata:
   priority: "critical"

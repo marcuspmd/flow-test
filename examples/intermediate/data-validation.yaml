@@ -6,7 +6,7 @@ suite_name: "Data Validation Examples"
 node_id: "data-validation-example"
 description: "Comprehensive examples of different assertion types"
 
-base_url: "https://httpbin.org"
+base_url: "http://localhost:8080"
 
 metadata:
   priority: "medium"

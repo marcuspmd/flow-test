@@ -1,6 +1,6 @@
-# Usaremos httpbin.org, uma API pública excelente para testar clientes HTTP.
+# Usaremos localhost:8080, uma API pública excelente para testar clientes HTTP.
 node_id: "httpbin-test"
-suite_name: "Fluxo de Teste com httpbin.org"
+suite_name: "Fluxo de Teste com localhost:8080"
 
 metadata:
   priority: "medium"
@@ -37,7 +37,7 @@ steps:
     assert:
       status_code: 200
 
-    # O httpbin.org/post retorna o corpo enviado dentro de um campo 'json'.
+    # O localhost:8080/post retorna o corpo enviado dentro de um campo 'json'.
     # Vamos capturar o nome de usuário que enviamos de volta da resposta.
     capture:
       captured_username: "body.json.name"

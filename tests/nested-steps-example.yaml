@@ -1,7 +1,7 @@
 # Exemplo demonstrando Nested Steps em Scenarios
 suite_name: "Nested Steps Examples"
 node_id: "nested-steps-demo"
-base_url: "https://httpbin.org"
+base_url: "http://localhost:8080"
 
 metadata:
   priority: "high"
@@ -31,7 +31,7 @@ steps:
             - name: "Test delay endpoint"
               request:
                 method: GET
-                url: "/delay/1"
+                url: "/get"
 
       - name: "API is down"
         condition: "status_code >= `500`"

@@ -1,6 +1,6 @@
 suite_name: "Call Alias Test - Isolated"
 node_id: "call-alias-isolated"
-base_url: "https://httpbin.org"
+base_url: "http://localhost:8080"
 
 steps:
   # Step 1: Criar uma variável para testar
