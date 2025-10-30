@@ -163,7 +163,9 @@ export class ConsoleLoggerAdapter implements Logger {
   }
 
   error(message: string, ...args: any[]): void {
-    this.log("ERROR", message, ...args);
+    if (this.verbosity !== "silent") {
+      this.log("ERROR", message, ...args);
+    }
   }
 
   private log(level: string, message: string, ...args: any[]): void {
@@ -619,6 +621,9 @@ export class JestStyleLoggerAdapter implements Logger {
   }
 
   error(message: string, ...args: any[]): void {
+    if (this.verbosity === "silent") {
+      return;
+    }
     const context = args[0] as Record<string, any> | undefined;
     console.error(chalk.red(`❌ ${message}`), ...args.slice(1));
     if (context?.error) {
@@ -772,6 +777,7 @@ export class JestStyleLoggerAdapter implements Logger {
 export class LoggerService implements ILogger {
   private logger: Logger;
   private logStream: LogStreamingService;
+  private currentLogLevel: "debug" | "info" | "warn" | "error" | "silent" = "info";
 
   constructor() {
     // Default logger for DI
@@ -832,13 +838,16 @@ export class LoggerService implements ILogger {
    * Set the log level
    * @param level - The log level to set
    */
-  setLogLevel(level: "debug" | "info" | "warn" | "error"): void {
+  setLogLevel(level: "debug" | "info" | "warn" | "error" | "silent"): void {
+    this.currentLogLevel = level;
+
     // Map to verbosity for ConsoleLoggerAdapter
     const verbosityMap: Record<string, any> = {
       debug: "verbose",
       info: "simple",
       warn: "simple",
-      error: "silent",
+      error: "simple", // Error level should still show errors
+      silent: "silent",
     };
 
     if (this.logger instanceof ConsoleLoggerAdapter) {
@@ -852,10 +861,7 @@ export class LoggerService implements ILogger {
    * @returns Current log level as string
    */
   getLogLevel(): string {
-    if (this.logger instanceof ConsoleLoggerAdapter) {
-      return (this.logger as any).verbosity || "simple";
-    }
-    return "info";
+    return this.currentLogLevel;
   }
 
   // ========================================

@@ -75,9 +75,9 @@ export interface ILogger {
   /**
    * Set the minimum log level
    *
-   * @param level - The log level ('debug', 'info', 'warn', 'error')
+   * @param level - The log level ('debug', 'info', 'warn', 'error', 'silent')
    */
-  setLogLevel(level: "debug" | "info" | "warn" | "error"): void;
+  setLogLevel(level: "debug" | "info" | "warn" | "error" | "silent"): void;
 
   /**
    * Get the current log level

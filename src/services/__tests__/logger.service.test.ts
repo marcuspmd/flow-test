@@ -29,7 +29,7 @@ describe("LoggerService", () => {
 
   describe("ConsoleLoggerAdapter", () => {
     describe("Verbosity Levels", () => {
-      test("silent: deve logar apenas errors", () => {
+      test("silent: não deve logar nenhuma mensagem", () => {
         logger = new ConsoleLoggerAdapter("silent");
 
         logger.debug("Debug message");
@@ -39,10 +39,7 @@ describe("LoggerService", () => {
 
         expect(consoleSpy).not.toHaveBeenCalled();
         expect(consoleWarnSpy).not.toHaveBeenCalled();
-        expect(consoleErrorSpy).toHaveBeenCalledTimes(1);
-        expect(consoleErrorSpy).toHaveBeenCalledWith(
-          "[2025-09-14T10:00:00.000Z] [ERROR] Error message"
-        );
+        expect(consoleErrorSpy).not.toHaveBeenCalled();
       });
 
       test("simple: deve logar info, warn e error", () => {
