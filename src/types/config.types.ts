@@ -562,6 +562,25 @@ export interface StepExecutionResult {
     body: any;
     size_bytes: number;
     raw_response?: string;
+    /** Detailed timing breakdown for performance analysis */
+    timing?: {
+      /** Time spent on DNS lookup in milliseconds */
+      dns_lookup_ms?: number;
+      /** Time spent establishing TCP connection in milliseconds */
+      tcp_connection_ms?: number;
+      /** Time spent on TLS handshake in milliseconds (HTTPS only) */
+      tls_handshake_ms?: number;
+      /** Time to first byte (TTFB) in milliseconds */
+      time_to_first_byte_ms?: number;
+      /** Time spent downloading response content in milliseconds */
+      content_download_ms?: number;
+      /** Total request time in milliseconds (may differ slightly from duration_ms due to framework overhead) */
+      total_ms?: number;
+      /** Timestamp when request started (ISO 8601) */
+      started_at?: string;
+      /** Timestamp when response completed (ISO 8601) */
+      completed_at?: string;
+    };
   };
   assertions_results?: AssertionResult[];
   captured_variables?: Record<string, any>;

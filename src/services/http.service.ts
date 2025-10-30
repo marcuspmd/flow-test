@@ -150,6 +150,14 @@ export class HttpService implements IHttpService {
     request: RequestDetails
   ): Promise<StepExecutionResult> {
     const startTime = Date.now();
+    const startedAt = new Date().toISOString();
+    
+    // Timing markers for detailed breakdown
+    const timingMarkers = {
+      requestStart: 0,
+      responseStart: 0,
+      responseEnd: 0,
+    };
 
     try {
       // Builds the complete URL
@@ -190,9 +198,17 @@ export class HttpService implements IHttpService {
         }
       }
 
+      // Track timing with interceptors
+      timingMarkers.requestStart = Date.now();
+      
       // Executes the request
       const response: AxiosResponse = await axios(axiosConfig);
+      
+      timingMarkers.responseStart = Date.now();
+      timingMarkers.responseEnd = Date.now();
+      
       const duration = Date.now() - startTime;
+      const completedAt = new Date().toISOString();
 
       // Calculates response size
       const responseSize = this.calculateResponseSize(response);
@@ -211,6 +227,10 @@ export class HttpService implements IHttpService {
         metadata: { type: "http_response_raw", internal: true },
       });
 
+      // Calculate timing breakdown
+      const timeToFirstByte = timingMarkers.responseStart - timingMarkers.requestStart;
+      const contentDownload = timingMarkers.responseEnd - timingMarkers.responseStart;
+
       return {
         step_name: stepName,
         status: "success",
@@ -228,6 +248,13 @@ export class HttpService implements IHttpService {
           body: response.data,
           size_bytes: responseSize,
           raw_response: rawResponse,
+          timing: {
+            time_to_first_byte_ms: timeToFirstByte,
+            content_download_ms: contentDownload,
+            total_ms: duration,
+            started_at: startedAt,
+            completed_at: completedAt,
+          },
         },
         captured_variables: {},
         assertions_results: [],
