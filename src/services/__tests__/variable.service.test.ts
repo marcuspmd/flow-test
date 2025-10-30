@@ -23,8 +23,26 @@ function createVariableServiceWithContext(
   context: GlobalVariableContext,
   globalRegistry?: any
 ): VariableService {
-  const service = new VariableService(mockLogger as any);
-  service.setContext(context as any, globalRegistry);
+  const mockConfigManager = {
+    getGlobalVariables: () => context.global || {},
+  };
+  const service = new VariableService(
+    mockLogger as any,
+    mockConfigManager as any,
+    globalRegistry
+  );
+  // Set suite and runtime variables after construction
+  if (context.suite) {
+    service.setSuiteVariables(context.suite);
+  }
+  if (context.runtime) {
+    service.setRuntimeVariables(context.runtime);
+  }
+  if (context.imported) {
+    for (const [flowName, variables] of Object.entries(context.imported)) {
+      service.addImportedFlow(flowName, variables);
+    }
+  }
   return service;
 }
 
@@ -56,8 +74,7 @@ describe("VariableService", () => {
       environment: {},
     };
 
-    service = new VariableService(mockLogger as any);
-    service.setContext(baseContext as any, mockGlobalRegistry);
+    service = createVariableServiceWithContext(baseContext, mockGlobalRegistry);
   });
 
   describe("constructor", () => {
@@ -66,8 +83,7 @@ describe("VariableService", () => {
     });
 
     it("should create without global registry", () => {
-      const serviceWithoutRegistry = new VariableService(mockLogger as any);
-      serviceWithoutRegistry.setContext(baseContext as any);
+      const serviceWithoutRegistry = createVariableServiceWithContext(baseContext);
       expect(serviceWithoutRegistry).toBeDefined();
     });
   });

@@ -229,10 +229,10 @@ export const InputDynamicConfigSchema = z.object({
   scope: DynamicVariableScopeSchema.optional().describe("Default scope"),
 
   /** Map of variable name -> JMESPath expression to capture values from input context */
-  capture: z.record(z.string()).optional().describe("Capture expressions"),
+  capture: z.record(z.string(), z.string()).optional().describe("Capture expressions"),
 
   /** Map of variable name -> JavaScript expression for computed values */
-  computed: z.record(z.string()).optional().describe("Computed expressions"),
+  computed: z.record(z.string(), z.string()).optional().describe("Computed expressions"),
 
   /**
    * Optional collection of definitions registered for subsequent reevaluation

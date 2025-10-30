@@ -194,7 +194,7 @@ export const StepCallResultSchema = z.object({
 
   /** Variables ready to be propagated to caller (after namespace adjustments) */
   propagated_variables: z
-    .record(z.any())
+    .record(z.string(), z.any())
     .optional()
     .describe("Propagated variables"),
 

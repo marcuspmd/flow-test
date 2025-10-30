@@ -13,12 +13,10 @@ import { injectable, inject } from "inversify";
 import { GlobalVariableContext } from "../types/config.types";
 import { GlobalRegistryService } from "./global-registry.service";
 import { JavaScriptExecutionContext } from "./javascript.service";
-import { getLogger } from "./logger.service";
 import {
   interpolationService,
   InterpolationContext,
 } from "./interpolation.service";
-import { ConfigManager } from "../core/config";
 import { TYPES } from "../di/identifiers";
 import { ILogger } from "../interfaces/services/ILogger";
 import { IGlobalRegistryService } from "../interfaces/services/IGlobalRegistryService";
@@ -93,33 +91,6 @@ export class VariableService implements IVariableService {
     this.context = this.initializeContext();
   }
 
-  /**
-   * Legacy constructor support for backward compatibility
-   * Use setContext() after instantiation when using legacy approach
-   */
-  setContext(
-    contextOrConfigManager: GlobalVariableContext | ConfigManager,
-    globalRegistry?: GlobalRegistryService
-  ): void {
-    // Check if it's a ConfigManager instance
-    if (contextOrConfigManager instanceof ConfigManager) {
-      this.configManager = contextOrConfigManager as any;
-      if (globalRegistry) {
-        this.globalRegistry = globalRegistry as any;
-      }
-      this.context = this.initializeContext();
-    } else {
-      // Legacy: direct context initialization
-      this.context = contextOrConfigManager;
-      // Ensure environment is set if not provided
-      if (!this.context.environment) {
-        this.context.environment = this.loadEnvironmentVariables();
-      }
-      if (globalRegistry) {
-        this.globalRegistry = globalRegistry as any;
-      }
-    }
-  }
 
   /**
    * Initializes the variable context from ConfigManager

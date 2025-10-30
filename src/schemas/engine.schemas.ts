@@ -70,7 +70,7 @@ export const RequestDetailsSchema = z.object({
   url: z.string().min(1).describe("Request URL"),
 
   /** HTTP headers to include with the request */
-  headers: z.record(z.string()).optional().describe("HTTP headers"),
+  headers: z.record(z.string(), z.string()).optional().describe("HTTP headers"),
 
   /** Request body payload for POST/PUT/PATCH methods */
   body: z.any().optional().describe("Request body"),
@@ -227,7 +227,7 @@ export const AssertionsSchema = z.object({
 
   /** HTTP header validations */
   headers: z
-    .record(AssertionChecksSchema)
+    .record(z.string(), AssertionChecksSchema)
     .optional()
     .describe("Header assertions"),
 
@@ -289,7 +289,7 @@ export const ConditionalScenarioSchema = z.lazy(() =>
     then: z
       .object({
         assert: AssertionsSchema.optional(),
-        capture: z.record(z.string()).optional(),
+        capture: z.record(z.string(), z.string()).optional(),
         variables: z.record(z.string(), z.any()).optional(),
       })
       .optional()
@@ -299,7 +299,7 @@ export const ConditionalScenarioSchema = z.lazy(() =>
     else: z
       .object({
         assert: AssertionsSchema.optional(),
-        capture: z.record(z.string()).optional(),
+        capture: z.record(z.string(), z.string()).optional(),
         variables: z.record(z.string(), z.any()).optional(),
       })
       .optional()
@@ -600,7 +600,7 @@ export const TestStepSchema = z.lazy(() =>
     call: z.any().optional().describe("Step call config"),
 
     /** Data extraction patterns using JMESPath expressions */
-    capture: z.record(z.string()).optional().describe("Capture expressions"),
+    capture: z.record(z.string(), z.string()).optional().describe("Capture expressions"),
 
     /** Conditional scenarios for dynamic test behavior */
     scenarios: z

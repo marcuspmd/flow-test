@@ -332,7 +332,7 @@ export const GlobalVariableContextSchema = z.object({
   runtime: z.record(z.string(), z.any()).describe("Runtime variables"),
 
   /** Variables imported from other test suites */
-  imported: z.record(z.record(z.string(), z.any())).describe("Imported variables"),
+  imported: z.record(z.string(), z.record(z.string(), z.any())).describe("Imported variables"),
 });
 
 /**
@@ -476,7 +476,7 @@ export const StepExecutionResultSchema = z.lazy(() =>
       .object({
         method: z.string(),
         url: z.string(),
-        headers: z.record(z.string()).optional(),
+        headers: z.record(z.string(), z.string()).optional(),
         body: z.any().optional(),
         full_url: z.string().optional(),
         curl_command: z.string().optional(),
@@ -491,7 +491,7 @@ export const StepExecutionResultSchema = z.lazy(() =>
     response_details: z
       .object({
         status_code: z.number().int(),
-        headers: z.record(z.string()),
+        headers: z.record(z.string(), z.string()),
         body: z.any(),
         size_bytes: z.number().nonnegative(),
         raw_response: z.string().optional(),

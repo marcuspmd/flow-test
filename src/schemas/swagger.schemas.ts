@@ -150,7 +150,7 @@ export const OpenAPIServerSchema = z.object({
 
   /** Server variables */
   variables: z
-    .record(OpenAPIServerVariableSchema)
+    .record(z.string(), OpenAPIServerVariableSchema)
     .optional()
     .describe("Variables"),
 });
@@ -517,7 +517,7 @@ export const OpenAPIComponentsSchema = z.object({
 
   /** Request bodies */
   requestBodies: z
-    .record(OpenAPIRequestBodySchema)
+    .record(z.string(), OpenAPIRequestBodySchema)
     .optional()
     .describe("Request bodies"),
 
@@ -526,7 +526,7 @@ export const OpenAPIComponentsSchema = z.object({
 
   /** Security schemes */
   securitySchemes: z
-    .record(OpenAPISecuritySchemeSchema)
+    .record(z.string(), OpenAPISecuritySchemeSchema)
     .optional()
     .describe("Security schemes"),
 
@@ -597,7 +597,7 @@ export const OpenAPISpecSchema = z.object({
 
   /** Definitions (Swagger 2.0 - legacy) */
   definitions: z
-    .record(OpenAPISchemaObjectSchema)
+    .record(z.string(), OpenAPISchemaObjectSchema)
     .optional()
     .describe("Definitions"),
 
@@ -609,7 +609,7 @@ export const OpenAPISpecSchema = z.object({
 
   /** Security definitions (Swagger 2.0 - legacy) */
   securityDefinitions: z
-    .record(OpenAPISecuritySchemeSchema)
+    .record(z.string(), OpenAPISecuritySchemeSchema)
     .optional()
     .describe("Security definitions"),
 

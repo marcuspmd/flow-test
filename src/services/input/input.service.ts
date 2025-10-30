@@ -299,13 +299,7 @@ export class InputService implements IInputService {
   ): InputConfig {
     // Create a lightweight VariableService for interpolation
     const variableService = new VariableService(this.logger);
-    variableService.setContext({
-      environment: {},
-      global: {},
-      suite: {},
-      runtime: variables,
-      imported: {},
-    });
+    variableService.setRuntimeVariables(variables);
 
     const toDisplayString = (value: any): string | undefined => {
       if (value === undefined || value === null) {
