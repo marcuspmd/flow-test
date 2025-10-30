@@ -58,11 +58,11 @@ steps:
 
           # Dados faker dinâmicos
           test_user:
-            id: ""#faker.string.uuid""
-            name: ""#faker.person.fullName""
-            email: ""#faker.internet.email""
-            phone: ""#faker.phone.number""
-            company: ""#faker.company.name""
+            id: "#faker.string.uuid"
+            name: "#faker.person.fullName"
+            email: "#faker.internet.email"
+            phone: "#faker.phone.number"
+            company: "#faker.company.name"
 
           # Dados estáticos
           test_metadata:
@@ -109,19 +109,19 @@ steps:
           create:
             user_id: "{{test_user_id}}"
             profile:
-              name: ""#faker.person.fullName""
-              department: ""#faker.person.jobArea""
-              salary: ""#faker.finance.amount""
+              name: "#faker.person.fullName"
+              department: "#faker.person.jobArea"
+              salary: "#faker.finance.amount"
               address:
-                street: ""#faker.location.streetAddress""
-                city: ""#faker.location.city""
-                country: ""#faker.location.country""
+                street: "#faker.location.streetAddress"
+                city: "#faker.location.city"
+                country: "#faker.location.country"
 
           # Update operation com interpolação
           update:
             user_id: "{{test_user_id}}"
             email: "{{test_user_email}}"
-            last_modified: ""#faker.date.recent""
+            last_modified: "#faker.date.recent"
 
           # Metadata com todas as fontes
           metadata:
@@ -169,29 +169,29 @@ steps:
         data_processing:
           # Array de usuários gerados com faker
           users:
-            - id: ""#faker.string.uuid""
-              name: ""#faker.person.fullName""
-              email: ""#faker.internet.email""
-              active: ""#faker.datatype.boolean""
-            - id: ""#faker.string.uuid""
-              name: ""#faker.person.fullName""
-              email: ""#faker.internet.email""
-              active: ""#faker.datatype.boolean""
-            - id: ""#faker.string.uuid""
-              name: ""#faker.person.fullName""
-              email: ""#faker.internet.email""
-              active: ""#faker.datatype.boolean""
+            - id: "#faker.string.uuid"
+              name: "#faker.person.fullName"
+              email: "#faker.internet.email"
+              active: "#faker.datatype.boolean"
+            - id: "#faker.string.uuid"
+              name: "#faker.person.fullName"
+              email: "#faker.internet.email"
+              active: "#faker.datatype.boolean"
+            - id: "#faker.string.uuid"
+              name: "#faker.person.fullName"
+              email: "#faker.internet.email"
+              active: "#faker.datatype.boolean"
 
           # Dados financeiros
           transactions:
-            - id: ""#faker.string.uuid""
-              amount: ""#faker.finance.amount""
-              currency: ""#faker.finance.currencyCode""
-              date: ""#faker.date.recent""
-            - id: ""#faker.string.uuid""
-              amount: ""#faker.finance.amount""
-              currency: ""#faker.finance.currencyCode""
-              date: ""#faker.date.recent""
+            - id: "#faker.string.uuid"
+              amount: "#faker.finance.amount"
+              currency: "#faker.finance.currencyCode"
+              date: "#faker.date.recent"
+            - id: "#faker.string.uuid"
+              amount: "#faker.finance.amount"
+              currency: "#faker.finance.currencyCode"
+              date: "#faker.date.recent"
 
           # Contexto do teste
           test_context:

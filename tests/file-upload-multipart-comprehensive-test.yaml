@@ -9,7 +9,7 @@ metadata:
   estimated_duration_ms: 1800
 
 variables:
-  upload_test_id: "upload-"#faker.string.uuid""
+  upload_test_id: "upload-"#faker.string.uuid"
   test_filename: "test-document.txt"
   test_file_content: "This is test file content for upload testing"
 
@@ -57,8 +57,8 @@ steps:
         file_type: "application/json"
         upload_type: "json_file"
         metadata:
-          uploader: ""#faker.person.fullName""
-          upload_timestamp: ""#faker.date.recent""
+          uploader: "#faker.person.fullName"
+          upload_timestamp: "#faker.date.recent"
     assert:
       status_code: 200
       body:
@@ -80,7 +80,7 @@ steps:
         X-Upload-Test: "binary_file"
         X-File-Type: "application/octet-stream"
       body:
-        file_content: ""#faker.string.hexadecimal({ length: 100 })""  # Simulate binary data
+        file_content: "#faker.string.hexadecimal({ length: 100 })"  # Simulate binary data
         filename: "binary_data.bin"
         file_type: "application/octet-stream"
         upload_type: "binary_file"
@@ -171,9 +171,9 @@ steps:
       body:
         # Text fields
         user_id: "12345"
-        username: ""#faker.internet.userName""
-        email: ""#faker.internet.email""
-        description: ""#faker.lorem.paragraph""
+        username: "#faker.internet.userName"
+        email: "#faker.internet.email"
+        description: "#faker.lorem.paragraph"
 
         # File field
         attachment:
@@ -183,7 +183,7 @@ steps:
 
         # Additional metadata
         form_type: "mixed_content"
-        submission_time: ""#faker.date.recent""
+        submission_time: "#faker.date.recent"
         priority: "high"
     assert:
       status_code: 200
@@ -241,7 +241,7 @@ steps:
         total_chunks: 3
         chunk_size: 1048576  # 1MB chunks
         upload_id: "{{upload_test_id}}"
-        chunk_data: ""#faker.string.hexadecimal({ length: 200 })""
+        chunk_data: "#faker.string.hexadecimal({ length: 200 })"
         upload_type: "chunked"
     assert:
       status_code: 200
@@ -331,7 +331,7 @@ steps:
         resume_offset: 1048576
         remaining_size: 5242880
         upload_type: "resumable"
-        session_id: "session_"#faker.string.uuid""
+        session_id: "session_"#faker.string.uuid"
     assert:
       status_code: 200
       body:

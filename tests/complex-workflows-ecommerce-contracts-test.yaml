@@ -9,22 +9,22 @@ metadata:
   estimated_duration_ms: 2000
 
 variables:
-  workflow_test_id: "workflow-"#faker.string.uuid""
-  customer_id: ""#faker.number.int({min: 1000, max: 9999})""
-  session_id: "session-"#faker.string.uuid""
+  workflow_test_id: "workflow-"#faker.string.uuid"
+  customer_id: "#faker.number.int({min: 1000, max: 9999})"
+  session_id: "session-"#faker.string.uuid"
 
   # E-commerce test data
   customer_data:
     id: "{{customer_id}}"
-    name: ""#faker.person.fullName""
-    email: ""#faker.internet.email""
-    phone: ""#faker.phone.number""
+    name: "#faker.person.fullName"
+    email: "#faker.internet.email"
+    phone: "#faker.phone.number"
     address:
-      street: ""#faker.location.streetAddress""
-      city: ""#faker.location.city""
-      state: ""#faker.location.state""
-      zip: ""#faker.location.zipCode""
-      country: ""#faker.location.country""
+      street: "#faker.location.streetAddress"
+      city: "#faker.location.city"
+      state: "#faker.location.state"
+      zip: "#faker.location.zipCode"
+      country: "#faker.location.country"
 
   product_catalog:
     - id: "PROD-001"
@@ -72,7 +72,7 @@ steps:
         marketing_consent: true
         terms_accepted: true
         privacy_policy_accepted: true
-        registration_timestamp: ""#faker.date.recent""
+        registration_timestamp: "#faker.date.recent"
     assert:
       status_code: 200
       body:
@@ -154,7 +154,7 @@ steps:
           - product_id: "PROD-002"
             quantity: 1
             unit_price: 49.99
-        cart_timestamp: ""#faker.date.recent""
+        cart_timestamp: "#faker.date.recent"
     assert:
       status_code: 200
       body:
@@ -288,9 +288,9 @@ steps:
           discount_amount: "{{savings_amount}}"
           shipping_cost: "{{selected_shipping_cost}}"
           total_amount: "{{total_with_shipping}}"
-          estimated_delivery: ""#faker.date.future""
+          estimated_delivery: "#faker.date.future"
         fulfillment_center: "warehouse_1"
-        order_timestamp: ""#faker.date.recent""
+        order_timestamp: "#faker.date.recent"
     assert:
       status_code: 200
       body:

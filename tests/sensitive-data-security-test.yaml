@@ -41,7 +41,7 @@ steps:
           username: "{{test_credentials.username}}"
           password: "{{test_credentials.password}}"  # Should be masked
           timestamp: "1234567890000"
-          session_id: ""#faker.string.uuid""
+          session_id: "#faker.string.uuid"
         security_metadata:
           masking_enabled: "{{security_config.mask_passwords}}"
           test_type: "sensitive-data-auth"
@@ -56,7 +56,7 @@ steps:
               equals: "super_secret_password_123"
     capture:
       auth_response: "json"
-      simulated_auth_token: ""#faker.string.alphanumeric(32)""
+      simulated_auth_token: "#faker.string.alphanumeric(32)"
       login_timestamp: "json.login_request.timestamp"
 
   - name: "Test API key handling and masking"
@@ -67,7 +67,7 @@ steps:
         # These headers should be masked in logs
         Authorization: "Bearer {{test_credentials.api_key}}"
         X-API-Key: "{{test_credentials.client_secret}}"
-        X-Client-ID: ""#faker.string.uuid""
+        X-Client-ID: "#faker.string.uuid"
         X-Security-Test: "api-key-masking"
     assert:
       status_code: 200
@@ -92,7 +92,7 @@ steps:
       body:
         token_validation:
           access_token: "{{simulated_auth_token}}"
-          refresh_token: ""#faker.string.alphanumeric(64)""
+          refresh_token: "#faker.string.alphanumeric(64)"
           token_type: "Bearer"
           expires_in: 3600
           scope: "read:user write:user"

@@ -45,7 +45,7 @@ steps:
 
     capture:
       request_url: "body.url"
-      user_agent_echo: "body.headers.\"User-Agent\""
+      user_agent_echo: "body.headers.'User-Agent'"
 
   # Teste 2: POST Request com Body JSON
   - name: "POST Request com JSON Body"

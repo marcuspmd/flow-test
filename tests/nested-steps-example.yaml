@@ -92,8 +92,8 @@ steps:
       method: POST
       url: "/post"
       body:
-        username: ""#faker.internet.userName""
-        password: ""#faker.internet.password""
+        username: "#faker.internet.userName"
+        password: "#faker.internet.password"
 
     capture:
       auth_response: "body"

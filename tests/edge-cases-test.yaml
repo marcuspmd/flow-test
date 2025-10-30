@@ -11,7 +11,7 @@ variables:
   large_text: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."
   empty_string: ""
   null_value: null
-  special_chars: "!@#$%^&*()_+-=[]{}|;':\",./<>?"
+  special_chars: "!@#$%^&*()_+-=[]{}|;':',./<>?"
 
 exports:
   - error_handling_results
@@ -109,7 +109,7 @@ steps:
           unicode_text: "Olá! こんにちは 🌟 Ñoño café naïve résumé"
           html_entities: "<script>alert('test')</script>"
           sql_injection: "'; DROP TABLE users; --"
-          json_escape: "{\"nested\": \"value with \\\"quotes\\\"\"}"
+          json_escape: "{'nested': 'value with \\'quotes\\''}"
 
     assert:
       status_code: 200

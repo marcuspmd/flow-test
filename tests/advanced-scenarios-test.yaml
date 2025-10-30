@@ -204,22 +204,22 @@ steps:
 
     scenarios:
       # Cache habilitado
-      - condition: "headers.\"Cache-Control\" != null"
+      - condition: "headers.'Cache-Control' != null"
         then:
           capture:
             caching_enabled: "`true`"
             cache_strategy: "'browser_cache'"
-            cache_duration: "headers.\"Cache-Control\""
+            cache_duration: "headers.'Cache-Control'"
 
       # Headers customizados presentes
-      - condition: "headers.\"X-Custom-Header\" != null"
+      - condition: "headers.'X-Custom-Header' != null"
         then:
           capture:
             custom_headers: "`true`"
-            header_value: "headers.\"X-Custom-Header\""
+            header_value: "headers.'X-Custom-Header'"
 
       # Sem cache
-      - condition: "headers.\"Cache-Control\" == null"
+      - condition: "headers.'Cache-Control' == null"
         then:
           capture:
             caching_enabled: "`false`"

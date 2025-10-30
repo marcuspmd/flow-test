@@ -270,7 +270,7 @@ steps:
 
     scenarios:
       # Cenário A: Usuário tem permissão admin
-      - condition: "json.permission_required == `admin` && headers.\"x-permission-check\" == `admin`"
+      - condition: "json.permission_required == `admin` && headers.'x-permission-check' == `admin`"
         then:
           assert:
             status_code: 200

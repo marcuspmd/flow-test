@@ -28,12 +28,12 @@ steps:
     assert:
       # Check the HTTP status code
       status_code: 200
-      
+
       # Check response headers
       headers:
         content-type:
           contains: "application/json"
-      
+
       # Validate response body structure
       body:
         # httpbin echoes request headers back
@@ -42,7 +42,7 @@ steps:
             equals: "application/json"
           User-Agent:
             contains: "FlowTestEngine"
-        
+
         # Verify the URL that was called
         url:
           contains: "httpbin.org/get"
@@ -50,7 +50,7 @@ steps:
     # Capture values from the response for use in later steps
     capture:
       response_url: "body.url"
-      user_agent_echo: "body.headers.\"User-Agent\""
+      user_agent_echo: "body.headers.'User-Agent'"
 
 # Tips:
 # 1. Start with simple assertions and add more as needed

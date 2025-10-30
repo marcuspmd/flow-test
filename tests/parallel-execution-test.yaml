@@ -11,7 +11,7 @@ metadata:
   max_parallel: 3
 
 variables:
-  parallel_test_id: "parallel-"#faker.string.uuid""
+  parallel_test_id: "parallel-"#faker.string.uuid"
   concurrent_requests: 5
 
 steps:

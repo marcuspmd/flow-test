@@ -93,11 +93,11 @@ steps:
         # LEGACY SYNTAX (still fully supported)
         # ────────────────────────────────────────────────────────────────
         legacy_faker:
-          email_with_dollar: ""#faker.internet.email""
-          name_without_dollar: ""#faker.person.fullName""
-          uuid: ""#faker.string.uuid""
-          phone: ""#faker.phone.number""
-          company: ""#faker.company.name""
+          email_with_dollar: "#faker.internet.email"
+          name_without_dollar: "#faker.person.fullName"
+          uuid: "#faker.string.uuid"
+          phone: "#faker.phone.number"
+          company: "#faker.company.name"
 
         # ────────────────────────────────────────────────────────────────
         # NEW SYNTAX (recommended for cleaner YAML)

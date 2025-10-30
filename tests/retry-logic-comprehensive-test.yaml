@@ -9,7 +9,7 @@ metadata:
   estimated_duration_ms: 1800
 
 variables:
-  retry_test_id: "retry-"#faker.string.uuid""
+  retry_test_id: "retry-"#faker.string.uuid"
   max_retries: 3
   base_delay: 1000
 

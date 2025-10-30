@@ -275,7 +275,7 @@ steps:
         Authorization: "Bearer {{auth_token}}"
         Content-Type: "application/json"
       body:
-        name: ""
+        name: "example"
         description: "Missing required fields"
     assert:
       status_code: 400

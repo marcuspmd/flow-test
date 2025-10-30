@@ -77,7 +77,7 @@ steps:
     assert:
       status_code: 200
     capture:
-      user_agent_value: "body.\"user-agent\""
+      user_agent_value: "body.'user-agent'"
     metadata:
       description: "This step should be included when filtering by this suite's node_id"
 
@@ -160,6 +160,6 @@ steps:
           exists: true
     capture:
       log_test_etag: "headers.etag"
-      log_test_cache: "headers.\"cache-control\""
+      log_test_cache: "headers.'cache-control'"
     metadata:
       description: "Step that generates data suitable for log file verification"

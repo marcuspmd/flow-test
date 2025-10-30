@@ -32,19 +32,19 @@ variables:
   # Test data generator with Faker.js - Direct access without arrays
   user1:
     id: 1
-    name: ""#faker.person.fullName""
-    email: ""#faker.internet.email""
-    city: ""#faker.location.city""
+    name: "#faker.person.fullName"
+    email: "#faker.internet.email"
+    city: "#faker.location.city"
   user2:
     id: 2
-    name: ""#faker.person.fullName""
-    email: ""#faker.internet.email""
-    city: ""#faker.location.city""
+    name: "#faker.person.fullName"
+    email: "#faker.internet.email"
+    city: "#faker.location.city"
   user3:
     id: 3
-    name: ""#faker.person.fullName""
-    email: ""#faker.internet.email""
-    city: ""#faker.location.city""
+    name: "#faker.person.fullName"
+    email: "#faker.internet.email"
+    city: "#faker.location.city"
 
 steps:
   - name: "Test GET endpoint dynamically"
@@ -53,7 +53,7 @@ steps:
       url: "/get"
       headers:
         X-Dynamic-Test: "endpoint-iteration"
-        X-Test-ID: ""#faker.string.uuid""
+        X-Test-ID: "#faker.string.uuid"
     assert:
       status_code: 200
       headers:
@@ -97,11 +97,11 @@ steps:
       body:
         # Use second user
         user_id: "{{user2.id}}"
-        modified_name: ""#faker.person.fullName""
-        modified_email: ""#faker.internet.email""
+        modified_name: "#faker.person.fullName"
+        modified_email: "#faker.internet.email"
         original_city: "{{user2.city}}"
         modification_timestamp: "{{$js.return new Date().toISOString()}}"
-        batch_id: ""#faker.string.alphanumeric(8)""
+        batch_id: "#faker.string.alphanumeric(8)"
     assert:
       status_code: 200
       body:

@@ -10,7 +10,7 @@ metadata:
   execution_mode: "{{execution_mode || 'sequential'}}"
 
 variables:
-  execution_test_id: "exec-"#faker.string.uuid""
+  execution_test_id: "exec-"#faker.string.uuid"
   test_delay: 1  # 1 second delay per request
   concurrent_requests: 5
   load_test_range: [1, 2, 3, 4, 5]
@@ -34,7 +34,7 @@ steps:
         max: 2000
     capture:
       seq_request_1_time: "response_time_ms"
-      seq_request_1_start: ""#faker.date.recent""
+      seq_request_1_start: "#faker.date.recent"
 
   - name: "Sequential request 2"
     request:

@@ -69,14 +69,14 @@ steps:
   - name: "Iterate through multiple pages"
     metadata:
       description: "Fetch multiple pages in sequence"
-    
+
     # In real implementation, use iteration
     iterate:
       range:
         start: 1
         end: "{{max_pages}}"
       as: "page_number"
-    
+
     request:
       method: "GET"
       url: "/get?page={{page_number}}&limit={{page_size}}"
@@ -122,7 +122,7 @@ steps:
   - name: "Cursor-based pagination - next page"
     # Only run if we have a next cursor
     # condition: "{{next_cursor}} != null"
-    
+
     request:
       method: "GET"
       # url: "/get?cursor={{next_cursor}}&limit={{page_size}}"
@@ -135,13 +135,13 @@ steps:
   - name: "Get page with Link headers"
     request:
       method: "GET"
-      url: "/response-headers?Link=<http://api.example.com/users?page=2>; rel=\"next\""
+      url: "/response-headers?Link=<http://api.example.com/users?page=2>; rel='next'"
 
     assert:
       status_code: 200
       headers:
         Link:
-          contains: "rel=\"next\""
+          contains: "rel='next'"
 
     # In real API: parse Link header
     capture:
@@ -151,13 +151,13 @@ steps:
   - name: "Aggregate data from multiple pages"
     metadata:
       description: "Collect all items by iterating pages"
-    
+
     iterate:
       range:
         start: 1
         end: 3
       as: "page"
-    
+
     request:
       method: "GET"
       url: "/get?page={{page}}&limit=5"
