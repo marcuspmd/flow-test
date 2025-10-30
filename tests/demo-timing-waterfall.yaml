@@ -1,0 +1,68 @@
+node_id: "timing-demo"
+suite_name: "Timing and Waterfall Demo"
+
+metadata:
+  priority: "high"
+  tags: ["demo", "timing", "waterfall"]
+  description: "Demonstrates timing tracking and waterfall visualization"
+
+base_url: "https://httpbin.org"
+
+steps:
+  - name: "GET request - Simple"
+    request:
+      method: GET
+      url: "/get"
+      headers:
+        User-Agent: "FlowTestEngine/2.0"
+    assert:
+      status_code: 200
+      body:
+        url: { contains: "httpbin.org" }
+
+  - name: "POST request with body"
+    request:
+      method: POST
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        message: "Testing timing features"
+        timestamp: "2025-10-30"
+    assert:
+      status_code: 200
+    capture:
+      posted_data: "body.json.message"
+
+  - name: "Delay test - 2 seconds"
+    request:
+      method: GET
+      url: "/delay/2"
+    assert:
+      status_code: 200
+
+  - name: "GET request with parameters"
+    request:
+      method: GET
+      url: "/get"
+      params:
+        param1: "value1"
+        param2: "value2"
+    assert:
+      status_code: 200
+      body:
+        args:
+          param1: { equals: "value1" }
+
+  - name: "Conditional scenario demo"
+    request:
+      method: GET
+      url: "/status/200"
+    assert:
+      status_code: 200
+    scenarios:
+      - name: "Success response scenario"
+        condition: "status == 200"
+        then:
+          capture:
+            success_flag: "'true'"

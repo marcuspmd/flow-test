@@ -719,6 +719,12 @@ ${stepsMarkup}
       contents.push(this.renderExportsTab(step));
     }
 
+    // Decision Tracking tab (Scenarios)
+    if (step.scenarios_meta && step.scenarios_meta.has_scenarios) {
+      tabs.push('<button class="tab-btn" data-tab="decisions">🔀 Decisions</button>');
+      contents.push(this.renderDecisionsTab(step.scenarios_meta));
+    }
+
     if (tabs.length === 0) {
       return `<div class="step-details">
         <p class="detail-empty">No details available</p>
@@ -1166,6 +1172,85 @@ ${stepsMarkup}
           </button>
         </div>
         ${contentHtml}
+      </div>
+    </div>`;
+  }
+
+  /**
+   * Render decision tracking tab showing scenario evaluations
+   */
+  private renderDecisionsTab(scenarioMeta: any): string {
+    if (!scenarioMeta.evaluations || scenarioMeta.evaluations.length === 0) {
+      return `<div class="tab-content" data-tab="decisions">
+        <div class="detail-empty">No scenario evaluations recorded</div>
+      </div>`;
+    }
+
+    const evaluationsHtml = scenarioMeta.evaluations
+      .map((evaluation: any, index: number) => {
+        const conditionLabel = ReportingUtils.escapeHtml(evaluation.condition || "");
+        const branchLabel = evaluation.branch || "none";
+        const matched = evaluation.matched;
+        const executed = evaluation.executed;
+
+        const matchIcon = matched ? "✅" : "❌";
+        const branchIcon = branchLabel === "then" ? "➡️" : branchLabel === "else" ? "⬅️" : "⏸️";
+        const statusClass = matched ? "decision-matched" : "decision-not-matched";
+        const executionClass = executed ? "decision-executed" : "decision-skipped";
+
+        let actionsHtml = "";
+        if (evaluation.assertions_added || evaluation.captures_added) {
+          const actions = [];
+          if (evaluation.assertions_added) {
+            actions.push(`${evaluation.assertions_added} assertion(s)`);
+          }
+          if (evaluation.captures_added) {
+            actions.push(`${evaluation.captures_added} capture(s)`);
+          }
+          actionsHtml = `<div class="decision-actions">
+            <span class="decision-actions-label">Actions performed:</span>
+            <span class="decision-actions-value">${actions.join(", ")}</span>
+          </div>`;
+        }
+
+        return `<div class="decision-item ${statusClass} ${executionClass}">
+          <div class="decision-header">
+            <span class="decision-index">Scenario #${evaluation.index + 1}</span>
+            <div class="decision-status">
+              <span class="decision-match">${matchIcon} ${matched ? "Matched" : "Not Matched"}</span>
+              <span class="decision-branch">${branchIcon} ${branchLabel}</span>
+            </div>
+          </div>
+          <div class="decision-condition">
+            <span class="decision-condition-label">Condition:</span>
+            <code class="decision-condition-value">${conditionLabel}</code>
+          </div>
+          ${actionsHtml}
+          ${!executed ? '<div class="decision-note">⚠️ Not executed</div>' : ""}
+        </div>`;
+      })
+      .join("\n");
+
+    const summaryHtml = `<div class="decisions-summary">
+      <div class="summary-item">
+        <span class="summary-label">Total Scenarios:</span>
+        <span class="summary-value">${scenarioMeta.evaluations.length}</span>
+      </div>
+      <div class="summary-item">
+        <span class="summary-label">Executed:</span>
+        <span class="summary-value">${scenarioMeta.executed_count}</span>
+      </div>
+    </div>`;
+
+    return `<div class="tab-content" data-tab="decisions">
+      <div class="code-block">
+        <div class="code-header">
+          <span class="code-label">Scenario Decision Flow</span>
+        </div>
+        ${summaryHtml}
+        <div class="decisions-list">
+          ${evaluationsHtml}
+        </div>
       </div>
     </div>`;
   }
@@ -2010,6 +2095,128 @@ ${stepsMarkup}
         color: var(--text);
         font-weight: 600;
         font-family: 'Consolas', 'Monaco', monospace;
+      }
+
+      /* Decision Tracking Styles */
+      .decisions-summary {
+        display: flex;
+        gap: 24px;
+        padding: 16px;
+        margin-bottom: 16px;
+        background: var(--surface-alt);
+        border-radius: 6px;
+        border: 1px solid var(--border);
+      }
+      .summary-item {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .summary-label {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--muted);
+      }
+      .summary-value {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: var(--text);
+      }
+      .decisions-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .decision-item {
+        padding: 16px;
+        border-radius: 6px;
+        border: 1px solid var(--border);
+        background: var(--surface-alt);
+        transition: all 0.2s ease;
+      }
+      .decision-item:hover {
+        border-color: var(--border-strong);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+      }
+      .decision-matched {
+        border-left: 3px solid var(--success);
+      }
+      .decision-not-matched {
+        border-left: 3px solid var(--muted);
+      }
+      .decision-skipped {
+        opacity: 0.6;
+      }
+      .decision-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+      }
+      .decision-index {
+        font-weight: 600;
+        color: var(--text);
+      }
+      .decision-status {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+      }
+      .decision-match,
+      .decision-branch {
+        padding: 4px 10px;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+      .decision-condition {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        margin-bottom: 8px;
+      }
+      .decision-condition-label {
+        font-size: 0.8rem;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+      .decision-condition-value {
+        padding: 10px;
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 4px;
+        font-family: 'Consolas', 'Monaco', monospace;
+        font-size: 0.85rem;
+        color: #fbbf24;
+        border: 1px solid rgba(251, 191, 36, 0.2);
+      }
+      .decision-actions {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        margin-top: 8px;
+        padding-top: 8px;
+        border-top: 1px solid var(--border);
+        font-size: 0.85rem;
+      }
+      .decision-actions-label {
+        color: var(--muted);
+      }
+      .decision-actions-value {
+        color: var(--text);
+        font-weight: 500;
+      }
+      .decision-note {
+        margin-top: 8px;
+        padding: 8px;
+        background: rgba(251, 191, 36, 0.1);
+        border-left: 3px solid var(--warning);
+        border-radius: 4px;
+        font-size: 0.85rem;
+        color: var(--warning);
       }
 
       @media (max-width: 768px) {
