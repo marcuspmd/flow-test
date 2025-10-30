@@ -6,7 +6,7 @@ metadata:
   tags: ["demo", "timing", "waterfall"]
   description: "Demonstrates timing tracking and waterfall visualization"
 
-base_url: "https://httpbin.org"
+base_url: "http://localhost:8080"
 
 steps:
   - name: "GET request - Simple"
@@ -18,7 +18,7 @@ steps:
     assert:
       status_code: 200
       body:
-        url: { contains: "httpbin.org" }
+        url: { contains: "localhost" }
 
   - name: "POST request with body"
     request:
