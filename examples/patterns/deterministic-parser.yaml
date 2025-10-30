@@ -1,0 +1,200 @@
+# Example: Deterministic Parser with Unified Syntax
+# This file demonstrates the new prefix-based expression syntax
+
+suite_name: "Deterministic Parser Examples"
+node_id: "deterministic-parser-demo"
+description: "Demonstrates clear prefix-based expression parsing"
+
+base_url: "https://httpbin.org"
+
+metadata:
+  priority: "medium"
+  tags: ["examples", "parser", "syntax"]
+
+variables:
+  # String literals (no prefix)
+  api_version: "v1"
+  status_message: "Success"
+  
+  # Templates with variable interpolation ({{}} syntax)
+  full_url: "{{$env.API_URL}}/{{api_version}}/users"
+  greeting: "Hello {{name}}, welcome!"
+  
+  # JavaScript expressions ($ prefix)
+  calculated_value: "$return 10 * 5"
+  current_timestamp: "$return Date.now()"
+  random_number: "$Math.floor(Math.random() * 100)"
+  
+  # Faker data generation (#faker. prefix)
+  test_user_email: "#faker.internet.email"
+  test_user_name: "#faker.person.fullName"
+  test_uuid: "#faker.string.uuid"
+
+steps:
+  # Step 1: Demonstrate literal values
+  - name: "Literal String Values"
+    request:
+      method: "POST"
+      url: "/post"
+      body:
+        # These are plain string literals (no processing)
+        literal_string: "This is a plain text"
+        literal_number: "123"
+        literal_status: "active"
+    
+    assert:
+      status_code: 200
+    
+    capture:
+      # JMESPath expression (@ prefix) - extracts from response
+      posted_data: "@body.json"
+
+  # Step 2: Template interpolation with {{}}
+  - name: "Template Variable Interpolation"
+    request:
+      method: "GET"
+      url: "/get"
+      headers:
+        # Mix environment variables and regular variables in templates
+        Authorization: "Bearer {{$env.API_TOKEN}}"
+        X-API-Version: "{{api_version}}"
+    
+    assert:
+      status_code: 200
+
+  # Step 3: JMESPath for JSON queries (@ prefix)
+  - name: "JMESPath Expressions"
+    request:
+      method: "POST"
+      url: "/post"
+      body:
+        users:
+          - id: 1
+            name: "Alice"
+            active: true
+          - id: 2
+            name: "Bob"
+            active: false
+          - id: 3
+            name: "Charlie"
+            active: true
+    
+    assert:
+      status_code: 200
+    
+    capture:
+      # Extract using JMESPath (@ prefix)
+      first_user_id: "@body.json.users[0].id"
+      active_users: "@body.json.users[?active]"
+      all_user_names: "@body.json.users[*].name"
+
+  # Step 4: JavaScript expressions ($ prefix)
+  - name: "JavaScript Calculations"
+    request:
+      method: "POST"
+      url: "/post"
+      body:
+        # JavaScript expressions for dynamic calculations
+        total_price: "$return 100 * 1.1"  # With tax
+        item_count: "$return [1, 2, 3, 4, 5].length"
+        current_date: "$return new Date().toISOString()"
+        is_valid: "$return true"
+    
+    assert:
+      status_code: 200
+
+  # Step 5: Faker data generation (#faker. prefix)
+  - name: "Faker Test Data Generation"
+    request:
+      method: "POST"
+      url: "/post"
+      body:
+        # Faker expressions for realistic test data
+        user:
+          id: "#faker.string.uuid"
+          email: "#faker.internet.email"
+          username: "#faker.internet.userName"
+          first_name: "#faker.person.firstName"
+          last_name: "#faker.person.lastName"
+          phone: "#faker.phone.number"
+        
+        address:
+          street: "#faker.location.streetAddress"
+          city: "#faker.location.city"
+          country: "#faker.location.country"
+          zipCode: "#faker.location.zipCode"
+        
+        # Faker with parameters
+        random_age: "#faker.number.int({min: 18, max: 65})"
+        product_price: "#faker.number.float({min: 10, max: 1000, precision: 0.01})"
+    
+    assert:
+      status_code: 200
+    
+    capture:
+      # Use JMESPath to capture generated data
+      generated_user_id: "@body.json.user.id"
+
+  # Step 6: Combining different expression types
+  - name: "Complex Expression Composition"
+    request:
+      method: "POST"
+      url: "/post"
+      body:
+        # Template with Faker
+        description: "User {{test_user_name}} registered at {{$env.SITE_URL}}"
+        
+        # Template with JavaScript result
+        order_total: "Total: ${{calculated_value}} USD"
+        
+        # Multiple types working together
+        metadata:
+          literal: "fixed value"
+          faker_uuid: "#faker.string.uuid"
+          timestamp: "$return Date.now()"
+    
+    assert:
+      status_code: 200
+
+# ============================================================================
+# SYNTAX REFERENCE GUIDE
+# ============================================================================
+#
+# ┌──────────────────────────┬────────────────┬──────────────────────────┐
+# │ What I Want              │ Syntax         │ Example                  │
+# ├──────────────────────────┼────────────────┼──────────────────────────┤
+# │ Fixed text               │ "text"         │ "Hello World"            │
+# │ Variable/Template        │ {{var}}        │ {{$env.URL}}/{{id}}      │
+# │ JSON Query               │ @query         │ @response.data[0].id     │
+# │ Calculation/Logic        │ $code          │ $return x * 2            │
+# │ Fake test data           │ #faker.type    │ #faker.internet.email    │
+# └──────────────────────────┴────────────────┴──────────────────────────┘
+#
+# MOST USED FAKER EXPRESSIONS:
+# • #faker.person.fullName      → "João Silva"
+# • #faker.internet.email       → "joao@example.com"
+# • #faker.phone.number         → "(11) 98765-4321"
+# • #faker.string.uuid          → "a5f3c2d1-..."
+# • #faker.number.int({min,max})→ 42
+# • #faker.lorem.paragraph      → "Lorem ipsum..."
+# • #faker.date.recent          → "2025-01-29T10:30:00Z"
+#
+# RULES:
+# 1. DETERMINISTIC: Same syntax always produces same type
+# 2. NO MIXING: Cannot combine @ with #faker or $ with #faker
+# 3. TEMPLATES: Can use {{$env.X}} and {{$faker.X}} inside {{}}
+# 4. JMESPATH: Use @ prefix for extracting data from JSON
+# 5. JAVASCRIPT: Use $ prefix for calculations and logic
+# 6. LITERALS: No prefix means plain text
+#
+# ERROR EXAMPLES (will fail):
+# ❌ "@data with #faker.name"  - Cannot mix @ and #faker
+# ❌ "$return #faker.email"    - Cannot mix $ and #faker
+# ✅ "{{@data}}"               - Error: Use @ outside {{}}
+#
+# WARNINGS (will show advice):
+# ⚠️  "response.data[0].id"    - Looks like JMESPath, add @
+# ⚠️  "Math.random()"          - Looks like JavaScript, add $
+# ⚠️  "faker.person.firstName" - Looks like Faker, add #
+#
+# ============================================================================
