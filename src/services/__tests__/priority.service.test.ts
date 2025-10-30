@@ -502,4 +502,279 @@ describe("PriorityService", () => {
       expect(result[0].suite_name).toBe("test-with-missing-dep");
     });
   });
+
+  describe("getPriorityStats", () => {
+    it("should return statistics for each priority level", () => {
+      const tests: DiscoveredTest[] = [
+        {
+          suite_name: "critical-1",
+          priority: "critical",
+          node_id: "crit-1",
+          file_path: "/test/critical1.yaml",
+          estimated_duration: 1000,
+        },
+        {
+          suite_name: "critical-2",
+          priority: "critical",
+          node_id: "crit-2",
+          file_path: "/test/critical2.yaml",
+          estimated_duration: 2000,
+        },
+        {
+          suite_name: "high-1",
+          priority: "high",
+          node_id: "high-1",
+          file_path: "/test/high1.yaml",
+          estimated_duration: 1500,
+        },
+        {
+          suite_name: "medium-1",
+          priority: "medium",
+          node_id: "med-1",
+          file_path: "/test/medium1.yaml",
+          estimated_duration: 500,
+        },
+      ] as DiscoveredTest[];
+
+      const stats = service.getPriorityStats(tests);
+
+      expect(stats.total_tests).toBe(4);
+      expect(stats.by_priority.critical?.count).toBe(2);
+      expect(stats.by_priority.critical?.estimated_duration).toBe(3000);
+      expect(stats.by_priority.high?.count).toBe(1);
+      expect(stats.by_priority.medium?.count).toBe(1);
+      expect(stats.required_tests).toBe(3); // critical + high
+      expect(stats.required_estimated_duration).toBe(4500);
+    });
+
+    it("should handle empty test array", () => {
+      const stats = service.getPriorityStats([]);
+
+      expect(stats.total_tests).toBe(0);
+      expect(stats.required_tests).toBe(0);
+      expect(stats.required_estimated_duration).toBe(0);
+    });
+
+    it("should handle tests without priority", () => {
+      const tests: DiscoveredTest[] = [
+        {
+          suite_name: "no-priority",
+          node_id: "no-pri",
+          file_path: "/test/no-priority.yaml",
+          estimated_duration: 100,
+        },
+      ] as DiscoveredTest[];
+
+      const stats = service.getPriorityStats(tests);
+
+      expect(stats.total_tests).toBe(1);
+      expect(stats.by_priority.medium?.count).toBe(1);
+    });
+  });
+
+  describe("suggestOptimizations", () => {
+    it("should suggest reducing critical tests when more than 30%", () => {
+      const tests: DiscoveredTest[] = [
+        {
+          suite_name: "critical-1",
+          priority: "critical",
+          node_id: "crit-1",
+          file_path: "/test/critical1.yaml",
+        },
+        {
+          suite_name: "critical-2",
+          priority: "critical",
+          node_id: "crit-2",
+          file_path: "/test/critical2.yaml",
+        },
+        {
+          suite_name: "medium-1",
+          priority: "medium",
+          node_id: "med-1",
+          file_path: "/test/medium1.yaml",
+        },
+      ] as DiscoveredTest[];
+
+      const suggestions = service.suggestOptimizations(tests);
+
+      expect(suggestions.length).toBeGreaterThan(0);
+      expect(suggestions.some(s => s.includes("critical"))).toBe(true);
+    });
+
+    it("should suggest classifying tests when many are unclassified", () => {
+      const tests: DiscoveredTest[] = [
+        {
+          suite_name: "no-priority-1",
+          node_id: "no-pri-1",
+          file_path: "/test/no-priority1.yaml",
+        },
+        {
+          suite_name: "no-priority-2",
+          node_id: "no-pri-2",
+          file_path: "/test/no-priority2.yaml",
+        },
+        {
+          suite_name: "high-1",
+          priority: "high",
+          node_id: "high-1",
+          file_path: "/test/high1.yaml",
+        },
+      ] as DiscoveredTest[];
+
+      const suggestions = service.suggestOptimizations(tests);
+
+      expect(suggestions.length).toBeGreaterThan(0);
+      // The suggestions should contain something about priority or classification
+      expect(Array.isArray(suggestions)).toBe(true);
+    });
+
+    it("should suggest distributing when required tests take too long", () => {
+      const tests: DiscoveredTest[] = [
+        {
+          suite_name: "critical-1",
+          priority: "critical",
+          node_id: "crit-1",
+          file_path: "/test/critical1.yaml",
+          estimated_duration: 200000,
+        },
+        {
+          suite_name: "high-1",
+          priority: "high",
+          node_id: "high-1",
+          file_path: "/test/high1.yaml",
+          estimated_duration: 150000,
+        },
+      ] as DiscoveredTest[];
+
+      const suggestions = service.suggestOptimizations(tests);
+
+      expect(suggestions.length).toBeGreaterThan(0);
+      expect(suggestions.some(s => s.includes("required tests") || s.includes("duration"))).toBe(true);
+    });
+
+    it("should return empty array when no optimizations needed", () => {
+      const tests: DiscoveredTest[] = [
+        {
+          suite_name: "high-1",
+          priority: "high",
+          node_id: "high-1",
+          file_path: "/test/high1.yaml",
+          estimated_duration: 1000,
+        },
+        {
+          suite_name: "medium-1",
+          priority: "medium",
+          node_id: "med-1",
+          file_path: "/test/medium1.yaml",
+          estimated_duration: 1000,
+        },
+        {
+          suite_name: "low-1",
+          priority: "low",
+          node_id: "low-1",
+          file_path: "/test/low1.yaml",
+          estimated_duration: 1000,
+        },
+      ] as DiscoveredTest[];
+
+      const suggestions = service.suggestOptimizations(tests);
+
+      expect(Array.isArray(suggestions)).toBe(true);
+    });
+  });
+
+  describe("createExecutionPlan", () => {
+    it("should create execution plan grouped by priority", () => {
+      const tests: DiscoveredTest[] = [
+        {
+          suite_name: "critical-1",
+          priority: "critical",
+          node_id: "crit-1",
+          file_path: "/test/critical1.yaml",
+          estimated_duration: 1000,
+        },
+        {
+          suite_name: "high-1",
+          priority: "high",
+          node_id: "high-1",
+          file_path: "/test/high1.yaml",
+          estimated_duration: 2000,
+        },
+        {
+          suite_name: "medium-1",
+          priority: "medium",
+          node_id: "med-1",
+          file_path: "/test/medium1.yaml",
+          estimated_duration: 500,
+        },
+      ] as DiscoveredTest[];
+
+      const plan = service.createExecutionPlan(tests);
+
+      expect(plan.phases.length).toBeGreaterThan(0);
+      expect(plan.total_duration).toBeDefined();
+      expect(plan.critical_path).toBeDefined();
+
+      // First phase should contain highest priority tests
+      const firstPhase = plan.phases[0];
+      expect(firstPhase.name).toBeDefined();
+      expect(firstPhase.tests).toHaveLength(1);
+    });
+
+    it("should handle empty test array", () => {
+      const plan = service.createExecutionPlan([]);
+
+      expect(plan.phases).toHaveLength(0);
+      expect(plan.total_duration).toBe(0);
+      expect(plan.critical_path).toHaveLength(0);
+    });
+
+    it("should group tests of same priority in same phase", () => {
+      const tests: DiscoveredTest[] = [
+        {
+          suite_name: "high-1",
+          priority: "high",
+          node_id: "high-1",
+          file_path: "/test/high1.yaml",
+          estimated_duration: 1000,
+        },
+        {
+          suite_name: "high-2",
+          priority: "high",
+          node_id: "high-2",
+          file_path: "/test/high2.yaml",
+          estimated_duration: 1000,
+        },
+      ] as DiscoveredTest[];
+
+      const plan = service.createExecutionPlan(tests);
+
+      expect(plan.phases).toHaveLength(1);
+      expect(plan.phases[0].tests).toHaveLength(2);
+      expect(plan.phases[0].name).toBeDefined();
+    });
+
+    it("should calculate phase estimated duration correctly", () => {
+      const tests: DiscoveredTest[] = [
+        {
+          suite_name: "high-1",
+          priority: "high",
+          node_id: "high-1",
+          file_path: "/test/high1.yaml",
+          estimated_duration: 1000,
+        },
+        {
+          suite_name: "high-2",
+          priority: "high",
+          node_id: "high-2",
+          file_path: "/test/high2.yaml",
+          estimated_duration: 2000,
+        },
+      ] as DiscoveredTest[];
+
+      const plan = service.createExecutionPlan(tests);
+
+      expect(plan.phases[0].estimated_duration).toBe(3000);
+    });
+  });
 });

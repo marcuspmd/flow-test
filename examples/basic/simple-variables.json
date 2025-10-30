@@ -1,0 +1,119 @@
+{
+  "suite_name": "Variable Usage Examples",
+  "node_id": "simple-variables-example-json",
+  "description": "Demonstrates variables, captures, and dynamic data generation",
+  "base_url": "http://localhost:8080",
+  "metadata": {
+    "priority": "medium",
+    "tags": [
+      "basic",
+      "variables",
+      "example",
+      "json"
+    ]
+  },
+  "variables": {
+    "api_version": "v1",
+    "user_role": "admin",
+    "max_retries": 3
+  },
+  "exports": [
+    "generated_id",
+    "captured_response"
+  ],
+  "steps": [
+    {
+      "name": "Environment variable example",
+      "request": {
+        "method": "GET",
+        "url": "/get",
+        "headers": {
+          "X-API-Version": "{{api_version}}",
+          "X-User-Role": "{{user_role}}"
+        }
+      },
+      "assert": {
+        "status_code": 200
+      },
+      "capture": {
+        "first_response": "body"
+      }
+    },
+    {
+      "name": "Dynamic data generation with Faker",
+      "request": {
+        "method": "POST",
+        "url": "/post",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "user_id": "{{$faker.string.uuid}}",
+          "name": "{{$faker.person.fullName}}",
+          "email": "{{$faker.internet.email}}",
+          "company": "{{$faker.company.name}}",
+          "phone": "{{$faker.phone.number}}",
+          "address": {
+            "street": "{{$faker.location.streetAddress}}",
+            "city": "{{$faker.location.city}}",
+            "country": "{{$faker.location.country}}"
+          },
+          "age": "{{$faker.number.int}}",
+          "price": "{{$faker.number.float}}"
+        }
+      },
+      "assert": {
+        "status_code": 200
+      },
+      "capture": {
+        "generated_id": "body.json.user_id",
+        "generated_email": "body.json.email"
+      }
+    },
+    {
+      "name": "Using captured variables",
+      "request": {
+        "method": "GET",
+        "url": "/get?user_id={{generated_id}}&email={{generated_email}}",
+        "headers": {
+          "Accept": "application/json"
+        }
+      },
+      "assert": {
+        "status_code": 200,
+        "body": {
+          "args": {
+            "user_id": {
+              "equals": "{{generated_id}}"
+            },
+            "email": {
+              "equals": "{{generated_email}}"
+            }
+          }
+        }
+      },
+      "capture": {
+        "captured_response": "body.args"
+      }
+    },
+    {
+      "name": "JavaScript expressions",
+      "request": {
+        "method": "POST",
+        "url": "/post",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "timestamp": "{{$js.return new Date().toISOString()}}",
+          "random_number": "{{$js.return Math.floor(Math.random() * 100)}}",
+          "computed_value": "{{$js.return 10 * 5}}",
+          "retry_count": "{{max_retries}}"
+        }
+      },
+      "assert": {
+        "status_code": 200
+      }
+    }
+  ]
+}

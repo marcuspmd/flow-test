@@ -4,6 +4,7 @@
 
 import fs from "fs";
 import path from "path";
+import chalk from "chalk";
 import type { AggregatedResult } from "../../../types/engine.types";
 import type {
   ReportStrategy,
@@ -72,10 +73,16 @@ export class JsonReportStrategy implements ReportStrategy {
       // Write timestamped report
       fs.writeFileSync(filePath, jsonContent, "utf8");
       logger.info(`JSON report: ${filePath}`);
+      console.log(
+        chalk.green(`   ✓ JSON report saved: ${chalk.cyan(filePath)}`)
+      );
 
       // Write latest snapshot
       fs.writeFileSync(latestPath, jsonContent, "utf8");
       logger.info(`Latest JSON: ${latestPath}`);
+      console.log(
+        chalk.green(`   ✓ Latest snapshot: ${chalk.cyan(latestPath)}`)
+      );
 
       return {
         format: this.getFormat(),

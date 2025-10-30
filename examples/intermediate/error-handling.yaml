@@ -160,11 +160,11 @@ steps:
   # Example 10: Test timeout handling
   - name: "Test request timeout"
     metadata:
-      timeout: 5000  # 5 second timeout
+      timeout: 1000  # 1 second timeout
 
     request:
       method: "GET"
-      url: "/delay/10"  # Delays 10 seconds (will timeout)
+      url: "/delay/2"  # Delays 2 seconds (will timeout)
 
     assert:
       # This will fail due to timeout

@@ -1,0 +1,53 @@
+{
+  "suite_name": "Simple GET Request",
+  "node_id": "simple-get-example-json",
+  "description": "Demonstrates a basic GET request with status and body assertions",
+  "base_url": "http://localhost:8080",
+  "metadata": {
+    "priority": "high",
+    "tags": [
+      "basic",
+      "get",
+      "example",
+      "json"
+    ]
+  },
+  "steps": [
+    {
+      "name": "Fetch user data",
+      "request": {
+        "method": "GET",
+        "url": "/get",
+        "headers": {
+          "Accept": "application/json",
+          "User-Agent": "FlowTestEngine/1.0"
+        }
+      },
+      "assert": {
+        "status_code": 200,
+        "headers": {
+          "content-type": {
+            "contains": "application/json"
+          }
+        },
+        "body": {
+          "headers": {
+            "Accept": {
+              "equals": "application/json"
+            },
+            "User-Agent": {
+              "contains": "FlowTestEngine"
+            }
+          },
+          "url": {
+            "contains": "localhost:8080/get"
+          }
+        }
+      },
+      "capture": {
+        "response_url": "body.url",
+        "user_agent_echo": "body.headers.'User-Agent'"
+      }
+    }
+  ]
+}

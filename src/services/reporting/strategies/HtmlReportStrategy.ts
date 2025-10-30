@@ -4,6 +4,7 @@
 
 import fs from "fs";
 import path from "path";
+import chalk from "chalk";
 import type {
   AggregatedResult,
   SuiteExecutionResult,
@@ -154,6 +155,9 @@ export class HtmlReportStrategy implements ReportStrategy {
       suiteEntries.push({ suite, fileName });
 
       this.logger.info(`HTML report (suite): ${filePath}`);
+      console.log(
+        chalk.green(`   ✓ HTML suite report: ${chalk.cyan(filePath)}`)
+      );
     });
   }
 
@@ -186,11 +190,17 @@ export class HtmlReportStrategy implements ReportStrategy {
     // Write index file
     fs.writeFileSync(indexPath, summaryHtml, "utf8");
     this.logger.info(`HTML report (summary): ${indexPath}`);
+    console.log(
+      chalk.green(`   ✓ HTML summary report: ${chalk.cyan(indexPath)}`)
+    );
 
     // Write summary alias if different
     if (summaryFileName !== indexFileName) {
       fs.writeFileSync(summaryPath, summaryHtml, "utf8");
       this.logger.info(`HTML report (summary alias): ${summaryPath}`);
+      console.log(
+        chalk.green(`   ✓ HTML summary alias: ${chalk.cyan(summaryPath)}`)
+      );
     }
 
     // Track aggregate asset

@@ -1,0 +1,100 @@
+{
+  "suite_name": "Simple Authentication Flow",
+  "node_id": "simple-auth-example-json",
+  "description": "Login and use authentication token in subsequent requests",
+  "base_url": "http://localhost:8080",
+  "metadata": {
+    "priority": "critical",
+    "tags": [
+      "basic",
+      "auth",
+      "example",
+      "json"
+    ]
+  },
+  "variables": {
+    "username": "testuser",
+    "password": "TestPassword123"
+  },
+  "exports": [
+    "auth_token"
+  ],
+  "steps": [
+    {
+      "name": "User login",
+      "request": {
+        "method": "POST",
+        "url": "/post",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "username": "{{username}}",
+          "password": "{{password}}"
+        }
+      },
+      "assert": {
+        "status_code": 200,
+        "body": {
+          "json": {
+            "username": {
+              "equals": "testuser"
+            }
+          }
+        }
+      },
+      "capture": {
+        "auth_token": "'mock-jwt-token-12345'"
+      }
+    },
+    {
+      "name": "Access protected resource",
+      "request": {
+        "method": "GET",
+        "url": "/get",
+        "headers": {
+          "Authorization": "Bearer {{auth_token}}",
+          "Accept": "application/json"
+        }
+      },
+      "assert": {
+        "status_code": 200,
+        "body": {
+          "headers": {
+            "Authorization": {
+              "equals": "Bearer mock-jwt-token-12345"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Create resource with authentication",
+      "request": {
+        "method": "POST",
+        "url": "/post",
+        "headers": {
+          "Authorization": "Bearer {{auth_token}}",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "resource_name": "New Resource",
+          "owner": "{{username}}"
+        }
+      },
+      "assert": {
+        "status_code": 200,
+        "body": {
+          "json": {
+            "resource_name": {
+              "equals": "New Resource"
+            },
+            "owner": {
+              "equals": "testuser"
+            }
+          }
+        }
+      }
+    }
+  ]
+}

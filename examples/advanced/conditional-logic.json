@@ -1,0 +1,218 @@
+{
+  "suite_name": "Conditional Logic Examples",
+  "node_id": "conditional-logic-example-json",
+  "description": "Dynamic flow control with conditions and scenarios",
+  "base_url": "http://localhost:8080",
+  "metadata": {
+    "priority": "medium",
+    "tags": [
+      "advanced",
+      "conditional",
+      "scenarios",
+      "json"
+    ]
+  },
+  "variables": {
+    "environment": "staging",
+    "feature_enabled": true,
+    "user_role": "admin"
+  },
+  "steps": [
+    {
+      "name": "Admin-only operation",
+      "condition": "{{user_role}} == 'admin'",
+      "request": {
+        "method": "POST",
+        "url": "/post",
+        "body": {
+          "action": "admin_action",
+          "user": "{{user_role}}"
+        }
+      },
+      "assert": {
+        "status_code": 200
+      }
+    },
+    {
+      "name": "Production-only validation",
+      "condition": "{{environment}} == 'production'",
+      "request": {
+        "method": "GET",
+        "url": "/get"
+      },
+      "assert": {
+        "status_code": 200,
+        "response_time_ms": {
+          "less_than": 500
+        }
+      }
+    },
+    {
+      "name": "Feature flag dependent request",
+      "condition": "{{feature_enabled}} == true",
+      "request": {
+        "method": "POST",
+        "url": "/post",
+        "body": {
+          "feature": "new_feature",
+          "enabled": "{{feature_enabled}}"
+        }
+      },
+      "assert": {
+        "status_code": 200
+      }
+    },
+    {
+      "name": "Get user status and branch",
+      "request": {
+        "method": "POST",
+        "url": "/post",
+        "body": {
+          "user_id": 123,
+          "status": "active",
+          "account_type": "premium"
+        }
+      },
+      "assert": {
+        "status_code": 200
+      },
+      "scenarios": [
+        {
+          "name": "Premium user flow",
+          "condition": "body.json.account_type == 'premium'",
+          "then": {
+            "capture": {
+              "is_premium": true,
+              "premium_features": "['feature1', 'feature2', 'feature3']"
+            }
+          },
+          "else": {
+            "capture": {
+              "is_premium": false
+            }
+          }
+        },
+        {
+          "name": "Active user flow",
+          "condition": "body.json.status == 'active'",
+          "then": {
+            "capture": {
+              "user_active": true,
+              "access_level": "'full'"
+            }
+          },
+          "else": {
+            "capture": {
+              "user_active": false,
+              "access_level": "'limited'"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Access premium features",
+      "condition": "{{is_premium}} == true",
+      "request": {
+        "method": "GET",
+        "url": "/get?features={{premium_features}}"
+      },
+      "assert": {
+        "status_code": 200
+      }
+    },
+    {
+      "name": "Fetch items list",
+      "request": {
+        "method": "POST",
+        "url": "/post",
+        "body": {
+          "items": [
+            {
+              "id": 1,
+              "price": 100,
+              "available": true
+            },
+            {
+              "id": 2,
+              "price": 200,
+              "available": false
+            },
+            {
+              "id": 3,
+              "price": 150,
+              "available": true
+            }
+          ]
+        }
+      },
+      "assert": {
+        "status_code": 200
+      },
+      "scenarios": [
+        {
+          "name": "Expensive items available",
+          "condition": "body.json.items[?price > `150` && available == `true`] | length(@) > `0`",
+          "then": {
+            "capture": {
+              "has_expensive_items": true
+            }
+          },
+          "else": {
+            "capture": {
+              "has_expensive_items": false
+            }
+          }
+        },
+        {
+          "name": "Check availability",
+          "condition": "body.json.items[?available == `false`] | length(@) == `0`",
+          "then": {
+            "capture": {
+              "all_available": true
+            }
+          },
+          "else": {
+            "capture": {
+              "all_available": false
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Complex nested logic",
+      "condition": "{{environment}} == 'production' && {{user_role}} == 'admin'",
+      "request": {
+        "method": "GET",
+        "url": "/get"
+      },
+      "assert": {
+        "status_code": 200
+      }
+    },
+    {
+      "name": "Optional validation",
+      "condition": "{{environment}} != 'production'",
+      "request": {
+        "method": "GET",
+        "url": "/status/500"
+      },
+      "assert": {
+        "status_code": 500
+      },
+      "continue_on_failure": true
+    },
+    {
+      "name": "Skip in development",
+      "skip_condition": "{{environment}} == 'development'",
+      "request": {
+        "method": "GET",
+        "url": "/get"
+      },
+      "assert": {
+        "status_code": 200
+      }
+    }
+  ]
+}

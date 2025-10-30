@@ -32,6 +32,10 @@ discovery:
     - '**/flows/**'
     - '**/results/**'
     - '**/dist/**'
+    - '**/coverage/**'
+    - '**/web/**'
+    - '**/schema-catalog.json'
+    - '**/*.schema.json'
 priorities:
   levels:
     - critical
@@ -55,6 +59,7 @@ reporting:
   formats:
     - json
     - html
+    - qa
   output_dir: ./results
   aggregate: true
   include_performance_metrics: true

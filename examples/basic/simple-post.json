@@ -1,0 +1,71 @@
+{
+  "suite_name": "Simple POST Request",
+  "node_id": "simple-post-example-json",
+  "description": "Demonstrates a POST request with JSON body and response validation",
+  "base_url": "http://localhost:8080",
+  "metadata": {
+    "priority": "high",
+    "tags": [
+      "basic",
+      "post",
+      "example",
+      "json"
+    ]
+  },
+  "variables": {
+    "user_name": "John Doe",
+    "user_email": "john.doe@example.com",
+    "user_age": 30
+  },
+  "steps": [
+    {
+      "name": "Create user account",
+      "request": {
+        "method": "POST",
+        "url": "/post",
+        "headers": {
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
+        "body": {
+          "name": "{{user_name}}",
+          "email": "{{user_email}}",
+          "age": "{{user_age}}",
+          "active": true,
+          "metadata": {
+            "source": "api_test",
+            "timestamp": "2024-01-01T00:00:00Z"
+          }
+        }
+      },
+      "assert": {
+        "status_code": 200,
+        "body": {
+          "json": {
+            "name": {
+              "equals": "John Doe"
+            },
+            "email": {
+              "equals": "john.doe@example.com"
+            },
+            "age": {
+              "equals": 30
+            },
+            "active": {
+              "equals": true
+            },
+            "metadata": {
+              "source": {
+                "equals": "api_test"
+              }
+            }
+          }
+        }
+      },
+      "capture": {
+        "created_user_data": "body.json",
+        "response_headers": "body.headers"
+      }
+    }
+  ]
+}

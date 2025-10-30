@@ -21,7 +21,11 @@
     "server:down": "docker compose down -v",
     "server:logs": "docker compose logs httpbin",
     "orchestrator": "node dist/server/orchestrator.js",
-    "orchestrator:dev": "ts-node src/server/orchestrator.ts"
+    "orchestrator:dev": "ts-node src/server/orchestrator.ts",
+    "convert:yaml-to-json": "node scripts/yaml-json-converter.js",
+    "convert:batch": "node scripts/yaml-json-converter.js --batch",
+    "validate:formats": "node scripts/validate-dual-format.js",
+    "validate:formats:verbose": "node scripts/validate-dual-format.js --verbose"
   },
   "keywords": [
     "api",

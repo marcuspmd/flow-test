@@ -539,7 +539,7 @@ export class ExecutionService implements IExecutionService {
       try {
         // Checks if there's already a cached result
         const cachedResult = this.dependencyService.getCachedResult(
-          test.suite_name
+          test.node_id // FIXED: Use node_id instead of suite_name to avoid conflicts
         );
         if (cachedResult && cachedResult.success) {
           this.logger.info(`Using cached result for '${test.suite_name}'`);
@@ -558,7 +558,7 @@ export class ExecutionService implements IExecutionService {
         }
 
         // Marks as executing
-        this.dependencyService.markExecuting(test.suite_name);
+        this.dependencyService.markExecuting(test.node_id); // FIXED: Use node_id
 
         // Executes the test (exports are now handled inside executeSingleTest)
         const result = await this.executeSingleTest(test);
@@ -575,7 +575,7 @@ export class ExecutionService implements IExecutionService {
           cached: false,
         };
 
-        this.dependencyService.markResolved(test.suite_name, dependencyResult);
+        this.dependencyService.markResolved(test.node_id, dependencyResult); // FIXED: Use node_id
 
         // Updates statistics
         stats.tests_completed++;

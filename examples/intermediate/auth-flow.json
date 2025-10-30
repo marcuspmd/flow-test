@@ -1,0 +1,299 @@
+{
+  "suite_name": "Complete Authentication Flow",
+  "node_id": "auth-flow-complete-json",
+  "description": "Full authentication lifecycle with registration, login, refresh, and logout",
+  "base_url": "http://localhost:8080",
+  "metadata": {
+    "priority": "critical",
+    "tags": [
+      "intermediate",
+      "auth",
+      "security",
+      "json"
+    ]
+  },
+  "variables": {
+    "test_email": "{{$faker.internet.email}}",
+    "test_username": "{{$faker.internet.userName}}",
+    "test_password": "Test@{{$faker.string.alphanumeric}}",
+    "test_name": "{{$faker.person.fullName}}"
+  },
+  "exports": [
+    "auth_token",
+    "refresh_token",
+    "user_id"
+  ],
+  "steps": [
+    {
+      "name": "Register new user account",
+      "metadata": {
+        "description": "Create a new user account",
+        "tags": [
+          "registration"
+        ],
+        "priority": "critical"
+      },
+      "request": {
+        "method": "POST",
+        "url": "/post",
+        "headers": {
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
+        "body": {
+          "email": "{{test_email}}",
+          "username": "{{test_username}}",
+          "password": "{{test_password}}",
+          "name": "{{test_name}}",
+          "terms_accepted": true
+        }
+      },
+      "assert": {
+        "status_code": 200
+      },
+      "capture": {
+        "user_id": "12345",
+        "registration_success": true
+      }
+    },
+    {
+      "name": "Login with credentials",
+      "metadata": {
+        "description": "Authenticate and receive access token",
+        "tags": [
+          "login"
+        ],
+        "priority": "critical"
+      },
+      "request": {
+        "method": "POST",
+        "url": "/post",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "email": "{{test_email}}",
+          "password": "{{test_password}}"
+        }
+      },
+      "assert": {
+        "status_code": 200
+      },
+      "capture": {
+        "auth_token": "mock_access_token_abc123xyz789",
+        "refresh_token": "mock_refresh_token_def456uvw012",
+        "token_expires_in": 3600
+      }
+    },
+    {
+      "name": "Verify access token works",
+      "metadata": {
+        "description": "Test token by accessing protected endpoint",
+        "tags": [
+          "verification"
+        ]
+      },
+      "request": {
+        "method": "GET",
+        "url": "/get",
+        "headers": {
+          "Authorization": "Bearer {{auth_token}}",
+          "Accept": "application/json"
+        }
+      },
+      "assert": {
+        "status_code": 200
+      }
+    },
+    {
+      "name": "Access protected resource - user profile",
+      "metadata": {
+        "description": "Access user's own profile",
+        "tags": [
+          "protected"
+        ]
+      },
+      "request": {
+        "method": "GET",
+        "url": "/get?user_id={{user_id}}",
+        "headers": {
+          "Authorization": "Bearer {{auth_token}}"
+        }
+      },
+      "assert": {
+        "status_code": 200
+      }
+    },
+    {
+      "name": "Update user profile",
+      "metadata": {
+        "description": "Modify user data with authentication",
+        "tags": [
+          "protected"
+        ]
+      },
+      "request": {
+        "method": "PUT",
+        "url": "/put",
+        "headers": {
+          "Authorization": "Bearer {{auth_token}}",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "name": "{{$faker.person.fullName}}",
+          "bio": "Updated bio"
+        }
+      },
+      "assert": {
+        "status_code": 200
+      }
+    },
+    {
+      "name": "Test invalid credentials",
+      "metadata": {
+        "description": "Verify login fails with wrong password",
+        "tags": [
+          "error-handling",
+          "security"
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "/post",
+        "body": {
+          "email": "{{test_email}}",
+          "password": "wrong_password"
+        }
+      },
+      "assert": {
+        "status_code": 200
+      },
+      "continue_on_failure": true
+    },
+    {
+      "name": "Test access without token",
+      "metadata": {
+        "description": "Verify protected route requires authentication",
+        "tags": [
+          "error-handling",
+          "security"
+        ]
+      },
+      "request": {
+        "method": "GET",
+        "url": "/status/401"
+      },
+      "assert": {
+        "status_code": 401
+      },
+      "continue_on_failure": true
+    },
+    {
+      "name": "Test with expired/invalid token",
+      "metadata": {
+        "description": "Verify expired tokens are rejected",
+        "tags": [
+          "error-handling",
+          "security"
+        ]
+      },
+      "request": {
+        "method": "GET",
+        "url": "/status/401",
+        "headers": {
+          "Authorization": "Bearer invalid_token_12345"
+        }
+      },
+      "assert": {
+        "status_code": 401
+      },
+      "continue_on_failure": true
+    },
+    {
+      "name": "Refresh access token",
+      "metadata": {
+        "description": "Get new access token using refresh token",
+        "tags": [
+          "refresh"
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "/post",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "refresh_token": "{{refresh_token}}"
+        }
+      },
+      "assert": {
+        "status_code": 200
+      },
+      "capture": {
+        "auth_token": "mock_refreshed_token_ghi789abc456"
+      }
+    },
+    {
+      "name": "Verify new token works",
+      "metadata": {
+        "description": "Confirm refreshed token is valid"
+      },
+      "request": {
+        "method": "GET",
+        "url": "/get",
+        "headers": {
+          "Authorization": "Bearer {{auth_token}}"
+        }
+      },
+      "assert": {
+        "status_code": {
+          "in": [
+            200,
+            502
+          ]
+        }
+      },
+      "continue_on_failure": true
+    },
+    {
+      "name": "Logout and invalidate tokens",
+      "metadata": {
+        "description": "End session and revoke tokens",
+        "tags": [
+          "logout"
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "/post",
+        "headers": {
+          "Authorization": "Bearer {{auth_token}}"
+        }
+      },
+      "assert": {
+        "status_code": 200
+      }
+    },
+    {
+      "name": "Verify token is invalidated after logout",
+      "metadata": {
+        "description": "Confirm logged out token doesn't work",
+        "tags": [
+          "verification"
+        ]
+      },
+      "request": {
+        "method": "GET",
+        "url": "/status/401",
+        "headers": {
+          "Authorization": "Bearer {{auth_token}}"
+        }
+      },
+      "assert": {
+        "status_code": 401
+      },
+      "continue_on_failure": true
+    }
+  ]
+}

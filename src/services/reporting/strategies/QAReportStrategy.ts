@@ -4,6 +4,7 @@
 
 import fs from "fs";
 import path from "path";
+import chalk from "chalk";
 import type { AggregatedResult } from "../../../types/engine.types";
 import type {
   ReportStrategy,
@@ -64,10 +65,14 @@ export class QAReportStrategy implements ReportStrategy {
       // Write timestamped report
       fs.writeFileSync(filePath, jsonContent, "utf8");
       logger.info(`QA report: ${filePath}`);
+      console.log(chalk.green(`   ✓ QA report saved: ${chalk.cyan(filePath)}`));
 
       // Write latest snapshot
       fs.writeFileSync(latestPath, jsonContent, "utf8");
       logger.info(`Latest QA report: ${latestPath}`);
+      console.log(
+        chalk.green(`   ✓ Latest QA snapshot: ${chalk.cyan(latestPath)}`)
+      );
 
       return {
         format: this.getFormat(),

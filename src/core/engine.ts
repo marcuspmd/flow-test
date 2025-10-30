@@ -11,6 +11,7 @@
 
 import fs from "fs";
 import yaml from "js-yaml";
+import chalk from "chalk";
 import { Container } from "inversify";
 import { createContainer } from "../di/container";
 import { TYPES } from "../di/identifiers";
@@ -458,6 +459,23 @@ export class FlowTestEngine {
 
       logger.info(`\n📊 Generating reports...`);
       await this.reportingService.generateReports(aggregatedResult);
+
+      // Print report generation summary
+      console.log(chalk.yellow(`\n📊 Reports Generated:`));
+      const outputDir = config.reporting?.output_dir || "./results";
+
+      if (config.reporting?.formats?.includes("json")) {
+        console.log(chalk.gray(`   • JSON reports in ${outputDir}/`));
+      }
+      if (config.reporting?.formats?.includes("html")) {
+        const htmlSubdir = config.reporting?.html?.output_subdir || "html";
+        console.log(
+          chalk.gray(`   • HTML reports in ${outputDir}/${htmlSubdir}/`)
+        );
+      }
+      if (config.reporting?.formats?.includes("qa")) {
+        console.log(chalk.gray(`   • QA reports in ${outputDir}/`));
+      }
 
       // 6. Print execution summary
       this.printExecutionSummary(aggregatedResult);
