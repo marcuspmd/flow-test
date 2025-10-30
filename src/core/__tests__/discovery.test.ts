@@ -232,9 +232,10 @@ describe("TestDiscovery", () => {
       mockFg.mockResolvedValue(["/tests/api/test.json"]);
       mockPath.join.mockImplementation((...args) => args.join("/"));
       
-      // Mock JSON.parse to be called instead of yaml.load for .json files
+      // Mock JSON.parse for .json file parsing
       const originalParse = JSON.parse;
-      global.JSON.parse = jest.fn().mockReturnValue(jsonTestSuite);
+      const mockJsonParse = jest.fn().mockReturnValue(jsonTestSuite);
+      global.JSON.parse = mockJsonParse;
 
       const tests = await testDiscovery.discoverTests();
 
@@ -247,6 +248,9 @@ describe("TestDiscovery", () => {
           priority: "medium",
         })
       );
+
+      // Verify JSON.parse was called for .json file
+      expect(mockJsonParse).toHaveBeenCalled();
 
       // Restore original JSON.parse
       global.JSON.parse = originalParse;
@@ -281,8 +285,9 @@ describe("TestDiscovery", () => {
       ]);
 
       const originalParse = JSON.parse;
-      global.JSON.parse = jest.fn().mockReturnValue(jsonTestSuite);
-      // For the YAML file, only yaml.load should be called
+      const mockJsonParse = jest.fn().mockReturnValue(jsonTestSuite);
+      global.JSON.parse = mockJsonParse;
+      // yaml.load should be called for .yaml file
       mockYaml.load.mockReturnValue(yamlTestSuite);
 
       const tests = await testDiscovery.discoverTests();
@@ -290,6 +295,11 @@ describe("TestDiscovery", () => {
       expect(tests).toHaveLength(2);
       expect(tests.find(t => t.node_id === "json-test-002")).toBeDefined();
       expect(tests.find(t => t.node_id === "yaml-test-001")).toBeDefined();
+
+      // Verify JSON.parse was called for .json file (may be called multiple times due to discovery patterns)
+      expect(mockJsonParse).toHaveBeenCalled();
+      // Verify yaml.load was called for .yaml file
+      expect(mockYaml.load).toHaveBeenCalled();
 
       global.JSON.parse = originalParse;
     });
