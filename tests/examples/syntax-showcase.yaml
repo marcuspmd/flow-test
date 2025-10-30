@@ -48,6 +48,11 @@ variables:
   tags: ["api", "test", "production"]
   prices: [10.99, 20.50, 35.00]
 
+  # Array for iteration (to avoid array literal parsing error)
+  test_users:
+    - {name: 'Alice', email: 'alice@test.com'}
+    - {name: 'Bob', email: 'bob@test.com'}
+
 steps:
   # ============================================================================
   # TEST 1: Variable Interpolation Basics
@@ -321,7 +326,7 @@ steps:
   # ============================================================================
   - name: "Iterate over users - {{user.name}}"
     iterate:
-      over: ["{{user}}", "{name: 'Alice', email: '#faker.internet.email'}", "{name: 'Bob', email: '#faker.internet.email'}"]
+      over: "{{test_users}}"
       as: "user"
 
     request:
@@ -412,7 +417,7 @@ steps:
 
     capture:
       response_data: "@body"
-      request_args: "@body.json"
+      request_args: "body.json"
 
 # ============================================================================
 # END OF SHOWCASE

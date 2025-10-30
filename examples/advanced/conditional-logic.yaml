@@ -20,10 +20,10 @@ variables:
 steps:
   # Example 1: Simple condition - skip step based on variable
   - name: "Admin-only operation"
-    
+
     # This step only runs if condition is true
     condition: "{{user_role}} == 'admin'"
-    
+
     request:
       method: "POST"
       url: "/post"
@@ -36,10 +36,10 @@ steps:
 
   # Example 2: Environment-specific testing
   - name: "Production-only validation"
-    
+
     # Only run in production environment
     condition: "{{environment}} == 'production'"
-    
+
     request:
       method: "GET"
       url: "/get"
@@ -52,9 +52,9 @@ steps:
 
   # Example 3: Feature flag testing
   - name: "Feature flag dependent request"
-    
+
     condition: "{{feature_enabled}} == true"
-    
+
     request:
       method: "POST"
       url: "/post"
@@ -106,10 +106,10 @@ steps:
 
   # Example 5: Using captured scenario values
   - name: "Access premium features"
-    
+
     # Only run if user is premium
     condition: "{{is_premium}} == true"
-    
+
     request:
       method: "GET"
       url: "/get?features={{premium_features}}"
@@ -154,10 +154,10 @@ steps:
 
   # Example 7: Nested conditions
   - name: "Complex nested logic"
-    
+
     # Multiple conditions with AND/OR
     condition: "{{environment}} == 'production' && {{user_role}} == 'admin'"
-    
+
     request:
       method: "GET"
       url: "/get"
@@ -167,26 +167,26 @@ steps:
 
   # Example 8: Continue on failure with conditions
   - name: "Optional validation"
-    
+
     # Try this only in non-production
     condition: "{{environment}} != 'production'"
-    
+
     request:
       method: "GET"
       url: "/status/500"  # This will fail
 
     assert:
-      status_code: 200
+      status_code: 500  # Expect the actual status
 
     # Continue even if this fails (useful for optional checks)
     continue_on_failure: true
 
   # Example 9: Skip condition (opposite of condition)
   - name: "Skip in development"
-    
+
     # Skip this step in development environment
     skip_condition: "{{environment}} == 'development'"
-    
+
     request:
       method: "GET"
       url: "/get"

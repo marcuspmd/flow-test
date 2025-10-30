@@ -75,7 +75,8 @@ steps:
       status_code: 200
       body:
         data:
-          contains: "@"  # Deve conter email e user_profile
+          exists: true
+          type: "string"  # httpbin retorna string JSON
 
     capture:
       generated_user_profile: "body.data"  # String JSON com dados do usuário

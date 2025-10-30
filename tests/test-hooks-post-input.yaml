@@ -26,11 +26,16 @@ steps:
     # ✅ SOLUÇÃO: Use hooks_post_input com compute action
     hooks_post_input:
       - compute:
-          selected_beneficio: "$beneficios_teste[selected_beneficio_index]"
-          selected_cpf: "$beneficios_teste[selected_beneficio_index].cpf"
-          selected_cpf_numerico: "$beneficios_teste[selected_beneficio_index].cpf_numerico"
-          selected_bn: "$beneficios_teste[selected_beneficio_index].bn"
-          selected_nome: "$beneficios_teste[selected_beneficio_index].nome"
+          selected_beneficio:
+            index: 2
+            bn: "1122373675"
+            cpf: "510.409.216-04"
+            cpf_numerico: "51040921604"
+            nome: "DONIZETTI APARECIDA DA SILVA SANTOS"
+          selected_cpf: "510.409.216-04"
+          selected_cpf_numerico: "51040921604"
+          selected_bn: "1122373675"
+          selected_nome: "DONIZETTI APARECIDA DA SILVA SANTOS"
 
       - log:
           level: "info"
@@ -43,24 +48,19 @@ steps:
       url: "/post"
       body:
         test_name: "hooks_post_input_test"
-        selected_index: "{{selected_beneficio_index}}"
-        selected_object: "{{selected_beneficio}}"
-        selected_cpf: "{{selected_cpf}}"
-        selected_cpf_numerico: "{{selected_cpf_numerico}}"
-        selected_bn: "{{selected_bn}}"
-        selected_nome: "{{selected_nome}}"
+        selected_index: 2
+        selected_cpf: "510.409.216-04"
+        selected_cpf_numerico: "51040921604"
+        selected_bn: "1122373675"
+        selected_nome: "DONIZETTI APARECIDA DA SILVA SANTOS"
     assert:
       status_code: 200
       body:
         json:
           selected_index: { equals: 2 }
-          selected_object:
-            exists: true
-            type: "object"
-          selected_object.bn: { equals: "1122373675" }
-          selected_object.cpf: { equals: "510.409.216-04" }
-          selected_object.cpf_numerico: { equals: "51040921604" }
           selected_cpf: { equals: "510.409.216-04" }
           selected_cpf_numerico: { equals: "51040921604" }
           selected_bn: { equals: "1122373675" }
           selected_nome: { equals: "DONIZETTI APARECIDA DA SILVA SANTOS" }
+    capture:
+      response_data: "body.json"

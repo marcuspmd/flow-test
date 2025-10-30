@@ -112,8 +112,8 @@ steps:
             greater_than_or_equal: 50
             less_than_or_equal: 50
           price:
-            min: 0
-            max: 1000
+            greater_than: 0
+            less_than: 1000
           rating:
             greater_than: 0
             less_than: 5

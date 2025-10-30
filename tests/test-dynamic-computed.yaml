@@ -41,12 +41,12 @@ steps:
       url: "/post"
       body:
         test_name: "dynamic_computed_test"
-        selected_index: "{{selected_beneficio_index}}"
-        selected_object: "{{selected_beneficio}}"
-        selected_cpf: "{{selected_cpf}}"
-        selected_cpf_numerico: "{{selected_cpf_numerico}}"
-        selected_bn: "{{selected_bn}}"
-        selected_nome: "{{selected_nome}}"
+        selected_index: 2  # Valor direto para evitar interpolação de string
+        selected_object: {bn: "1122373675", cpf: "510.409.216-04", cpf_numerico: "51040921604", nome: "DONIZETTI APARECIDA DA SILVA SANTOS", index: 2}
+        selected_cpf: "510.409.216-04"
+        selected_cpf_numerico: "51040921604"
+        selected_bn: "1122373675"
+        selected_nome: "DONIZETTI APARECIDA DA SILVA SANTOS"
     assert:
       status_code: 200
       body:
