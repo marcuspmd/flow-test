@@ -4,6 +4,8 @@
 
 The Flow Test Engine now includes a **deterministic expression parser** with clear prefix-based syntax. This ensures predictable, unambiguous expression processing across all test suites.
 
+> **Note on YAML Quoting**: In YAML, values that start with special characters (`@`, `#`, `$`) should typically be quoted to be treated as strings. However, the parser works with both quoted and unquoted values - it processes the string content the same way. For consistency and to avoid YAML parsing issues, we recommend quoting all expression values.
+
 ## New Syntax System
 
 ### Expression Types and Prefixes
@@ -225,26 +227,32 @@ The parser warns about potentially ambiguous expressions:
 
 ⚠️ **Warning: Looks like JMESPath**
 ```yaml
-# This looks like a query but is treated as literal:
-value: "response.data[0].id"
+# This looks like a query but is treated as literal string:
+value: response.data[0].id
 # Suggestion: Add @ prefix if you want JMESPath
-value: "@response.data[0].id"
+value: @response.data[0].id
+# Or quote it to make it explicitly a literal:
+value: "response.data[0].id"
 ```
 
 ⚠️ **Warning: Looks like JavaScript**
 ```yaml
-# This looks like code but is treated as literal:
-value: "Math.random()"
+# This looks like code but is treated as literal string:
+value: Math.random()
 # Suggestion: Add $ prefix to execute
-value: "$Math.random()"
+value: $Math.random()
+# Or quote it to make it explicitly a literal:
+value: "Math.random()"
 ```
 
 ⚠️ **Warning: Looks like Faker**
 ```yaml
 # Missing # prefix:
-value: "faker.person.firstName"
+value: faker.person.firstName
 # Suggestion: Add # prefix
-value: "#faker.person.firstName"
+value: #faker.person.firstName
+# Or quote it to make it explicitly a literal:
+value: "faker.person.firstName"
 ```
 
 ## Debug Mode
