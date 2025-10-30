@@ -14,7 +14,7 @@ Simple, single-concept examples perfect for learning the basics:
 ### `/intermediate` - Common Patterns
 Real-world patterns you'll use frequently:
 - **crud-operations.yaml** - Complete CRUD (Create, Read, Update, Delete) flow
-- **auth-flow.yaml** - Full authentication with token refresh
+- **auth-flow.yaml** - Full authentication with token refresh and logout
 - **data-validation.yaml** - Comprehensive assertion examples
 - **error-handling.yaml** - Testing error scenarios and edge cases
 - **pagination.yaml** - Handling paginated API responses
@@ -31,7 +31,6 @@ Common patterns you can copy and adapt:
 - **setup-teardown.yaml** - Test setup and cleanup patterns
 - **retry-patterns.yaml** - Retry strategies for flaky endpoints
 - **dynamic-data.yaml** - Using Faker.js for test data generation
-- **jmespath-queries.yaml** - Advanced JMESPath data extraction
 
 ## How to Use These Examples
 
