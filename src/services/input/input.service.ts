@@ -279,7 +279,7 @@ export class InputService implements IInputService {
       // Fallback to default on error
       return {
         variable: config.variable,
-        value: config.default || null,
+        value: (config.default as any) || null,
         input_time_ms: Date.now() - startTime,
         validation_passed: false,
         used_default: true,
@@ -344,11 +344,11 @@ export class InputService implements IInputService {
             ...config.validation,
             min:
               typeof config.validation.min === "string"
-                ? variableService.interpolate(config.validation.min)
+                ? (variableService.interpolate(config.validation.min) as any)
                 : config.validation.min,
             max:
               typeof config.validation.max === "string"
-                ? variableService.interpolate(config.validation.max)
+                ? (variableService.interpolate(config.validation.max) as any)
                 : config.validation.max,
           }
         : undefined,
@@ -385,7 +385,7 @@ export class InputService implements IInputService {
 
           // If interpolation produced an options array directly, return it
           if (Array.isArray(resolvedOptions)) {
-            return resolvedOptions;
+            return resolvedOptions as any;
           }
 
           // If still a string after interpolation, log warning
@@ -403,7 +403,7 @@ export class InputService implements IInputService {
     // Array of options - interpolate labels
     return options.map((option) => ({
       value: option.value,
-      label: variableService.interpolate(option.label),
+      label: String(variableService.interpolate(option.label)),
     }));
   }
 

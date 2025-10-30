@@ -22,6 +22,7 @@ import { ILogger } from "../interfaces/services/ILogger";
 import { IGlobalRegistryService } from "../interfaces/services/IGlobalRegistryService";
 import { IConfigManager } from "../interfaces/services/IConfigManager";
 import { IVariableService } from "../interfaces/services/IVariableService";
+import { JSONValue } from "../types/common.types";
 
 /**
  * Service responsible for variable interpolation and resolution
@@ -149,7 +150,7 @@ export class VariableService implements IVariableService {
    * interpolate(['{{env}}', '{{version}}']) // → ['production', '1.0.0']
    * ```
    */
-  interpolate(template: string | any, suppressWarnings: boolean = false): any {
+  interpolate(template: string | JSONValue, suppressWarnings: boolean = false): JSONValue {
     // Check cache for string templates
     if (
       typeof template === "string" &&
@@ -198,7 +199,7 @@ export class VariableService implements IVariableService {
    * resolveVariable('user.profile.name') // Nested access with dot notation
    * ```
    */
-  private resolveVariable(variablePath: string): any {
+  private resolveVariable(variablePath: string): JSONValue | undefined {
     // NOTE: $env, $faker, and $js are now handled by InterpolationService strategies
     // This method only resolves variables from the hierarchical context
 
@@ -260,7 +261,7 @@ export class VariableService implements IVariableService {
   /**
    * Searches for a variable in all imported flows.
    */
-  private findInImported(variableName: string): any {
+  private findInImported(variableName: string): JSONValue | undefined {
     for (const flowVariables of Object.values(this.context.imported)) {
       if (variableName in flowVariables) {
         return flowVariables[variableName];
@@ -272,14 +273,14 @@ export class VariableService implements IVariableService {
   /**
    * Gets a nested value using dot notation.
    */
-  private getNestedValue(obj: any, path: string): any {
-    return path.split(".").reduce((current, key) => current?.[key], obj);
+  private getNestedValue(obj: JSONValue, path: string): JSONValue | undefined {
+    return path.split(".").reduce((current: any, key) => current?.[key], obj);
   }
 
   /**
    * Sets a variable in the runtime context.
    */
-  setVariable(name: string, value: any): void {
+  setVariable(name: string, value: JSONValue): void {
     this.context.runtime[name] = value;
     this.invalidateCacheForVariable(name);
   }
@@ -471,7 +472,7 @@ export class VariableService implements IVariableService {
   /**
    * Sets a single variable in runtime scope
    */
-  setRuntimeVariable(name: string, value: any): void {
+  setRuntimeVariable(name: string, value: JSONValue): void {
     this.context.runtime[name] = value;
     this.invalidateCacheForVariable(name);
   }
@@ -492,7 +493,7 @@ export class VariableService implements IVariableService {
   /**
    * Gets a specific variable following the hierarchy
    */
-  getVariable(name: string): any {
+  getVariable(name: string): JSONValue | undefined {
     // First check in context hierarchy
     const hierarchyValue =
       this.context.runtime[name] ??
