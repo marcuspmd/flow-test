@@ -80,6 +80,13 @@ export { VariableService } from "./services/variable.service";
 export { PriorityService } from "./services/priority";
 export { ReportingService } from "./services/reporting";
 export { ExecutionService } from "./services/execution";
+export { ExpressionParserService } from "./services/expression-parser.service";
+export type { 
+  ParseResult, 
+  ExpressionType, 
+  ExpressionParserConfig, 
+  ExpressionParserContext 
+} from "./services/expression-parser.service";
 
 // Export all type definitions
 export * from "./types/engine.types";
