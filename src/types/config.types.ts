@@ -14,6 +14,26 @@ import type { FlowDependency, InputResult } from "./engine.types";
 import type { DynamicVariableAssignment } from "./common.types";
 
 /**
+ * Maximum depth allowed for nested steps within scenarios.
+ *
+ * @remarks
+ * This constant limits how deeply scenarios can nest steps within their then/else blocks
+ * to prevent infinite recursion and maintain code readability. The depth is configurable
+ * via the global config `max_scenario_nesting_depth` property.
+ *
+ * @example Nested scenario structure
+ * ```
+ * Level 1: Step with scenario
+ *   Level 2: scenario.then.steps[0] with scenario
+ *     Level 3: scenario.then.steps[0] with scenario
+ *       ... up to MAX_SCENARIO_NESTING_DEPTH
+ * ```
+ *
+ * @public
+ */
+export const MAX_SCENARIO_NESTING_DEPTH = 5;
+
+/**
  * Global configuration for the Flow Test Engine.
  *
  * @remarks
@@ -164,6 +184,26 @@ export interface GlobalConfig {
    * ```
    */
   use_strategy_pattern?: boolean;
+
+  /**
+   * Maximum depth for nested steps within scenarios.
+   *
+   * @remarks
+   * Controls how deeply scenarios can nest steps within their then/else blocks.
+   * Setting this too high may cause performance issues or stack overflow.
+   * Setting it to 0 disables nested steps entirely.
+   *
+   * **Default**: 5 (from MAX_SCENARIO_NESTING_DEPTH)
+   *
+   * @example
+   * ```yaml
+   * globals:
+   *   max_scenario_nesting_depth: 3
+   * ```
+   *
+   * @public
+   */
+  max_scenario_nesting_depth?: number;
 }
 
 /**

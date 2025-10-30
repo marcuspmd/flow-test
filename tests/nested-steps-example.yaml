@@ -1,0 +1,218 @@
+# Exemplo demonstrando Nested Steps em Scenarios
+suite_name: "Nested Steps Examples"
+node_id: "nested-steps-demo"
+base_url: "https://httpbin.org"
+
+metadata:
+  priority: "high"
+  tags: ["demo", "nested-steps", "scenarios", "v2.1"]
+
+steps:
+  # Exemplo 1: Nested steps simples em scenario.then
+  - name: "Check API health"
+    request:
+      method: GET
+      url: "/status/200"
+
+    scenarios:
+      - name: "API is healthy"
+        condition: "status_code == `200`"
+        then:
+          variables:
+            api_status: "healthy"
+
+          # Nested steps executados apenas se API está saudável
+          steps:
+            - name: "Get server headers"
+              request:
+                method: GET
+                url: "/headers"
+
+            - name: "Test delay endpoint"
+              request:
+                method: GET
+                url: "/delay/1"
+
+      - name: "API is down"
+        condition: "status_code >= `500`"
+        then:
+          variables:
+            api_status: "down"
+
+          steps:
+            - name: "Log error"
+              request:
+                method: POST
+                url: "/post"
+                body:
+                  error_type: "api_down"
+                  timestamp: "{{$js:Date.now()}}"
+
+  # Exemplo 2: Nested steps com múltiplos níveis (até 5)
+  - name: "Multi-level nested scenario"
+    request:
+      method: GET
+      url: "/get"
+
+    scenarios:
+      - name: "Level 1 scenario"
+        condition: "status_code == `200`"
+        then:
+          capture:
+            level1_data: "body"
+
+          steps:
+            # Level 2
+            - name: "Level 2 step"
+              request:
+                method: GET
+                url: "/uuid"
+
+              scenarios:
+                - name: "Level 2 scenario"
+                  condition: "status_code == `200`"
+                  then:
+                    steps:
+                      # Level 3
+                      - name: "Level 3 step"
+                        request:
+                          method: GET
+                          url: "/base64/SFRUUEJJTiBpcyBhd2Vzb21l"
+
+                        scenarios:
+                          - name: "Level 3 scenario"
+                            condition: "status_code == `200`"
+                            then:
+                              variables:
+                                max_depth_reached: 3
+
+  # Exemplo 3: Nested steps com capture e variáveis
+  - name: "User authentication flow"
+    request:
+      method: POST
+      url: "/post"
+      body:
+        username: "{{$faker.internet.userName}}"
+        password: "{{$faker.internet.password}}"
+
+    capture:
+      auth_response: "body"
+
+    scenarios:
+      - name: "Authentication successful"
+        condition: "status_code == `200`"
+        then:
+          variables:
+            authenticated: true
+
+          capture:
+            session_token: "body.json.username"
+
+          steps:
+            - name: "Get user profile"
+              request:
+                method: GET
+                url: "/get"
+
+            - name: "Get user permissions"
+              request:
+                method: GET
+                url: "/headers"
+
+              capture:
+                user_headers: "body.headers"
+
+      - name: "Authentication failed"
+        condition: "status_code >= `400`"
+        then:
+          variables:
+            authenticated: false
+
+          steps:
+            - name: "Log failed attempt"
+              request:
+                method: POST
+                url: "/post"
+                body:
+                  event: "login_failed"
+                  timestamp: "{{$js:new Date().toISOString()}}"
+
+  # Exemplo 4: Nested steps com skip e continue_on_failure
+  - name: "Complex workflow with error handling"
+    request:
+      method: GET
+      url: "/status/200"
+
+    scenarios:
+      - name: "Process workflow"
+        condition: "status_code == `200`"
+        then:
+          steps:
+            - name: "Step 1: Required operation"
+              request:
+                method: POST
+                url: "/anything"
+                body:
+                  operation: "step1"
+
+            - name: "Step 2: Optional operation"
+              continue_on_failure: true
+              request:
+                method: GET
+                url: "/status/500"  # Pode falhar
+
+            - name: "Step 3: Conditional operation"
+              skip: "false"  # Sempre executa (exemplo)
+              request:
+                method: GET
+                url: "/uuid"
+
+  # Exemplo 5: Nested steps em both then e else
+  - name: "Feature flag check"
+    request:
+      method: GET
+      url: "/headers"
+
+    capture:
+      has_feature_flag: "body.headers.['X-Feature-Flag'] != `null`"
+
+    scenarios:
+      - name: "Feature enabled"
+        condition: "has_feature_flag"
+        then:
+          variables:
+            feature_status: "enabled"
+
+          steps:
+            - name: "Execute new feature"
+              request:
+                method: POST
+                url: "/post"
+                body:
+                  feature: "new_ui"
+
+            - name: "Track feature usage"
+              request:
+                method: POST
+                url: "/anything"
+                body:
+                  event: "feature_used"
+
+        else:
+          variables:
+            feature_status: "disabled"
+
+          steps:
+            - name: "Execute old feature"
+              request:
+                method: POST
+                url: "/post"
+                body:
+                  feature: "old_ui"
+
+            - name: "Track fallback usage"
+              request:
+                method: POST
+                url: "/anything"
+                body:
+                  event: "fallback_used"

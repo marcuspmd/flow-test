@@ -701,6 +701,162 @@ steps:
 
 ---
 
+### 7.5. Sistema de Skip com Timing (NOVO v2.1)
+
+**Novidade!** O sistema de skip agora suporta controle de timing, permitindo avaliar condições em diferentes momentos do ciclo de vida do step.
+
+#### 7.5.1 Sintaxe Estendida
+
+```yaml
+# Formato curto (padrão: pre_execution)
+skip: "{{variable}} === 'value'"
+
+# Formato completo com timing
+skip:
+  when: post_capture  # ou "pre_execution"
+  condition: "{{response.status}} === 404"
+```
+
+#### 7.5.2 Timing Modes
+
+| Mode | Quando Avalia | Variáveis Disponíveis | Use Case |
+|------|---------------|----------------------|----------|
+| `pre_execution` | **Antes** de executar o step | Somente `variables` | Skip baseado em configuração, flags, ambiente |
+| `post_capture` | **Depois** de capture e hooks_post_capture | `variables` + `response` + `capturedVariables` | Skip baseado em resposta da API, dados capturados |
+
+#### 7.5.3 Diagrama de Timing de Execução
+
+```
+STEP LIFECYCLE:
+┌────────────────────────────────────────────────────────────────┐
+│  1. hooks_pre_input                                             │
+│  2. INPUT (se houver)                                           │
+│  3. hooks_post_input                                            │
+├────────────────────────────────────────────────────────────────┤
+│  4. ⚡ SKIP EVALUATION (when: pre_execution)                    │
+│     ├─ Variáveis disponíveis: variables                        │
+│     └─ Se true → step SKIPPED                                  │
+├────────────────────────────────────────────────────────────────┤
+│  5. hooks_pre_request                                           │
+│  6. HTTP REQUEST                                                │
+│  7. hooks_post_request                                          │
+│  8. ASSERTIONS                                                  │
+│  9. hooks_pre_capture                                           │
+│ 10. CAPTURE                                                     │
+│ 11. hooks_post_capture                                          │
+├────────────────────────────────────────────────────────────────┤
+│ 12. ⚡ SKIP EVALUATION (when: post_capture)                     │
+│     ├─ Variáveis disponíveis: variables + response + captured  │
+│     └─ Se true → step marcado como SKIPPED                     │
+├────────────────────────────────────────────────────────────────┤
+│ 13. SCENARIOS (if present)                                      │
+│ 14. hooks_post_call (if call step)                             │
+│ 15. onStepEnd hook                                              │
+└────────────────────────────────────────────────────────────────┘
+
+Legenda:
+  ⚡ = Pontos de avaliação de skip
+  variables = Variáveis locais + globais + capturadas anteriormente
+  response = { status, headers, body, response_time_ms }
+  captured = Variáveis capturadas no step atual
+```
+
+#### 7.5.4 Exemplos de Skip com Timing
+
+**Pre-Execution (padrão):**
+```yaml
+steps:
+  # Skip baseado em variável existente
+  - name: "Create user"
+    skip:
+      when: pre_execution
+      condition: "{{user_already_exists}}"
+    request:
+      method: POST
+      url: "/users"
+
+  # Formato curto (assume pre_execution)
+  - name: "Admin only"
+    skip: "{{user_role}} !== 'admin'"
+    request:
+      method: DELETE
+      url: "/admin/cleanup"
+```
+
+**Post-Capture:**
+```yaml
+steps:
+  # Skip próximo step se recurso não foi encontrado
+  - name: "Get resource"
+    request:
+      method: GET
+      url: "/resource/{{id}}"
+    capture:
+      resource_found: "status_code == `200`"
+
+  - name: "Process resource"
+    skip:
+      when: post_capture
+      condition: "{{response.status}} === 404"
+    request:
+      method: POST
+      url: "/process/{{id}}"
+
+  # Skip se resposta indica erro
+  - name: "Cleanup after success"
+    request:
+      method: POST
+      url: "/operation"
+    skip:
+      when: post_capture
+      condition: "{{response.body.error}} !== null"
+```
+
+**Combinando Pre e Post:**
+```yaml
+steps:
+  # Primeiro verifica se deve executar (pre)
+  - name: "Conditional operation"
+    skip:
+      when: pre_execution
+      condition: "{{dry_run}} === true"
+    request:
+      method: POST
+      url: "/important-operation"
+    # Se executar, pode ser skipped depois baseado em resposta
+
+  # Próximo step usa post_capture do anterior
+  - name: "Follow-up"
+    skip:
+      when: post_capture
+      condition: "{{response.status}} >= 400"
+    request:
+      method: GET
+      url: "/next-step"
+```
+
+#### 7.5.5 Diferenças entre Pre e Post Capture
+
+| Aspecto | Pre-Execution | Post-Capture |
+|---------|---------------|--------------|
+| **Quando** | Antes de qualquer execução | Depois de request + capture |
+| **Variáveis** | Somente variáveis já existentes | Variáveis + response + captured |
+| **Performance** | Mais rápido (não executa request) | Mais lento (já executou request) |
+| **Use Case** | Condições estáticas, configuração | Decisões baseadas em resposta |
+| **Status Final** | `skipped` sem request | `skipped` mas request foi feito |
+
+#### 7.5.6 Mensagens de Log
+
+```bash
+# Pre-execution skip
+⏭️  Skipping step 'Step Name' (step-id) due to skip condition (pre_execution): {{env}} === 'prod'
+
+# Post-capture skip
+⏭️  Step 'Step Name' (step-id) skipped after capture due to skip condition (post_capture): {{response.status}} === 404
+```
+
+---
+
 ### 8. Cenários Condicionais (ConditionalScenario)
 
 #### 8.1 Estrutura
@@ -719,7 +875,7 @@ steps:
 | `assert` | `Assertions` | Asserções adicionais |
 | `capture` | `Record<string, string>` | Capturas condicionais |
 | `variables` | `Record<string, any>` | Variáveis estáticas a definir |
-| `steps` | `TestStep[]` | Steps a executar (apenas `then`) |
+| `steps` | `TestStep[]` | **NOVO v2.1:** Steps aninhados a executar (até 5 níveis de profundidade) |
 
 ```yaml
 scenarios:
@@ -2037,6 +2193,266 @@ steps:
               error: {equals: "forbidden"}
           variables:
             access_denied: true
+```
+
+---
+
+### 20.9 Padrões de Decision-Making com Skip e Nested Steps (NOVO v2.1)
+
+#### 20.9.1 Skip Post-Capture Baseado em Response
+
+```yaml
+suite_name: "Conditional Processing"
+node_id: "conditional-processing"
+base_url: "{{api_base_url}}"
+
+steps:
+  # Step 1: Tentar buscar recurso
+  - name: "Try to fetch resource"
+    request:
+      method: GET
+      url: "/api/resources/{{resource_id}}"
+    # Não falha se 404
+    continue_on_failure: true
+    capture:
+      resource_exists: "status_code == `200`"
+      resource_data: "body"
+
+  # Step 2: Criar apenas se não existir (skip com post_capture)
+  - name: "Create resource if not exists"
+    skip:
+      when: post_capture
+      condition: "{{resource_exists}} === true"
+    request:
+      method: POST
+      url: "/api/resources"
+      body:
+        name: "New Resource"
+        type: "document"
+    capture:
+      created_resource_id: "body.id"
+
+  # Step 3: Processar recurso (skip se criação falhou)
+  - name: "Process resource"
+    skip:
+      when: pre_execution
+      condition: "!{{created_resource_id}} && !{{resource_exists}}"
+    request:
+      method: POST
+      url: "/api/resources/process"
+```
+
+#### 20.9.2 Scenarios com Nested Steps (Até 5 Níveis)
+
+```yaml
+suite_name: "Nested Scenario Flow"
+node_id: "nested-scenario"
+base_url: "{{api_base_url}}"
+
+steps:
+  - name: "Check user authentication"
+    request:
+      method: GET
+      url: "/auth/status"
+
+    scenarios:
+      # Cenário 1: Usuário autenticado
+      - name: "Authenticated user"
+        condition: "status_code == `200` && body.authenticated == `true`"
+        then:
+          capture:
+            auth_level: "body.level"
+            user_id: "body.user_id"
+
+          # Nested steps - Nível 1
+          steps:
+            - name: "Get user permissions"
+              request:
+                method: GET
+                url: "/users/{{user_id}}/permissions"
+
+              scenarios:
+                # Nested scenario - Nível 2
+                - name: "Admin user"
+                  condition: "body.role == 'admin'"
+                  then:
+                    steps:
+                      - name: "Access admin dashboard"
+                        request:
+                          method: GET
+                          url: "/admin/dashboard"
+
+                      - name: "Get admin reports"
+                        request:
+                          method: GET
+                          url: "/admin/reports"
+
+                # Nested scenario - Nível 2
+                - name: "Regular user"
+                  condition: "body.role == 'user'"
+                  then:
+                    steps:
+                      - name: "Access user dashboard"
+                        request:
+                          method: GET
+                          url: "/user/dashboard"
+
+      # Cenário 2: Usuário não autenticado
+      - name: "Unauthenticated user"
+        condition: "status_code != `200`"
+        then:
+          steps:
+            - name: "Perform login"
+              request:
+                method: POST
+                url: "/auth/login"
+                body:
+                  username: "{{$env.TEST_USERNAME}}"
+                  password: "{{$env.TEST_PASSWORD}}"
+              capture:
+                auth_token: "body.token"
+```
+
+#### 20.9.3 Combinando Skip Pre e Post com Hooks
+
+```yaml
+suite_name: "Advanced Decision Making"
+node_id: "advanced-decision"
+base_url: "{{api_base_url}}"
+
+variables:
+  dry_run: false
+  max_retries: 3
+
+steps:
+  - name: "Expensive operation with safeguards"
+
+    # Hook pre-request: Computar timestamp e validar
+    hooks_pre_request:
+      - compute:
+          operation_start: "{{$js:Date.now()}}"
+          retry_count: 0
+      - validate:
+          - expression: "!dry_run"
+            message: "Cannot run in dry-run mode"
+            severity: "error"
+
+    # Skip pre-execution se dry_run
+    skip:
+      when: pre_execution
+      condition: "{{dry_run}} === true"
+
+    request:
+      method: POST
+      url: "/api/expensive-operation"
+      body:
+        data: "{{large_dataset}}"
+
+    # Hook post-request: Computar flag de sucesso
+    hooks_post_request:
+      - compute:
+          operation_success: "{{$js:response.status >= 200 && response.status < 300}}"
+          operation_duration: "{{$js:Date.now() - operation_start}}"
+      - log:
+          level: "info"
+          message: "Operation completed in {{operation_duration}}ms"
+
+    capture:
+      operation_result: "body.result"
+      error_code: "body.error_code"
+
+    # Skip post-capture se deu erro
+    skip:
+      when: post_capture
+      condition: "{{response.status}} >= 400"
+
+    scenarios:
+      - name: "Success path"
+        condition: "status_code == `200`"
+        then:
+          steps:
+            - name: "Verify result"
+              request:
+                method: GET
+                url: "/api/operations/{{operation_result.id}}"
+
+      - name: "Retry on transient error"
+        condition: "status_code == `503` && error_code == 'temporary'"
+        then:
+          variables:
+            should_retry: true
+```
+
+#### 20.9.4 Depth Limit Configuration
+
+```yaml
+# flow-test.config.yml
+project_name: "Deep Nested Tests"
+test_directory: "./tests"
+
+globals:
+  # Ajustar limite de profundidade de scenarios (padrão: 5)
+  max_scenario_nesting_depth: 10
+
+  base_url: "https://api.example.com"
+  variables:
+    enable_deep_nesting: true
+```
+
+#### 20.9.5 Error Handling com Nested Steps
+
+```yaml
+suite_name: "Robust Error Handling"
+node_id: "error-handling-nested"
+
+steps:
+  - name: "Main operation"
+    request:
+      method: POST
+      url: "/api/create"
+
+    scenarios:
+      - name: "Success with cleanup"
+        condition: "status_code == `201`"
+        then:
+          capture:
+            created_id: "body.id"
+
+          steps:
+            - name: "Verify creation"
+              request:
+                method: GET
+                url: "/api/verify/{{created_id}}"
+              # Continuar mesmo se verificação falhar
+              continue_on_failure: true
+
+            - name: "Send notification"
+              request:
+                method: POST
+                url: "/api/notify"
+                body:
+                  event: "created"
+                  resource_id: "{{created_id}}"
+
+      - name: "Failure with rollback"
+        condition: "status_code >= `400`"
+        then:
+          steps:
+            - name: "Log error"
+              request:
+                method: POST
+                url: "/api/logs/error"
+                body:
+                  error: "{{response.body.error}}"
+                  timestamp: "{{$js:Date.now()}}"
+
+            - name: "Cleanup partial data"
+              skip:
+                when: pre_execution
+                condition: "!{{created_id}}"
+              request:
+                method: DELETE
+                url: "/api/cleanup/{{created_id}}"
 ```
 
 ---

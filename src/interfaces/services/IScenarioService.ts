@@ -10,6 +10,7 @@
 
 import { ConditionalScenario } from "../../types/engine.types";
 import { StepExecutionResult } from "../../types/config.types";
+import type { TestStep, TestSuite } from "../../types/engine.types";
 
 /**
  * Interface for scenario-based conditional execution service.
@@ -78,4 +79,34 @@ export interface IScenarioService {
    * ```
    */
   suggestConditions(result: StepExecutionResult): string[];
+
+  /**
+   * Executes nested steps within a scenario with depth tracking.
+   *
+   * @param steps - Array of test steps to execute
+   * @param suite - Parent test suite context
+   * @param currentDepth - Current nesting depth (0 for top-level)
+   * @param maxDepth - Maximum allowed nesting depth
+   * @param scenarioPath - Human-readable path for error messages
+   * @returns Array of step execution results
+   * @throws Error if maximum depth is exceeded
+   *
+   * @example
+   * ```typescript
+   * const results = await scenarioService.executeNestedSteps(
+   *   scenario.then.steps,
+   *   suite,
+   *   1, // current depth
+   *   5, // max depth
+   *   "scenario[0].then.steps"
+   * );
+   * ```
+   */
+  executeNestedSteps(
+    steps: TestStep[],
+    suite: TestSuite,
+    currentDepth: number,
+    maxDepth: number,
+    scenarioPath: string
+  ): Promise<StepExecutionResult[]>;
 }

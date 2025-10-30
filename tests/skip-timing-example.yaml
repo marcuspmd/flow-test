@@ -1,0 +1,105 @@
+# Exemplo demonstrando Skip com Timing (pre_execution e post_capture)
+suite_name: "Skip Timing Examples"
+node_id: "skip-timing-demo"
+base_url: "https://httpbin.org"
+
+metadata:
+  priority: "high"
+  tags: ["demo", "skip-timing", "v2.1"]
+
+variables:
+  test_mode: true
+  dry_run: false
+  min_status_code: 200
+
+steps:
+  # Exemplo 1: Skip pre_execution (formato curto)
+  - name: "Skip in dry run mode (pre_execution - formato curto)"
+    skip: "{{dry_run}} === true"
+    request:
+      method: GET
+      url: "/status/200"
+
+  # Exemplo 2: Skip pre_execution (formato completo)
+  - name: "Skip if test mode disabled"
+    skip:
+      when: pre_execution
+      condition: "!{{test_mode}}"
+    request:
+      method: GET
+      url: "/get"
+
+  # Exemplo 3: Skip post_capture baseado em status code
+  - name: "Always execute but may skip after"
+    request:
+      method: GET
+      url: "/status/{{min_status_code}}"
+    skip:
+      when: post_capture
+      condition: "{{response.status}} === 404"
+    capture:
+      response_status: "status"
+
+  # Exemplo 4: Request que pode retornar 404
+  - name: "Try to get user (may not exist)"
+    request:
+      method: GET
+      url: "/status/404"  # Simula recurso não encontrado
+    continue_on_failure: true
+    capture:
+      user_found: "status_code == `200`"
+      user_data: "body"
+
+  # Exemplo 5: Skip post_capture se usuário não foi encontrado
+  - name: "Update user profile"
+    request:
+      method: POST
+      url: "/post"
+      body:
+        action: "update_profile"
+    skip:
+      when: post_capture
+      condition: "{{response.status}} >= 400"
+    capture:
+      update_result: "body.data"
+
+  # Exemplo 6: Combinando pre e post skip
+  - name: "Complex conditional operation"
+    # Pre-execution: skip se dry_run
+    skip:
+      when: pre_execution
+      condition: "{{dry_run}} === true"
+
+    request:
+      method: POST
+      url: "/anything"
+      body:
+        test_data: "complex operation"
+
+    # Se executou, será avaliado post_capture
+    # Nota: Apenas um skip por step é permitido
+    # Este exemplo mostra o conceito, mas na prática use scenarios para lógica complexa
+
+  # Exemplo 7: Usando scenarios para decisões complexas pós-resposta
+  - name: "Process with scenarios"
+    request:
+      method: GET
+      url: "/status/200"
+
+    capture:
+      final_status: "status"
+
+    scenarios:
+      - name: "Success scenario"
+        condition: "status_code == `200`"
+        then:
+          variables:
+            operation_success: true
+          capture:
+            success_data: "body"
+
+      - name: "Error scenario"
+        condition: "status_code >= `400`"
+        then:
+          variables:
+            operation_success: false

@@ -43,6 +43,84 @@ export class ScenarioStepStrategy extends BaseStepStrategy {
   }
 
   /**
+   * Executes nested steps within a scenario with depth tracking.
+   *
+   * @param steps - Array of nested steps to execute
+   * @param suite - Parent test suite
+   * @param context - Execution context
+   * @param scenarioPath - Human-readable path for error messages
+   * @param currentDepth - Current nesting depth
+   */
+  private async executeNestedScenarioSteps(
+    steps: import("../../../types/engine.types").TestStep[],
+    suite: import("../../../types/engine.types").TestSuite,
+    context: StepExecutionContext,
+    scenarioPath: string,
+    currentDepth: number
+  ): Promise<void> {
+    const { configManager, executionService, logger } = context;
+
+    // Get max depth from config (default from constant)
+    const config = configManager?.getConfig();
+    const maxDepth =
+      config?.globals?.max_scenario_nesting_depth ||
+      (await import("../../../types/config.types")).MAX_SCENARIO_NESTING_DEPTH;
+
+    // Validate depth
+    if (currentDepth > maxDepth) {
+      const errorMsg =
+        `Maximum scenario nesting depth (${maxDepth}) exceeded at: ${scenarioPath}. ` +
+        `Current depth: ${currentDepth}. Configure 'max_scenario_nesting_depth' in globals to adjust limit.`;
+
+      logger.error(errorMsg);
+      throw new Error(errorMsg);
+    }
+
+    logger.debug(
+      `📦 Executing ${steps.length} nested step(s) at depth ${currentDepth}/${maxDepth} - ${scenarioPath}`
+    );
+
+    // Execute each nested step sequentially
+    for (let i = 0; i < steps.length; i++) {
+      const nestedStep = steps[i];
+
+      logger.debug(
+        `  ↳ [${i + 1}/${steps.length}] ${
+          nestedStep.name
+        } (depth: ${currentDepth})`
+      );
+
+      // Delegate to ExecutionService to execute the nested step
+      // This allows nested steps to have their own scenarios, which can also have nested steps
+      if (executionService) {
+        try {
+          await (executionService as any).executeStep(
+            nestedStep,
+            suite,
+            i,
+            {
+              stepId: `${scenarioPath}[${i}]`,
+              qualifiedStepId: `${suite.node_id}.${scenarioPath}[${i}]`,
+              normalizedQualifiedStepId: `${suite.node_id}_${scenarioPath}_${i}`,
+            },
+            true, // shouldExecute
+            context.discoveredTest
+          );
+        } catch (error: any) {
+          logger.error(
+            `❌ Nested step '${nestedStep.name}' failed at ${scenarioPath}[${i}]: ${error.message}`
+          );
+
+          // Propagate error unless continue_on_failure is set
+          if (!nestedStep.continue_on_failure) {
+            throw error;
+          }
+        }
+      }
+    }
+  }
+
+  /**
    * Executes the scenario-only step by evaluating conditions and executing matching scenarios.
    */
   async execute(context: StepExecutionContext): Promise<StepExecutionResult> {
@@ -226,6 +304,21 @@ export class ScenarioStepStrategy extends BaseStepStrategy {
             );
           }
 
+          // Execute nested steps from scenario (NEW)
+          if (scenario.then.steps && Array.isArray(scenario.then.steps)) {
+            logger.info(
+              `🔄 Executing ${scenario.then.steps.length} nested step(s) from scenario.then`
+            );
+
+            await this.executeNestedScenarioSteps(
+              scenario.then.steps,
+              suite,
+              context,
+              `scenario[${i}].then.steps`,
+              1 // Starting at depth 1
+            );
+          }
+
           executedScenario = true;
 
           evaluations.push({
@@ -303,6 +396,21 @@ export class ScenarioStepStrategy extends BaseStepStrategy {
               `📝 Set ${
                 Object.keys(interpolatedVars).length
               } static variable(s) from else block`
+            );
+          }
+
+          // Execute nested steps from else block (NEW)
+          if (scenario.else.steps && Array.isArray(scenario.else.steps)) {
+            logger.info(
+              `🔄 Executing ${scenario.else.steps.length} nested step(s) from scenario.else`
+            );
+
+            await this.executeNestedScenarioSteps(
+              scenario.else.steps,
+              suite,
+              context,
+              `scenario[${i}].else.steps`,
+              1 // Starting at depth 1
             );
           }
 

@@ -5,8 +5,16 @@ import type { ILogger } from "../interfaces/services/ILogger";
 import type { IAssertionService } from "../interfaces/services/IAssertionService";
 import type { ICaptureService } from "../interfaces/services/ICaptureService";
 import type { IScenarioService } from "../interfaces/services/IScenarioService";
-import { ConditionalScenario, Assertions } from "../types/engine.types";
-import { StepExecutionResult } from "../types/config.types";
+import {
+  ConditionalScenario,
+  Assertions,
+  TestStep,
+  TestSuite,
+} from "../types/engine.types";
+import {
+  StepExecutionResult,
+  MAX_SCENARIO_NESTING_DEPTH,
+} from "../types/config.types";
 import { ResponseContextBuilder, ErrorHandler } from "../utils";
 
 /**
@@ -358,5 +366,42 @@ export class ScenarioService implements IScenarioService {
     });
 
     return suggestions;
+  }
+
+  /**
+   * Executes nested steps within a scenario with depth tracking.
+   *
+   * @throws Error if maximum nesting depth is exceeded
+   */
+  async executeNestedSteps(
+    steps: TestStep[],
+    suite: TestSuite,
+    currentDepth: number,
+    maxDepth: number,
+    scenarioPath: string
+  ): Promise<StepExecutionResult[]> {
+    // Validate depth
+    if (currentDepth > maxDepth) {
+      const errorMsg =
+        `Maximum scenario nesting depth (${maxDepth}) exceeded at: ${scenarioPath}. ` +
+        `Current depth: ${currentDepth}. Configure 'max_scenario_nesting_depth' in globals to adjust limit.`;
+
+      this.logger.error(errorMsg);
+      throw new Error(errorMsg);
+    }
+
+    if (!steps || steps.length === 0) {
+      return [];
+    }
+
+    this.logger.debug(
+      `📦 Executing ${steps.length} nested step(s) at depth ${currentDepth} (max: ${maxDepth}) - ${scenarioPath}`
+    );
+
+    // Note: Actual step execution will be delegated to ExecutionService
+    // This method primarily validates depth and provides structure
+    // The actual execution will be handled by ScenarioStepStrategy
+
+    return [];
   }
 }

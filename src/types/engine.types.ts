@@ -217,6 +217,51 @@ export interface Assertions {
 }
 
 /**
+ * Skip configuration for conditional step execution with timing control.
+ *
+ * @remarks
+ * Controls when a step should be skipped during execution lifecycle.
+ * Supports two timing modes:
+ * - `pre_execution`: Evaluated before step execution (default) - has access to variables only
+ * - `post_capture`: Evaluated after capture/hooks_post_capture - has access to response and captured variables
+ *
+ * @example Simple skip with default timing (pre_execution)
+ * ```yaml
+ * skip: "{{environment}} === 'prod'"
+ * ```
+ *
+ * @example Skip after capture based on response
+ * ```yaml
+ * skip:
+ *   when: post_capture
+ *   condition: "{{response.status}} === 404"
+ * ```
+ *
+ * @example Skip with explicit pre-execution timing
+ * ```yaml
+ * skip:
+ *   when: pre_execution
+ *   condition: "!{{auth_token}}"
+ * ```
+ *
+ * @public
+ */
+export interface SkipConfig {
+  /**
+   * When to evaluate the skip condition.
+   * - `pre_execution`: Before step execution (default) - only variables available
+   * - `post_capture`: After capture and hooks_post_capture - response and captured variables available
+   */
+  when?: "pre_execution" | "post_capture";
+
+  /**
+   * JMESPath or JavaScript expression to evaluate.
+   * If evaluates to true, step is skipped.
+   */
+  condition: string;
+}
+
+/**
  * Conditional scenario configuration for dynamic test behavior.
  *
  * @remarks
@@ -260,6 +305,8 @@ export interface ConditionalScenario {
     capture?: Record<string, string>;
     /** Static variables to set */
     variables?: Record<string, any>;
+    /** Nested test steps to execute (supports up to MAX_SCENARIO_NESTING_DEPTH levels) */
+    steps?: TestStep[];
   };
 
   /** Actions to execute when condition evaluates to false */
@@ -270,6 +317,8 @@ export interface ConditionalScenario {
     capture?: Record<string, string>;
     /** Static variables to set */
     variables?: Record<string, any>;
+    /** Nested test steps to execute (supports up to MAX_SCENARIO_NESTING_DEPTH levels) */
+    steps?: TestStep[];
   };
 }
 
@@ -710,20 +759,31 @@ export interface TestStep {
   continue_on_failure?: boolean;
 
   /**
-   * Condition to skip the step execution (JMESPath or JavaScript expression).
-   * If the expression evaluates to true, the step is skipped.
+   * Condition to skip the step execution with optional timing control.
    *
-   * @example Skip based on variable
+   * Can be a simple string (defaults to pre_execution timing) or an object
+   * specifying when to evaluate the condition.
+   *
+   * @example Simple skip (evaluated before execution)
    * ```yaml
    * skip: "{{environment}} === 'prod'"
    * ```
    *
-   * @example Skip with JMESPath
+   * @example Skip after capture based on response
    * ```yaml
-   * skip: "environment == 'production'"
+   * skip:
+   *   when: post_capture
+   *   condition: "{{response.status}} === 404"
+   * ```
+   *
+   * @example Skip with explicit timing
+   * ```yaml
+   * skip:
+   *   when: pre_execution
+   *   condition: "!{{auth_token}}"
    * ```
    */
-  skip?: string;
+  skip?: string | SkipConfig;
 
   /** Additional metadata for execution control and organization */
   metadata?: TestStepMetadata;

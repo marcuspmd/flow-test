@@ -1181,12 +1181,40 @@ export class ExecutionService implements IExecutionService {
   }
 
   /**
-   * Evaluates a skip condition expression (JMESPath or JavaScript)
-   * @param skipExpression - The skip condition expression to evaluate
+   * Evaluates a skip condition expression with timing awareness.
+   *
+   * @param skipConfig - Skip configuration (string for simple condition or SkipConfig object)
+   * @param timing - Current execution timing ("pre_execution" or "post_capture")
+   * @param availableContext - Context object with available variables/response
    * @returns true if the step should be skipped, false otherwise
    */
-  private evaluateSkipCondition(skipExpression: string): boolean {
+  private evaluateSkipCondition(
+    skipConfig: string | import("../../types/engine.types").SkipConfig,
+    timing: "pre_execution" | "post_capture" = "pre_execution",
+    availableContext?: {
+      response?: any;
+      capturedVariables?: Record<string, any>;
+    }
+  ): boolean {
     try {
+      // Normalize skip config
+      let skipExpression: string;
+      let expectedTiming: "pre_execution" | "post_capture";
+
+      if (typeof skipConfig === "string") {
+        // Simple string format defaults to pre_execution
+        skipExpression = skipConfig;
+        expectedTiming = "pre_execution";
+      } else {
+        skipExpression = skipConfig.condition;
+        expectedTiming = skipConfig.when || "pre_execution";
+      }
+
+      // Only evaluate if timing matches
+      if (timing !== expectedTiming) {
+        return false; // Skip not applicable at this timing
+      }
+
       // First check for literal boolean values (without interpolation)
       const trimmed = skipExpression.trim();
       if (trimmed === "true") return true;
@@ -1195,31 +1223,60 @@ export class ExecutionService implements IExecutionService {
       // Get all current variables for context
       const variables = this.globalVariables.getAllVariables();
 
-      // Check if it's a direct boolean value after interpolation
-      const interpolatedForCheck =
+      // Build evaluation context based on timing
+      const evalContext = {
+        ...variables,
+        ...(availableContext?.capturedVariables || {}),
+      };
+
+      // Add response to context only if available (post_capture timing)
+      if (timing === "post_capture" && availableContext?.response) {
+        // Temporarily set response variables for interpolation
+        this.globalVariables.setRuntimeVariable(
+          "response",
+          availableContext.response
+        );
+        this.globalVariables.setRuntimeVariable(
+          "status",
+          availableContext.response.status
+        );
+        this.globalVariables.setRuntimeVariable(
+          "status_code",
+          availableContext.response.status
+        );
+        this.globalVariables.setRuntimeVariable(
+          "headers",
+          availableContext.response.headers
+        );
+        this.globalVariables.setRuntimeVariable(
+          "body",
+          availableContext.response.body
+        );
+      }
+
+      // Interpolate the expression with available context
+      const interpolatedExpression =
         this.globalVariables.interpolateString(skipExpression);
-      if (interpolatedForCheck === "true") return true;
-      if (interpolatedForCheck === "false") return false;
+
+      // Check if it's a direct boolean value after interpolation
+      if (interpolatedExpression === "true") return true;
+      if (interpolatedExpression === "false") return false;
 
       // Check if this looks like a JavaScript expression (has JS operators)
       const looksLikeJavaScript =
-        skipExpression.includes("===") ||
-        skipExpression.includes("!==") ||
-        skipExpression.includes("&&") ||
-        skipExpression.includes("||") ||
-        /^\s*!/.test(skipExpression); // Starts with negation
+        interpolatedExpression.includes("===") ||
+        interpolatedExpression.includes("!==") ||
+        interpolatedExpression.includes("&&") ||
+        interpolatedExpression.includes("||") ||
+        /^\s*!/.test(interpolatedExpression); // Starts with negation
 
       if (looksLikeJavaScript) {
         try {
-          // For JavaScript, interpolate to get actual values
-          const interpolatedExpression =
-            this.globalVariables.interpolateString(skipExpression);
-
-          // Wrap expression in a return statement for evaluation
+          // For JavaScript, use interpolated expression with available context
           const wrappedExpression = `return (${interpolatedExpression});`;
           const jsResult = this.javascriptService.executeExpression(
             wrappedExpression,
-            { variables },
+            { variables: this.globalVariables.getAllVariables() },
             true // Execute as code block
           );
 
@@ -1235,10 +1292,9 @@ export class ExecutionService implements IExecutionService {
       try {
         const jmespath = require("jmespath");
 
-        // Build context with all variables
-        const context = variables;
+        // Build context with available data (use original skipExpression, not interpolated)
+        const jmesContext = this.globalVariables.getAllVariables();
 
-        // For JMESPath, use the original expression (not interpolated)
         let processedCondition = skipExpression;
 
         // Fix string comparisons with single quotes: var == 'value' -> var == `value`
@@ -1266,25 +1322,21 @@ export class ExecutionService implements IExecutionService {
           "$1 `null`"
         );
 
-        const jmesResult = jmespath.search(context, processedCondition);
+        const jmesResult = jmespath.search(jmesContext, processedCondition);
         return Boolean(jmesResult);
       } catch (jmesError) {
         this.logger.warn(
           `Failed to evaluate skip condition as JMESPath: ${jmesError}`
         );
+        return false; // Default to not skipping on evaluation errors
       }
-
-      // Default to not skipping if we can't evaluate
-      this.logger.warn(
-        `Could not evaluate skip condition: ${skipExpression}. Defaulting to not skip.`
-      );
-      return false;
     } catch (error) {
       this.logger.error(
-        `Error evaluating skip condition '${skipExpression}': ${error}`
+        `Error evaluating skip condition: ${
+          error instanceof Error ? error.message : String(error)
+        }`
       );
-      // On error, don't skip to avoid hiding execution issues
-      return false;
+      return false; // Default to not skipping on errors
     }
   }
 
@@ -1339,11 +1391,17 @@ export class ExecutionService implements IExecutionService {
       return skippedResult;
     }
 
-    // Evaluate skip condition if present
+    // Evaluate skip condition if present (pre_execution timing)
     if (step.skip) {
-      const shouldSkip = this.evaluateSkipCondition(step.skip);
+      const shouldSkip = this.evaluateSkipCondition(step.skip, "pre_execution");
 
       if (shouldSkip) {
+        const skipConfig =
+          typeof step.skip === "string"
+            ? step.skip
+            : `when: ${step.skip.when || "pre_execution"}, condition: ${
+                step.skip.condition
+              }`;
         const skippedResult: StepExecutionResult = {
           step_id: identifiers.stepId,
           qualified_step_id: identifiers.qualifiedStepId,
@@ -1358,7 +1416,7 @@ export class ExecutionService implements IExecutionService {
         };
 
         this.logger.info(
-          `Skipping step '${step.name}' (${identifiers.stepId}) due to skip condition: ${step.skip}`
+          `⏭️  Skipping step '${step.name}' (${identifiers.stepId}) due to skip condition (pre_execution): ${skipConfig}`
         );
 
         await this.hooks.onStepEnd?.(step, skippedResult, context);
@@ -1406,6 +1464,42 @@ export class ExecutionService implements IExecutionService {
 
       // Execute step using strategy
       const result = await strategy.execute(strategyContext);
+
+      // Evaluate post_capture skip condition if present
+      if (step.skip) {
+        const availableContext = {
+          response: result.response_details,
+          capturedVariables: result.captured_variables || {},
+        };
+
+        const shouldSkipPostCapture = this.evaluateSkipCondition(
+          step.skip,
+          "post_capture",
+          availableContext
+        );
+
+        if (shouldSkipPostCapture) {
+          const skipConfig =
+            typeof step.skip === "string"
+              ? step.skip
+              : `when: ${step.skip.when || "pre_execution"}, condition: ${
+                  step.skip.condition
+                }`;
+
+          // Convert result to skipped status
+          const skippedResult: StepExecutionResult = {
+            ...result,
+            status: "skipped",
+          };
+
+          this.logger.info(
+            `⏭️  Step '${step.name}' (${identifiers.stepId}) skipped after capture due to skip condition (post_capture): ${skipConfig}`
+          );
+
+          await this.hooks.onStepEnd?.(step, skippedResult, context);
+          return skippedResult;
+        }
+      }
 
       // Fire step end hook
       await this.hooks.onStepEnd?.(step, result, context);
