@@ -1,0 +1,267 @@
+# Retry Patterns Example
+# Demonstrates retry strategies for resilient testing
+# Perfect for: Testing unreliable services, transient failures
+
+suite_name: "Retry Pattern Examples"
+node_id: "retry-patterns-example"
+description: "Retry strategies for handling flaky endpoints and transient failures"
+
+base_url: "https://httpbin.org"
+
+metadata:
+  priority: "medium"
+  tags: ["patterns", "retry", "resilience"]
+
+variables:
+  max_retry_attempts: 3
+  retry_delay: 1000
+
+steps:
+  # Pattern 1: Basic retry on specific status codes
+  - name: "Retry on server errors (5xx)"
+    metadata:
+      retry:
+        max_attempts: 3
+        delay_ms: 1000
+        retry_on:
+          - status_code: 500  # Internal Server Error
+          - status_code: 502  # Bad Gateway
+          - status_code: 503  # Service Unavailable
+          - status_code: 504  # Gateway Timeout
+
+    request:
+      method: "GET"
+      url: "/status/503"  # Will fail, but retry
+
+    assert:
+      status_code: 503
+
+    continue_on_failure: true
+
+  # Pattern 2: Exponential backoff
+  - name: "Retry with exponential backoff"
+    metadata:
+      retry:
+        max_attempts: 4
+        delay_ms: 1000
+        # Delays: 1s, 2s, 4s
+        backoff_multiplier: 2
+        max_delay_ms: 10000
+
+    request:
+      method: "GET"
+      url: "/delay/2"
+
+    assert:
+      status_code: 200
+
+  # Pattern 3: Retry with jitter (randomization)
+  - name: "Retry with jittered delays"
+    metadata:
+      retry:
+        max_attempts: 3
+        delay_ms: 1000
+        # Add random jitter to prevent thundering herd
+        jitter: true
+        jitter_max_ms: 500  # Random 0-500ms added
+
+    request:
+      method: "GET"
+      url: "/get"
+
+    assert:
+      status_code: 200
+
+  # Pattern 4: Don't retry on client errors
+  - name: "No retry on client errors (4xx)"
+    metadata:
+      retry:
+        max_attempts: 3
+        delay_ms: 500
+        # Only retry server errors, not client errors
+        retry_on:
+          - status_code: 500
+          - status_code: 502
+          - status_code: 503
+          - status_code: 504
+
+    request:
+      method: "GET"
+      url: "/status/404"  # Will NOT retry (4xx)
+
+    assert:
+      status_code: 404
+
+  # Pattern 5: Conditional retry based on response
+  - name: "Retry based on response content"
+    metadata:
+      retry:
+        max_attempts: 3
+        delay_ms: 1000
+        retry_on:
+          - status_code: 200
+            # Retry if response indicates processing
+            condition: "body.status == 'processing'"
+
+    request:
+      method: "POST"
+      url: "/post"
+      body:
+        operation: "async_task"
+        status: "processing"
+
+    assert:
+      status_code: 200
+
+  # Pattern 6: Poll until ready pattern
+  - name: "Poll async operation until complete"
+    metadata:
+      retry:
+        max_attempts: 10  # Poll up to 10 times
+        delay_ms: 2000    # 2 seconds between polls
+        retry_on:
+          - status_code: 202  # Accepted but not ready
+          - status_code: 200
+            condition: "body.status != 'completed'"
+
+    request:
+      method: "GET"
+      url: "/get?status=processing"
+
+    assert:
+      status_code: 200
+      # In real API, check for completion
+      # body:
+      #   status:
+      #     equals: "completed"
+
+  # Pattern 7: Circuit breaker pattern
+  - name: "Circuit breaker - fail fast after threshold"
+    metadata:
+      retry:
+        max_attempts: 3
+        delay_ms: 1000
+        # Stop retrying if failure rate is too high
+        circuit_breaker:
+          failure_threshold: 5    # Open after 5 failures
+          timeout_ms: 30000       # Stay open for 30s
+          half_open_requests: 1   # Try 1 request after timeout
+
+    request:
+      method: "GET"
+      url: "/status/500"
+
+    assert:
+      status_code: 500
+
+    continue_on_failure: true
+
+  # Pattern 8: Idempotent retry (safe to retry)
+  - name: "Idempotent GET - safe to retry"
+    metadata:
+      retry:
+        max_attempts: 5
+        delay_ms: 500
+        # GET/HEAD/OPTIONS are idempotent - safe to retry
+        idempotent: true
+
+    request:
+      method: "GET"
+      url: "/get"
+
+    assert:
+      status_code: 200
+
+  # Pattern 9: Non-idempotent with idempotency key
+  - name: "POST with idempotency key"
+    metadata:
+      retry:
+        max_attempts: 3
+        delay_ms: 1000
+
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        # Idempotency key prevents duplicate processing
+        Idempotency-Key: "{{$faker.string.uuid}}"
+      body:
+        operation: "charge_payment"
+        amount: 100
+
+    assert:
+      status_code: 200
+
+  # Pattern 10: Timeout and retry combination
+  - name: "Timeout with retry"
+    metadata:
+      timeout: 5000  # 5 second timeout per attempt
+      retry:
+        max_attempts: 3
+        delay_ms: 2000
+        retry_on:
+          - timeout: true  # Retry on timeout
+
+    request:
+      method: "GET"
+      url: "/delay/1"
+
+    assert:
+      status_code: 200
+
+# Retry Patterns Summary:
+# -----------------------
+# 1. Basic Retry:
+#    - max_attempts: How many tries
+#    - delay_ms: Wait between retries
+#    - retry_on: Conditions to retry
+#
+# 2. Exponential Backoff:
+#    - backoff_multiplier: Increase delay (2x, 4x, 8x)
+#    - max_delay_ms: Cap maximum delay
+#    - Prevents overwhelming failed service
+#
+# 3. Jitter:
+#    - jitter: true
+#    - jitter_max_ms: Random delay addition
+#    - Prevents thundering herd problem
+#
+# 4. Status Code Filtering:
+#    - Retry 5xx (server errors) ✓
+#    - Don't retry 4xx (client errors) ✗
+#    - Don't retry 2xx/3xx (success) ✗
+#
+# 5. Conditional Retry:
+#    - Check response content
+#    - Poll for completion
+#    - Async operation patterns
+#
+# 6. Idempotency:
+#    - Safe methods: GET, HEAD, OPTIONS, PUT, DELETE
+#    - Unsafe: POST (use idempotency key)
+#
+# 7. Circuit Breaker:
+#    - Fail fast when service is down
+#    - Prevent cascading failures
+#    - Auto-recover after timeout
+
+# Best Practices:
+# 1. Always retry transient errors (5xx, timeouts)
+# 2. Never retry client errors (4xx) unless specific case
+# 3. Use exponential backoff for sustained failures
+# 4. Add jitter for high-concurrency scenarios
+# 5. Set reasonable max_attempts (3-5 usually)
+# 6. Use idempotency keys for non-idempotent operations
+# 7. Combine timeout with retry for resilience
+# 8. Log retry attempts for debugging
+# 9. Consider circuit breaker for external services
+# 10. Test retry logic with simulated failures
+
+# When to Use Which Pattern:
+# --------------------------
+# Basic Retry:           Simple transient failures
+# Exponential Backoff:   Rate limiting, overload
+# Jitter:                High concurrency, DDoS prevention
+# Polling:               Async operations, background jobs
+# Circuit Breaker:       External service dependencies
+# Idempotency Key:       Payment processing, critical operations
