@@ -144,6 +144,7 @@ export class HtmlTemplateRenderer {
     const statusLabel = ReportingUtils.escapeHtml(suite.status.toUpperCase());
 
     const heroSection = this.renderSuiteHeroSection(suite, context);
+    const waterfallSection = this.renderWaterfallSection(suite);
     const stepsSection = this.renderStepsSection(suite);
 
     return `<!DOCTYPE html>
@@ -157,6 +158,7 @@ export class HtmlTemplateRenderer {
   <body>
     <div class="layout">
       ${heroSection}
+      ${waterfallSection}
       ${stepsSection}
     </div>
     ${this.renderScripts()}
@@ -480,6 +482,100 @@ ${suitesMarkup}
   }
 
   /**
+   * Render waterfall chart section showing request timing visualization
+   */
+  private renderWaterfallSection(suite: SuiteExecutionResult): string {
+    // Filter steps that have request timing data
+    const stepsWithRequests = suite.steps_results.filter(
+      (step) => step.request_details && step.response_details?.timing
+    );
+
+    if (stepsWithRequests.length === 0) {
+      return "";
+    }
+
+    // Calculate the earliest start time and latest end time
+    let earliestStart = Infinity;
+    let latestEnd = 0;
+
+    stepsWithRequests.forEach((step) => {
+      const timing = step.response_details?.timing;
+      if (timing?.started_at && timing?.completed_at) {
+        const start = new Date(timing.started_at).getTime();
+        const end = new Date(timing.completed_at).getTime();
+        earliestStart = Math.min(earliestStart, start);
+        latestEnd = Math.max(latestEnd, end);
+      }
+    });
+
+    const totalDuration = latestEnd - earliestStart;
+
+    // Generate waterfall bars
+    const waterfallBars = stepsWithRequests
+      .map((step, index) => {
+        const timing = step.response_details?.timing;
+        if (!timing?.started_at || !timing?.completed_at) {
+          return "";
+        }
+
+        const start = new Date(timing.started_at).getTime();
+        const end = new Date(timing.completed_at).getTime();
+        const duration = end - start;
+        const offset = start - earliestStart;
+
+        const offsetPercent = totalDuration > 0 ? (offset / totalDuration) * 100 : 0;
+        const durationPercent = totalDuration > 0 ? (duration / totalDuration) * 100 : 0;
+
+        const stepName = ReportingUtils.escapeHtml(step.step_name);
+        const method = step.request_details?.method || "";
+        const statusCode = step.response_details?.status_code || 0;
+        const statusClass = statusCode >= 200 && statusCode < 300 ? "success" : "error";
+
+        const ttfb = timing.time_to_first_byte_ms || 0;
+        const download = timing.content_download_ms || 0;
+        const ttfbPercent = duration > 0 ? (ttfb / duration) * 100 : 0;
+        const downloadPercent = duration > 0 ? (download / duration) * 100 : 0;
+
+        return `<div class="waterfall-row">
+          <div class="waterfall-label">
+            <span class="waterfall-step-name">${stepName}</span>
+            <span class="waterfall-method waterfall-method-${method.toLowerCase()}">${method}</span>
+            <span class="waterfall-status waterfall-status-${statusClass}">${statusCode}</span>
+          </div>
+          <div class="waterfall-chart">
+            <div class="waterfall-bar" style="left: ${offsetPercent}%; width: ${durationPercent}%;">
+              <div class="waterfall-segment waterfall-ttfb" style="width: ${ttfbPercent}%;" title="TTFB: ${ttfb}ms"></div>
+              <div class="waterfall-segment waterfall-download" style="width: ${downloadPercent}%;" title="Download: ${download}ms"></div>
+              <span class="waterfall-duration">${duration}ms</span>
+            </div>
+          </div>
+        </div>`;
+      })
+      .join("\n");
+
+    return `<section class="waterfall-section">
+      <div class="waterfall-card">
+        <div class="waterfall-header">
+          <h2>📊 Request Waterfall</h2>
+          <div class="waterfall-legend">
+            <span class="legend-item">
+              <span class="legend-color legend-ttfb"></span>
+              Time to First Byte
+            </span>
+            <span class="legend-item">
+              <span class="legend-color legend-download"></span>
+              Content Download
+            </span>
+          </div>
+        </div>
+        <div class="waterfall-container">
+          ${waterfallBars}
+        </div>
+      </div>
+    </section>`;
+  }
+
+  /**
    * Render steps section for suite detail page
    */
   private renderStepsSection(suite: SuiteExecutionResult): string {
@@ -623,6 +719,12 @@ ${stepsMarkup}
       contents.push(this.renderExportsTab(step));
     }
 
+    // Decision Tracking tab (Scenarios)
+    if (step.scenarios_meta && step.scenarios_meta.has_scenarios) {
+      tabs.push('<button class="tab-btn" data-tab="decisions">🔀 Decisions</button>');
+      contents.push(this.renderDecisionsTab(step.scenarios_meta));
+    }
+
     if (tabs.length === 0) {
       return `<div class="step-details">
         <p class="detail-empty">No details available</p>
@@ -719,11 +821,14 @@ ${stepsMarkup}
    * Render response tab content
    */
   private renderResponseTab(response: any): string {
-    const status = ReportingUtils.escapeHtml(String(response.status || ""));
+    const status = ReportingUtils.escapeHtml(String(response.status_code || response.status || ""));
     const statusClass =
-      response.status >= 200 && response.status < 300
+      (response.status_code || response.status) >= 200 && (response.status_code || response.status) < 300
         ? "response-status--success"
         : "response-status--error";
+
+    // Render timing information if available
+    const timingHtml = response.timing ? this.renderTimingBreakdown(response.timing) : "";
 
     const responseHeadersJson = ReportingUtils.formatJson(response.headers);
     const headersHtml =
@@ -769,8 +874,48 @@ ${stepsMarkup}
       <div class="response-summary">
         <span class="response-status ${statusClass}">Status: ${status}</span>
       </div>
+      ${timingHtml}
       ${headersHtml}
       ${bodyHtml}
+    </div>`;
+  }
+
+  /**
+   * Render timing breakdown visualization
+   */
+  private renderTimingBreakdown(timing: any): string {
+    if (!timing || !timing.total_ms) {
+      return "";
+    }
+
+    const total = timing.total_ms || 0;
+    const ttfb = timing.time_to_first_byte_ms || 0;
+    const download = timing.content_download_ms || 0;
+
+    // Calculate percentages for visual bar
+    const ttfbPercent = total > 0 ? (ttfb / total) * 100 : 0;
+    const downloadPercent = total > 0 ? (download / total) * 100 : 0;
+
+    return `<div class="timing-breakdown">
+      <h4 class="timing-title">⏱️ Request Timing</h4>
+      <div class="timing-bar">
+        <div class="timing-segment timing-ttfb" style="width: ${ttfbPercent}%" title="Time to First Byte: ${ttfb}ms"></div>
+        <div class="timing-segment timing-download" style="width: ${downloadPercent}%" title="Content Download: ${download}ms"></div>
+      </div>
+      <div class="timing-details">
+        <div class="timing-item">
+          <span class="timing-label">Time to First Byte</span>
+          <span class="timing-value">${ttfb}ms</span>
+        </div>
+        <div class="timing-item">
+          <span class="timing-label">Content Download</span>
+          <span class="timing-value">${download}ms</span>
+        </div>
+        <div class="timing-item timing-total">
+          <span class="timing-label">Total</span>
+          <span class="timing-value">${total}ms</span>
+        </div>
+      </div>
     </div>`;
   }
 
@@ -1027,6 +1172,85 @@ ${stepsMarkup}
           </button>
         </div>
         ${contentHtml}
+      </div>
+    </div>`;
+  }
+
+  /**
+   * Render decision tracking tab showing scenario evaluations
+   */
+  private renderDecisionsTab(scenarioMeta: any): string {
+    if (!scenarioMeta.evaluations || scenarioMeta.evaluations.length === 0) {
+      return `<div class="tab-content" data-tab="decisions">
+        <div class="detail-empty">No scenario evaluations recorded</div>
+      </div>`;
+    }
+
+    const evaluationsHtml = scenarioMeta.evaluations
+      .map((evaluation: any, index: number) => {
+        const conditionLabel = ReportingUtils.escapeHtml(evaluation.condition || "");
+        const branchLabel = evaluation.branch || "none";
+        const matched = evaluation.matched;
+        const executed = evaluation.executed;
+
+        const matchIcon = matched ? "✅" : "❌";
+        const branchIcon = branchLabel === "then" ? "➡️" : branchLabel === "else" ? "⬅️" : "⏸️";
+        const statusClass = matched ? "decision-matched" : "decision-not-matched";
+        const executionClass = executed ? "decision-executed" : "decision-skipped";
+
+        let actionsHtml = "";
+        if (evaluation.assertions_added || evaluation.captures_added) {
+          const actions = [];
+          if (evaluation.assertions_added) {
+            actions.push(`${evaluation.assertions_added} assertion(s)`);
+          }
+          if (evaluation.captures_added) {
+            actions.push(`${evaluation.captures_added} capture(s)`);
+          }
+          actionsHtml = `<div class="decision-actions">
+            <span class="decision-actions-label">Actions performed:</span>
+            <span class="decision-actions-value">${actions.join(", ")}</span>
+          </div>`;
+        }
+
+        return `<div class="decision-item ${statusClass} ${executionClass}">
+          <div class="decision-header">
+            <span class="decision-index">Scenario #${evaluation.index + 1}</span>
+            <div class="decision-status">
+              <span class="decision-match">${matchIcon} ${matched ? "Matched" : "Not Matched"}</span>
+              <span class="decision-branch">${branchIcon} ${branchLabel}</span>
+            </div>
+          </div>
+          <div class="decision-condition">
+            <span class="decision-condition-label">Condition:</span>
+            <code class="decision-condition-value">${conditionLabel}</code>
+          </div>
+          ${actionsHtml}
+          ${!executed ? '<div class="decision-note">⚠️ Not executed</div>' : ""}
+        </div>`;
+      })
+      .join("\n");
+
+    const summaryHtml = `<div class="decisions-summary">
+      <div class="summary-item">
+        <span class="summary-label">Total Scenarios:</span>
+        <span class="summary-value">${scenarioMeta.evaluations.length}</span>
+      </div>
+      <div class="summary-item">
+        <span class="summary-label">Executed:</span>
+        <span class="summary-value">${scenarioMeta.executed_count}</span>
+      </div>
+    </div>`;
+
+    return `<div class="tab-content" data-tab="decisions">
+      <div class="code-block">
+        <div class="code-header">
+          <span class="code-label">Scenario Decision Flow</span>
+        </div>
+        ${summaryHtml}
+        <div class="decisions-list">
+          ${evaluationsHtml}
+        </div>
       </div>
     </div>`;
   }
@@ -1689,12 +1913,326 @@ ${stepsMarkup}
         text-transform: uppercase;
         letter-spacing: 0.05em;
       }
+
+      /* Waterfall Chart Styles */
+      .waterfall-section {
+        margin-top: 52px;
+      }
+      .waterfall-card {
+        background: var(--surface);
+        border-radius: 6px;
+        border: 1px solid var(--border);
+        padding: 24px;
+        box-shadow: 0 12px 24px rgba(8, 15, 26, 0.2);
+      }
+      .waterfall-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+      }
+      .waterfall-header h2 {
+        margin: 0;
+        font-size: 1.4rem;
+      }
+      .waterfall-legend {
+        display: flex;
+        gap: 20px;
+        font-size: 0.85rem;
+      }
+      .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--muted);
+      }
+      .legend-color {
+        width: 20px;
+        height: 12px;
+        border-radius: 3px;
+      }
+      .legend-ttfb {
+        background: linear-gradient(90deg, #3b82f6, #60a5fa);
+      }
+      .legend-download {
+        background: linear-gradient(90deg, #8b5cf6, #a78bfa);
+      }
+      .waterfall-container {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .waterfall-row {
+        display: grid;
+        grid-template-columns: 300px 1fr;
+        gap: 16px;
+        align-items: center;
+        min-height: 40px;
+      }
+      .waterfall-label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.9rem;
+      }
+      .waterfall-step-name {
+        color: var(--text);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        flex: 1;
+      }
+      .waterfall-method {
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+      }
+      .waterfall-method-get { background: rgba(34, 197, 94, 0.2); color: #4ade80; }
+      .waterfall-method-post { background: rgba(59, 130, 246, 0.2); color: #60a5fa; }
+      .waterfall-method-put { background: rgba(251, 146, 60, 0.2); color: #fb923c; }
+      .waterfall-method-delete { background: rgba(239, 68, 68, 0.2); color: #f87171; }
+      .waterfall-method-patch { background: rgba(168, 85, 247, 0.2); color: #a855f7; }
+      .waterfall-status {
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 600;
+      }
+      .waterfall-status-success { background: rgba(45, 212, 191, 0.2); color: var(--success); }
+      .waterfall-status-error { background: rgba(248, 113, 113, 0.2); color: var(--danger); }
+      .waterfall-chart {
+        position: relative;
+        height: 32px;
+        background: var(--surface-alt);
+        border-radius: 4px;
+        border: 1px solid var(--border);
+      }
+      .waterfall-bar {
+        position: absolute;
+        height: 100%;
+        display: flex;
+        border-radius: 3px;
+        overflow: hidden;
+        cursor: pointer;
+        transition: transform 0.2s ease;
+      }
+      .waterfall-bar:hover {
+        transform: scaleY(1.1);
+        z-index: 10;
+      }
+      .waterfall-segment {
+        height: 100%;
+      }
+      .waterfall-ttfb {
+        background: linear-gradient(90deg, #3b82f6, #60a5fa);
+      }
+      .waterfall-download {
+        background: linear-gradient(90deg, #8b5cf6, #a78bfa);
+      }
+      .waterfall-duration {
+        position: absolute;
+        right: 8px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--text);
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+        pointer-events: none;
+      }
+
+      /* Timing Breakdown Styles */
+      .timing-breakdown {
+        margin: 16px 0;
+        padding: 16px;
+        background: var(--surface-alt);
+        border-radius: 6px;
+        border: 1px solid var(--border);
+      }
+      .timing-title {
+        margin: 0 0 12px 0;
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: var(--text);
+      }
+      .timing-bar {
+        display: flex;
+        height: 24px;
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 4px;
+        overflow: hidden;
+        margin-bottom: 12px;
+      }
+      .timing-segment {
+        height: 100%;
+        transition: opacity 0.2s ease;
+      }
+      .timing-segment:hover {
+        opacity: 0.8;
+      }
+      .timing-details {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .timing-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.85rem;
+      }
+      .timing-item.timing-total {
+        padding-top: 8px;
+        border-top: 1px solid var(--border);
+        font-weight: 600;
+      }
+      .timing-label {
+        color: var(--muted);
+      }
+      .timing-value {
+        color: var(--text);
+        font-weight: 600;
+        font-family: 'Consolas', 'Monaco', monospace;
+      }
+
+      /* Decision Tracking Styles */
+      .decisions-summary {
+        display: flex;
+        gap: 24px;
+        padding: 16px;
+        margin-bottom: 16px;
+        background: var(--surface-alt);
+        border-radius: 6px;
+        border: 1px solid var(--border);
+      }
+      .summary-item {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .summary-label {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--muted);
+      }
+      .summary-value {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: var(--text);
+      }
+      .decisions-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .decision-item {
+        padding: 16px;
+        border-radius: 6px;
+        border: 1px solid var(--border);
+        background: var(--surface-alt);
+        transition: all 0.2s ease;
+      }
+      .decision-item:hover {
+        border-color: var(--border-strong);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+      }
+      .decision-matched {
+        border-left: 3px solid var(--success);
+      }
+      .decision-not-matched {
+        border-left: 3px solid var(--muted);
+      }
+      .decision-skipped {
+        opacity: 0.6;
+      }
+      .decision-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+      }
+      .decision-index {
+        font-weight: 600;
+        color: var(--text);
+      }
+      .decision-status {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+      }
+      .decision-match,
+      .decision-branch {
+        padding: 4px 10px;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+      .decision-condition {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        margin-bottom: 8px;
+      }
+      .decision-condition-label {
+        font-size: 0.8rem;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+      .decision-condition-value {
+        padding: 10px;
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 4px;
+        font-family: 'Consolas', 'Monaco', monospace;
+        font-size: 0.85rem;
+        color: #fbbf24;
+        border: 1px solid rgba(251, 191, 36, 0.2);
+      }
+      .decision-actions {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        margin-top: 8px;
+        padding-top: 8px;
+        border-top: 1px solid var(--border);
+        font-size: 0.85rem;
+      }
+      .decision-actions-label {
+        color: var(--muted);
+      }
+      .decision-actions-value {
+        color: var(--text);
+        font-weight: 500;
+      }
+      .decision-note {
+        margin-top: 8px;
+        padding: 8px;
+        background: rgba(251, 191, 36, 0.1);
+        border-left: 3px solid var(--warning);
+        border-radius: 4px;
+        font-size: 0.85rem;
+        color: var(--warning);
+      }
+
       @media (max-width: 768px) {
         .layout { padding: 32px 20px; }
         .hero { padding: 20px; }
         .hero-title { font-size: 1.75rem; }
         .suite-grid { grid-template-columns: 1fr; }
         .metrics-grid { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+        .waterfall-row {
+          grid-template-columns: 1fr;
+          gap: 8px;
+        }
+        .waterfall-legend {
+          flex-direction: column;
+          gap: 8px;
+        }
       }
     </style>`;
   }
