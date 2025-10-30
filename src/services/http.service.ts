@@ -13,6 +13,7 @@ import "reflect-metadata";
 import axios, { AxiosResponse, AxiosError } from "axios";
 import { RequestDetails } from "../types/engine.types";
 import { StepExecutionResult } from "../types/engine.types";
+import { AxiosMethod } from "../types/common.types";
 import { TYPES } from "../di/identifiers";
 import { ILogger } from "../interfaces/services/ILogger";
 import { ICertificateService } from "../interfaces/services/ICertificateService";
@@ -170,7 +171,7 @@ export class HttpService implements IHttpService {
 
       // Configures the request
       const axiosConfig = {
-        method: request.method.toLowerCase() as any,
+        method: request.method.toLowerCase() as AxiosMethod,
         url: fullUrl, // Use the full URL that was already built
         headers: this.sanitizeHeaders(request.headers || {}),
         data: request.body,
@@ -344,7 +345,7 @@ export class HttpService implements IHttpService {
   /**
    * Formats HTTP request errors for readable messages.
    */
-  private formatError(error: any): string {
+  private formatError(error: unknown): string {
     if (axios.isAxiosError(error)) {
       const axiosError = error as AxiosError;
 
@@ -369,7 +370,12 @@ export class HttpService implements IHttpService {
       }
     }
 
-    return error.message || "Unknown error";
+    // Fallback for non-Axios errors
+    if (error instanceof Error) {
+      return error.message;
+    }
+
+    return "Unknown error";
   }
 
   /**
@@ -425,7 +431,7 @@ export class HttpService implements IHttpService {
   /**
    * Normalizes axios headers to Record<string, string>.
    */
-  private normalizeHeaders(headers: any): Record<string, string> {
+  private normalizeHeaders(headers: unknown): Record<string, string> {
     const normalized: Record<string, string> = {};
 
     if (headers && typeof headers === "object") {
