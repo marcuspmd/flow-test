@@ -13,6 +13,9 @@ import chalk from "chalk";
 import { injectable } from "inversify";
 import { LogStreamingService, LogLevel } from "./log-streaming.service";
 import { ILogger } from "../interfaces/services/ILogger";
+import { JSONValue } from "../types/common.types";
+import { TestSuite, RequestDetails, AssertionResult } from "../types/engine.types";
+import { SuiteExecutionResult } from "../types/config.types";
 
 /**
  * Context information for structured logging operations.
@@ -48,7 +51,7 @@ export interface LogContext {
   duration?: number;
 
   /** Additional metadata for enhanced debugging and analysis */
-  metadata?: Record<string, any>;
+  metadata?: Record<string, JSONValue>;
 
   /** File path for context and source tracking */
   filePath?: string;
@@ -287,7 +290,7 @@ export class ConsoleLoggerAdapter implements Logger {
   /**
    * Display test metadata in a formatted way
    */
-  displayTestMetadata(suite: any): void {
+  displayTestMetadata(suite: TestSuite): void {
     if (this.verbosity === "silent") {
       return;
     }
@@ -313,8 +316,8 @@ export class ConsoleLoggerAdapter implements Logger {
       console.log(chalk.magenta(`   Tags: ${suite.metadata.tags.join(", ")}`));
     }
 
-    if (suite.metadata?.description) {
-      console.log(chalk.white(`   Description: ${suite.metadata.description}`));
+    if (suite.description) {
+      console.log(chalk.white(`   Description: ${suite.description}`));
     }
   }
 
@@ -324,10 +327,10 @@ export class ConsoleLoggerAdapter implements Logger {
   displayErrorContext(
     error: Error,
     context: {
-      request?: any;
-      response?: any;
+      request?: RequestDetails;
+      response?: { status_code?: number; body?: JSONValue };
       stepName?: string;
-      assertion?: any;
+      assertion?: AssertionResult;
     }
   ): void {
     if (this.verbosity === "silent") {
@@ -369,7 +372,7 @@ export class ConsoleLoggerAdapter implements Logger {
   /**
    * Display test results in Jest-like format
    */
-  displayJestStyle(result: any): void {
+  displayJestStyle(result: SuiteExecutionResult): void {
     if (this.verbosity === "silent") {
       return;
     }
@@ -427,7 +430,7 @@ export class ConsoleLoggerAdapter implements Logger {
   /**
    * Format value for display
    */
-  private formatValue(value: any): string {
+  private formatValue(value: unknown): string {
     if (value === null || value === undefined) {
       return chalk.gray("null");
     }
@@ -455,7 +458,7 @@ export class ConsoleLoggerAdapter implements Logger {
     return chalk.gray(String(value));
   }
 
-  private maskSensitiveValue(key: string, value: any): any {
+  private maskSensitiveValue(key: string, value: unknown): unknown {
     if (!key) {
       return value;
     }
@@ -491,10 +494,10 @@ export class ConsoleLoggerAdapter implements Logger {
       return Object.keys(value).reduce((masked, currentKey) => {
         masked[currentKey] = this.maskSensitiveValue(
           currentKey,
-          value[currentKey]
+          (value as Record<string, unknown>)[currentKey]
         );
         return masked;
-      }, {} as Record<string, any>);
+      }, {} as Record<string, unknown>);
     }
 
     return "***";
@@ -521,7 +524,7 @@ export class ConsoleLoggerAdapter implements Logger {
   /**
    * Get priority color
    */
-  private getPriorityColor(priority: string): any {
+  private getPriorityColor(priority: string): typeof chalk.red {
     switch (priority.toLowerCase()) {
       case "critical":
         return chalk.red;
@@ -541,9 +544,9 @@ export class ConsoleLoggerAdapter implements Logger {
  * Pino adapter for Logger interface (structured JSON logging)
  */
 export class PinoLoggerAdapter implements Logger {
-  private pino: any;
+  private pino: unknown;
 
-  constructor(options: any = {}) {
+  constructor(options: Record<string, unknown> = {}) {
     try {
       const pinoModule = require("pino");
       this.pino = pinoModule({
@@ -561,25 +564,25 @@ export class PinoLoggerAdapter implements Logger {
   }
 
   debug(message: string, context?: LogContext): void {
-    this.pino.debug(this.buildLogObject(context), message);
+    (this.pino as any).debug(this.buildLogObject(context), message);
   }
 
   info(message: string, context?: LogContext): void {
-    this.pino.info(this.buildLogObject(context), message);
+    (this.pino as any).info(this.buildLogObject(context), message);
   }
 
   warn(message: string, context?: LogContext): void {
-    this.pino.warn(this.buildLogObject(context), message);
+    (this.pino as any).warn(this.buildLogObject(context), message);
   }
 
   error(message: string, context?: LogContext): void {
-    this.pino.error(this.buildLogObject(context), message);
+    (this.pino as any).error(this.buildLogObject(context), message);
   }
 
-  private buildLogObject(context?: LogContext): any {
+  private buildLogObject(context?: LogContext): Record<string, JSONValue> {
     if (!context) return {};
 
-    const logObj: any = {};
+    const logObj: Record<string, JSONValue> = {};
 
     if (context.nodeId) logObj.nodeId = context.nodeId;
     if (context.stepName) logObj.stepName = context.stepName;
@@ -589,7 +592,7 @@ export class PinoLoggerAdapter implements Logger {
     if (context.error) {
       logObj.error =
         context.error instanceof Error
-          ? { message: context.error.message, stack: context.error.stack }
+          ? { message: context.error.message, stack: context.error.stack || "" }
           : context.error;
     }
 
@@ -681,7 +684,7 @@ export class JestStyleLoggerAdapter implements Logger {
   }
 
   private handleSuiteStart(message: string, context: LogContext): void {
-    this.currentSuite = context.metadata?.suite_name || "Unknown Suite";
+    this.currentSuite = String(context.metadata?.suite_name || "Unknown Suite");
     this.suiteStartTime = Date.now();
     this.currentSteps = []; // Reset steps for new suite
   }
@@ -723,7 +726,7 @@ export class JestStyleLoggerAdapter implements Logger {
     this.currentSteps.push(stepLine);
   }
 
-  private handleExecutionSummary(metadata: any): void {
+  private handleExecutionSummary(metadata: Record<string, JSONValue>): void {
     const totalTime = ((Date.now() - this.totalStartTime) / 1000).toFixed(3);
 
     console.log("");
@@ -742,12 +745,13 @@ export class JestStyleLoggerAdapter implements Logger {
     }
 
     // Use the actual executed tests count instead of total discovered
-    const actualExecutedTests =
-      metadata.successful_tests + metadata.failed_tests;
-    if (metadata.failed_tests > 0) {
+    const successfulTests = Number(metadata.successful_tests || 0);
+    const failedTests = Number(metadata.failed_tests || 0);
+    const actualExecutedTests = successfulTests + failedTests;
+    if (failedTests > 0) {
       console.log(
         chalk.red(
-          `Tests: ${metadata.failed_tests} failed, ${metadata.successful_tests} passed, ${actualExecutedTests} total`
+          `Tests: ${failedTests} failed, ${successfulTests} passed, ${actualExecutedTests} total`
         )
       );
     } else {
@@ -776,7 +780,7 @@ export class JestStyleLoggerAdapter implements Logger {
     }
   }
 
-  displayTestMetadata(suite: any): void {
+  displayTestMetadata(suite: TestSuite): void {
     if (this.verbosity === "verbose") {
       console.log(chalk.yellow(`\n📋 ${suite.suite_name || "Test Suite"}`));
       if (suite.metadata?.priority) {
@@ -939,47 +943,47 @@ export class LoggerService implements ILogger {
     }
   }
 
-  displayTestMetadata(suite: any): void {
-    if (typeof (this.logger as any).displayTestMetadata === "function") {
-      (this.logger as any).displayTestMetadata(suite);
+  displayTestMetadata(suite: TestSuite): void {
+    if (typeof (this.logger as LoggerService).displayTestMetadata === "function") {
+      (this.logger as LoggerService).displayTestMetadata(suite);
     }
   }
 
   displayErrorContext(
     error: Error,
     context: {
-      request?: any;
-      response?: any;
+      request?: RequestDetails;
+      response?: { status_code?: number; body?: JSONValue };
       stepName?: string;
-      assertion?: any;
+      assertion?: AssertionResult;
     }
   ): void {
-    if (typeof (this.logger as any).displayErrorContext === "function") {
-      (this.logger as any).displayErrorContext(error, context);
+    if (typeof (this.logger as LoggerService).displayErrorContext === "function") {
+      (this.logger as LoggerService).displayErrorContext(error, context);
     }
   }
 
-  displayJestStyle(result: any): void {
-    if (typeof (this.logger as any).displayJestStyle === "function") {
-      (this.logger as any).displayJestStyle(result);
+  displayJestStyle(result: SuiteExecutionResult): void {
+    if (typeof (this.logger as LoggerService).displayJestStyle === "function") {
+      (this.logger as LoggerService).displayJestStyle(result);
     }
   }
 
   displayScenarioSummary(
     captures: Array<{
       step: string;
-      variables: Record<string, any>;
+      variables: Record<string, JSONValue>;
       timestamp: number;
     }>
   ): void {
-    if (typeof (this.logger as any).displayScenarioSummary === "function") {
-      (this.logger as any).displayScenarioSummary(captures);
+    if (typeof (this.logger as LoggerService).displayScenarioSummary === "function") {
+      (this.logger as LoggerService).displayScenarioSummary(captures);
     }
   }
 
   displayRawHttpResponse(raw: string, context?: LogContext): void {
-    if (typeof (this.logger as any).displayRawHttpResponse === "function") {
-      (this.logger as any).displayRawHttpResponse(raw, context);
+    if (typeof (this.logger as LoggerService).displayRawHttpResponse === "function") {
+      (this.logger as LoggerService).displayRawHttpResponse(raw, context);
     }
   }
 }

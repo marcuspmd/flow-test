@@ -165,7 +165,7 @@ export class ReportingService {
         this.logger.error(`Failed to generate ${format} report`, {
           metadata: {
             format,
-            error: generationResult.error,
+            error: generationResult.error || "Unknown error",
           },
         });
       }
