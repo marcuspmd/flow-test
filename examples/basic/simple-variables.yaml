@@ -1,0 +1,141 @@
+# Variable Interpolation and Capture Example
+# Demonstrates the different ways to work with variables
+# Perfect for: Understanding variable scopes, dynamic data, captures
+
+suite_name: "Variable Usage Examples"
+node_id: "simple-variables-example"
+description: "Demonstrates variables, captures, and dynamic data generation"
+
+base_url: "https://httpbin.org"
+
+metadata:
+  priority: "medium"
+  tags: ["basic", "variables", "example"]
+
+# 1. Static variables defined in the suite
+variables:
+  api_version: "v1"
+  user_role: "admin"
+  max_retries: 3
+
+# 2. Export variables for use in other test suites
+exports:
+  - generated_id
+  - captured_response
+
+steps:
+  # Step 1: Using environment variables
+  - name: "Environment variable example"
+    request:
+      method: "GET"
+      url: "/get"
+      headers:
+        # Access environment variables with {{$env.VARIABLE_NAME}}
+        # Falls back to default if not set: {{$env.API_KEY || 'default-key'}}
+        X-API-Version: "{{api_version}}"
+        X-User-Role: "{{user_role}}"
+
+    assert:
+      status_code: 200
+
+    capture:
+      first_response: "body"
+
+  # Step 2: Using Faker.js for dynamic data
+  - name: "Dynamic data generation with Faker"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        # Faker generates realistic random data
+        user_id: "{{$faker.string.uuid}}"
+        name: "{{$faker.person.fullName}}"
+        email: "{{$faker.internet.email}}"
+        company: "{{$faker.company.name}}"
+        phone: "{{$faker.phone.number}}"
+        
+        # Nested data
+        address:
+          street: "{{$faker.location.streetAddress}}"
+          city: "{{$faker.location.city}}"
+          country: "{{$faker.location.country}}"
+        
+        # Numbers
+        age: "{{$faker.number.int}}"
+        price: "{{$faker.number.float}}"
+
+    assert:
+      status_code: 200
+
+    capture:
+      generated_id: "body.json.user_id"
+      generated_email: "body.json.email"
+
+  # Step 3: Using captured variables in subsequent steps
+  - name: "Using captured variables"
+    request:
+      method: "GET"
+      url: "/get?user_id={{generated_id}}&email={{generated_email}}"
+      headers:
+        Accept: "application/json"
+
+    assert:
+      status_code: 200
+      body:
+        args:
+          user_id:
+            equals: "{{generated_id}}"
+          email:
+            equals: "{{generated_email}}"
+
+    capture:
+      captured_response: "body.args"
+
+  # Step 4: Using JavaScript expressions for complex logic
+  - name: "JavaScript expressions"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        # Use {{$js.return ...}} for JavaScript expressions
+        timestamp: "{{$js.return new Date().toISOString()}}"
+        random_number: "{{$js.return Math.floor(Math.random() * 100)}}"
+        computed_value: "{{$js.return 10 * 5}}"
+        
+        # You can access variables in JS
+        retry_count: "{{max_retries}}"
+
+    assert:
+      status_code: 200
+
+# Variable Types Summary:
+# ----------------------
+# 1. Static variables: Defined in variables section
+#    Usage: {{variable_name}}
+#
+# 2. Environment variables: From .env or system
+#    Usage: {{$env.VAR_NAME}}
+#
+# 3. Faker.js dynamic data: Generate realistic test data
+#    Usage: {{$faker.category.method}}
+#    Examples: $faker.person.fullName, $faker.internet.email
+#
+# 4. Captured variables: Extract from previous responses
+#    Usage: Define in capture, use as {{variable_name}}
+#
+# 5. JavaScript expressions: Complex computations
+#    Usage: {{$js.return expression}}
+#
+# 6. Exported variables: Share with other test suites
+#    Usage: {{suite_node_id.variable_name}}
+
+# Tips:
+# 1. Use Faker for test data to avoid conflicts
+# 2. Capture IDs and tokens for use in later steps
+# 3. Export variables that other tests need
+# 4. Use descriptive variable names
+# 5. Environment variables keep sensitive data out of code

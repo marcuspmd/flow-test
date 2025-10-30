@@ -1,0 +1,167 @@
+# Complete CRUD Operations Example
+# Demonstrates Create, Read, Update, Delete operations in a single flow
+# Perfect for: Testing RESTful APIs, resource management
+
+suite_name: "CRUD Operations Flow"
+node_id: "crud-operations-example"
+description: "Complete CRUD flow demonstrating resource lifecycle management"
+
+base_url: "https://httpbin.org"
+
+metadata:
+  priority: "high"
+  tags: ["intermediate", "crud", "rest"]
+
+variables:
+  # Use Faker for dynamic test data
+  resource_name: "{{$faker.commerce.productName}}"
+  resource_price: "{{$faker.number.float}}"
+  resource_category: "{{$faker.commerce.department}}"
+
+exports:
+  - resource_id
+
+steps:
+  # CREATE - POST request to create a new resource
+  - name: "Create new resource"
+    request:
+      method: "POST"
+      url: "/post"  # In real API: /api/products
+      headers:
+        Content-Type: "application/json"
+      body:
+        name: "{{resource_name}}"
+        price: "{{resource_price}}"
+        category: "{{resource_category}}"
+        active: true
+        stock: 100
+
+    assert:
+      status_code: 200  # Real API would return 201
+      body:
+        json:
+          name:
+            equals: "{{resource_name}}"
+          price:
+            type: "number"
+          active:
+            equals: true
+
+    # Capture the created resource ID
+    capture:
+      # In real API, this would be: body.id
+      resource_id: "{{$faker.number.int}}"
+      created_resource: "body.json"
+
+  # READ - GET request to retrieve the created resource
+  - name: "Read created resource"
+    request:
+      method: "GET"
+      url: "/get?id={{resource_id}}"  # Real API: /api/products/{{resource_id}}
+      headers:
+        Accept: "application/json"
+
+    assert:
+      status_code: 200
+      body:
+        args:
+          id:
+            equals: "{{resource_id}}"
+
+    capture:
+      fetched_resource: "body"
+
+  # UPDATE - PUT request to update the resource
+  - name: "Update resource (full update)"
+    request:
+      method: "PUT"
+      url: "/put"  # Real API: /api/products/{{resource_id}}
+      headers:
+        Content-Type: "application/json"
+      body:
+        id: "{{resource_id}}"
+        name: "{{resource_name}} - Updated"
+        price: 99.99
+        category: "{{resource_category}}"
+        active: true
+        stock: 75
+
+    assert:
+      status_code: 200
+      body:
+        json:
+          name:
+            contains: "Updated"
+          price:
+            equals: 99.99
+          stock:
+            equals: 75
+
+    capture:
+      updated_resource: "body.json"
+
+  # PATCH - Partial update of the resource
+  - name: "Partial update resource"
+    request:
+      method: "PATCH"
+      url: "/patch"  # Real API: /api/products/{{resource_id}}
+      headers:
+        Content-Type: "application/json"
+      body:
+        stock: 50
+        active: false
+
+    assert:
+      status_code: 200
+      body:
+        json:
+          stock:
+            equals: 50
+          active:
+            equals: false
+
+  # READ AGAIN - Verify the update persisted
+  - name: "Verify resource was updated"
+    request:
+      method: "GET"
+      url: "/get?id={{resource_id}}"  # Real API: /api/products/{{resource_id}}
+
+    assert:
+      status_code: 200
+
+  # DELETE - Remove the resource
+  - name: "Delete resource"
+    request:
+      method: "DELETE"
+      url: "/delete?id={{resource_id}}"  # Real API: /api/products/{{resource_id}}
+
+    assert:
+      status_code: 200  # Real API typically returns 204 (No Content)
+
+  # VERIFY DELETION - Try to fetch deleted resource
+  - name: "Verify resource was deleted"
+    request:
+      method: "GET"
+      url: "/status/404"  # Real API: /api/products/{{resource_id}}
+
+    assert:
+      status_code: 404
+
+    # Continue even if this fails (good for cleanup scenarios)
+    continue_on_failure: true
+
+# CRUD Pattern Summary:
+# --------------------
+# CREATE (POST)   - Create new resource, capture ID
+# READ (GET)      - Retrieve resource by ID
+# UPDATE (PUT)    - Replace entire resource
+# PATCH           - Partial update
+# DELETE          - Remove resource
+# VERIFY          - Confirm deletion
+
+# Best Practices:
+# 1. Always capture resource IDs after creation
+# 2. Verify changes with GET after UPDATE/PATCH
+# 3. Use dynamic data to avoid conflicts
+# 4. Clean up (DELETE) test resources
+# 5. Use proper HTTP status codes (201 for POST, 204 for DELETE)

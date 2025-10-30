@@ -1,0 +1,59 @@
+# Simple GET Request Example
+# This is the most basic Flow Test - a single GET request with assertions
+# Perfect for: Learning the basics, testing simple GET endpoints
+
+suite_name: "Simple GET Request"
+node_id: "simple-get-example"
+description: "Demonstrates a basic GET request with status and body assertions"
+
+# The base URL for all requests in this suite
+# You can use environment variables: {{$env.API_URL}}
+base_url: "https://httpbin.org"
+
+metadata:
+  priority: "high"
+  tags: ["basic", "get", "example"]
+
+steps:
+  - name: "Fetch user data"
+    # The request configuration
+    request:
+      method: "GET"
+      url: "/get"  # Relative to base_url
+      headers:
+        Accept: "application/json"
+        User-Agent: "FlowTestEngine/1.0"
+
+    # Assertions to validate the response
+    assert:
+      # Check the HTTP status code
+      status_code: 200
+      
+      # Check response headers
+      headers:
+        content-type:
+          contains: "application/json"
+      
+      # Validate response body structure
+      body:
+        # httpbin echoes request headers back
+        headers:
+          Accept:
+            equals: "application/json"
+          User-Agent:
+            contains: "FlowTestEngine"
+        
+        # Verify the URL that was called
+        url:
+          contains: "httpbin.org/get"
+
+    # Capture values from the response for use in later steps
+    capture:
+      response_url: "body.url"
+      user_agent_echo: "body.headers.\"User-Agent\""
+
+# Tips:
+# 1. Start with simple assertions and add more as needed
+# 2. Use captures to extract data for subsequent steps
+# 3. Headers are case-insensitive in assertions
+# 4. Body assertions use dot notation for nested objects

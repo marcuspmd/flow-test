@@ -1,0 +1,72 @@
+# Simple POST Request Example
+# Demonstrates sending JSON data and validating the response
+# Perfect for: Creating resources, submitting forms, testing POST endpoints
+
+suite_name: "Simple POST Request"
+node_id: "simple-post-example"
+description: "Demonstrates a POST request with JSON body and response validation"
+
+base_url: "https://httpbin.org"
+
+metadata:
+  priority: "high"
+  tags: ["basic", "post", "example"]
+
+# Define variables to use in requests
+variables:
+  user_name: "John Doe"
+  user_email: "john.doe@example.com"
+  user_age: 30
+
+steps:
+  - name: "Create user account"
+    request:
+      method: "POST"
+      url: "/post"
+      
+      # Headers for JSON content
+      headers:
+        Content-Type: "application/json"
+        Accept: "application/json"
+      
+      # Request body - use variables with {{variable_name}}
+      body:
+        name: "{{user_name}}"
+        email: "{{user_email}}"
+        age: "{{user_age}}"
+        active: true
+        metadata:
+          source: "api_test"
+          timestamp: "2024-01-01T00:00:00Z"
+
+    assert:
+      # Verify successful creation (200 for httpbin, usually 201 for real APIs)
+      status_code: 200
+      
+      # Validate the echoed data
+      body:
+        # httpbin echoes the JSON we sent
+        json:
+          name:
+            equals: "John Doe"
+          email:
+            equals: "john.doe@example.com"
+          age:
+            equals: 30  # Numbers don't need quotes in assertions
+          active:
+            equals: true  # Booleans work directly
+          metadata:
+            source:
+              equals: "api_test"
+
+    # Capture the response for later use
+    capture:
+      created_user_data: "body.json"
+      response_headers: "body.headers"
+
+# Tips:
+# 1. Variables make tests reusable and maintainable
+# 2. Use meaningful variable names
+# 3. JSON body is automatically serialized
+# 4. Assertions can check types, values, and structure
+# 5. Capture entire objects or specific fields
