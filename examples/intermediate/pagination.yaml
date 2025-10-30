@@ -1,0 +1,319 @@
+# Pagination Handling Example
+# Demonstrates working with paginated API responses
+# Perfect for: List endpoints, data iteration, batch processing
+
+suite_name: "Pagination Examples"
+node_id: "pagination-example"
+description: "Handling paginated API responses and iterating through pages"
+
+base_url: "https://httpbin.org"
+
+metadata:
+  priority: "medium"
+  tags: ["intermediate", "pagination", "iteration"]
+
+variables:
+  page_size: 10
+  max_pages: 3
+
+steps:
+  # Pattern 1: Single page with pagination metadata
+  - name: "Get first page of results"
+    request:
+      method: "GET"
+      url: "/get?page=1&limit={{page_size}}"
+
+    assert:
+      status_code: 200
+      # In real API, validate pagination structure
+      # body:
+      #   data:
+      #     type: "array"
+      #     length: { max: 10 }
+      #   pagination:
+      #     page: { equals: 1 }
+      #     limit: { equals: 10 }
+      #     total: { type: "number" }
+      #     pages: { type: "number" }
+
+    capture:
+      # In real API: capture pagination info
+      # total_items: "body.pagination.total"
+      # total_pages: "body.pagination.pages"
+      # current_page: "body.pagination.page"
+      first_page_data: "body.args"
+
+  # Pattern 2: Check if more pages exist
+  - name: "Get second page"
+    request:
+      method: "GET"
+      url: "/get?page=2&limit={{page_size}}"
+
+    assert:
+      status_code: 200
+
+    # Use scenarios to check if more pages exist
+    scenarios:
+      - name: "Has more pages"
+        # In real API: condition: "body.pagination.page < body.pagination.pages"
+        condition: "status == `200`"
+        then:
+          capture:
+            has_more_pages: true
+            next_page: 3
+        else:
+          capture:
+            has_more_pages: false
+
+  # Pattern 3: Iterate through pages
+  - name: "Iterate through multiple pages"
+    metadata:
+      description: "Fetch multiple pages in sequence"
+    
+    # In real implementation, use iteration
+    iterate:
+      range:
+        start: 1
+        end: "{{max_pages}}"
+      as: "page_number"
+    
+    request:
+      method: "GET"
+      url: "/get?page={{page_number}}&limit={{page_size}}"
+
+    assert:
+      status_code: 200
+
+  # Pattern 4: Offset-based pagination
+  - name: "Offset-based pagination (page 1)"
+    request:
+      method: "GET"
+      url: "/get?offset=0&limit={{page_size}}"
+
+    assert:
+      status_code: 200
+
+    capture:
+      offset_0_data: "body.args"
+
+  - name: "Offset-based pagination (page 2)"
+    request:
+      method: "GET"
+      # offset = page_size * (page_number - 1)
+      url: "/get?offset=10&limit={{page_size}}"
+
+    assert:
+      status_code: 200
+
+  # Pattern 5: Cursor-based pagination
+  - name: "Cursor-based pagination - first page"
+    request:
+      method: "GET"
+      url: "/get?limit={{page_size}}"
+
+    assert:
+      status_code: 200
+
+    # In real API: capture the next cursor
+    capture:
+      # next_cursor: "body.pagination.next_cursor"
+      cursor_page_1: "body.args"
+
+  - name: "Cursor-based pagination - next page"
+    # Only run if we have a next cursor
+    # condition: "{{next_cursor}} != null"
+    
+    request:
+      method: "GET"
+      # url: "/get?cursor={{next_cursor}}&limit={{page_size}}"
+      url: "/get?cursor=abc123&limit={{page_size}}"
+
+    assert:
+      status_code: 200
+
+  # Pattern 6: Link header pagination (RFC 5988)
+  - name: "Get page with Link headers"
+    request:
+      method: "GET"
+      url: "/response-headers?Link=<http://api.example.com/users?page=2>; rel=\"next\""
+
+    assert:
+      status_code: 200
+      headers:
+        Link:
+          contains: "rel=\"next\""
+
+    # In real API: parse Link header
+    capture:
+      link_header: "headers.Link"
+
+  # Pattern 7: Collect all items across pages
+  - name: "Aggregate data from multiple pages"
+    metadata:
+      description: "Collect all items by iterating pages"
+    
+    iterate:
+      range:
+        start: 1
+        end: 3
+      as: "page"
+    
+    request:
+      method: "GET"
+      url: "/get?page={{page}}&limit=5"
+
+    assert:
+      status_code: 200
+
+    # In real scenario, use JMESPath or custom logic to accumulate
+    # Note: Direct array concatenation is not supported
+    # Instead, capture each page separately or use external processing
+    # capture:
+    #   page_{{page}}_items: "body.data"
+
+  # Pattern 8: Search with pagination
+  - name: "Search with pagination"
+    request:
+      method: "GET"
+      url: "/get?q=search_term&page=1&limit={{page_size}}&sort=name&order=asc"
+
+    assert:
+      status_code: 200
+      body:
+        args:
+          q:
+            equals: "search_term"
+          page:
+            equals: "1"
+          limit:
+            equals: "{{page_size}}"
+
+  # Pattern 9: Validate pagination boundaries
+  - name: "Test first page"
+    request:
+      method: "GET"
+      url: "/get?page=1&limit={{page_size}}"
+
+    assert:
+      status_code: 200
+      # In real API:
+      # body:
+      #   pagination:
+      #     page: { equals: 1 }
+      #     has_previous: { equals: false }
+      #     has_next: { type: "boolean" }
+
+  - name: "Test beyond last page"
+    request:
+      method: "GET"
+      url: "/get?page=999999&limit={{page_size}}"
+
+    assert:
+      # Some APIs return 404, others return empty array
+      status_code: 200
+      # In real API, check for empty results:
+      # body:
+      #   data:
+      #     length: 0
+
+    continue_on_failure: true
+
+  # Pattern 10: Performance with pagination
+  - name: "Measure pagination performance"
+    request:
+      method: "GET"
+      url: "/get?page=1&limit=100"
+
+    assert:
+      status_code: 200
+      # Ensure pagination doesn't slow down too much
+      response_time_ms:
+        less_than: 2000
+
+# Pagination Patterns Summary:
+# ----------------------------
+# 1. Page Number + Limit:
+#    ?page=1&limit=10
+#    - Simple and intuitive
+#    - Can skip to any page
+#    - May have consistency issues with data changes
+#
+# 2. Offset + Limit:
+#    ?offset=0&limit=10
+#    - More flexible than page numbers
+#    - offset = limit * (page - 1)
+#    - Can have performance issues with large offsets
+#
+# 3. Cursor-based:
+#    ?cursor=abc123&limit=10
+#    - Best for real-time data
+#    - Consistent results even with data changes
+#    - Can't jump to arbitrary page
+#    - Most efficient for databases
+#
+# 4. Link Headers (RFC 5988):
+#    Link: <url>; rel="next", <url>; rel="prev"
+#    - RESTful standard
+#    - Self-documenting
+#    - Requires header parsing
+#
+# Common Pagination Response Structures:
+# --------------------------------------
+# Standard:
+# {
+#   "data": [...],
+#   "pagination": {
+#     "page": 1,
+#     "limit": 10,
+#     "total": 100,
+#     "pages": 10,
+#     "has_next": true,
+#     "has_previous": false
+#   }
+# }
+#
+# Cursor-based:
+# {
+#   "data": [...],
+#   "pagination": {
+#     "next_cursor": "abc123",
+#     "prev_cursor": null,
+#     "has_more": true
+#   }
+# }
+#
+# Offset-based:
+# {
+#   "data": [...],
+#   "pagination": {
+#     "offset": 0,
+#     "limit": 10,
+#     "total": 100
+#   }
+# }
+
+# Best Practices:
+# 1. Always specify a reasonable page size
+# 2. Validate pagination metadata in assertions
+# 3. Test edge cases (page 0, page > total, negative numbers)
+# 4. Test performance with large page numbers
+# 5. Handle empty results gracefully
+# 6. Use cursors for real-time data
+# 7. Cache page results when appropriate
+# 8. Implement retry logic for transient failures
+# 9. Document pagination format in tests
+# 10. Test both ascending and descending order
+
+# Iteration Patterns:
+# ------------------
+# All pages:
+#   iterate:
+#     range: { start: 1, end: "{{total_pages}}" }
+#
+# First N pages:
+#   iterate:
+#     range: { start: 1, end: 5 }
+#
+# Until empty:
+#   While loop pattern (use scenarios):
+#     condition: "body.data | length(@) > `0`"

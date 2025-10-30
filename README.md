@@ -7,6 +7,26 @@ A TypeScript-based API testing engine for writing rich, declarative flows in YAM
 
 Flow Test Engine is a language-agnostic runner for API suites written in YAML. You can bolt it onto any repository—regardless of the tech stack—to manage HTTP flows, capture variables, and publish reports.
 
+## 📚 Quick Links
+
+- **[5-Minute Quick Start](./QUICKSTART.md)** - Get running fast
+- **[Cheat Sheet](./CHEATSHEET.md)** - Quick syntax reference
+- **[Examples](./examples/)** - Ready-to-use templates
+- **[Development Workflow](./guides/DEVELOPMENT-WORKFLOW.md)** - Best practices
+- **[Full Documentation](./guides/)** - Complete guides
+
+## ✨ Features at a Glance
+
+- ✅ **Simple YAML syntax** - Write tests in plain YAML, no code needed
+- ✅ **Dynamic data generation** - Built-in Faker.js for realistic test data
+- ✅ **Variable interpolation** - Capture and reuse data across steps
+- ✅ **Comprehensive assertions** - Validate status, headers, body with rich operators
+- ✅ **Conditional logic** - Scenarios, branching, and dynamic flows
+- ✅ **Retry strategies** - Configurable retries for resilient testing
+- ✅ **CI/CD ready** - Works with GitHub Actions, GitLab CI, Jenkins, etc.
+- ✅ **HTML reports** - Beautiful, detailed test reports
+- ✅ **Language agnostic** - Works with any tech stack (Node, PHP, Python, Java, etc.)
+
 ## 1. Requirements
 
 - Node.js 16 or newer (runtime used by Flow Test Engine)

@@ -38,7 +38,9 @@
   "files": [
     "dist/**/*",
     "report-dashboard/**/*",
-    "README.md"
+    "examples/**/*",
+    "README.md",
+    "QUICKSTART.md"
   ],
   "dependencies": {
     "@faker-js/faker": "^8.4.1",

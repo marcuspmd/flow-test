@@ -1,0 +1,231 @@
+# Conditional Logic and Scenarios Example
+# Demonstrates conditional execution and dynamic flow control
+# Perfect for: Complex workflows, environment-specific tests, feature flags
+
+suite_name: "Conditional Logic Examples"
+node_id: "conditional-logic-example"
+description: "Dynamic flow control with conditions and scenarios"
+
+base_url: "https://httpbin.org"
+
+metadata:
+  priority: "medium"
+  tags: ["advanced", "conditional", "scenarios"]
+
+variables:
+  environment: "staging"  # Can be: development, staging, production
+  feature_enabled: true
+  user_role: "admin"  # Can be: admin, user, guest
+
+steps:
+  # Example 1: Simple condition - skip step based on variable
+  - name: "Admin-only operation"
+    
+    # This step only runs if condition is true
+    condition: "{{user_role}} == 'admin'"
+    
+    request:
+      method: "POST"
+      url: "/post"
+      body:
+        action: "admin_action"
+        user: "{{user_role}}"
+
+    assert:
+      status_code: 200
+
+  # Example 2: Environment-specific testing
+  - name: "Production-only validation"
+    
+    # Only run in production environment
+    condition: "{{environment}} == 'production'"
+    
+    request:
+      method: "GET"
+      url: "/get"
+
+    assert:
+      status_code: 200
+      # Stricter performance requirements in production
+      response_time_ms:
+        less_than: 500
+
+  # Example 3: Feature flag testing
+  - name: "Feature flag dependent request"
+    
+    condition: "{{feature_enabled}} == true"
+    
+    request:
+      method: "POST"
+      url: "/post"
+      body:
+        feature: "new_feature"
+        enabled: "{{feature_enabled}}"
+
+    assert:
+      status_code: 200
+
+  # Example 4: Scenarios - branching logic based on response
+  - name: "Get user status and branch"
+    request:
+      method: "POST"
+      url: "/post"
+      body:
+        user_id: 123
+        status: "active"
+        account_type: "premium"
+
+    assert:
+      status_code: 200
+
+    # Scenarios allow different actions based on response data
+    scenarios:
+      # Scenario 1: Premium user path
+      - name: "Premium user flow"
+        # Condition uses JMESPath to check response
+        condition: "body.json.account_type == 'premium'"
+        then:
+          capture:
+            is_premium: true
+            premium_features: "['feature1', 'feature2', 'feature3']"
+        else:
+          capture:
+            is_premium: false
+
+      # Scenario 2: Active user path
+      - name: "Active user flow"
+        condition: "body.json.status == 'active'"
+        then:
+          capture:
+            user_active: true
+            access_level: "'full'"
+        else:
+          capture:
+            user_active: false
+            access_level: "'limited'"
+
+  # Example 5: Using captured scenario values
+  - name: "Access premium features"
+    
+    # Only run if user is premium
+    condition: "{{is_premium}} == true"
+    
+    request:
+      method: "GET"
+      url: "/get?features={{premium_features}}"
+
+    assert:
+      status_code: 200
+
+  # Example 6: Complex JMESPath conditions
+  - name: "Fetch items list"
+    request:
+      method: "POST"
+      url: "/post"
+      body:
+        items:
+          - { id: 1, price: 100, available: true }
+          - { id: 2, price: 200, available: false }
+          - { id: 3, price: 150, available: true }
+
+    assert:
+      status_code: 200
+
+    scenarios:
+      # Check if any expensive items are available
+      - name: "Expensive items available"
+        condition: "body.json.items[?price > `150` && available == `true`] | length(@) > `0`"
+        then:
+          capture:
+            has_expensive_items: true
+        else:
+          capture:
+            has_expensive_items: false
+
+      # Check if all items are available
+      - name: "Check availability"
+        condition: "body.json.items[?available == `false`] | length(@) == `0`"
+        then:
+          capture:
+            all_available: true
+        else:
+          capture:
+            all_available: false
+
+  # Example 7: Nested conditions
+  - name: "Complex nested logic"
+    
+    # Multiple conditions with AND/OR
+    condition: "{{environment}} == 'production' && {{user_role}} == 'admin'"
+    
+    request:
+      method: "GET"
+      url: "/get"
+
+    assert:
+      status_code: 200
+
+  # Example 8: Continue on failure with conditions
+  - name: "Optional validation"
+    
+    # Try this only in non-production
+    condition: "{{environment}} != 'production'"
+    
+    request:
+      method: "GET"
+      url: "/status/500"  # This will fail
+
+    assert:
+      status_code: 200
+
+    # Continue even if this fails (useful for optional checks)
+    continue_on_failure: true
+
+  # Example 9: Skip condition (opposite of condition)
+  - name: "Skip in development"
+    
+    # Skip this step in development environment
+    skip_condition: "{{environment}} == 'development'"
+    
+    request:
+      method: "GET"
+      url: "/get"
+
+    assert:
+      status_code: 200
+
+# Conditional Logic Summary:
+# --------------------------
+# 1. condition: "expression"
+#    - Step runs only if condition is true
+#    - Supports variable comparisons
+#    - Supports boolean operators (==, !=, &&, ||)
+#
+# 2. skip_condition: "expression"
+#    - Step skips if condition is true
+#    - Opposite of condition
+#
+# 3. scenarios:
+#    - Branch based on response data
+#    - Use JMESPath for complex queries
+#    - Can capture different variables per branch
+#    - Multiple scenarios can run in sequence
+#
+# 4. continue_on_failure: true
+#    - Step failure doesn't stop the suite
+#    - Useful for optional validations
+#
+# 5. JMESPath in conditions:
+#    - Query response data
+#    - Filter arrays
+#    - Complex nested queries
+#    - Combine with length, filters, etc.
+
+# Best Practices:
+# 1. Use environment variables for environment-specific logic
+# 2. Feature flags for gradual rollouts
+# 3. Scenarios for response-based branching
+# 4. Keep conditions simple and readable
+# 5. Document why conditions exist
+# 6. Test both branches when possible
+# 7. Use continue_on_failure for optional checks
