@@ -32,8 +32,8 @@ steps:
       ci_default: "Admin@Company.COM"
     capture:
       # JavaScript: transform the value
-      email_lower: "{{js: user_email_2.toLowerCase()}}"
-      email_upper: "{{js: user_email_2.toUpperCase()}}"
+      email_lower: "$user_email_2.toLowerCase()"
+      email_upper: "$user_email_2.toUpperCase()"
 
   # Test 3: Mix JMESPath and JavaScript
   - name: "Age input with mixed capture"
@@ -47,9 +47,9 @@ steps:
       # JMESPath: direct access
       age_copy: "age"
       # JavaScript: calculations
-      birth_year: "{{js: 2025 - age}}"
-      is_adult: "{{js: age >= 18}}"
-      age_doubled: "{{js: age * 2}}"
+      birth_year: "$2025 - age"
+      is_adult: "$age >= 18"
+      age_doubled: "$age * 2"
 
   # Test 4: JMESPath with nested variable references
   - name: "Test with variable interpolation"
@@ -77,4 +77,4 @@ steps:
       # JavaScript accessing multiple captured variables
       email_summary: "{{js: `${email_copy} (normalized: ${email_lower})`}}"
       age_summary: "{{js: `Age: ${age}, Born: ${birth_year}`}}"
-      comment_upper: "{{js: comment.toUpperCase()}}"
+      comment_upper: "$comment.toUpperCase()"

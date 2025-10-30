@@ -6,10 +6,10 @@ base_url: "{{httpbin_url}}"
 metadata:
   priority: "high"
   tags: ["retry", "resilience", "error-handling", "reliability"]
-  estimated_duration_ms: 15000
+  estimated_duration_ms: 1800
 
 variables:
-  retry_test_id: "retry-{{$faker.string.uuid}}"
+  retry_test_id: "retry-"#faker.string.uuid""
   max_retries: 3
   base_delay: 1000
 
@@ -42,7 +42,7 @@ steps:
       delay_ms: "{{base_delay}}"
       strategy: "exponential"
       backoff_multiplier: 2
-      max_delay_ms: 5000
+      max_delay_ms: 500
     continue_on_failure: true
     metadata:
       description: "Tests exponential backoff retry strategy"

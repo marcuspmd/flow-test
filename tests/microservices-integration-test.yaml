@@ -90,7 +90,7 @@ steps:
         payment_service: "healthy"
         notification_service: "healthy"
         inventory_service: "healthy"
-      health_check_timestamp: "{{js: new Date().toISOString()}}"
+      health_check_timestamp: "$new Date().toISOString()"
       all_services_up: "true"
 
   # Passo 2: Criar Usuário no User Service
@@ -127,7 +127,7 @@ steps:
     capture:
       user_created: "true"
       user_service_response: "{{json}}"
-      user_creation_time: "{{js: new Date().toISOString()}}"
+      user_creation_time: "$new Date().toISOString()"
 
   # Passo 3: Verificar Estoque no Inventory Service
   - name: "Check Product Inventory"
@@ -158,7 +158,7 @@ steps:
       inventory_available: "true"
       available_stock: 100
       reserved_quantity: "{{test_transaction.quantity}}"
-      inventory_check_time: "{{js: new Date().toISOString()}}"
+      inventory_check_time: "$new Date().toISOString()"
 
   # Passo 4: Criar Pedido no Order Service
   - name: "Create Order in Order Service"
@@ -197,7 +197,7 @@ steps:
     capture:
       order_created: "true"
       order_service_response: "{{json}}"
-      order_creation_time: "{{js: new Date().toISOString()}}"
+      order_creation_time: "$new Date().toISOString()"
       order_status: "pending_payment"
 
   # Passo 5: Processar Pagamento no Payment Service
@@ -247,10 +247,10 @@ steps:
             payment_error: "insufficient_funds"
 
     capture:
-      payment_approved: "{{js: status_code == 200 ? 'true' : null}}"
+      payment_approved: "$status_code == 200 ? 'true' : null"
       payment_service_response: "response_data"
-      payment_status: "{{js: status_code == 200 ? 'approved' : (status_code == 402 ? 'declined' : 'unknown')}}"
-      payment_approval_time: "{{js: status_code == 200 ? new Date().toISOString() : null}}"
+      payment_status: "$status_code == 200 ? 'approved' : (status_code == 402 ? 'declined' : 'unknown')"
+      payment_approval_time: "$status_code == 200 ? new Date().toISOString() : null"
 
   # Passo 6: Atualizar Status do Pedido
   - name: "Update Order Status"
@@ -271,7 +271,7 @@ steps:
         service: "order-service"
         action: "update_order_status"
         order_id: "{{test_transaction.order_id}}"
-        new_status: "{{js: variables.payment_approved ? 'confirmed' : 'payment_failed'}}"
+        new_status: "$variables.payment_approved ? 'confirmed' : 'payment_failed'"
         payment_id: "{{test_transaction.payment_id}}"
         payment_status: "{{payment_status}}"
 
@@ -282,8 +282,8 @@ steps:
 
     capture:
       order_updated: "true"
-      final_order_status: "{{js: variables.payment_approved ? 'confirmed' : 'payment_failed'}}"
-      order_update_time: "{{js: new Date().toISOString()}}"
+      final_order_status: "$variables.payment_approved ? 'confirmed' : 'payment_failed'"
+      order_update_time: "$new Date().toISOString()"
 
   # Passo 7: Atualizar Inventário (se pagamento aprovado)
   - name: "Update Inventory Stock"
@@ -317,7 +317,7 @@ steps:
           capture:
             stock_reduced: "true"
             remaining_stock: "{{available_stock - test_transaction.quantity}}"
-            inventory_update_time: "{{js: new Date().toISOString()}}"
+            inventory_update_time: "$new Date().toISOString()"
 
       # Cenário B: Liberar reserva (pagamento recusado)
       - condition: "payment_declined == 'true'"
@@ -340,7 +340,7 @@ steps:
 
           capture:
             reservation_released: "true"
-            inventory_rollback_time: "{{js: new Date().toISOString()}}"
+            inventory_rollback_time: "$new Date().toISOString()"
 
       # Cenário C: Nenhum processamento de pagamento (fallback)
       - condition: "payment_approved != 'true' && payment_declined != 'true'"
@@ -348,7 +348,7 @@ steps:
           capture:
             inventory_skipped: "true"
             skip_reason: "'payment_not_processed'"
-            inventory_skip_time: "{{js: new Date().toISOString()}}"
+            inventory_skip_time: "$new Date().toISOString()"
 
   # Passo 8: Enviar Notificação
   - name: "Send User Notification"
@@ -373,7 +373,7 @@ steps:
         notification_data:
           order_id: "{{test_transaction.order_id}}"
           status: "{{final_order_status}}"
-          message: "{{js: variables.payment_approved ? 'Your order has been confirmed!' : 'Payment failed for your order.'}}"
+          message: "$variables.payment_approved ? 'Your order has been confirmed!' : 'Payment failed for your order.'"
           payment_id: "{{test_transaction.payment_id}}"
 
     assert:
@@ -383,8 +383,8 @@ steps:
 
     capture:
       notification_sent: "true"
-      notification_type: "{{js: variables.payment_approved ? 'order_confirmed' : 'payment_failed'}}"
-      notification_time: "{{js: new Date().toISOString()}}"
+      notification_type: "$variables.payment_approved ? 'order_confirmed' : 'payment_failed'"
+      notification_time: "$new Date().toISOString()"
 
   # Passo 9: Verificar Consistência dos Dados Entre Serviços
   - name: "Cross-Service Data Consistency Check"
@@ -413,11 +413,11 @@ steps:
       consistency_check:
         user_service_status: "{{user_created ? 'user_exists' : 'user_missing'}}"
         order_service_status: "{{order_created && order_updated ? 'order_consistent' : 'order_inconsistent'}}"
-        payment_service_status: "{{js: (variables.payment_approved || variables.payment_declined) ? 'payment_processed' : 'payment_pending'}}"
-        inventory_service_status: "{{js: (variables.stock_reduced || variables.reservation_released) ? 'inventory_updated' : 'inventory_unchanged'}}"
+        payment_service_status: "$(variables.payment_approved || variables.payment_declined) ? 'payment_processed' : 'payment_pending'"
+        inventory_service_status: "$(variables.stock_reduced || variables.reservation_released) ? 'inventory_updated' : 'inventory_unchanged'"
         notification_service_status: "{{notification_sent ? 'notification_delivered' : 'notification_failed'}}"
 
-      data_consistency_score: "{{js: 0}}"
+      data_consistency_score: "$0"
       all_services_consistent: false
 
   # Passo 10: Teste de Rollback (Simulação de Falha)
@@ -494,7 +494,7 @@ steps:
         all_services_responsive: "true"
         no_service_degradation: "true"
         transaction_cleanup_complete: "true"
-      health_check_post_time: "{{js: new Date().toISOString()}}"
+      health_check_post_time: "$new Date().toISOString()"
 
   # Passo 12: Relatório Final de Integração
   - name: "Integration Test Summary Report"
@@ -523,20 +523,20 @@ steps:
           successful_interactions: "{{data_consistency_score}}"
 
         transaction_flow:
-          user_creation: "{{js: Boolean(variables.user_created)}}"
-          inventory_check: "{{js: Boolean(variables.inventory_available)}}"
-          order_creation: "{{js: Boolean(variables.order_created)}}"
-          payment_processing: "{{js: Boolean(variables.payment_approved || variables.payment_declined)}}"
-          inventory_update: "{{js: Boolean(variables.stock_reduced || variables.reservation_released)}}"
-          notification_delivery: "{{js: Boolean(variables.notification_sent)}}"
+          user_creation: "$Boolean(variables.user_created)"
+          inventory_check: "$Boolean(variables.inventory_available)"
+          order_creation: "$Boolean(variables.order_created)"
+          payment_processing: "$Boolean(variables.payment_approved || variables.payment_declined)"
+          inventory_update: "$Boolean(variables.stock_reduced || variables.reservation_released)"
+          notification_delivery: "$Boolean(variables.notification_sent)"
 
         consistency_validation:
           data_consistency_score: "{{data_consistency_score}}"
           all_services_consistent: "{{all_services_consistent}}"
 
         failure_handling:
-          rollback_tested: "{{js: Boolean(variables.rollback_initiated || variables.rollback_failed)}}"
-          failure_recovery: "{{js: variables.rollback_initiated ? 'successful' : variables.rollback_failed ? 'failed' : 'not_tested'}}"
+          rollback_tested: "$Boolean(variables.rollback_initiated || variables.rollback_failed)"
+          failure_recovery: "$variables.rollback_initiated ? 'successful' : variables.rollback_failed ? 'failed' : 'not_tested'"
 
     capture:
       service_health_status:
@@ -548,13 +548,13 @@ steps:
         transaction_success: "{{payment_approved && order_updated && notification_sent}}"
         services_coordination: "successful"
         data_propagation: "{{all_services_consistent ? 'complete' : 'partial'}}"
-        error_handling: "{{js: (variables.rollback_initiated || variables.rollback_failed) ? 'tested' : 'not_applicable'}}"
+        error_handling: "$(variables.rollback_initiated || variables.rollback_failed) ? 'tested' : 'not_applicable'"
 
       transaction_trace:
         trace_id: "{{tracing_headers.trace_id}}"
         correlation_id: "{{tracing_headers.correlation_id}}"
         total_steps: 12
-        execution_time: "{{js: Math.floor(Math.random() * 5000) + 2000}}ms"  # Simula 2-7 segundos
+        execution_time: $Math.floor(Math.random() * 5000) + 2000ms"  # Simula 2-7 segundos
         service_calls: 11
         cross_service_calls: 6
 

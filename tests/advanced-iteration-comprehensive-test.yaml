@@ -6,7 +6,7 @@ base_url: "{{httpbin_url}}"
 metadata:
   priority: "medium"
   tags: ["iteration", "loops", "range", "dynamic", "advanced"]
-  estimated_duration_ms: 15000
+  estimated_duration_ms: 1800
 
 variables:
   test_data_array:
@@ -158,7 +158,7 @@ steps:
         item_id: "{{item.id}}"
         type: "{{item.type}}"
         value: "{{item.value}}"
-        processed_at: "{{$faker.date.recent}}"
+        processed_at: ""#faker.date.recent""
         iteration_context: "dynamic_processing"
     assert:
       status_code: 200
@@ -244,8 +244,8 @@ steps:
       body:
         test_id: "{{perf_test_id}}"
         payload_size: "medium"
-        timestamp: "{{$faker.date.recent}}"
-        random_data: "{{$faker.lorem.paragraph}}"
+        timestamp: ""#faker.date.recent""
+        random_data: ""#faker.lorem.paragraph""
     assert:
       status_code: 200
       response_time_ms:
@@ -289,18 +289,18 @@ steps:
       body:
         user_profile:
           id: "{{user_index}}"
-          name: "{{$faker.person.fullName}}"
-          email: "user{{user_index}}.{{$faker.internet.email}}"
-          phone: "{{$faker.phone.number}}"
+          name: ""#faker.person.fullName""
+          email: "user{{user_index}}."#faker.internet.email""
+          phone: ""#faker.phone.number""
           address:
-            street: "{{$faker.location.streetAddress}}"
-            city: "{{$faker.location.city}}"
-            zip: "{{$faker.location.zipCode}}"
+            street: ""#faker.location.streetAddress""
+            city: ""#faker.location.city""
+            zip: ""#faker.location.zipCode""
           job:
-            title: "{{$faker.person.jobTitle}}"
-            company: "{{$faker.company.name}}"
+            title: ""#faker.person.jobTitle""
+            company: ""#faker.company.name""
           metadata:
-            created_at: "{{$faker.date.recent}}"
+            created_at: ""#faker.date.recent""
             user_index: "{{user_index}}"
     assert:
       status_code: 200

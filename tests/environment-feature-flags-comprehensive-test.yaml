@@ -6,7 +6,7 @@ base_url: "{{httpbin_url}}"
 metadata:
   priority: "high"
   tags: ["environment", "feature-flags", "configuration", "multi-env", "conditional"]
-  estimated_duration_ms: 20000
+  estimated_duration_ms: 1800
 
 variables:
   current_environment: "{{$env.NODE_ENV || 'development'}}"
@@ -48,7 +48,7 @@ variables:
       retry_attempts: 1
       debug_logging: false
 
-  env_test_id: "env-{{$faker.string.uuid}}"
+  env_test_id: "env-"#faker.string.uuid""
 
 exports: ["environment_results", "feature_flag_data", "multi_env_config"]
 

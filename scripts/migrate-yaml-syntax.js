@@ -72,33 +72,37 @@ function migrateYAMLContent(content, filePath) {
     changesMade = true;
   }
 
-  // MIGRATION 3: {{$js:code}} → "$code"
-  // Match {{$js:...}} with balanced braces
-  const jsWithDollarColon = /\{\{\$js:\s*([^\}]+)\}\}/g;
+  // MIGRATION 3: {{$js:code}} → "$code" or $code (detect if already quoted)
+  // Match {{$js:...}} with balanced braces, including optional surrounding quotes
+  const jsWithDollarColon = /"?\{\{\$js:\s*([^\}]+)\}\}"?/g;
   const jsMatches = [...modified.matchAll(jsWithDollarColon)];
   for (const match of jsMatches) {
     const fullMatch = match[0];
     const jsCode = match[1].trim();
-    const replacement = `"$${jsCode}"`;
+    // Check if original match already had quotes
+    const hasQuotes = fullMatch.startsWith('"') && fullMatch.endsWith('"');
+    const replacement = hasQuotes ? `"$${jsCode}"` : `$${jsCode}`;
 
     modified = modified.replace(fullMatch, replacement);
     const preview = fullMatch.length > 60 ? fullMatch.substring(0, 60) + '...' : fullMatch;
-    changes.push(`  - ${preview} → "$${jsCode.substring(0, 40)}..."`);
+    changes.push(`  - ${preview} → ${replacement.substring(0, 50)}...`);
     stats.jsMigrations++;
     changesMade = true;
   }
 
-  // MIGRATION 4: {{js:code}} → "$code" (without $ prefix)
-  const jsWithoutDollar = /\{\{js:\s*([^\}]+)\}\}/g;
+  // MIGRATION 4: {{js:code}} → "$code" or $code (without $ prefix)
+  const jsWithoutDollar = /"?\{\{js:\s*([^\}]+)\}\}"?/g;
   const jsNoDollarMatches = [...modified.matchAll(jsWithoutDollar)];
   for (const match of jsNoDollarMatches) {
     const fullMatch = match[0];
     const jsCode = match[1].trim();
-    const replacement = `"$${jsCode}"`;
+    // Check if original match already had quotes
+    const hasQuotes = fullMatch.startsWith('"') && fullMatch.endsWith('"');
+    const replacement = hasQuotes ? `"$${jsCode}"` : `$${jsCode}`;
 
     modified = modified.replace(fullMatch, replacement);
     const preview = fullMatch.length > 60 ? fullMatch.substring(0, 60) + '...' : fullMatch;
-    changes.push(`  - ${preview} → "$${jsCode.substring(0, 40)}..."`);
+    changes.push(`  - ${preview} → ${replacement.substring(0, 50)}...`);
     stats.jsMigrations++;
     changesMade = true;
   }

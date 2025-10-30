@@ -6,14 +6,14 @@ base_url: "{{httpbin_url}}"
 metadata:
   priority: "high"
   tags: ["assertions", "validation", "regex", "types", "length", "oneOf"]
-  estimated_duration_ms: 20000
+  estimated_duration_ms: 1800
 
 variables:
   test_email: "test@example.com"
   test_phone: "+1234567890"
   test_uuid: "123e4567-e89b-12d3-a456-426614174000"
   test_url: "https://www.example.com"
-  assertion_test_id: "assert-{{$faker.string.uuid}}"
+  assertion_test_id: "assert-"#faker.string.uuid""
 
 exports: ["assertion_results", "validation_data", "regex_test_results"]
 
@@ -102,7 +102,7 @@ steps:
         X-Validation-Test: "string_length_exact"
       body:
         code: "ABC123"  # Exactly 6 characters
-        description: "{{$faker.lorem.sentence}}"
+        description: ""#faker.lorem.sentence""
     assert:
       status_code: 200
       body:
@@ -144,7 +144,7 @@ steps:
         empty_string: ""
         single_char: "A"
         long_text: "This is a long text that has more than fifty characters to test the length validation properly."
-        medium_text: "{{$faker.lorem.paragraph}}"
+        medium_text: ""#faker.lorem.paragraph""
     assert:
       status_code: 200
       body:

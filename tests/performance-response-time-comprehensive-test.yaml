@@ -6,7 +6,7 @@ base_url: "{{httpbin_url}}"
 metadata:
   priority: "medium"
   tags: ["performance", "response-time", "load-testing", "thresholds", "monitoring"]
-  estimated_duration_ms: 25000
+  estimated_duration_ms: 1800
 
 variables:
   performance_test_id: "perf-{{$faker.string.uuid}}"

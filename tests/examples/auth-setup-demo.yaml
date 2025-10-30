@@ -40,7 +40,7 @@ steps:
       # Simular captura de token (usando dados do request echo)
       access_token: "body.json.username"  # httpbin retorna o que enviamos
       user_id: "body.json.username"       # Simula user_id
-      token_expiry: "{{$js:Date.now() + 3600000}}"  # 1h de validade
+      token_expiry: "$Date.now() + 3600000"  # 1h de validade
 
     hooks_post_capture:
       - log:

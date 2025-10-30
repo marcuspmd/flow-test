@@ -22,15 +22,15 @@ steps:
         - { value: 1, label: "BN: 1058696774 - HERMES LIMA BRITO" }
         - { value: 2, label: "BN: 1122373675 - DONIZETTI APARECIDA DA SILVA SANTOS" }
 
-      # Test dynamic.computed with {{$js:...}}
+      # Test dynamic.computed with $...
       dynamic:
         scope: "runtime"
         computed:
-          selected_beneficio: "{{$js:beneficios_teste[selected_beneficio_index]}}"
-          selected_cpf: "{{$js:beneficios_teste[selected_beneficio_index].cpf}}"
-          selected_cpf_numerico: "{{$js:beneficios_teste[selected_beneficio_index].cpf_numerico}}"
-          selected_bn: "{{$js:beneficios_teste[selected_beneficio_index].bn}}"
-          selected_nome: "{{$js:beneficios_teste[selected_beneficio_index].nome}}"
+          selected_beneficio: "$beneficios_teste[selected_beneficio_index]"
+          selected_cpf: "$beneficios_teste[selected_beneficio_index].cpf"
+          selected_cpf_numerico: "$beneficios_teste[selected_beneficio_index].cpf_numerico"
+          selected_bn: "$beneficios_teste[selected_beneficio_index].bn"
+          selected_nome: "$beneficios_teste[selected_beneficio_index].nome"
         exports: ["selected_beneficio", "selected_cpf_numerico"]
         persist_to_global: false
 

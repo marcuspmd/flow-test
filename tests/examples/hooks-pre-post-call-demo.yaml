@@ -27,9 +27,9 @@ steps:
     hooks_pre_call:
       # Computar variáveis antes da chamada
       - compute:
-          call_started_at: "{{$js:Date.now()}}"
-          call_request_id: "{{$js:crypto.randomUUID()}}"
-          timestamp_iso: "{{$js:new Date().toISOString()}}"
+          call_started_at: "$Date.now()"
+          call_request_id: "$crypto.randomUUID()"
+          timestamp_iso: "$new Date().toISOString()"
 
       # Validar pré-condições
       - validate:
@@ -63,7 +63,7 @@ steps:
     hooks_post_call:
       # Computar duração
       - compute:
-          call_duration_ms: "{{$js:Date.now() - call_started_at}}"
+          call_duration_ms: "$Date.now() - call_started_at"
 
       # Validar variáveis propagadas (capturas do call)
       - validate:
@@ -79,7 +79,7 @@ steps:
           name: "auth_call_duration_ms"
           value: "{{call_duration_ms}}"
           tags:
-            has_token: "{{$js:!!auth.access_token}}"
+            has_token: "$!!auth.access_token"
             request_id: "{{call_request_id}}"
 
       # Log de conclusão com resumo

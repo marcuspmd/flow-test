@@ -6,10 +6,10 @@ base_url: "{{httpbin_url}}"
 metadata:
   priority: "high"
   tags: ["error-handling", "timeouts", "failures", "resilience", "graceful-degradation"]
-  estimated_duration_ms: 25000
+  estimated_duration_ms: 1800
 
 variables:
-  error_test_id: "error-{{$faker.string.uuid}}"
+  error_test_id: "error-"#faker.string.uuid""
   timeout_threshold: 5000
   retry_attempts: 3
 
@@ -179,7 +179,7 @@ steps:
   - name: "Primary service call (may fail)"
     request:
       method: "GET"
-      url: "/status/{{$faker.helpers.arrayElement(['200', '500'])}}"  # Random success/failure
+      url: "/status/"#faker.helpers.arrayElement(['200', '500'])""  # Random success/failure
       headers:
         X-Error-Test: "primary_service"
         X-Fallback-Available: "true"
@@ -225,7 +225,7 @@ steps:
   - name: "Enhanced service with degradation"
     request:
       method: "GET"
-      url: "/status/{{$faker.helpers.arrayElement(['200', '503'])}}"
+      url: "/status/"#faker.helpers.arrayElement(['200', '503'])""
       headers:
         X-Error-Test: "enhanced_service"
         X-Degradation-Mode: "available"
@@ -286,7 +286,7 @@ steps:
   - name: "Step 2 of chain (may fail)"
     request:
       method: "GET"
-      url: "/status/{{$faker.helpers.arrayElement(['200', '500'])}}"
+      url: "/status/"#faker.helpers.arrayElement(['200', '500'])""
       headers:
         X-Error-Test: "chain_step_2"
         X-Depends-On: "{{chain_step_1_data}}"
@@ -351,7 +351,7 @@ steps:
   - name: "Setup that might fail"
     request:
       method: "POST"
-      url: "/status/{{$faker.helpers.arrayElement(['201', '500'])}}"
+      url: "/status/"#faker.helpers.arrayElement(['201', '500'])""
       headers:
         Content-Type: "application/json"
         X-Error-Test: "setup_operation"

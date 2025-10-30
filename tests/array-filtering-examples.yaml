@@ -6,7 +6,7 @@ base_url: "{{httpbin_url}}"
 metadata:
   priority: "medium"
   tags: ["filtering", "arrays", "jmespath", "queries", "conditions"]
-  estimated_duration_ms: 10000
+  estimated_duration_ms: 1200
 
 variables:
   # Test data: Users with various statuses and attributes

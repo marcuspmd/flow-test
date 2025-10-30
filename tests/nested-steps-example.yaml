@@ -46,7 +46,7 @@ steps:
                 url: "/post"
                 body:
                   error_type: "api_down"
-                  timestamp: "{{$js:Date.now()}}"
+                  timestamp: "$Date.now()"
 
   # Exemplo 2: Nested steps com múltiplos níveis (até 5)
   - name: "Multi-level nested scenario"
@@ -92,8 +92,8 @@ steps:
       method: POST
       url: "/post"
       body:
-        username: "{{$faker.internet.userName}}"
-        password: "{{$faker.internet.password}}"
+        username: ""#faker.internet.userName""
+        password: ""#faker.internet.password""
 
     capture:
       auth_response: "body"
@@ -135,7 +135,7 @@ steps:
                 url: "/post"
                 body:
                   event: "login_failed"
-                  timestamp: "{{$js:new Date().toISOString()}}"
+                  timestamp: "$new Date().toISOString()"
 
   # Exemplo 4: Nested steps com skip e continue_on_failure
   - name: "Complex workflow with error handling"

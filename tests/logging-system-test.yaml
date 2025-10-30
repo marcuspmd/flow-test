@@ -11,7 +11,7 @@ metadata:
 
 variables:
   log_test_suite: "logging-system-verification"
-  test_execution_id: "log-test-{{$faker.string.uuid}}"
+  test_execution_id: "log-test-"#faker.string.uuid""
   log_data_marker: "AUTO_LOG_TEST_MARKER"
 
 steps:
@@ -37,7 +37,7 @@ steps:
         metadata:
           suite_name: "{{log_test_suite}}"
           log_marker: "{{log_data_marker}}"
-          timestamp: "{{$faker.date.recent}}"
+          timestamp: ""#faker.date.recent""
     assert:
       status_code: 200
       body:
@@ -64,8 +64,8 @@ steps:
       method: "GET"
       url: "/get"  # Mudança para endpoint que existe
       headers:
-        Authorization: "Bearer test-token-for-logging-{{$faker.string.alphanumeric}}"
-        X-Session-ID: "session-{{$faker.string.uuid}}"
+        Authorization: "Bearer test-token-for-logging-"#faker.string.alphanumeric""
+        X-Session-ID: "session-"#faker.string.uuid""
         X-Log-Test: "{{log_data_marker}}"
     assert:
       status_code: 200

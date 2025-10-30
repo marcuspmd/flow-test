@@ -22,9 +22,9 @@ steps:
       ci_default: "John.Doe@Example.COM"
     capture:
       # Use {{js:}} for JavaScript transformations
-      normalized_email: "{{js: user_email.toLowerCase()}}"
-      email_domain: "{{js: user_email.split('@')[1].toLowerCase()}}"
-      email_username: "{{js: user_email.split('@')[0].toLowerCase()}}"
+      normalized_email: "$user_email.toLowerCase()"
+      email_domain: "$user_email.split('@')[1].toLowerCase()"
+      email_username: "$user_email.split('@')[0].toLowerCase()"
 
   # Example 2: Name splitting with capture
   - name: "Full name with capture split"
@@ -36,11 +36,11 @@ steps:
       ci_default: "John Michael Doe"
     capture:
       # JavaScript expressions for string manipulation
-      first_name: "{{js: full_name.trim().split(' ')[0]}}"
-      last_name: "{{js: full_name.trim().split(' ').slice(-1)[0]}}"
-      name_uppercase: "{{js: full_name.toUpperCase()}}"
-      name_length: "{{js: full_name.length}}"
-      initials: "{{js: full_name.split(' ').map(n => n[0]).join('')}}"
+      first_name: "$full_name.trim().split(' ')[0]"
+      last_name: "$full_name.trim().split(' ').slice(-1)[0]"
+      name_uppercase: "$full_name.toUpperCase()"
+      name_length: "$full_name.length"
+      initials: "$full_name.split(' ').map(n => n[0]).join('')"
 
   # Example 3: Number with calculations
   - name: "Age with birth year calculation"
@@ -51,10 +51,10 @@ steps:
       default: 25
       ci_default: 25
     capture:
-      current_year: "{{js: new Date().getFullYear()}}"
-      birth_year: "{{js: new Date().getFullYear() - user_age}}"
-      is_adult: "{{js: user_age >= 18}}"
-      age_category: "{{js: user_age < 18 ? 'minor' : user_age < 65 ? 'adult' : 'senior'}}"
+      current_year: "$new Date().getFullYear()"
+      birth_year: "$new Date().getFullYear() - user_age"
+      is_adult: "$user_age >= 18"
+      age_category: "$user_age < 18 ? 'minor' : user_age < 65 ? 'adult' : 'senior'"
 
   # Example 4: Multiple inputs with combined capture
   - name: "Get country code"
@@ -65,7 +65,7 @@ steps:
       default: "+1"
       ci_default: "+1"
     capture:
-      country_code_numeric: "{{js: country_code.replace('+', '')}}"
+      country_code_numeric: "$country_code.replace('+', '')"
 
   - name: "Get phone number"
     input:
@@ -76,7 +76,7 @@ steps:
       ci_default: "5551234567"
     capture:
       # Combine previous captures
-      full_phone: "{{js: country_code + phone_number}}"
+      full_phone: "$country_code + phone_number"
       phone_formatted: "{{js: `(${phone_number.slice(0,3)}) ${phone_number.slice(3,6)}-${phone_number.slice(6)}`}}"
 
   # Example 5: Boolean with conditional capture
@@ -88,9 +88,9 @@ steps:
       default: true
       ci_default: true
     capture:
-      terms_status: "{{js: terms_accepted ? 'accepted' : 'declined'}}"
-      acceptance_timestamp: "{{js: new Date().toISOString()}}"
-      can_proceed: "{{js: terms_accepted === true}}"
+      terms_status: "$terms_accepted ? 'accepted' : 'declined'"
+      acceptance_timestamp: "$new Date().toISOString()"
+      can_proceed: "$terms_accepted === true"
 
   # Example 6: Display all captured data
   - name: "Show captured summary"
@@ -110,4 +110,4 @@ steps:
       default: "confirmed"
       ci_default: "confirmed"
     capture:
-      summary_generated: "{{js: new Date().toISOString()}}"
+      summary_generated: "$new Date().toISOString()"

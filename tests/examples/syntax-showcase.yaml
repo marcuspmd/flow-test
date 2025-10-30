@@ -93,11 +93,11 @@ steps:
         # LEGACY SYNTAX (still fully supported)
         # ────────────────────────────────────────────────────────────────
         legacy_faker:
-          email_with_dollar: "{{$faker.internet.email}}"
-          name_without_dollar: "{{faker.person.fullName}}"
-          uuid: "{{$faker.string.uuid}}"
-          phone: "{{faker.phone.number}}"
-          company: "{{$faker.company.name}}"
+          email_with_dollar: ""#faker.internet.email""
+          name_without_dollar: ""#faker.person.fullName""
+          uuid: ""#faker.string.uuid""
+          phone: ""#faker.phone.number""
+          company: ""#faker.company.name""
 
         # ────────────────────────────────────────────────────────────────
         # NEW SYNTAX (recommended for cleaner YAML)
@@ -131,8 +131,8 @@ steps:
         # MIXING IN TEMPLATES (legacy only works in templates)
         # ────────────────────────────────────────────────────────────────
         mixed_template:
-          welcome_message: "Welcome {{$faker.person.firstName}} {{$faker.person.lastName}}!"
-          user_email: "user-{{$faker.string.alphanumeric(8)}}@example.com"
+          welcome_message: "Welcome "#faker.person.firstName" "#faker.person.lastName"!"
+          user_email: "user-"#faker.string.alphanumeric(8)"@example.com"
 
   # ============================================================================
   # TEST 3: JAVASCRIPT - Both Syntaxes
@@ -146,12 +146,12 @@ steps:
         # LEGACY SYNTAX (still fully supported)
         # ────────────────────────────────────────────────────────────────
         legacy_js:
-          timestamp_with_dollar: "{{$js:Date.now()}}"
-          timestamp_without_dollar: "{{js:Date.now()}}"
-          iso_date: "{{$js:new Date().toISOString()}}"
-          random: "{{js:Math.random()}}"
-          calculation: "{{$js:10 * 5}}"
-          rounded: "{{js:Math.round(3.7)}}"
+          timestamp_with_dollar: "$Date.now()"
+          timestamp_without_dollar: "$Date.now()"
+          iso_date: "$new Date().toISOString()"
+          random: "$Math.random()"
+          calculation: "$10 * 5"
+          rounded: "$Math.round(3.7)"
 
         # ────────────────────────────────────────────────────────────────
         # NEW SYNTAX (recommended for cleaner YAML)
@@ -191,13 +191,13 @@ steps:
         # ────────────────────────────────────────────────────────────────
         encoding:
           # Legacy
-          basic_auth_legacy: "{{$js:Buffer.from('user:pass').toString('base64')}}"
+          basic_auth_legacy: "$Buffer.from('user:pass').toString('base64')"
 
           # New
           basic_auth_new: "$Buffer.from('user:pass').toString('base64')"
 
           # With variable interpolation (use legacy in template)
-          dynamic_auth: "{{$js:Buffer.from('{{user.profile.email}}:secret').toString('base64')}}"
+          dynamic_auth: $Buffer.from('{{user.profile.email:secret').toString('base64')}}"
 
   # ============================================================================
   # TEST 4: ENVIRONMENT VARIABLES
@@ -262,7 +262,7 @@ steps:
       url: "/anything"
       headers:
         # Template with multiple types
-        X-Complex-Header: "User {{user_id}} - {{$faker.person.firstName}} - {{$js:Date.now()}}"
+        X-Complex-Header: "User {{user_id}} - "#faker.person.firstName" - $Date.now()
 
       body:
         # Each field uses ONE syntax consistently
@@ -274,7 +274,7 @@ steps:
         # Templates for composition
         composed_values:
           api_url: "{{$env.API_BASE_URL}}/{{api_version}}/users/{{user_id}}"
-          greeting: "Hello {{$faker.person.firstName}}, today is {{$js:new Date().toLocaleDateString()}}"
+          greeting: "Hello "#faker.person.firstName", today is $new Date().toLocaleDateString()
 
         # Nested structures with mixed syntax
         user_profile:

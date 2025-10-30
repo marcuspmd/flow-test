@@ -108,7 +108,7 @@ steps:
     capture:
       jwt_valid: true
       jwt_payload_decoded: "body.json"  # Captura o payload do JSON
-      token_validation_time: "{{js: new Date().toISOString()}}"  # Timestamp atual
+      token_validation_time: "$new Date().toISOString()"  # Timestamp atual
 
   # Passo 3: Obter Perfil do Usuário com JWT
   - name: "Get User Profile with JWT"
@@ -307,7 +307,7 @@ steps:
 
     capture:
       oauth2_token_revoked: "true"
-      revocation_timestamp: "{{js: new Date().toISOString()}}"  # Timestamp de revogação
+      revocation_timestamp: "$new Date().toISOString()"  # Timestamp de revogação
 
   # Passo 11: Verificar Token Revogado
   - name: "Verify Revoked Token"
@@ -368,42 +368,42 @@ steps:
         flow_summary: "complete_auth_testing"
         results:
           jwt_flow:
-            login: "{{js: Boolean(variables.jwt_login_success)}}"
-            validation: "{{js: Boolean(variables.jwt_valid)}}"
-            refresh: "{{js: Boolean(variables.jwt_refresh_success)}}"
-            profile_access: "{{js: Boolean(variables.profile_fetch_success)}}"
+            login: "$Boolean(variables.jwt_login_success)"
+            validation: "$Boolean(variables.jwt_valid)"
+            refresh: "$Boolean(variables.jwt_refresh_success)"
+            profile_access: "$Boolean(variables.profile_fetch_success)"
           oauth2_flow:
-            authorization: "{{js: Boolean(variables.oauth2_auth_started)}}"
-            token_exchange: "{{js: Boolean(variables.oauth2_token_exchange_success)}}"
-            resource_access: "{{js: Boolean(variables.oauth2_resource_access)}}"
-            revocation: "{{js: Boolean(variables.oauth2_token_revoked)}}"
+            authorization: "$Boolean(variables.oauth2_auth_started)"
+            token_exchange: "$Boolean(variables.oauth2_token_exchange_success)"
+            resource_access: "$Boolean(variables.oauth2_resource_access)"
+            revocation: "$Boolean(variables.oauth2_token_revoked)"
           security_tests:
-            expired_token_handled: "{{js: Boolean(variables.jwt_expired_handled)}}"
-            revoked_token_rejected: "{{js: Boolean(variables.revoked_token_rejected)}}"
-            permission_validation: "{{js: Boolean(variables.admin_permission_granted || variables.admin_permission_denied)}}"
+            expired_token_handled: "$Boolean(variables.jwt_expired_handled)"
+            revoked_token_rejected: "$Boolean(variables.revoked_token_rejected)"
+            permission_validation: "$Boolean(variables.admin_permission_granted || variables.admin_permission_denied)"
           final_cleanup:
-            logout_complete: "{{js: Boolean(variables.complete_logout)}}"
+            logout_complete: "$Boolean(variables.complete_logout)"
 
     capture:
       auth_flow_results:
         jwt_authentication:
           status: "{{jwt_login_success && jwt_valid && jwt_refresh_success ? 'success' : 'partial'}}"
           tokens_issued: 2
-          profile_access: "{{js: Boolean(variables.profile_fetch_success)}}"
+          profile_access: "$Boolean(variables.profile_fetch_success)"
         oauth2_authentication:
           status: "{{oauth2_token_exchange_success && oauth2_resource_access ? 'success' : 'partial'}}"
-          authorization_code_flow: "{{js: Boolean(variables.oauth2_auth_started)}}"
-          token_management: "{{js: Boolean(variables.oauth2_token_revoked)}}"
+          authorization_code_flow: "$Boolean(variables.oauth2_auth_started)"
+          token_management: "$Boolean(variables.oauth2_token_revoked)"
         security_validation:
-          expired_tokens: "{{js: Boolean(variables.jwt_expired_handled)}}"
-          revoked_tokens: "{{js: Boolean(variables.revoked_token_rejected)}}"
-          permissions: "{{js: Boolean(variables.admin_permission_granted || variables.admin_permission_denied)}}"
+          expired_tokens: "$Boolean(variables.jwt_expired_handled)"
+          revoked_tokens: "$Boolean(variables.revoked_token_rejected)"
+          permissions: "$Boolean(variables.admin_permission_granted || variables.admin_permission_denied)"
         session_management:
-          logout_success: "{{js: Boolean(variables.complete_logout)}}"
-          cleanup_complete: "{{js: Boolean(variables.all_tokens_revoked)}}"
+          logout_success: "$Boolean(variables.complete_logout)"
+          cleanup_complete: "$Boolean(variables.all_tokens_revoked)"
 
       test_completion_summary:
         total_auth_flows: 2
-        security_tests_passed: "{{js: 0}}"
+        security_tests_passed: "$0"
         all_flows_tested: true
         security_compliant: false

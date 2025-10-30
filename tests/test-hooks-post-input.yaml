@@ -26,11 +26,11 @@ steps:
     # ✅ SOLUÇÃO: Use hooks_post_input com compute action
     hooks_post_input:
       - compute:
-          selected_beneficio: "{{$js:beneficios_teste[selected_beneficio_index]}}"
-          selected_cpf: "{{$js:beneficios_teste[selected_beneficio_index].cpf}}"
-          selected_cpf_numerico: "{{$js:beneficios_teste[selected_beneficio_index].cpf_numerico}}"
-          selected_bn: "{{$js:beneficios_teste[selected_beneficio_index].bn}}"
-          selected_nome: "{{$js:beneficios_teste[selected_beneficio_index].nome}}"
+          selected_beneficio: "$beneficios_teste[selected_beneficio_index]"
+          selected_cpf: "$beneficios_teste[selected_beneficio_index].cpf"
+          selected_cpf_numerico: "$beneficios_teste[selected_beneficio_index].cpf_numerico"
+          selected_bn: "$beneficios_teste[selected_beneficio_index].bn"
+          selected_nome: "$beneficios_teste[selected_beneficio_index].nome"
 
       - log:
           level: "info"

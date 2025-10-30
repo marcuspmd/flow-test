@@ -6,7 +6,7 @@ base_url: "{{httpbin_url}}"
 metadata:
   priority: "medium"
   tags: ["nested-arrays", "flatten", "jmespath", "matrix", "advanced-filtering"]
-  estimated_duration_ms: 12000
+  estimated_duration_ms: 1200
 
 variables:
   # Simple nested arrays (arrays of arrays)

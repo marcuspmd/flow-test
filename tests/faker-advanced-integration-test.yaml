@@ -20,15 +20,15 @@ steps:
         Content-Type: "application/json"
       body:
         person:
-          full_name: "{{$faker.person.fullName}}"
-          first_name: "{{$faker.person.firstName}}"
-          last_name: "{{$faker.person.lastName}}"
-          email: "{{$faker.internet.email}}"
-          phone: "{{$faker.phone.number}}"
-          birth_date: "{{$faker.date.birthdate}}"
-          gender: "{{$faker.person.gender}}"
-          job_title: "{{$faker.person.jobTitle}}"
-          bio: "{{$faker.lorem.sentence}}"
+          full_name: "#faker.person.fullName"
+          first_name: "#faker.person.firstName"
+          last_name: "#faker.person.lastName"
+          email: "#faker.internet.email"
+          phone: "#faker.phone.number"
+          birth_date: "#faker.date.birthdate"
+          gender: "#faker.person.gender"
+          job_title: "#faker.person.jobTitle"
+          bio: "#faker.lorem.sentence"
     assert:
       status_code: 200
       body:
@@ -50,13 +50,13 @@ steps:
         Content-Type: "application/json"
       body:
         address:
-          street: "{{$faker.location.streetAddress}}"
-          city: "{{$faker.location.city}}"
-          state: "{{$faker.location.state}}"
-          country: "{{$faker.location.country}}"
-          zip_code: "{{$faker.location.zipCode}}"
-          latitude: "{{$faker.location.latitude}}"
-          longitude: "{{$faker.location.longitude}}"
+          street: ""#faker.location.streetAddress""
+          city: ""#faker.location.city""
+          state: ""#faker.location.state""
+          country: ""#faker.location.country""
+          zip_code: ""#faker.location.zipCode""
+          latitude: ""#faker.location.latitude""
+          longitude: ""#faker.location.longitude""
           timezone: "EST"
     assert:
       status_code: 200
@@ -76,15 +76,15 @@ steps:
         Content-Type: "application/json"
       body:
         business:
-          company: "{{$faker.company.name}}"
-          department: "{{$faker.commerce.department}}"
-          product: "{{$faker.commerce.productName}}"
-          price: "{{$faker.commerce.price}}"
-          currency: "{{$faker.finance.currencyCode}}"
-          account: "{{$faker.finance.accountNumber}}"
-          amount: "{{$faker.finance.amount}}"
+          company: ""#faker.company.name""
+          department: ""#faker.commerce.department""
+          product: ""#faker.commerce.productName""
+          price: ""#faker.commerce.price""
+          currency: ""#faker.finance.currencyCode""
+          account: ""#faker.finance.accountNumber""
+          amount: ""#faker.finance.amount""
           transaction_type: "transfer"
-          credit_card: "{{$faker.finance.creditCardNumber}}"
+          credit_card: ""#faker.finance.creditCardNumber""
           iban: "GB82 WEST 1234 5698 7654 32"
     assert:
       status_code: 200
@@ -106,14 +106,14 @@ steps:
         Content-Type: "application/json"
       body:
         tech:
-          domain: "{{$faker.internet.domainName}}"
-          url: "{{$faker.internet.url}}"
-          ip_v4: "{{$faker.internet.ip}}"
-          ip_v6: "{{$faker.internet.ipv4}}"
-          mac_address: "{{$faker.internet.mac}}"
-          user_agent: "{{$faker.internet.userAgent}}"
-          username: "{{$faker.internet.userName}}"
-          password: "{{$faker.string.alphanumeric}}"
+          domain: ""#faker.internet.domainName""
+          url: ""#faker.internet.url""
+          ip_v4: ""#faker.internet.ip""
+          ip_v6: ""#faker.internet.ipv4""
+          mac_address: ""#faker.internet.mac""
+          user_agent: ""#faker.internet.userAgent""
+          username: ""#faker.internet.userName""
+          password: ""#faker.string.alphanumeric""
           emoji: "😀"
           color: "#FF0000"
     assert:
@@ -130,10 +130,10 @@ steps:
         Content-Type: "application/json"
       body:
         dates:
-          past_date: "{{$faker.date.past}}"
-          future_date: "{{$faker.date.future}}"
-          recent_date: "{{$faker.date.recent}}"
-          soon_date: "{{$faker.date.soon}}"
+          past_date: ""#faker.date.past""
+          future_date: ""#faker.date.future""
+          recent_date: ""#faker.date.recent""
+          soon_date: ""#faker.date.soon""
           weekday: "Monday"
           month: "January"
           time_zone: "UTC"
@@ -153,14 +153,14 @@ steps:
         Content-Type: "application/json"
       body:
         selections:
-          random_word: "{{$faker.lorem.word}}"
-          random_words: "{{$faker.lorem.words}}"
-          paragraph: "{{$faker.lorem.paragraph}}"
-          array_element: "{{$faker.helpers.arrayElement(['red', 'green', 'blue', 'yellow'])}}"
-          random_number: "{{$faker.number.int}}"
-          float_number: "{{$faker.number.float}}"
-          boolean_value: "{{$faker.datatype.boolean}}"
-          uuid: "{{$faker.string.uuid}}"
+          random_word: ""#faker.lorem.word""
+          random_words: ""#faker.lorem.words""
+          paragraph: ""#faker.lorem.paragraph""
+          array_element: ""#faker.helpers.arrayElement(['red', 'green', 'blue', 'yellow'])""
+          random_number: ""#faker.number.int""
+          float_number: ""#faker.number.float""
+          boolean_value: ""#faker.datatype.boolean""
+          uuid: ""#faker.string.uuid""
           hex_color: "#FF0000"
     assert:
       status_code: 200
@@ -177,9 +177,9 @@ steps:
       body:
         localized:
           # Assuming faker supports locale switching
-          name_pt: "{{$faker.person.fullName}}"
-          address_local: "{{$faker.location.city}}"
-          phone_local: "{{$faker.phone.number}}"
+          name_pt: ""#faker.person.fullName""
+          address_local: ""#faker.location.city""
+          phone_local: ""#faker.phone.number""
     assert:
       status_code: 200
     capture:

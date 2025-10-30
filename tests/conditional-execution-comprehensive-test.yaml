@@ -6,7 +6,7 @@ base_url: "{{httpbin_url}}"
 metadata:
   priority: "medium"
   tags: ["conditional", "skip", "feature-flags", "environment", "cleanup"]
-  estimated_duration_ms: 18000
+  estimated_duration_ms: 1800
 
 variables:
   environment: "development"
@@ -16,7 +16,7 @@ variables:
     advanced_mode: "false"
   test_mode: "normal"
   cleanup_required: true
-  conditional_test_id: "cond-{{$faker.string.uuid}}"
+  conditional_test_id: "cond-"#faker.string.uuid""
 
 exports: ["conditional_results", "skip_test_data", "cleanup_status"]
 
@@ -279,7 +279,7 @@ steps:
   - name: "Main test operation that might fail"
     request:
       method: "GET"
-      url: "/status/{{$faker.helpers.arrayElement(['200', '500'])}}"  # Random success/failure
+      url: "/status/"#faker.helpers.arrayElement(['200', '500'])""  # Random success/failure
       headers:
         X-Main-Test: "true"
         X-Test-Data-ID: "{{test_data_id}}"

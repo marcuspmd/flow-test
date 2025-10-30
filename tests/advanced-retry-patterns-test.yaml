@@ -6,10 +6,10 @@ base_url: "{{httpbin_url}}"
 metadata:
   priority: "high"
   tags: ["retry", "backoff", "timeout", "resilience", "error-handling"]
-  estimated_duration_ms: 20000
+  estimated_duration_ms: 1800
 
 variables:
-  retry_test_id: "retry-{{$faker.string.uuid}}"
+  retry_test_id: "retry-"#faker.string.uuid""
   max_retries: 3
   base_delay: 1000
 
@@ -79,7 +79,7 @@ steps:
     metadata:
       retry:
         max_attempts: 3
-        delay_ms: 1500
+        delay_ms: 300
         backoff: "fixed"  # Always 1.5s between retries
         retry_on:
           - status_code: 429

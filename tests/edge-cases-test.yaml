@@ -318,19 +318,19 @@ steps:
       body:
         edge_cases_summary:
           error_handling:
-            status_404: "{{js: typeof variables.error_404_handled !== 'undefined' ? variables.error_404_handled : 'not_tested'}}"
-            status_500: "{{js: typeof variables.error_500_handled !== 'undefined' ? variables.error_500_handled : 'not_tested'}}"
-            timeout_risk: "{{js: typeof variables.timeout_risk !== 'undefined' ? variables.timeout_risk : 'not_tested'}}"
+            status_404: "$typeof variables.error_404_handled !== 'undefined' ? variables.error_404_handled : 'not_tested'"
+            status_500: "$typeof variables.error_500_handled !== 'undefined' ? variables.error_500_handled : 'not_tested'"
+            timeout_risk: "$typeof variables.timeout_risk !== 'undefined' ? variables.timeout_risk : 'not_tested'"
           data_handling:
-            special_chars: "{{js: typeof variables.special_chars_handled !== 'undefined' ? variables.special_chars_handled : 'not_tested'}}"
-            large_payload: "{{js: typeof variables.large_payload_accepted !== 'undefined' ? variables.large_payload_accepted : 'not_tested'}}"
-            headers_test: "{{js: typeof variables.headers_test_passed !== 'undefined' ? variables.headers_test_passed : 'not_tested'}}"
+            special_chars: "$typeof variables.special_chars_handled !== 'undefined' ? variables.special_chars_handled : 'not_tested'"
+            large_payload: "$typeof variables.large_payload_accepted !== 'undefined' ? variables.large_payload_accepted : 'not_tested'"
+            headers_test: "$typeof variables.headers_test_passed !== 'undefined' ? variables.headers_test_passed : 'not_tested'"
           security_tests:
-            auth_validation: "{{js: typeof variables.auth_validation_working !== 'undefined' ? variables.auth_validation_working : 'not_tested'}}"
-            invalid_token: "{{js: typeof variables.invalid_token_rejected !== 'undefined' ? variables.invalid_token_rejected : 'not_tested'}}"
+            auth_validation: "$typeof variables.auth_validation_working !== 'undefined' ? variables.auth_validation_working : 'not_tested'"
+            invalid_token: "$typeof variables.invalid_token_rejected !== 'undefined' ? variables.invalid_token_rejected : 'not_tested'"
           http_features:
-            patch_method: "{{js: typeof variables.patch_method_supported !== 'undefined' ? variables.patch_method_supported : 'not_tested'}}"
-            redirects: "{{js: typeof variables.redirect_handled !== 'undefined' ? variables.redirect_handled : 'not_tested'}}"
+            patch_method: "$typeof variables.patch_method_supported !== 'undefined' ? variables.patch_method_supported : 'not_tested'"
+            redirects: "$typeof variables.redirect_handled !== 'undefined' ? variables.redirect_handled : 'not_tested'"
           complex_data:
             nested_access: "{{deep_nested_value}}"
             null_handling: "{{null_value_test == null}}"

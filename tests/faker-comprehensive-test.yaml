@@ -34,42 +34,42 @@ steps:
       body:
         user_profile:
           # Dados pessoais básicos
-          id: "{{faker.string.uuid}}"
-          first_name: "{{faker.person.firstName}}"
-          last_name: "{{faker.person.lastName}}"
-          full_name: "{{faker.person.fullName}}"
-          gender: "{{faker.person.gender}}"
+          id: ""#faker.string.uuid""
+          first_name: ""#faker.person.firstName""
+          last_name: ""#faker.person.lastName""
+          full_name: ""#faker.person.fullName""
+          gender: ""#faker.person.gender""
 
           # Dados de contato
-          email: "{{faker.internet.email}}"
-          phone: "{{faker.phone.number}}"
-          website: "{{faker.internet.url}}"
+          email: ""#faker.internet.email""
+          phone: ""#faker.phone.number""
+          website: ""#faker.internet.url""
 
           # Endereço completo
           address:
-            street: "{{faker.location.streetAddress}}"
-            city: "{{faker.location.city}}"
-            state: "{{faker.location.state}}"
-            country: "{{faker.location.country}}"
-            zip_code: "{{faker.location.zipCode}}"
-            latitude: "{{faker.location.latitude}}"
-            longitude: "{{faker.location.longitude}}"
+            street: ""#faker.location.streetAddress""
+            city: ""#faker.location.city""
+            state: ""#faker.location.state""
+            country: ""#faker.location.country""
+            zip_code: ""#faker.location.zipCode""
+            latitude: ""#faker.location.latitude""
+            longitude: ""#faker.location.longitude""
 
           # Dados profissionais
           job:
-            title: "{{faker.person.jobTitle}}"
-            department: "{{faker.person.jobArea}}"
-            company: "{{faker.company.name}}"
+            title: ""#faker.person.jobTitle""
+            department: ""#faker.person.jobArea""
+            company: ""#faker.company.name""
 
           # Dados temporais
-          birth_date: "{{faker.date.birthdate}}"
-          created_at: "{{faker.date.recent}}"
-          last_login: "{{faker.date.recent}}"
+          birth_date: ""#faker.date.birthdate""
+          created_at: ""#faker.date.recent""
+          last_login: ""#faker.date.recent""
 
           # Dados diversos
-          avatar: "{{faker.image.avatar}}"
-          bio: "{{faker.lorem.paragraph}}"
-          username: "{{faker.internet.userName}}"
+          avatar: ""#faker.image.avatar""
+          bio: ""#faker.lorem.paragraph""
+          username: ""#faker.internet.userName""
 
     assert:
       status_code: 200
@@ -94,40 +94,40 @@ steps:
       body:
         financial_profile:
           # Dados financeiros
-          account_number: "{{faker.finance.accountNumber}}"
-          routing_number: "{{faker.finance.routingNumber}}"
-          credit_card: "{{faker.finance.creditCardNumber}}"
-          credit_card_cvv: "{{faker.finance.creditCardCVV}}"
-          amount: "{{faker.finance.amount}}"
-          currency_code: "{{faker.finance.currencyCode}}"
-          currency_name: "{{faker.finance.currencyName}}"
+          account_number: ""#faker.finance.accountNumber""
+          routing_number: ""#faker.finance.routingNumber""
+          credit_card: ""#faker.finance.creditCardNumber""
+          credit_card_cvv: ""#faker.finance.creditCardCVV""
+          amount: ""#faker.finance.amount""
+          currency_code: ""#faker.finance.currencyCode""
+          currency_name: ""#faker.finance.currencyName""
 
           # Dados de comércio
           product:
-            name: "{{faker.commerce.productName}}"
-            description: "{{faker.commerce.productDescription}}"
-            price: "{{faker.commerce.price}}"
-            department: "{{faker.commerce.department}}"
-            material: "{{faker.commerce.productMaterial}}"
+            name: ""#faker.commerce.productName""
+            description: ""#faker.commerce.productDescription""
+            price: ""#faker.commerce.price""
+            department: ""#faker.commerce.department""
+            material: ""#faker.commerce.productMaterial""
 
           # Dados de veículo
           vehicle:
-            manufacturer: "{{faker.vehicle.manufacturer}}"
-            model: "{{faker.vehicle.model}}"
-            type: "{{faker.vehicle.type}}"
-            fuel: "{{faker.vehicle.fuel}}"
-            vin: "{{faker.vehicle.vin}}"
+            manufacturer: ""#faker.vehicle.manufacturer""
+            model: ""#faker.vehicle.model""
+            type: ""#faker.vehicle.type""
+            fuel: ""#faker.vehicle.fuel""
+            vin: ""#faker.vehicle.vin""
 
           # Transações simuladas
           transactions:
-            - id: "{{faker.string.uuid}}"
-              amount: "{{faker.finance.amount}}"
-              description: "{{faker.commerce.productName}}"
-              date: "{{faker.date.recent}}"
-            - id: "{{faker.string.uuid}}"
-              amount: "{{faker.finance.amount}}"
-              description: "{{faker.commerce.productName}}"
-              date: "{{faker.date.recent}}"
+            - id: ""#faker.string.uuid""
+              amount: ""#faker.finance.amount""
+              description: ""#faker.commerce.productName""
+              date: ""#faker.date.recent""
+            - id: ""#faker.string.uuid""
+              amount: ""#faker.finance.amount""
+              description: ""#faker.commerce.productName""
+              date: ""#faker.date.recent""
 
     assert:
       status_code: 200
@@ -150,37 +150,37 @@ steps:
       body:
         business_data:
           company:
-            name: "{{faker.company.name}}"
-            catch_phrase: "{{faker.company.catchPhrase}}"
-            buzz_phrase: "{{faker.company.buzzPhrase}}"
+            name: ""#faker.company.name""
+            catch_phrase: ""#faker.company.catchPhrase""
+            buzz_phrase: ""#faker.company.buzzPhrase""
 
           # Dados de internet/sistema
           system:
-            domain: "{{faker.internet.domainName}}"
-            ip_address: "{{faker.internet.ipv4}}"
-            mac_address: "{{faker.internet.mac}}"
-            user_agent: "{{faker.internet.userAgent}}"
+            domain: ""#faker.internet.domainName""
+            ip_address: ""#faker.internet.ipv4""
+            mac_address: ""#faker.internet.mac""
+            user_agent: ""#faker.internet.userAgent""
 
           # Dados científicos (removidos métodos não disponíveis)
           # science:
-          #   chemical_element: "{{faker.science.chemicalElement.name}}" # Não disponível em v8+
-          #   unit: "{{faker.science.unit.name}}" # Não disponível em v8+
+          #   chemical_element: ""#faker.science.chemicalElement.name"" # Não disponível em v8+
+          #   unit: ""#faker.science.unit.name"" # Não disponível em v8+
 
           # Dados de texto
           content:
-            word: "{{faker.lorem.word}}"
-            sentence: "{{faker.lorem.sentence}}"
-            paragraph: "{{faker.lorem.paragraph}}"
-            lines: "{{faker.lorem.lines}}"
+            word: ""#faker.lorem.word""
+            sentence: ""#faker.lorem.sentence""
+            paragraph: ""#faker.lorem.paragraph""
+            lines: ""#faker.lorem.lines""
 
           # Dados com arrays helpers
-          priorities: "{{faker.helpers.arrayElement(['high', 'medium', 'low', 'critical'])}}"
-          status: "{{faker.helpers.arrayElement(['active', 'inactive', 'pending', 'suspended'])}}"
+          priorities: ""#faker.helpers.arrayElement(['high', 'medium', 'low', 'critical'])""
+          status: ""#faker.helpers.arrayElement(['active', 'inactive', 'pending', 'suspended'])""
 
           # Dados booleanos e números
-          is_active: {{faker.datatype.boolean}}
-          random_number: {{faker.number.int}}
-          float_number: "{{faker.number.float}}"
+          is_active: "#faker.datatype.boolean"
+          random_number: "#faker.number.int"
+          float_number: ""#faker.number.float""
 
     assert:
       status_code: 200
@@ -199,29 +199,29 @@ steps:
         validation_test:
           # Dados para validação de formato
           emails:
-            - "{{faker.internet.email}}"
-            - "{{faker.internet.email}}"
-            - "{{faker.internet.email}}"
+            - ""#faker.internet.email""
+            - ""#faker.internet.email""
+            - ""#faker.internet.email""
           uuids:
-            - "{{faker.string.uuid}}"
-            - "{{faker.string.uuid}}"
-            - "{{faker.string.uuid}}"
+            - ""#faker.string.uuid""
+            - ""#faker.string.uuid""
+            - ""#faker.string.uuid""
           phone_numbers:
-            - "{{faker.phone.number}}"
-            - "{{faker.phone.number}}"
-            - "{{faker.phone.number}}"
+            - ""#faker.phone.number""
+            - ""#faker.phone.number""
+            - ""#faker.phone.number""
           dates:
-            past: "{{faker.date.past}}"
-            future: "{{faker.date.future}}"
-            recent: "{{faker.date.recent}}"
-            birthdate: "{{faker.date.birthdate}}"
+            past: ""#faker.date.past""
+            future: ""#faker.date.future""
+            recent: ""#faker.date.recent""
+            birthdate: ""#faker.date.birthdate""
 
           # Dados com seed (devem ser consistentes)
           consistent_data:
-            name1: "{{faker.person.fullName}}"
-            name2: "{{faker.person.fullName}}"
-            email1: "{{faker.internet.email}}"
-            email2: "{{faker.internet.email}}"
+            name1: ""#faker.person.fullName""
+            name2: ""#faker.person.fullName""
+            email1: ""#faker.internet.email""
+            email2: ""#faker.internet.email""
 
     assert:
       status_code: 200
@@ -255,17 +255,17 @@ steps:
           related_data:
             # Novo usuário relacionado
             related_user:
-              name: "{{faker.person.fullName}}"
-              email: "{{faker.internet.email}}"
+              name: ""#faker.person.fullName""
+              email: ""#faker.internet.email""
               company: "{{user_company}}"  # Usar empresa do usuário anterior
 
             # Novos produtos da mesma categoria
             related_products:
-              - name: "{{faker.commerce.productName}}"
-                price: "{{faker.commerce.price}}"
+              - name: ""#faker.commerce.productName""
+                price: ""#faker.commerce.price""
                 category: "electronics"
-              - name: "{{faker.commerce.productName}}"
-                price: "{{faker.commerce.price}}"
+              - name: ""#faker.commerce.productName""
+                price: ""#faker.commerce.price""
                 category: "clothing"
 
           # Dados de auditoria
@@ -273,7 +273,7 @@ steps:
             generated_by: "faker.js"
             test_batch: "{{batch_size}}"
             environment: "{{test_environment}}"
-            timestamp: "{{faker.date.recent}}"
+            timestamp: ""#faker.date.recent""
 
     assert:
       status_code: 200
@@ -297,41 +297,41 @@ steps:
         complex_scenario:
           # E-commerce order simulation
           order:
-            id: "{{faker.string.uuid}}"
+            id: ""#faker.string.uuid""
             customer:
-              name: "{{faker.person.fullName}}"
-              email: "{{faker.internet.email}}"
-              phone: "{{faker.phone.number}}"
+              name: ""#faker.person.fullName""
+              email: ""#faker.internet.email""
+              phone: ""#faker.phone.number""
               address:
-                street: "{{faker.location.streetAddress}}"
-                city: "{{faker.location.city}}"
-                zip: "{{faker.location.zipCode}}"
+                street: ""#faker.location.streetAddress""
+                city: ""#faker.location.city""
+                zip: ""#faker.location.zipCode""
 
             items:
-              - id: "{{faker.string.uuid}}"
-                name: "{{faker.commerce.productName}}"
-                price: "{{faker.commerce.price}}"
-                quantity: "{{faker.number.int}}"
-              - id: "{{faker.string.uuid}}"
-                name: "{{faker.commerce.productName}}"
-                price: "{{faker.commerce.price}}"
-                quantity: "{{faker.number.int}}"
+              - id: ""#faker.string.uuid""
+                name: ""#faker.commerce.productName""
+                price: ""#faker.commerce.price""
+                quantity: ""#faker.number.int""
+              - id: ""#faker.string.uuid""
+                name: ""#faker.commerce.productName""
+                price: ""#faker.commerce.price""
+                quantity: ""#faker.number.int""
 
             payment:
-              method: "{{faker.helpers.arrayElement(['credit_card', 'debit_card', 'paypal', 'bank_transfer'])}}"
-              card_number: "{{faker.finance.creditCardNumber}}"
-              amount: "{{faker.finance.amount}}"
-              currency: "{{faker.finance.currencyCode}}"
+              method: ""#faker.helpers.arrayElement(['credit_card', 'debit_card', 'paypal', 'bank_transfer'])""
+              card_number: ""#faker.finance.creditCardNumber""
+              amount: ""#faker.finance.amount""
+              currency: ""#faker.finance.currencyCode""
 
             shipping:
-              carrier: "{{faker.helpers.arrayElement(['FedEx', 'UPS', 'DHL', 'USPS'])}}"
-              tracking: "{{faker.string.uuid}}"
-              estimated_delivery: "{{faker.date.future}}"
+              carrier: ""#faker.helpers.arrayElement(['FedEx', 'UPS', 'DHL', 'USPS'])""
+              tracking: ""#faker.string.uuid""
+              estimated_delivery: ""#faker.date.future""
 
             metadata:
-              created_at: "{{faker.date.recent}}"
-              user_agent: "{{faker.internet.userAgent}}"
-              ip_address: "{{faker.internet.ip}}"
+              created_at: ""#faker.date.recent""
+              user_agent: ""#faker.internet.userAgent""
+              ip_address: ""#faker.internet.ip""
 
     assert:
       status_code: 200

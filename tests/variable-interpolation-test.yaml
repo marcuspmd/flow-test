@@ -92,7 +92,7 @@ steps:
           profile_summary: "{{user_name}} works in {{department}} with salary {{salary}}"
         computed_fields:
           user_key: "user_{{user_id}}_{{department}}"
-          email_prefix: "{{js: variables.user_email ? variables.user_email.split('@')[0] : 'unknown'}}"
+          email_prefix: "$variables.user_email ? variables.user_email.split('@')[0] : 'unknown'"
           full_profile: "{{full_user_data}}"
 
     assert:
@@ -272,9 +272,9 @@ steps:
             timeout_setting: "{{timeout_setting}}"
             admin_names: "{{admin_names}}"
           performance:
-            is_fast: "{{js: variables.response_time && variables.response_time < 200 ? true : false}}"
+            is_fast: "$variables.response_time && variables.response_time < 200 ? true : false"
             is_premium: "{{is_premium_user}}"
-            rating: "{{js: variables.response_time < 100 ? 'excellent' : variables.response_time < 200 ? 'good' : 'needs_improvement'}}"
+            rating: "$variables.response_time < 100 ? 'excellent' : variables.response_time < 200 ? 'good' : 'needs_improvement'"
 
     assert:
       status_code: 200

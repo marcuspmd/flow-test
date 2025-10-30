@@ -27,45 +27,45 @@ steps:
         User-Agent: "FlowTest/{{api_version}}"
       body:
         # Faker person data
-        firstName: "{{faker.person.firstName}}"
-        lastName: "{{faker.person.lastName}}"
-        fullName: "{{faker.person.fullName}}"
-        email: "{{faker.internet.email}}"
-        phone: "{{faker.phone.number}}"
-        jobTitle: "{{faker.person.jobTitle}}"
+        firstName: ""#faker.person.firstName""
+        lastName: ""#faker.person.lastName""
+        fullName: ""#faker.person.fullName""
+        email: ""#faker.internet.email""
+        phone: ""#faker.phone.number""
+        jobTitle: ""#faker.person.jobTitle""
 
         # Faker location data
-        city: "{{faker.location.city}}"
-        country: "{{faker.location.country}}"
-        streetAddress: "{{faker.location.streetAddress}}"
-        zipCode: "{{faker.location.zipCode}}"
+        city: ""#faker.location.city""
+        country: ""#faker.location.country""
+        streetAddress: ""#faker.location.streetAddress""
+        zipCode: ""#faker.location.zipCode""
 
         # Faker date/time data
-        birthDate: "{{faker.date.birthdate}}"
-        appointmentDate: "{{faker.date.future}}"
-        lastLogin: "{{faker.date.recent}}"
+        birthDate: ""#faker.date.birthdate""
+        appointmentDate: ""#faker.date.future""
+        lastLogin: ""#faker.date.recent""
 
         # Faker lorem text
-        description: "{{faker.lorem.sentence}}"
-        notes: "{{faker.lorem.paragraph}}"
+        description: ""#faker.lorem.sentence""
+        notes: ""#faker.lorem.paragraph""
 
         # Faker numbers and identifiers
-        userId: "{{faker.number.int}}"
-        accountBalance: "{{faker.finance.amount}}"
-        currency: "{{faker.finance.currencyCode}}"
-        uuid: "{{faker.string.uuid}}"
+        userId: ""#faker.number.int""
+        accountBalance: ""#faker.finance.amount""
+        currency: ""#faker.finance.currencyCode""
+        uuid: ""#faker.string.uuid""
 
         # Faker helpers with arrays (requires arguments)
-        status: "{{faker.helpers.arrayElement(['active', 'inactive', 'pending'])}}"
-        priority: "{{faker.helpers.arrayElement(['high', 'medium', 'low'])}}"
+        status: ""#faker.helpers.arrayElement(['active', 'inactive', 'pending'])""
+        priority: ""#faker.helpers.arrayElement(['high', 'medium', 'low'])""
 
         # Faker boolean
-        isActive: "{{faker.datatype.boolean}}"
+        isActive: ""#faker.datatype.boolean""
 
         # Mixed static and dynamic
         environment: "{{test_env}}"
         apiVersion: "{{api_version}}"
-        generatedAt: "{{faker.date.recent}}"
+        generatedAt: ""#faker.date.recent""
 
     assertions:
       status_code:
@@ -89,11 +89,11 @@ steps:
         Content-Type: "application/json"
       body:
         # Faker with arguments (when supported)
-        randomText: "{{faker.lorem.words}}"
-        smallNumber: "{{faker.number.int}}"
-        companyName: "{{faker.company.name}}"
-        productName: "{{faker.commerce.productName}}"
-        price: "{{faker.commerce.price}}"
+        randomText: ""#faker.lorem.words""
+        smallNumber: ""#faker.number.int""
+        companyName: ""#faker.company.name""
+        productName: ""#faker.commerce.productName""
+        price: ""#faker.commerce.price""
 
     assertions:
       status_code:

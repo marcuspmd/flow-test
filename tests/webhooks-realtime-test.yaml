@@ -6,10 +6,10 @@ base_url: "{{httpbin_url}}"
 metadata:
   priority: "high"
   tags: ["webhooks", "real-time", "events", "callbacks", "integration"]
-  estimated_duration_ms: 12000
+  estimated_duration_ms: 1200
 
 variables:
-  webhook_id: "webhook-{{$faker.string.uuid}}"
+  webhook_id: "webhook-"#faker.string.uuid""
   callback_url: "{{httpbin_url}}/post"
   event_type: "user.created"
 
@@ -25,7 +25,7 @@ steps:
           id: "{{webhook_id}}"
           url: "{{callback_url}}"
           events: ["user.created", "user.updated", "payment.completed"]
-          secret: "{{$faker.string.alphanumeric}}"
+          secret: ""#faker.string.alphanumeric""
           active: true
     assert:
       status_code: 200
@@ -49,11 +49,11 @@ steps:
       body:
         event:
           type: "{{event_type}}"
-          timestamp: "{{$faker.date.recent}}"
+          timestamp: ""#faker.date.recent""
           data:
-            user_id: "{{$faker.string.uuid}}"
-            email: "{{$faker.internet.email}}"
-            name: "{{$faker.person.fullName}}"
+            user_id: ""#faker.string.uuid""
+            email: ""#faker.internet.email""
+            name: ""#faker.person.fullName""
         metadata:
           webhook_id: "{{registered_webhook_id}}"
           delivery_attempt: 1
@@ -137,15 +137,15 @@ steps:
         X-Stream-Type: "real-time-events"
       body:
         stream_events:
-          - event_id: "{{$faker.string.uuid}}"
+          - event_id: ""#faker.string.uuid""
             type: "user.activity"
-            timestamp: "{{$faker.date.recent}}"
-          - event_id: "{{$faker.string.uuid}}"
+            timestamp: ""#faker.date.recent""
+          - event_id: ""#faker.string.uuid""
             type: "system.health"
-            timestamp: "{{$faker.date.recent}}"
-          - event_id: "{{$faker.string.uuid}}"
+            timestamp: ""#faker.date.recent""
+          - event_id: ""#faker.string.uuid""
             type: "payment.processed"
-            timestamp: "{{$faker.date.recent}}"
+            timestamp: ""#faker.date.recent""
     assert:
       status_code: 200
     capture:

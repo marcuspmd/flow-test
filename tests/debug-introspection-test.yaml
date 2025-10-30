@@ -38,7 +38,7 @@ steps:
         debug_all_vars: "all_vars_debug_data"
         system_info:
           timestamp: "{{$js.return Date.now()}}"
-          debug_session_id: "{{faker.string.uuid}}"
+          debug_session_id: ""#faker.string.uuid""
     assert:
       status_code: 200
       body:
@@ -68,9 +68,9 @@ steps:
             environment_user: "{{environment_user}}"
             system_timestamp: "{{system_timestamp}}"
           faker_variables:
-            random_name: "{{faker.person.fullName}}"
-            random_email: "{{faker.internet.email}}"
-            random_uuid: "{{faker.string.uuid}}"
+            random_name: ""#faker.person.fullName""
+            random_email: ""#faker.internet.email""
+            random_uuid: ""#faker.string.uuid""
           javascript_expressions:
             current_time: "{{$js.return Date.now()}}"
             random_number: "{{$js.return Math.floor(Math.random() * 1000)}}"
