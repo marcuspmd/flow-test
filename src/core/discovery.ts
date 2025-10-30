@@ -18,6 +18,7 @@ import { ConfigManager } from "./config";
 import {
   DiscoveredTest,
   TestSuite,
+  TestStep,
   FlowDependency,
 } from "../types/engine.types";
 
@@ -366,7 +367,7 @@ export class TestDiscovery {
       return false;
     }
 
-    return suite.steps.every((step: any) => {
+    return suite.steps.every((step: TestStep) => {
       if (!step || typeof step !== "object") {
         return false;
       }

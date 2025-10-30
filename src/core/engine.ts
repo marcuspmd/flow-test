@@ -28,6 +28,7 @@ import type { ILogger } from "../interfaces/services/ILogger";
 import {
   EngineExecutionOptions,
   AggregatedResult,
+  SuiteExecutionResult,
   EngineHooks,
   ExecutionStats,
   DiscoveredTest,
@@ -620,7 +621,7 @@ export class FlowTestEngine {
     startTime: Date,
     endTime: Date,
     totalDiscovered: number,
-    suiteResults: any[]
+    suiteResults: SuiteExecutionResult[]
   ): AggregatedResult {
     const totalDuration = endTime.getTime() - startTime.getTime();
     const successful = suiteResults.filter(

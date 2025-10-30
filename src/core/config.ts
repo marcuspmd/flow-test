@@ -350,24 +350,27 @@ export class ConfigManager implements IConfigManager {
   /**
    * Valida e normaliza a configuração com valores padrão
    */
-  private validateAndNormalizeConfig(config: any): EngineConfig {
+  private validateAndNormalizeConfig(config: unknown): EngineConfig {
     if (!config || typeof config !== "object") {
       throw new Error("Configuration must be a valid object");
     }
 
-    if (!config.project_name) {
+    // After type guard, assert as Record for property access
+    const configObj = config as Record<string, any>;
+
+    if (!configObj.project_name) {
       throw new Error("project_name is required in configuration");
     }
 
-    const reportingEnabled = config.reporting?.enabled !== false;
+    const reportingEnabled = configObj.reporting?.enabled !== false;
     const allowedReportFormats: string[] = ["json", "html", "qa"];
 
     let normalizedFormats: ReportFormat[] = [];
 
     if (reportingEnabled) {
       // Validate reporting formats before filtering
-      if (Array.isArray(config.reporting?.formats)) {
-        const configuredFormats = config.reporting!.formats as string[];
+      if (Array.isArray(configObj.reporting?.formats)) {
+        const configuredFormats = configObj.reporting!.formats as string[];
         const invalidFormats = configuredFormats.filter(
           (format) => !allowedReportFormats.includes(format)
         );
@@ -378,8 +381,8 @@ export class ConfigManager implements IConfigManager {
         }
       }
 
-      const configuredFormats = Array.isArray(config.reporting?.formats)
-        ? (config.reporting!.formats as string[]).filter((format) =>
+      const configuredFormats = Array.isArray(configObj.reporting?.formats)
+        ? (configObj.reporting!.formats as string[]).filter((format) =>
             allowedReportFormats.includes(format)
           )
         : [];
@@ -391,68 +394,68 @@ export class ConfigManager implements IConfigManager {
       }
     }
 
-    const htmlReportingConfig = config.reporting?.html || {};
+    const htmlReportingConfig = configObj.reporting?.html || {};
 
     const normalized: EngineConfig = {
-      project_name: config.project_name,
-      test_directory: config.test_directory || "./tests",
+      project_name: configObj.project_name,
+      test_directory: configObj.test_directory || "./tests",
       globals: {
-        env_files: config.globals?.env_files,
-        variables: config.globals?.variables || {},
+        env_files: configObj.globals?.env_files,
+        variables: configObj.globals?.variables || {},
         timeouts: {
-          default: config.globals?.timeouts?.default || 30000,
-          slow_tests: config.globals?.timeouts?.slow_tests || 60000,
+          default: configObj.globals?.timeouts?.default || 30000,
+          slow_tests: configObj.globals?.timeouts?.slow_tests || 60000,
         },
-        base_url: config.globals?.base_url,
+        base_url: configObj.globals?.base_url,
         // Feature flag: Strategy Pattern refactor (ADR-001)
         // Default: false (disabled), can be overridden by env var FLOW_TEST_USE_STRATEGY_PATTERN
         use_strategy_pattern: this.parseBoolean(
           process.env.FLOW_TEST_USE_STRATEGY_PATTERN,
-          config.globals?.use_strategy_pattern ?? false
+          configObj.globals?.use_strategy_pattern ?? false
         ),
       },
       discovery: {
-        patterns: config.discovery?.patterns || [
+        patterns: configObj.discovery?.patterns || [
           "**/*.test.yml",
           "**/*.test.yaml",
         ],
-        exclude: config.discovery?.exclude || [
+        exclude: configObj.discovery?.exclude || [
           "**/node_modules/**",
           "**/drafts/**",
         ],
-        recursive: config.discovery?.recursive !== false,
+        recursive: configObj.discovery?.recursive !== false,
       },
       priorities: {
-        levels: config.priorities?.levels || [
+        levels: configObj.priorities?.levels || [
           "critical",
           "high",
           "medium",
           "low",
         ],
-        required: config.priorities?.required || ["critical"],
+        required: configObj.priorities?.required || ["critical"],
         fail_fast_on_required:
-          config.priorities?.fail_fast_on_required !== false,
+          configObj.priorities?.fail_fast_on_required !== false,
       },
       execution: {
-        mode: config.execution?.mode || "sequential",
-        max_parallel: config.execution?.max_parallel || 5,
-        timeout: config.execution?.timeout || 30000,
-        continue_on_failure: config.execution?.continue_on_failure || false,
+        mode: configObj.execution?.mode || "sequential",
+        max_parallel: configObj.execution?.max_parallel || 5,
+        timeout: configObj.execution?.timeout || 30000,
+        continue_on_failure: configObj.execution?.continue_on_failure || false,
         retry_failed: {
-          enabled: config.execution?.retry_failed?.enabled || false,
-          max_attempts: config.execution?.retry_failed?.max_attempts || 3,
-          delay_ms: config.execution?.retry_failed?.delay_ms || 1000,
+          enabled: configObj.execution?.retry_failed?.enabled || false,
+          max_attempts: configObj.execution?.retry_failed?.max_attempts || 3,
+          delay_ms: configObj.execution?.retry_failed?.delay_ms || 1000,
         },
       },
       reporting: {
         enabled: reportingEnabled,
         formats: normalizedFormats,
-        output_dir: config.reporting?.output_dir || "./results",
-        aggregate: config.reporting?.aggregate !== false,
+        output_dir: configObj.reporting?.output_dir || "./results",
+        aggregate: configObj.reporting?.aggregate !== false,
         include_performance_metrics:
-          config.reporting?.include_performance_metrics !== false,
+          configObj.reporting?.include_performance_metrics !== false,
         include_variables_state:
-          config.reporting?.include_variables_state !== false,
+          configObj.reporting?.include_variables_state !== false,
         html: {
           aggregate: htmlReportingConfig.aggregate !== false,
           per_suite: htmlReportingConfig.per_suite !== false,
