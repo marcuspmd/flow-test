@@ -57,8 +57,9 @@ steps:
       #   created_at: { type: "string" }
 
     capture:
-      # In real API, these would come from response
-      user_id: "{{$faker.number.int}}"
+      # In real API, these would come from the response body
+      # For demonstration purposes, using generated values
+      user_id: "12345"  # body.id
       registration_success: true
 
   # ==================== LOGIN ====================
@@ -96,9 +97,10 @@ steps:
       #     email: { equals: "{{test_email}}" }
 
     capture:
-      # Mock tokens - in real API from response
-      auth_token: "{{$faker.string.alphanumeric({ length: 64 })}}"
-      refresh_token: "{{$faker.string.alphanumeric({ length: 64 })}}"
+      # In real API, these would come from the login response
+      # For demonstration purposes only - DO NOT use in production
+      auth_token: "mock_access_token_abc123xyz789"
+      refresh_token: "mock_refresh_token_def456uvw012"
       token_expires_in: 3600
 
   # ==================== VERIFY TOKEN ====================
@@ -243,8 +245,9 @@ steps:
       #   expires_in: { type: "number" }
 
     capture:
-      # Update with new token
-      auth_token: "{{$faker.string.alphanumeric({ length: 64 })}}"
+      # Update with new token from response
+      # For demonstration - in real API: body.access_token
+      auth_token: "mock_refreshed_token_ghi789abc456"
 
   - name: "Verify new token works"
     metadata:

@@ -165,9 +165,11 @@ steps:
     assert:
       status_code: 200
 
-    # In real scenario, accumulate items
+    # In real scenario, use JMESPath or custom logic to accumulate
+    # Note: Direct array concatenation is not supported
+    # Instead, capture each page separately or use external processing
     # capture:
-    #   all_items: "{{all_items}} + body.data"
+    #   page_{{page}}_items: "body.data"
 
   # Pattern 8: Search with pagination
   - name: "Search with pagination"
