@@ -1,0 +1,54 @@
+{
+  "node_id": "httpbin-test-json",
+  "suite_name": "Fluxo de Teste com localhost:8080 (JSON)",
+  "metadata": {
+    "priority": "medium",
+    "tags": ["basic", "smoke", "httpbin", "getting-started", "json"],
+    "description": "Basic flow test demonstrating core engine functionality with JSON format"
+  },
+  "base_url": "{{httpbin_url}}",
+  "variables": {
+    "user_id": 456,
+    "user_name": "beta_user"
+  },
+  "exports": ["captured_username", "auth_token"],
+  "steps": [
+    {
+      "name": "Enviar dados via POST e capturar valores",
+      "request": {
+        "method": "POST",
+        "url": "/post",
+        "headers": {
+          "Content-Type": "application/json",
+          "X-Custom-Header": "Meu-Teste-JSON"
+        },
+        "body": {
+          "name": "{{user_name}}",
+          "id": "{{user_id}}",
+          "grant_type": "password"
+        }
+      },
+      "assert": {
+        "status_code": 200
+      },
+      "capture": {
+        "captured_username": "body.json.name",
+        "auth_token": "body.headers.Host"
+      }
+    },
+    {
+      "name": "Buscar dados usando o token capturado",
+      "request": {
+        "method": "GET",
+        "url": "/get",
+        "headers": {
+          "Authorization": "Bearer {{auth_token}}",
+          "X-User-Name": "{{captured_username}}"
+        }
+      },
+      "assert": {
+        "status_code": 200
+      }
+    }
+  ]
+}
