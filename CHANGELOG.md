@@ -8,6 +8,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Deterministic Expression Parser**: New unified syntax with clear prefix-based detection (#9)
+  - `#faker.` prefix for Faker.js test data generation
+  - `@` prefix for JMESPath JSON queries (can now be used anywhere, not just in capture)
+  - `$` prefix for JavaScript expressions (simplified from `$js:`)
+  - `{{}}` for template variable interpolation (unchanged)
+  - No prefix for string literals
+  - Comprehensive error detection for mixed syntax
+  - Warning system for ambiguous expressions
+  - Debug/trace mode to understand parsing decisions
+  - 100% deterministic: same input always produces same type
+  - Complete backward compatibility with existing templates
+  - Migration guide available in `guides/EXPRESSION_PARSER_MIGRATION.md`
+  - Example YAML file demonstrating all syntax patterns
 - **Dashboard Auto-Discovery**: Dashboard commands now automatically detect project location when using global installations
 - **Postman Integration**: Convert Flow Test suites to Postman collections and import collections back into YAML using the CLI
 - **Documentation Enhancement**: Comprehensive documentation improvements with practical examples
