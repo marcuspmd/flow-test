@@ -211,6 +211,89 @@ describe("TestDiscovery", () => {
       expect(tests).toHaveLength(1);
     });
 
+    it("should parse JSON test files", async () => {
+      const jsonTestSuite: TestSuite = {
+        node_id: "json-test-001",
+        suite_name: "JSON Test Suite",
+        steps: [
+          {
+            name: "Test Step",
+            request: {
+              method: "GET",
+              url: "/api/test",
+            },
+          },
+        ],
+        metadata: {
+          priority: "medium",
+        },
+      };
+
+      mockFg.mockResolvedValue(["/tests/api/test.json"]);
+      mockPath.join.mockImplementation((...args) => args.join("/"));
+      
+      // Mock JSON.parse to be called instead of yaml.load for .json files
+      const originalParse = JSON.parse;
+      global.JSON.parse = jest.fn().mockReturnValue(jsonTestSuite);
+
+      const tests = await testDiscovery.discoverTests();
+
+      expect(tests).toHaveLength(1);
+      expect(tests[0]).toEqual(
+        expect.objectContaining({
+          file_path: "/tests/api/test.json",
+          node_id: "json-test-001",
+          suite_name: "JSON Test Suite",
+          priority: "medium",
+        })
+      );
+
+      // Restore original JSON.parse
+      global.JSON.parse = originalParse;
+    });
+
+    it("should parse both YAML and JSON test files in same discovery", async () => {
+      const jsonTestSuite: TestSuite = {
+        node_id: "json-test-002",
+        suite_name: "JSON Test Suite 2",
+        steps: [
+          {
+            name: "JSON Test Step",
+            request: { method: "POST", url: "/api/json" },
+          },
+        ],
+      };
+
+      const yamlTestSuite: TestSuite = {
+        node_id: "yaml-test-001",
+        suite_name: "YAML Test Suite",
+        steps: [
+          {
+            name: "YAML Test Step",
+            request: { method: "GET", url: "/api/yaml" },
+          },
+        ],
+      };
+
+      mockFg.mockResolvedValue([
+        "/tests/api/test.json",
+        "/tests/api/test.yaml",
+      ]);
+
+      const originalParse = JSON.parse;
+      global.JSON.parse = jest.fn().mockReturnValue(jsonTestSuite);
+      // For the YAML file, only yaml.load should be called
+      mockYaml.load.mockReturnValue(yamlTestSuite);
+
+      const tests = await testDiscovery.discoverTests();
+
+      expect(tests).toHaveLength(2);
+      expect(tests.find(t => t.node_id === "json-test-002")).toBeDefined();
+      expect(tests.find(t => t.node_id === "yaml-test-001")).toBeDefined();
+
+      global.JSON.parse = originalParse;
+    });
+
     it("should warn about missing dependencies", async () => {
       const consoleSpy = jest.spyOn(console, "warn").mockImplementation();
 
