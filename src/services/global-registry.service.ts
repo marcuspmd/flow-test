@@ -9,10 +9,11 @@
  * @packageDocumentation
  */
 
-import { injectable } from "inversify";
+import { injectable, inject } from "inversify";
 import "reflect-metadata";
 import { IGlobalRegistryService } from "../interfaces/services/IGlobalRegistryService";
-import { getLogger } from "./logger.service";
+import { TYPES } from "../di/identifiers";
+import type { ILogger } from "../interfaces/services/ILogger";
 
 /**
  * Entry in the global variable registry with comprehensive metadata.
@@ -201,14 +202,12 @@ export class GlobalRegistryService implements IGlobalRegistryService {
   /** Fast search index mapping full name (nodeId.variable) to node ID */
   private variableIndex: Map<string, string> = new Map();
 
-  private logger = getLogger();
-
   /**
    * GlobalRegistryService constructor
    *
    * Initializes internal data structures for the registry.
    */
-  constructor() {
+  constructor(@inject(TYPES.ILogger) private logger: ILogger) {
     this.registry = new Map();
     this.variableIndex = new Map();
   }

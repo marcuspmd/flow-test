@@ -1,9 +1,10 @@
-import { injectable } from "inversify";
+import { injectable, inject } from "inversify";
 import fs from "fs";
 import path from "path";
 import yaml from "js-yaml";
-import { getLogger } from "./logger.service";
 import { ErrorHandler } from "../utils";
+import { TYPES } from "../di/identifiers";
+import type { ILogger } from "../interfaces/services/ILogger";
 import type { ICallService } from "../interfaces/services/ICallService";
 import type {
   ResolvedStepCall,
@@ -24,10 +25,9 @@ interface CachedSuiteEntry {
 
 @injectable()
 export class CallService implements ICallService {
-  private logger = getLogger();
   private suiteCache: Map<string, CachedSuiteEntry> = new Map();
 
-  constructor() {}
+  constructor(@inject(TYPES.ILogger) private logger: ILogger) {}
 
   async executeStepCall(
     request: StepCallRequest,
