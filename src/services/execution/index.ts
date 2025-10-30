@@ -12,6 +12,12 @@
 // Main service
 export { ExecutionService } from "./execution.service";
 
+// v3.0 - Specialized execution services
+export { StepExecutorService } from "./step-executor.service";
+export { VariableContextManager } from "./variable-context-manager.service";
+export { ResultBuilderService } from "./result-builder.service";
+export { HookExecutorService } from "./hook-executor.service";
+
 // Strategy pattern exports
 export {
   StepExecutionStrategy,

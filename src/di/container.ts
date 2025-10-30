@@ -33,6 +33,9 @@ import {
   IJavaScriptService,
   IScriptExecutorService,
   IExecutionService,
+  IStepExecutor,
+  IVariableContextManager,
+  IResultBuilder,
 } from "../interfaces";
 
 // Implementations
@@ -54,6 +57,9 @@ import { HookExecutorService } from "../services/execution/hook-executor.service
 import { JavaScriptService } from "../services/javascript.service";
 import { ScriptExecutorService } from "../services/script-executor.service";
 import { ExecutionService } from "../services/execution/execution.service";
+import { StepExecutorService } from "../services/execution/step-executor.service";
+import { VariableContextManager } from "../services/execution/variable-context-manager.service";
+import { ResultBuilderService } from "../services/execution/result-builder.service";
 
 /**
  * Create and configure the DI container
@@ -168,6 +174,19 @@ export function createContainer(): Container {
   container
     .bind<IExecutionService>(TYPES.IExecutionService)
     .to(ExecutionService);
+
+  // ========================================
+  // FASE 6: ExecutionService Split (v3.0)
+  // ========================================
+
+  // New specialized execution services for better separation of concerns
+  container.bind<IStepExecutor>(TYPES.IStepExecutor).to(StepExecutorService);
+
+  container
+    .bind<IVariableContextManager>(TYPES.IVariableContextManager)
+    .to(VariableContextManager);
+
+  container.bind<IResultBuilder>(TYPES.IResultBuilder).to(ResultBuilderService);
 
   return container;
 }

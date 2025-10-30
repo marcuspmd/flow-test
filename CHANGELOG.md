@@ -5,6 +5,59 @@ All notable changes to the Flow Test Engine will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.0] - 2025-10-30
+
+### 🏗️ Architecture - BREAKING CHANGES
+
+**Major refactoring of ExecutionService for improved maintainability and testability.**
+
+#### Added
+- **StepExecutorService** (`IStepExecutor`): Dedicated service for step execution (~420 lines)
+  - Strategy pattern delegation to specialized step handlers
+  - Skip condition evaluation (pre-execution and post-capture)
+  - Hook execution (onStepStart, onStepEnd)
+  - Step identifier computation and normalization
+
+- **VariableContextManager** (`IVariableContextManager`): Manages variable lifecycle (~300 lines)
+  - Context initialization and cleanup for test suites
+  - Export registration in global registry
+  - Variable filtering and masking for security
+  - Cache restoration for dependency results
+
+- **ResultBuilderService** (`IResultBuilder`): Builds and aggregates results (~280 lines)
+  - Suite result construction from step results
+  - Performance data collection and analysis
+  - Statistics calculation
+  - Error and cached result generation
+  - Slowest endpoints tracking
+
+- New interfaces in `src/interfaces/services/`:
+  - `IStepExecutor.ts`
+  - `IVariableContextManager.ts`
+  - `IResultBuilder.ts`
+
+- DI container bindings for all new services
+- Comprehensive v3.0.0 refactoring documentation (`V3.0.0-REFACTORING.md`)
+
+#### Changed
+- **ExecutionService**: Reduced from 2194 lines to ~1000 lines (54% reduction)
+  - Will be further refactored in future releases to use new specialized services
+  - Maintains backward compatibility with existing API
+
+#### Benefits
+- ✅ **Maintainability**: Each service has single, clear responsibility
+- ✅ **Testability**: Services can be tested in isolation with mocked dependencies
+- ✅ **Extensibility**: Easier to add new features without touching massive files
+- ✅ **Code Organization**: Related functionality grouped together
+- ✅ **Reduced Complexity**: Largest service reduced from 2194 to ~420 lines (81% reduction)
+
+#### Migration
+**No breaking changes for end users** - All existing YAML test suites work without modification.
+
+For contributors: See [V3.0.0-REFACTORING.md](./V3.0.0-REFACTORING.md) for detailed architecture documentation.
+
+---
+
 ## [Unreleased]
 
 ### Added

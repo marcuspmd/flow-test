@@ -132,36 +132,12 @@ export const TYPES = {
   // Future Services (Fase 6 - ExecutionService Split)
   // ========================================
 
-  /** Execution orchestrator (will replace ExecutionService) */
-  IExecutionOrchestrator: Symbol.for("IExecutionOrchestrator"),
-
-  /** Suite execution service */
-  ISuiteExecutor: Symbol.for("ISuiteExecutor"),
-
-  /** Step execution service */
+  /** Step execution service (v3.0) */
   IStepExecutor: Symbol.for("IStepExecutor"),
 
-  /** Request execution service */
-  IRequestExecutor: Symbol.for("IRequestExecutor"),
+  /** Variable context management service (v3.0) */
+  IVariableContextManager: Symbol.for("IVariableContextManager"),
 
-  /** Input execution service */
-  IInputExecutor: Symbol.for("IInputExecutor"),
-
-  /** Call execution service */
-  ICallExecutor: Symbol.for("ICallExecutor"),
-
-  /** Iteration execution service */
-  IIterationExecutor: Symbol.for("IIterationExecutor"),
-
-  /** Scenario execution service */
-  IScenarioExecutor: Symbol.for("IScenarioExecutor"),
-
-  /** Result aggregation service */
-  IResultAggregator: Symbol.for("IResultAggregator"),
-
-  /** Metrics collection service */
-  IMetricsCollector: Symbol.for("IMetricsCollector"),
-
-  /** Dependency resolver service */
-  IDependencyResolver: Symbol.for("IDependencyResolver"),
+  /** Result building and aggregation service (v3.0) */
+  IResultBuilder: Symbol.for("IResultBuilder"),
 };

@@ -5,6 +5,7 @@ import {
   TestStep,
   ExecutionContext,
 } from "../types/engine.types";
+import { AggregatedResult } from "../types/config.types";
 import { LoggerService } from "./logger.service";
 import type { ILogger } from "../interfaces/services/ILogger";
 
@@ -74,11 +75,11 @@ export function createConsoleHooks(logger: ILogger): EngineHooks {
       });
     },
 
-    onExecutionEnd: async (stats: ExecutionStats) => {
+    onExecutionEnd: async (result: AggregatedResult) => {
       cliLogger.info(
-        `🏁 Execution completed with ${(
-          (stats.tests_successful / stats.tests_completed) * 100 || 0
-        ).toFixed(1)}% success rate`
+        `🏁 Execution completed with ${result.success_rate.toFixed(
+          1
+        )}% success rate`
       );
     },
   };

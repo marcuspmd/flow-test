@@ -32,6 +32,9 @@ export { IIterationService } from "./IIterationService";
 export { IInputService } from "./IInputService";
 export { ICallService } from "./ICallService";
 export { IHookExecutorService } from "./IHookExecutorService";
+export { IStepExecutor } from "./IStepExecutor";
+export { IVariableContextManager } from "./IVariableContextManager";
+export { IResultBuilder } from "./IResultBuilder";
 
 // Utility Services
 export { IJavaScriptService } from "./IJavaScriptService";
