@@ -1,20 +1,19 @@
 import { GlobalRegistryService } from "../global-registry.service";
 
-// Mock logger
-jest.mock("../logger.service", () => ({
-  getLogger: jest.fn(() => ({
-    warn: jest.fn(),
-    error: jest.fn(),
-    info: jest.fn(),
-    debug: jest.fn(),
-  })),
-}));
-
 describe("GlobalRegistryService", () => {
   let registryService: GlobalRegistryService;
+  let mockLogger: any;
 
   beforeEach(() => {
-    registryService = new GlobalRegistryService();
+    mockLogger = {
+      debug: jest.fn(),
+      info: jest.fn(),
+      warn: jest.fn(),
+      error: jest.fn(),
+      setLogLevel: jest.fn(),
+      getLogLevel: jest.fn(() => "info"),
+    };
+    registryService = new GlobalRegistryService(mockLogger);
     jest.clearAllMocks();
   });
 
@@ -309,7 +308,7 @@ describe("GlobalRegistryService", () => {
     });
 
     it("should return empty object when no variables are set", () => {
-      const emptyRegistry = new GlobalRegistryService();
+      const emptyRegistry = new GlobalRegistryService(mockLogger);
       expect(emptyRegistry.getAllExportedVariables()).toEqual({});
     });
   });
@@ -375,7 +374,7 @@ describe("GlobalRegistryService", () => {
     });
 
     it("should return empty array when no nodes registered", () => {
-      const emptyRegistry = new GlobalRegistryService();
+      const emptyRegistry = new GlobalRegistryService(mockLogger);
       expect(emptyRegistry.getRegisteredNodes()).toHaveLength(0);
     });
 
@@ -417,7 +416,7 @@ describe("GlobalRegistryService", () => {
     });
 
     it("should return empty array when no variables set", () => {
-      const emptyRegistry = new GlobalRegistryService();
+      const emptyRegistry = new GlobalRegistryService(mockLogger);
       expect(emptyRegistry.getAvailableVariableNames()).toEqual([]);
     });
   });
@@ -629,7 +628,7 @@ describe("GlobalRegistryService", () => {
     });
 
     it("should return null for most_recent_update when no nodes exist", () => {
-      const emptyRegistry = new GlobalRegistryService();
+      const emptyRegistry = new GlobalRegistryService(mockLogger);
       const stats = emptyRegistry.getStats();
 
       expect(stats.total_nodes).toBe(0);
@@ -665,7 +664,7 @@ describe("GlobalRegistryService", () => {
     });
 
     it("should export empty state for empty registry", () => {
-      const emptyRegistry = new GlobalRegistryService();
+      const emptyRegistry = new GlobalRegistryService(mockLogger);
       const stateString = emptyRegistry.exportState();
       const state = JSON.parse(stateString);
 
@@ -722,7 +721,7 @@ describe("GlobalRegistryService", () => {
     });
 
     it("should handle restoration of empty registry", () => {
-      const emptyRegistry = new GlobalRegistryService();
+      const emptyRegistry = new GlobalRegistryService(mockLogger);
       const restoreSnapshot = emptyRegistry.createSnapshot();
 
       // Add some data

@@ -12,6 +12,29 @@ import {
   InterpolationStrategyContext,
   InterpolationResult,
 } from "../interpolation-strategy.interface";
+import type { ILogger } from "../../../interfaces/services/ILogger";
+
+/**
+ * No-op logger for strategies (avoids test pollution)
+ */
+const isTestEnv =
+  process.env.NODE_ENV === "test" || process.env.JEST_WORKER_ID !== undefined;
+const noopLogger: ILogger = {
+  debug: (msg: string, ...args: any[]) => {
+    if (!isTestEnv) console.debug(msg, ...args);
+  },
+  info: (msg: string, ...args: any[]) => {
+    if (!isTestEnv) console.log(msg, ...args);
+  },
+  warn: (msg: string, ...args: any[]) => {
+    if (!isTestEnv) console.warn(msg, ...args);
+  },
+  error: (msg: string, ...args: any[]) => {
+    if (!isTestEnv) console.error(msg, ...args);
+  },
+  setLogLevel: () => {},
+  getLogLevel: () => "info",
+};
 
 /**
  * Strategy for resolving environment variables
@@ -33,6 +56,8 @@ export class EnvironmentVariableStrategy implements InterpolationStrategy {
   readonly name = "EnvironmentVariable";
   readonly priority = 10;
 
+  constructor(private logger: ILogger = noopLogger) {}
+
   canHandle(expression: string): boolean {
     return expression.startsWith("$env.");
   }
@@ -50,7 +75,7 @@ export class EnvironmentVariableStrategy implements InterpolationStrategy {
       const value = process.env[envVarName];
 
       if (context.debug) {
-        console.debug(
+        this.logger.debug(
           `[${this.name}] Resolved ${envVarName} = ${value ?? "undefined"}`
         );
       }

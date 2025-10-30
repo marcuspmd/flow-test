@@ -18,7 +18,6 @@ import { TYPES } from "../di/identifiers";
 import { ILogger } from "../interfaces/services/ILogger";
 import { ICertificateService } from "../interfaces/services/ICertificateService";
 import { IHttpService } from "../interfaces/services/IHttpService";
-import { getLogger } from "./logger.service";
 
 /**
  * HTTP service for executing API requests with comprehensive monitoring and error handling.
@@ -152,7 +151,7 @@ export class HttpService implements IHttpService {
   ): Promise<StepExecutionResult> {
     const startTime = Date.now();
     const startedAt = new Date().toISOString();
-    
+
     // Timing markers for detailed breakdown
     const timingMarkers = {
       requestStart: 0,
@@ -201,13 +200,13 @@ export class HttpService implements IHttpService {
 
       // Track timing with interceptors
       timingMarkers.requestStart = Date.now();
-      
+
       // Executes the request
       const response: AxiosResponse = await axios(axiosConfig);
-      
+
       timingMarkers.responseStart = Date.now();
       timingMarkers.responseEnd = Date.now();
-      
+
       const duration = Date.now() - startTime;
       const completedAt = new Date().toISOString();
 
@@ -229,8 +228,10 @@ export class HttpService implements IHttpService {
       });
 
       // Calculate timing breakdown
-      const timeToFirstByte = timingMarkers.responseStart - timingMarkers.requestStart;
-      const contentDownload = timingMarkers.responseEnd - timingMarkers.responseStart;
+      const timeToFirstByte =
+        timingMarkers.responseStart - timingMarkers.requestStart;
+      const contentDownload =
+        timingMarkers.responseEnd - timingMarkers.responseStart;
 
       return {
         step_name: stepName,

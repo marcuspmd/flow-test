@@ -51,7 +51,6 @@ import { InputService } from "../input";
 import { ScriptExecutorService } from "../script-executor.service";
 import { JavaScriptService } from "../javascript.service";
 import { HookExecutorService } from "./hook-executor.service";
-import { getLogger } from "../logger.service";
 import {
   DiscoveredTest,
   TestSuite,
@@ -273,7 +272,7 @@ export class ExecutionService implements IExecutionService {
     // Initialize certificate service (always, even if no global certificates)
     // This allows suite-level and step-level certificates to work
     const certificates = config.globals?.certificates || [];
-    this.certificateService = new CertificateService();
+    this.certificateService = new CertificateService(this.logger);
     if (certificates.length > 0) {
       this.logger.info(
         `Certificate service initialized with ${certificates.length} global certificate(s)`
@@ -894,11 +893,7 @@ export class ExecutionService implements IExecutionService {
               Object.keys(stepResult.captured_variables).length > 0
             ) {
               (this.logger as LoggerService).displayCapturedVariables?.(
-                stepResult.captured_variables,
-                {
-                  stepName: step.name,
-                  nodeId: suite.node_id,
-                }
+                stepResult.captured_variables
               );
             }
           } else if (stepResult.status === "failure") {

@@ -10,8 +10,13 @@ import {
   TestStep,
   TestSuite,
 } from "../types/engine.types";
-import { getLogger } from "./logger.service";
+import { LoggerService } from "./logger.service";
 import { LogStreamingService } from "./log-streaming.service";
+
+/**
+ * Module-level logger instance for realtime reporter
+ */
+const logger = new LoggerService();
 
 export type LiveEventType =
   | "run_registered"
@@ -69,7 +74,6 @@ export class RealtimeReporter extends EventEmitter {
   private outputPath?: string;
   private runs: Map<string, LiveRunRecord> = new Map();
   private activeRunId: string | null = null;
-  private logger = getLogger();
   private logStream = LogStreamingService.getInstance();
 
   constructor(outputPath?: string) {
@@ -109,7 +113,7 @@ export class RealtimeReporter extends EventEmitter {
           fs.writeFileSync(this.outputPath, "", "utf8");
         }
       } catch (error) {
-        this.logger.warn(
+        logger.warn(
           `⚠️  Unable to prepare live events file at '${this.outputPath}': ${error}`
         );
       }
@@ -375,7 +379,7 @@ export class RealtimeReporter extends EventEmitter {
           "utf8"
         );
       } catch (error) {
-        this.logger.warn(
+        logger.warn(
           `⚠️  Failed to write live event to '${this.outputPath}': ${error}`
         );
       }

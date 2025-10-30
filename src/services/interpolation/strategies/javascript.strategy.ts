@@ -18,6 +18,29 @@ import {
   javascriptService,
   JavaScriptExecutionContext,
 } from "../../javascript.service";
+import type { ILogger } from "../../../interfaces/services/ILogger";
+
+/**
+ * No-op logger for strategies (avoids test pollution)
+ */
+const isTestEnv =
+  process.env.NODE_ENV === "test" || process.env.JEST_WORKER_ID !== undefined;
+const noopLogger: ILogger = {
+  debug: (msg: string, ...args: any[]) => {
+    if (!isTestEnv) console.debug(msg, ...args);
+  },
+  info: (msg: string, ...args: any[]) => {
+    if (!isTestEnv) console.log(msg, ...args);
+  },
+  warn: (msg: string, ...args: any[]) => {
+    if (!isTestEnv) console.warn(msg, ...args);
+  },
+  error: (msg: string, ...args: any[]) => {
+    if (!isTestEnv) console.error(msg, ...args);
+  },
+  setLogLevel: () => {},
+  getLogLevel: () => "info",
+};
 
 /**
  * Strategy for resolving JavaScript expressions
@@ -51,6 +74,8 @@ export class JavaScriptStrategy
 
   private readonly logicalOperatorPattern = /\|\||&&|[><=!]=?|\?|:/;
 
+  constructor(private logger: ILogger = noopLogger) {}
+
   canHandle(expression: string): boolean {
     return (
       expression.startsWith("$js:") ||
@@ -83,7 +108,7 @@ export class JavaScriptStrategy
         trimmedExpr.startsWith("faker.")
       ) {
         if (context.debug) {
-          console.debug(
+          this.logger.debug(
             `[${this.name}] Skipping nested Faker/JS: ${trimmedExpr}`
           );
         }
@@ -101,7 +126,7 @@ export class JavaScriptStrategy
 
       if (value === undefined) {
         if (!context.suppressWarnings) {
-          console.warn(
+          this.logger.warn(
             `[${this.name}] Nested variable '${trimmedExpr}' not found`
           );
         }
@@ -135,13 +160,13 @@ export class JavaScriptStrategy
 
       // Preprocess: resolve nested {{variables}}
       if (context.debug) {
-        console.debug(`[${this.name}] Before preprocess: ${jsExpression}`);
+        this.logger.debug(`[${this.name}] Before preprocess: ${jsExpression}`);
       }
 
       const preprocessed = this.preprocess(jsExpression, context);
 
       if (context.debug) {
-        console.debug(`[${this.name}] After preprocess: ${preprocessed}`);
+        this.logger.debug(`[${this.name}] After preprocess: ${preprocessed}`);
       }
 
       // Execute JavaScript
@@ -158,7 +183,7 @@ export class JavaScriptStrategy
       );
 
       if (context.debug) {
-        console.debug(`[${this.name}] Result: ${value}`);
+        this.logger.debug(`[${this.name}] Result: ${value}`);
       }
 
       return {

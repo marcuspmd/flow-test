@@ -15,19 +15,31 @@
  * @packageDocumentation
  */
 
-import { getLogger } from "../services/logger.service";
+import type { ILogger } from "../interfaces/services/ILogger";
 
 /**
- * Logger interface compatible with Flow Test Engine's logger service.
- *
- * @public
+ * Simple console logger fallback (no dependency on LoggerService)
+ * Silenced in test environment to avoid polluting test output
  */
-export interface Logger {
-  error(message: string, context?: { error?: Error; [key: string]: any }): void;
-  warn(message: string, context?: any): void;
-  info(message: string, context?: any): void;
-  debug(message: string, context?: any): void;
-}
+const isTestEnv =
+  process.env.NODE_ENV === "test" || process.env.JEST_WORKER_ID !== undefined;
+
+const simpleLogger: ILogger = {
+  debug: (message: string, ...args: any[]) => {
+    if (!isTestEnv) console.log(`[DEBUG] ${message}`, ...args);
+  },
+  info: (message: string, ...args: any[]) => {
+    if (!isTestEnv) console.log(`[INFO] ${message}`, ...args);
+  },
+  warn: (message: string, ...args: any[]) => {
+    if (!isTestEnv) console.warn(`[WARN] ${message}`, ...args);
+  },
+  error: (message: string, ...args: any[]) => {
+    if (!isTestEnv) console.error(`[ERROR] ${message}`, ...args);
+  },
+  setLogLevel: () => {}, // No-op for simple logger
+  getLogLevel: () => "info",
+};
 
 /**
  * Configuration options for error handling behavior.
@@ -36,7 +48,7 @@ export interface Logger {
  */
 export interface ErrorHandlerOptions<T = any> {
   /** Logger instance to use for error logging */
-  logger?: Logger;
+  logger?: ILogger;
   /** Error message to log */
   message: string;
   /** Whether to rethrow the error after logging */
@@ -97,8 +109,6 @@ export interface ErrorHandlerOptions<T = any> {
  * @since 1.0.0
  */
 export class ErrorHandler {
-  private static defaultLogger = getLogger();
-
   /**
    * Handles synchronous operations with automatic error catching and logging.
    *
@@ -127,7 +137,7 @@ export class ErrorHandler {
     operation: () => T,
     options: ErrorHandlerOptions<T>
   ): T | undefined {
-    const logger = options.logger || this.defaultLogger;
+    const logger = options.logger || simpleLogger;
 
     try {
       return operation();
@@ -196,7 +206,7 @@ export class ErrorHandler {
     operation: () => Promise<T>,
     options: ErrorHandlerOptions<T>
   ): Promise<T | undefined> {
-    const logger = options.logger || this.defaultLogger;
+    const logger = options.logger || simpleLogger;
 
     try {
       return await operation();
@@ -255,7 +265,7 @@ export class ErrorHandler {
     operations: Array<() => T>,
     options: Omit<ErrorHandlerOptions<T>, "rethrow" | "defaultValue">
   ): { results: T[]; errors: Error[] } {
-    const logger = options.logger || this.defaultLogger;
+    const logger = options.logger || simpleLogger;
     const results: T[] = [];
     const errors: Error[] = [];
 
@@ -296,7 +306,7 @@ export class ErrorHandler {
     operations: Array<() => Promise<T>>,
     options: Omit<ErrorHandlerOptions<T>, "rethrow" | "defaultValue">
   ): Promise<{ results: T[]; errors: Error[] }> {
-    const logger = options.logger || this.defaultLogger;
+    const logger = options.logger || simpleLogger;
     const results: T[] = [];
     const errors: Error[] = [];
 
@@ -350,7 +360,7 @@ export class ErrorHandler {
   ): Promise<T | undefined> {
     const maxRetries = options.retries || 3;
     const retryDelay = options.retryDelay || 1000;
-    const logger = options.logger || this.defaultLogger;
+    const logger = options.logger || simpleLogger;
 
     let lastError: Error | undefined;
 

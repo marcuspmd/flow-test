@@ -13,7 +13,6 @@ import { injectable, inject, optional } from "inversify";
 import * as jmespath from "jmespath";
 import { Assertions, AssertionChecks } from "../../types/engine.types";
 import { AssertionResult, StepExecutionResult } from "../../types/config.types";
-import { getLogger } from "../logger.service";
 import { StrategyRegistry } from "./strategies";
 import { AssertionContext } from "./strategies/assertion-strategy.interface";
 import { TYPES } from "../../di/identifiers";

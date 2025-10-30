@@ -13,7 +13,7 @@ import fs from "fs";
 import path from "path";
 import fg from "fast-glob";
 import yaml from "js-yaml";
-import { getLogger } from "../services/logger.service";
+import { LoggerService } from "../services/logger.service";
 import { ConfigManager } from "./config";
 import {
   DiscoveredTest,
@@ -21,6 +21,11 @@ import {
   TestStep,
   FlowDependency,
 } from "../types/engine.types";
+
+/**
+ * Module-level logger instance for test discovery
+ */
+const logger = new LoggerService();
 
 /**
  * Test discovery service for finding, loading, and filtering test files.
@@ -213,7 +218,7 @@ export class TestDiscovery {
             discoveredTests.push(test);
           }
         } catch (error) {
-          getLogger().warn(
+          logger.warn(
             `⚠️  Warning: Failed to parse test file ${filePath}: ${error}`
           );
         }
@@ -278,7 +283,7 @@ export class TestDiscovery {
             }
           }
         } catch (error) {
-          getLogger().warn(
+          logger.warn(
             `⚠️  Warning: Failed to resolve glob pattern '${trimmedPattern}': ${error}`
           );
         }
@@ -302,7 +307,7 @@ export class TestDiscovery {
             }
           }
         } catch (error) {
-          getLogger().warn(
+          logger.warn(
             `⚠️  Warning: Failed to process file pattern '${trimmedPattern}': ${error}`
           );
         }
@@ -332,7 +337,7 @@ export class TestDiscovery {
       }
 
       if (!suite.suite_name || !suite.node_id) {
-        getLogger().warn(
+        logger.warn(
           `⚠️  Warning: Invalid test suite in ${filePath} - missing suite_name or node_id`
         );
         return null;
@@ -468,7 +473,7 @@ export class TestDiscovery {
           : undefined;
 
       if (!rawNodeId && !rawPath) {
-        getLogger().warn(
+        logger.warn(
           `⚠️  Warning: Dependency without node_id or path found in ${filePath}.`
         );
         continue;
@@ -572,13 +577,13 @@ export class TestDiscovery {
           }
 
           if (dependencyPath) {
-            getLogger().warn(
+            logger.warn(
               `⚠️  Warning: Dependency '${nodeId}' not found for test '${test.node_id}' (${test.suite_name}). Will attempt path resolution via '${dependencyPath}'.`
             );
             return true;
           }
 
-          getLogger().warn(
+          logger.warn(
             `⚠️  Warning: Dependency '${nodeId}' not found for test '${test.node_id}' (${test.suite_name})`
           );
           return false;
@@ -588,7 +593,7 @@ export class TestDiscovery {
           return true;
         }
 
-        getLogger().warn(
+        logger.warn(
           `⚠️  Warning: Invalid dependency without node_id or path for test '${test.node_id}' (${test.suite_name})`
         );
         return false;

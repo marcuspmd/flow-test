@@ -3,7 +3,7 @@
  */
 
 import { ScriptExecutorService } from "../script-executor.service";
-import { getLogger, setupLogger } from "../logger.service";
+import { createMockLogger } from "../../test-utils/di-test-helpers";
 import { ScriptConfig } from "../../types/common.types";
 import * as fs from "fs";
 import * as path from "path";
@@ -14,8 +14,7 @@ describe("ScriptExecutorService", () => {
   let service: ScriptExecutorService;
 
   beforeEach(() => {
-    setupLogger("console", "silent");
-    const logger = getLogger();
+    const logger = createMockLogger();
     service = new ScriptExecutorService(logger);
   });
 
@@ -655,7 +654,7 @@ describe("ScriptExecutorService", () => {
           continue_on_error: true,
         };
 
-        const debugSpy = jest.spyOn(getLogger(), "debug");
+        const debugSpy = jest.spyOn((service as any).logger, "debug");
 
         const result = await service.executePostRequestScript(
           config,

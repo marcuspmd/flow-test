@@ -14,7 +14,7 @@ import type {
   ReportGenerationResult,
   ReportAsset,
 } from "./ReportStrategy.interface";
-import { getLogger } from "../../logger.service";
+import { LoggerService } from "../../logger.service";
 import { ReportingUtils } from "../utils/ReportingUtils";
 import {
   HtmlTemplateRenderer,
@@ -23,12 +23,17 @@ import {
 import { ConfigManager } from "../../../core/config";
 
 /**
+ * Module-level logger instance for HTML report strategy
+ */
+const logger = new LoggerService();
+
+/**
  * Strategy for generating HTML reports (aggregate + per-suite)
  */
 export class HtmlReportStrategy implements ReportStrategy {
-  private logger = getLogger();
   private renderer = new HtmlTemplateRenderer();
   private configManager: ConfigManager;
+  private logger = logger; // Use module-level logger
 
   constructor(configManager: ConfigManager) {
     this.configManager = configManager;

@@ -13,6 +13,29 @@ import {
   InterpolationStrategyContext,
   InterpolationResult,
 } from "../interpolation-strategy.interface";
+import type { ILogger } from "../../../interfaces/services/ILogger";
+
+/**
+ * No-op logger for strategies (avoids test pollution)
+ */
+const isTestEnv =
+  process.env.NODE_ENV === "test" || process.env.JEST_WORKER_ID !== undefined;
+const noopLogger: ILogger = {
+  debug: (msg: string, ...args: any[]) => {
+    if (!isTestEnv) console.debug(msg, ...args);
+  },
+  info: (msg: string, ...args: any[]) => {
+    if (!isTestEnv) console.log(msg, ...args);
+  },
+  warn: (msg: string, ...args: any[]) => {
+    if (!isTestEnv) console.warn(msg, ...args);
+  },
+  error: (msg: string, ...args: any[]) => {
+    if (!isTestEnv) console.error(msg, ...args);
+  },
+  setLogLevel: () => {},
+  getLogLevel: () => "info",
+};
 
 /**
  * Strategy for resolving regular scoped variables
@@ -41,6 +64,8 @@ export class VariableStrategy implements InterpolationStrategy {
   readonly name = "Variable";
   readonly priority = 100;
 
+  constructor(private logger: ILogger = noopLogger) {}
+
   canHandle(expression: string): boolean {
     // Always return true as this is the fallback strategy
     return true;
@@ -54,7 +79,7 @@ export class VariableStrategy implements InterpolationStrategy {
       const value = context.variableResolver(expression);
 
       if (context.debug && value !== undefined) {
-        console.debug(`[${this.name}] Resolved ${expression} = ${value}`);
+        this.logger.debug(`[${this.name}] Resolved ${expression} = ${value}`);
       }
 
       return {

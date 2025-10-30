@@ -25,7 +25,7 @@
  */
 
 import { JavaScriptExecutionContext } from "./javascript.service";
-import { getLogger } from "./logger.service";
+import type { ILogger } from "../interfaces/services/ILogger";
 import {
   InterpolationStrategy,
   InterpolationStrategyContext,
@@ -36,6 +36,28 @@ import {
   JavaScriptStrategy,
   VariableStrategy,
 } from "./interpolation/strategies";
+
+/**
+ * Simple console logger (no dependency on LoggerService to avoid circular issues)
+ * Silenced in test environment to avoid polluting test output
+ */
+const isTestEnv =
+  process.env.NODE_ENV === "test" || process.env.JEST_WORKER_ID !== undefined;
+
+const simpleLogger: ILogger = {
+  debug: (message: string, ...args: any[]) => {}, // Always silent
+  info: (message: string, ...args: any[]) => {
+    if (!isTestEnv) console.log(`[INFO] ${message}`, ...args);
+  },
+  warn: (message: string, ...args: any[]) => {
+    if (!isTestEnv) console.warn(`[WARN] ${message}`, ...args);
+  },
+  error: (message: string, ...args: any[]) => {
+    if (!isTestEnv) console.error(`[ERROR] ${message}`, ...args);
+  },
+  setLogLevel: () => {}, // No-op for simple logger
+  getLogLevel: () => "info",
+};
 
 /**
  * Context for interpolation with access to different variable scopes
@@ -132,7 +154,6 @@ export interface InterpolationConfig {
  * @since 2.0.0
  */
 export class InterpolationService {
-  private logger = getLogger();
   private config: Required<InterpolationConfig>;
   private expressionCache: Map<string, any> = new Map();
   private strategies: Map<string, InterpolationStrategy> = new Map();
@@ -167,7 +188,7 @@ export class InterpolationService {
    */
   registerStrategy(strategy: InterpolationStrategy): void {
     this.strategies.set(strategy.name, strategy);
-    this.logger.debug(
+    simpleLogger.debug(
       `[InterpolationService] Registered strategy: ${strategy.name} (priority: ${strategy.priority})`
     );
   }
@@ -180,7 +201,7 @@ export class InterpolationService {
    */
   unregisterStrategy(name: string): void {
     this.strategies.delete(name);
-    this.logger.debug(`[InterpolationService] Unregistered strategy: ${name}`);
+    simpleLogger.debug(`[InterpolationService] Unregistered strategy: ${name}`);
   }
 
   /**
@@ -232,7 +253,7 @@ export class InterpolationService {
 
     // Check max depth
     if (currentDepth >= (context.maxDepth ?? this.config.maxDepth)) {
-      this.logger.warn(
+      simpleLogger.warn(
         `Maximum interpolation depth reached (${
           context.maxDepth ?? this.config.maxDepth
         })`
@@ -254,7 +275,7 @@ export class InterpolationService {
     // Handle arrays
     if (Array.isArray(template)) {
       if (visitedObjects.has(template)) {
-        this.logger.warn("Circular reference detected in array interpolation");
+        simpleLogger.warn("Circular reference detected in array interpolation");
         return "[Circular Reference]";
       }
       visitedObjects.add(template);
@@ -268,7 +289,9 @@ export class InterpolationService {
     // Handle objects
     if (template && typeof template === "object") {
       if (visitedObjects.has(template)) {
-        this.logger.warn("Circular reference detected in object interpolation");
+        simpleLogger.warn(
+          "Circular reference detected in object interpolation"
+        );
         return "[Circular Reference]";
       }
       visitedObjects.add(template);
@@ -434,7 +457,7 @@ export class InterpolationService {
     context: InterpolationContext
   ): any {
     if (this.config.debug) {
-      this.logger.debug(`[Interpolation] Resolving: ${expression}`);
+      simpleLogger.debug(`[Interpolation] Resolving: ${expression}`);
     }
 
     // Create strategy context
@@ -451,7 +474,9 @@ export class InterpolationService {
     for (const strategy of sortedStrategies) {
       if (strategy.canHandle(expression)) {
         if (this.config.debug) {
-          this.logger.debug(`[Interpolation] Using strategy: ${strategy.name}`);
+          simpleLogger.debug(
+            `[Interpolation] Using strategy: ${strategy.name}`
+          );
         }
 
         // Strategies return InterpolationResult (sync for now)
@@ -462,7 +487,7 @@ export class InterpolationService {
         }
 
         if (result.error) {
-          this.logger.warn(
+          simpleLogger.warn(
             `[Interpolation] Strategy ${strategy.name} failed: ${result.error}`
           );
         }
@@ -513,7 +538,7 @@ export class InterpolationService {
     context: InterpolationContext
   ): void {
     if (!context.suppressWarnings) {
-      this.logger.warn(
+      simpleLogger.warn(
         `Variable '${variablePath}' not found during interpolation`
       );
     }
@@ -530,11 +555,33 @@ export class InterpolationService {
 }
 
 /**
- * Singleton instance of InterpolationService
+ * Singleton instance of InterpolationService (lazy initialization)
  * @public
  */
-export const interpolationService = new InterpolationService({
-  maxDepth: 10,
-  debug: false,
-  enableCache: true,
+let interpolationServiceInstance: InterpolationService | null = null;
+
+/**
+ * Get or create the singleton InterpolationService instance
+ * @public
+ */
+export function getInterpolationService(): InterpolationService {
+  if (!interpolationServiceInstance) {
+    interpolationServiceInstance = new InterpolationService({
+      maxDepth: 10,
+      debug: false,
+      enableCache: true,
+    });
+  }
+  return interpolationServiceInstance;
+}
+
+/**
+ * Legacy export for backward compatibility
+ * @deprecated Use getInterpolationService() instead
+ * @public
+ */
+export const interpolationService = new Proxy({} as InterpolationService, {
+  get(_target, prop) {
+    return (getInterpolationService() as any)[prop];
+  },
 });

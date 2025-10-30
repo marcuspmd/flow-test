@@ -16,7 +16,12 @@ import type {
   ValidationResultSet,
 } from "./validation-result";
 import { ValidationResultHelper } from "./validation-result";
-import { getLogger } from "../logger.service";
+import { LoggerService } from "../logger.service";
+
+/**
+ * Module-level logger instance for validation registry
+ */
+const logger = new LoggerService();
 
 /**
  * Registry for managing and selecting validation strategies.
@@ -58,7 +63,7 @@ import { getLogger } from "../logger.service";
  */
 export class ValidationRegistry {
   private strategies: ValidationStrategy[] = [];
-  private readonly logger = getLogger();
+  private logger = logger; // Use module-level logger
 
   /**
    * Registers a new validation strategy.
@@ -89,7 +94,7 @@ export class ValidationRegistry {
       return priorityB - priorityA;
     });
 
-    this.logger.debug(
+    logger.debug(
       `Registered validation strategy: ${strategy.name} (priority: ${
         strategy.priority ?? 0
       })`

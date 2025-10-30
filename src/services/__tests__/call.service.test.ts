@@ -27,7 +27,15 @@ describe("CallService", () => {
       success: true,
       status: "success",
     }));
-    callService = new CallService();
+    const mockLogger = {
+      debug: jest.fn(),
+      info: jest.fn(),
+      warn: jest.fn(),
+      error: jest.fn(),
+      setLogLevel: jest.fn(),
+      getLogLevel: jest.fn(() => "info"),
+    };
+    callService = new CallService(mockLogger);
   });
 
   afterEach(() => {

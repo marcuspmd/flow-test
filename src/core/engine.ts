@@ -17,7 +17,7 @@ import { TYPES } from "../di/identifiers";
 import { ConfigManager } from "./config";
 import { TestDiscovery } from "./discovery";
 import { ReportingService } from "../services/reporting";
-import { getLogger } from "../services/logger.service";
+import { LoggerService } from "../services/logger.service";
 import type { IConfigManager } from "../interfaces/services/IConfigManager";
 import type { IVariableService } from "../interfaces/services/IVariableService";
 import type { IPriorityService } from "../interfaces/services/IPriorityService";
@@ -33,6 +33,11 @@ import {
   ExecutionStats,
   DiscoveredTest,
 } from "../types/engine.types";
+
+/**
+ * Module-level logger instance for engine operations
+ */
+const logger = new LoggerService();
 
 /**
  * Primary orchestrator for the Flow Test Engine framework.
@@ -410,7 +415,6 @@ export class FlowTestEngine {
       // Trigger execution start hook
       await this.hooks.onExecutionStart?.(this.stats);
 
-      const logger = getLogger();
       logger.info(`\n🚀 Flow Test Engine v1.0`);
       logger.info(`📊 Project: ${config.project_name}`);
       logger.info(`📁 Test Directory: ${config.test_directory}`);
@@ -584,9 +588,7 @@ export class FlowTestEngine {
 
       return suite?.metadata?.tags || [];
     } catch (error) {
-      getLogger().warn(
-        `Warning: Could not read tags from ${filePath}: ${error}`
-      );
+      logger.warn(`Warning: Could not read tags from ${filePath}: ${error}`);
       return [];
     }
   }
@@ -678,7 +680,6 @@ export class FlowTestEngine {
    * Imprime resumo da execução
    */
   private printExecutionSummary(result: AggregatedResult): void {
-    const logger = getLogger();
     logger.info(`\n📋 Execution Summary`);
     logger.info(`════════════════════`);
     logger.info(`⏱️  Duration: ${result.total_duration_ms}ms`);
@@ -847,7 +848,6 @@ export class FlowTestEngine {
    * @public
    */
   async dryRun(): Promise<DiscoveredTest[]> {
-    const logger = getLogger();
     logger.info(`\n🧪 Dry Run Mode - Flow Test Engine v1.0`);
     logger.info(`📊 Project: ${this.configManager.getConfig().project_name}`);
 

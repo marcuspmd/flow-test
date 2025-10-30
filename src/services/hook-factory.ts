@@ -5,13 +5,14 @@ import {
   TestStep,
   ExecutionContext,
 } from "../types/engine.types";
-import { LoggerService, getLogger } from "./logger.service";
+import { LoggerService } from "./logger.service";
+import type { ILogger } from "../interfaces/services/ILogger";
 
 /**
  * Creates default console logging hooks used by the CLI and orchestrator server.
  */
-export function createConsoleHooks(logger: LoggerService): EngineHooks {
-  const cliLogger = getLogger();
+export function createConsoleHooks(logger: ILogger): EngineHooks {
+  const cliLogger = logger;
 
   return {
     onExecutionStart: async (stats: ExecutionStats) => {

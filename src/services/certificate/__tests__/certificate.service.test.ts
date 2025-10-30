@@ -6,6 +6,7 @@ import { CertificateService } from "../certificate.service";
 import * as fs from "fs";
 import * as path from "path";
 import { CertificateConfig } from "../../../types/certificate.types";
+import { createMockLogger } from "../../../test-utils/di-test-helpers";
 
 describe("CertificateService", () => {
   const testCertsDir = path.join(__dirname, "../../../../tests/fixtures/certs");
@@ -50,13 +51,13 @@ describe("CertificateService", () => {
 
   describe("constructor", () => {
     it("should create instance without certificates", () => {
-      const service = new CertificateService();
+      const service = new CertificateService(createMockLogger());
       expect(service).toBeDefined();
       expect(service.getCertificateCount()).toBe(0);
     });
 
     it("should create instance with certificates", () => {
-      const service = new CertificateService();
+      const service = new CertificateService(createMockLogger());
       service.setCertificates([
         {
           name: "Test Cert",
@@ -71,7 +72,7 @@ describe("CertificateService", () => {
 
   describe("validateCertificate", () => {
     it("should validate PEM certificate exists", async () => {
-      const service = new CertificateService();
+      const service = new CertificateService(createMockLogger());
       const config: CertificateConfig = {
         cert_path: "tests/fixtures/certs/test.crt",
         key_path: "tests/fixtures/certs/test.key",
@@ -84,7 +85,7 @@ describe("CertificateService", () => {
     });
 
     it("should detect missing certificate file", async () => {
-      const service = new CertificateService();
+      const service = new CertificateService(createMockLogger());
       const config: CertificateConfig = {
         cert_path: "./nonexistent.crt",
         key_path: "tests/fixtures/certs/test.key",
@@ -98,7 +99,7 @@ describe("CertificateService", () => {
     });
 
     it("should detect missing key file", async () => {
-      const service = new CertificateService();
+      const service = new CertificateService(createMockLogger());
       const config: CertificateConfig = {
         cert_path: "tests/fixtures/certs/test.crt",
         key_path: "./nonexistent.key",
@@ -111,7 +112,7 @@ describe("CertificateService", () => {
     });
 
     it("should validate PFX certificate", async () => {
-      const service = new CertificateService();
+      const service = new CertificateService(createMockLogger());
       const config: CertificateConfig = {
         pfx_path: "tests/fixtures/certs/test.pfx",
         passphrase: "test123",
@@ -124,7 +125,7 @@ describe("CertificateService", () => {
     });
 
     it("should detect missing PFX file", async () => {
-      const service = new CertificateService();
+      const service = new CertificateService(createMockLogger());
       const config: CertificateConfig = {
         pfx_path: "./nonexistent.pfx",
       };
@@ -136,7 +137,7 @@ describe("CertificateService", () => {
     });
 
     it("should validate CA certificate path", async () => {
-      const service = new CertificateService();
+      const service = new CertificateService(createMockLogger());
       const config: CertificateConfig = {
         cert_path: "tests/fixtures/certs/test.crt",
         key_path: "tests/fixtures/certs/test.key",
@@ -149,7 +150,7 @@ describe("CertificateService", () => {
     });
 
     it("should detect missing CA certificate", async () => {
-      const service = new CertificateService();
+      const service = new CertificateService(createMockLogger());
       const config: CertificateConfig = {
         cert_path: "tests/fixtures/certs/test.crt",
         key_path: "tests/fixtures/certs/test.key",
@@ -167,7 +168,7 @@ describe("CertificateService", () => {
 
   describe("applyCertificate", () => {
     it("should apply request-specific certificate", () => {
-      const service = new CertificateService();
+      const service = new CertificateService(createMockLogger());
       const axiosConfig: any = {};
       const requestCert: CertificateConfig = {
         cert_path: "tests/fixtures/certs/test.crt",
@@ -180,7 +181,7 @@ describe("CertificateService", () => {
     });
 
     it("should apply PFX certificate", () => {
-      const service = new CertificateService();
+      const service = new CertificateService(createMockLogger());
       const axiosConfig: any = {};
       const requestCert: CertificateConfig = {
         pfx_path: "tests/fixtures/certs/test.pfx",
@@ -193,7 +194,7 @@ describe("CertificateService", () => {
     });
 
     it("should apply global certificate by domain - exact match", () => {
-      const service = new CertificateService();
+      const service = new CertificateService(createMockLogger());
       service.setCertificates([
         {
           name: "Test Cert",
@@ -214,7 +215,7 @@ describe("CertificateService", () => {
     });
 
     it("should apply global certificate by domain - wildcard match", () => {
-      const service = new CertificateService();
+      const service = new CertificateService(createMockLogger());
       service.setCertificates([
         {
           name: "Wildcard Cert",
@@ -235,7 +236,7 @@ describe("CertificateService", () => {
     });
 
     it("should not apply certificate for non-matching domain", () => {
-      const service = new CertificateService();
+      const service = new CertificateService(createMockLogger());
       service.setCertificates([
         {
           name: "Specific Cert",
@@ -256,7 +257,7 @@ describe("CertificateService", () => {
     });
 
     it("should apply certificate without domain restrictions", () => {
-      const service = new CertificateService();
+      const service = new CertificateService(createMockLogger());
       service.setCertificates([
         {
           name: "Global Cert",
@@ -277,7 +278,7 @@ describe("CertificateService", () => {
     });
 
     it("should prioritize request certificate over global", () => {
-      const service = new CertificateService();
+      const service = new CertificateService(createMockLogger());
       service.setCertificates([
         {
           name: "Global Cert",
@@ -303,7 +304,7 @@ describe("CertificateService", () => {
     });
 
     it("should handle invalid certificate gracefully", () => {
-      const service = new CertificateService();
+      const service = new CertificateService(createMockLogger());
       const axiosConfig: any = {};
       const invalidCert: CertificateConfig = {
         cert_path: "./invalid.crt",
@@ -320,7 +321,7 @@ describe("CertificateService", () => {
     });
 
     it("should match multiple domain patterns", () => {
-      const service = new CertificateService();
+      const service = new CertificateService(createMockLogger());
       service.setCertificates([
         {
           name: "Multi-domain Cert",
@@ -358,12 +359,12 @@ describe("CertificateService", () => {
 
   describe("getCertificateCount", () => {
     it("should return 0 for no certificates", () => {
-      const service = new CertificateService();
+      const service = new CertificateService(createMockLogger());
       expect(service.getCertificateCount()).toBe(0);
     });
 
     it("should return correct count", () => {
-      const service = new CertificateService();
+      const service = new CertificateService(createMockLogger());
       service.setCertificates([
         { name: "Cert 1", cert_path: "./a.crt", key_path: "./a.key" },
         { name: "Cert 2", pfx_path: "./b.pfx" },

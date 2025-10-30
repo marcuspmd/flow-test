@@ -287,7 +287,7 @@ export class GlobalRegistryService implements IGlobalRegistryService {
 
     // Verifica se a variável está na lista de exports
     if (!namespace.exports.includes(variableName)) {
-      getLogger().warn(
+      this.logger.warn(
         `⚠️  Variable '${variableName}' is not in exports list for node '${nodeId}'`
       );
     }

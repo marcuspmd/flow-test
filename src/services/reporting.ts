@@ -14,7 +14,7 @@
 import fs from "fs";
 import { ConfigManager } from "../core/config";
 import type { AggregatedResult } from "../types/engine.types";
-import { getLogger } from "./logger.service";
+import { LoggerService } from "./logger.service";
 import {
   ReportStrategy,
   ReportGenerationContext,
@@ -26,11 +26,15 @@ import { HtmlReportStrategy } from "./reporting/strategies/HtmlReportStrategy";
 import { ReportingUtils } from "./reporting/utils/ReportingUtils";
 
 /**
+ * Module-level logger instance for reporting service
+ */
+const logger = new LoggerService();
+
+/**
  * Main reporting service that orchestrates different report generation strategies
  */
 export class ReportingService {
   private configManager: ConfigManager;
-  private logger = getLogger();
   private strategies: Map<string, ReportStrategy> = new Map();
 
   constructor(configManager: ConfigManager) {
@@ -63,7 +67,7 @@ export class ReportingService {
       !reportingConfig.formats ||
       reportingConfig.formats.length === 0
     ) {
-      this.logger.debug("Reporting disabled or no formats configured", {
+      logger.debug("Reporting disabled or no formats configured", {
         metadata: { type: "reporting_skipped" },
       });
       return;
@@ -80,7 +84,8 @@ export class ReportingService {
     const timestamp = ReportingUtils.generateTimestamp();
     const generatedAt = new Date().toISOString();
     const baseName =
-      ReportingUtils.sanitizeFileName(result.project_name) || "flow-test-report";
+      ReportingUtils.sanitizeFileName(result.project_name) ||
+      "flow-test-report";
 
     const formats = reportingConfig.formats || ["json"];
 
@@ -137,12 +142,12 @@ export class ReportingService {
     const strategy = this.strategies.get(format);
 
     if (!strategy) {
-      this.logger.warn(`No strategy found for format: ${format}`);
+      logger.warn(`No strategy found for format: ${format}`);
       return;
     }
 
     if (!strategy.validate(result)) {
-      this.logger.warn(`Strategy validation failed for format: ${format}`);
+      logger.warn(`Strategy validation failed for format: ${format}`);
       return;
     }
 
@@ -150,7 +155,7 @@ export class ReportingService {
       const generationResult = await strategy.generate(result, context);
 
       if (generationResult.success) {
-        this.logger.debug(`Successfully generated ${format} report`, {
+        logger.debug(`Successfully generated ${format} report`, {
           metadata: {
             format,
             files: generationResult.files.length,
@@ -162,7 +167,7 @@ export class ReportingService {
           assetsAccumulator.push(...generationResult.assets);
         }
       } else {
-        this.logger.error(`Failed to generate ${format} report`, {
+        logger.error(`Failed to generate ${format} report`, {
           metadata: {
             format,
             error: generationResult.error || "Unknown error",
@@ -170,7 +175,7 @@ export class ReportingService {
         });
       }
     } catch (error) {
-      this.logger.error(`Exception during ${format} report generation`, {
+      logger.error(`Exception during ${format} report generation`, {
         metadata: {
           format,
           error: String(error),
@@ -187,7 +192,7 @@ export class ReportingService {
    */
   registerStrategy(format: string, strategy: ReportStrategy): void {
     this.strategies.set(format, strategy);
-    this.logger.debug(`Registered custom strategy for format: ${format}`);
+    logger.debug(`Registered custom strategy for format: ${format}`);
   }
 
   /**

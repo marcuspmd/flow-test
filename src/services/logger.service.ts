@@ -14,58 +14,19 @@ import { injectable } from "inversify";
 import { LogStreamingService, LogLevel } from "./log-streaming.service";
 import { ILogger } from "../interfaces/services/ILogger";
 import { JSONValue } from "../types/common.types";
-import { TestSuite, RequestDetails, AssertionResult } from "../types/engine.types";
+import {
+  TestSuite,
+  RequestDetails,
+  AssertionResult,
+} from "../types/engine.types";
 import { SuiteExecutionResult } from "../types/config.types";
 
 /**
- * Context information for structured logging operations.
- *
- * @remarks
- * LogContext provides additional metadata that can be attached to log messages
- * to enhance debugging, monitoring, and analysis capabilities. This structured
- * approach ensures consistent logging across the entire Flow Test Engine.
- *
- * @example Basic context usage
- * ```typescript
- * const context: LogContext = {
- *   nodeId: 'test-node-1',
- *   stepName: 'User Login',
- *   duration: 150,
- *   metadata: { userId: 123, action: 'authentication' }
- * };
- *
- * logger.info('Login successful', context);
- * ```
- *
- * @public
- * @since 1.0.0
- */
-export interface LogContext {
-  /** Node ID of the current test node for tracking execution flow */
-  nodeId?: string;
-
-  /** Step name being executed for contextual identification */
-  stepName?: string;
-
-  /** Duration in milliseconds for performance monitoring */
-  duration?: number;
-
-  /** Additional metadata for enhanced debugging and analysis */
-  metadata?: Record<string, JSONValue>;
-
-  /** File path for context and source tracking */
-  filePath?: string;
-
-  /** Error information for exception handling and debugging */
-  error?: Error | string;
-}
-
-/**
- * Structured logging interface with contextual information support.
+ * Structured logging interface compatible with ILogger.
  *
  * @remarks
  * The Logger interface defines the contract for all logging implementations in the
- * Flow Test Engine. It provides standard log levels with optional structured context
+ * Flow Test Engine. It provides standard log levels with variadic arguments
  * to enhance debugging, monitoring, and operational visibility.
  *
  * **Log Levels:**
@@ -77,20 +38,20 @@ export interface LogContext {
  * @example Custom logger implementation
  * ```typescript
  * class CustomLogger implements Logger {
- *   debug(message: string, context?: LogContext): void {
- *     // Custom debug implementation
+ *   debug(message: string, ...args: any[]): void {
+ *     console.log(`[DEBUG] ${message}`, ...args);
  *   }
  *
- *   info(message: string, context?: LogContext): void {
- *     console.log(`[INFO] ${message}`, context);
+ *   info(message: string, ...args: any[]): void {
+ *     console.log(`[INFO] ${message}`, ...args);
  *   }
  *
- *   warn(message: string, context?: LogContext): void {
- *     console.warn(`[WARN] ${message}`, context);
+ *   warn(message: string, ...args: any[]): void {
+ *     console.warn(`[WARN] ${message}`, ...args);
  *   }
  *
- *   error(message: string, context?: LogContext): void {
- *     console.error(`[ERROR] ${message}`, context);
+ *   error(message: string, ...args: any[]): void {
+ *     console.error(`[ERROR] ${message}`, ...args);
  *   }
  * }
  * ```
@@ -103,49 +64,33 @@ export interface Logger {
    * Logs debug-level messages for detailed diagnostic information.
    *
    * @param message - The debug message to log
-   * @param context - Optional contextual information for structured logging
-   *
-   * @remarks
-   * Debug messages are typically used for detailed diagnostic information
-   * that is only useful during development and troubleshooting.
+   * @param args - Optional additional arguments for context
    */
-  debug(message: string, context?: LogContext): void;
+  debug(message: string, ...args: any[]): void;
 
   /**
    * Logs informational messages about normal system operation.
    *
    * @param message - The informational message to log
-   * @param context - Optional contextual information for structured logging
-   *
-   * @remarks
-   * Info messages provide general information about system operation
-   * and are typically visible in production environments.
+   * @param args - Optional additional arguments for context
    */
-  info(message: string, context?: LogContext): void;
+  info(message: string, ...args: any[]): void;
 
   /**
    * Logs warning messages about potential issues or unexpected conditions.
    *
    * @param message - The warning message to log
-   * @param context - Optional contextual information for structured logging
-   *
-   * @remarks
-   * Warning messages indicate potential issues that don't prevent
-   * system operation but may require attention.
+   * @param args - Optional additional arguments for context
    */
-  warn(message: string, context?: LogContext): void;
+  warn(message: string, ...args: any[]): void;
 
   /**
    * Logs error messages for exception handling and failure reporting.
    *
    * @param message - The error message to log
-   * @param context - Optional contextual information for structured logging
-   *
-   * @remarks
-   * Error messages indicate failures or exceptions that prevent
-   * normal system operation and require immediate attention.
+   * @param args - Optional additional arguments for context
    */
-  error(message: string, context?: LogContext): void;
+  error(message: string, ...args: any[]): void;
 }
 
 /**
@@ -199,29 +144,30 @@ export class ConsoleLoggerAdapter implements Logger {
     private verbosity: "silent" | "simple" | "detailed" | "verbose" = "simple"
   ) {}
 
-  debug(message: string, context?: LogContext): void {
+  debug(message: string, ...args: any[]): void {
     if (this.verbosity === "verbose") {
-      this.log("DEBUG", message, context);
+      this.log("DEBUG", message, ...args);
     }
   }
 
-  info(message: string, context?: LogContext): void {
+  info(message: string, ...args: any[]): void {
     if (this.verbosity !== "silent") {
-      this.log("INFO", message, context);
+      this.log("INFO", message, ...args);
     }
   }
 
-  warn(message: string, context?: LogContext): void {
+  warn(message: string, ...args: any[]): void {
     if (this.verbosity !== "silent") {
-      this.log("WARN", message, context);
+      this.log("WARN", message, ...args);
     }
   }
 
-  error(message: string, context?: LogContext): void {
-    this.log("ERROR", message, context);
+  error(message: string, ...args: any[]): void {
+    this.log("ERROR", message, ...args);
   }
 
-  private log(level: string, message: string, context?: LogContext): void {
+  private log(level: string, message: string, ...args: any[]): void {
+    const context = args[0] as Record<string, any> | undefined;
     const timestamp = new Date().toISOString();
     let logMessage = `[${timestamp}] [${level}]`;
 
@@ -270,10 +216,7 @@ export class ConsoleLoggerAdapter implements Logger {
   /**
    * Display captured variables in a formatted way
    */
-  displayCapturedVariables(
-    variables: Record<string, any>,
-    context?: LogContext
-  ): void {
+  displayCapturedVariables(variables: Record<string, any>): void {
     if (this.verbosity === "silent") {
       return;
     }
@@ -419,7 +362,7 @@ export class ConsoleLoggerAdapter implements Logger {
     });
   }
 
-  displayRawHttpResponse(raw: string, context?: LogContext): void {
+  displayRawHttpResponse(raw: string): void {
     if (this.verbosity === "silent") {
       return;
     }
@@ -563,23 +506,25 @@ export class PinoLoggerAdapter implements Logger {
     }
   }
 
-  debug(message: string, context?: LogContext): void {
-    (this.pino as any).debug(this.buildLogObject(context), message);
+  debug(message: string, ...args: any[]): void {
+    (this.pino as any).debug(this.buildLogObject(args[0]), message);
   }
 
-  info(message: string, context?: LogContext): void {
-    (this.pino as any).info(this.buildLogObject(context), message);
+  info(message: string, ...args: any[]): void {
+    (this.pino as any).info(this.buildLogObject(args[0]), message);
   }
 
-  warn(message: string, context?: LogContext): void {
-    (this.pino as any).warn(this.buildLogObject(context), message);
+  warn(message: string, ...args: any[]): void {
+    (this.pino as any).warn(this.buildLogObject(args[0]), message);
   }
 
-  error(message: string, context?: LogContext): void {
-    (this.pino as any).error(this.buildLogObject(context), message);
+  error(message: string, ...args: any[]): void {
+    (this.pino as any).error(this.buildLogObject(args[0]), message);
   }
 
-  private buildLogObject(context?: LogContext): Record<string, JSONValue> {
+  private buildLogObject(
+    context?: Record<string, any>
+  ): Record<string, JSONValue> {
     if (!context) return {};
 
     const logObj: Record<string, JSONValue> = {};
@@ -636,13 +581,14 @@ export class JestStyleLoggerAdapter implements Logger {
     this.totalStartTime = Date.now();
   }
 
-  debug(message: string, context?: LogContext): void {
+  debug(message: string, ...args: any[]): void {
     if (this.verbosity === "verbose") {
-      console.log(chalk.gray(`[DEBUG] ${message}`));
+      console.log(chalk.gray(`[DEBUG] ${message}`), ...args);
     }
   }
 
-  info(message: string, context?: LogContext): void {
+  info(message: string, ...args: any[]): void {
+    const context = args[0] as Record<string, any> | undefined;
     if (this.verbosity === "silent") {
       return;
     }
@@ -665,15 +611,16 @@ export class JestStyleLoggerAdapter implements Logger {
     }
   }
 
-  warn(message: string, context?: LogContext): void {
+  warn(message: string, ...args: any[]): void {
     if (this.verbosity === "silent") {
       return;
     }
-    console.warn(chalk.yellow(`⚠️  ${message}`));
+    console.warn(chalk.yellow(`⚠️  ${message}`), ...args);
   }
 
-  error(message: string, context?: LogContext): void {
-    console.error(chalk.red(`❌ ${message}`));
+  error(message: string, ...args: any[]): void {
+    const context = args[0] as Record<string, any> | undefined;
+    console.error(chalk.red(`❌ ${message}`), ...args.slice(1));
     if (context?.error) {
       const errorDetails =
         context.error instanceof Error
@@ -683,13 +630,19 @@ export class JestStyleLoggerAdapter implements Logger {
     }
   }
 
-  private handleSuiteStart(message: string, context: LogContext): void {
+  private handleSuiteStart(
+    message: string,
+    context: Record<string, any>
+  ): void {
     this.currentSuite = String(context.metadata?.suite_name || "Unknown Suite");
     this.suiteStartTime = Date.now();
     this.currentSteps = []; // Reset steps for new suite
   }
 
-  private handleSuiteComplete(message: string, context: LogContext): void {
+  private handleSuiteComplete(
+    message: string,
+    context: Record<string, any>
+  ): void {
     const duration = ((Date.now() - this.suiteStartTime) / 1000).toFixed(3);
     const status = context.metadata?.success ? "PASS" : "FAIL";
     const statusColor = context.metadata?.success ? chalk.green : chalk.red;
@@ -713,7 +666,10 @@ export class JestStyleLoggerAdapter implements Logger {
     this.totalSuites++;
   }
 
-  private handleStepResult(message: string, context: LogContext): void {
+  private handleStepResult(
+    message: string,
+    context: Record<string, any>
+  ): void {
     const status = context.metadata?.success ? "✓" : "✗";
     const statusColor = context.metadata?.success ? chalk.green : chalk.red;
     const stepName = context.stepName || message;
@@ -766,10 +722,7 @@ export class JestStyleLoggerAdapter implements Logger {
     console.log("");
   }
 
-  displayCapturedVariables(
-    variables: Record<string, any>,
-    context?: LogContext
-  ): void {
+  displayCapturedVariables(variables: Record<string, any>): void {
     if (this.verbosity === "verbose" && Object.keys(variables).length > 0) {
       console.log(chalk.blue("\n📥 Variables Captured:"));
       Object.entries(variables).forEach(([key, value]) => {
@@ -817,7 +770,6 @@ export class JestStyleLoggerAdapter implements Logger {
  */
 @injectable()
 export class LoggerService implements ILogger {
-  private static instance: LoggerService;
   private logger: Logger;
   private logStream: LogStreamingService;
 
@@ -835,53 +787,30 @@ export class LoggerService implements ILogger {
     this.logger = logger;
   }
 
-  /**
-   * Get singleton instance (legacy support)
-   * @deprecated Use dependency injection instead
-   */
-  static getInstance(logger?: Logger): LoggerService {
-    if (!LoggerService.instance) {
-      LoggerService.instance = new LoggerService();
-      if (logger) {
-        LoggerService.instance.setLoggerAdapter(logger);
-      }
-    }
-    return LoggerService.instance;
+  debug(message: string, ...args: any[]): void {
+    this.logger.debug(message, ...args);
+    this.forward("debug", message, args[0]);
   }
 
-  static setLogger(logger: Logger): void {
-    if (LoggerService.instance) {
-      LoggerService.instance.setLoggerAdapter(logger);
-    } else {
-      LoggerService.instance = new LoggerService();
-      LoggerService.instance.setLoggerAdapter(logger);
-    }
+  info(message: string, ...args: any[]): void {
+    this.logger.info(message, ...args);
+    this.forward("info", message, args[0]);
   }
 
-  debug(message: string, context?: LogContext): void {
-    this.logger.debug(message, context);
-    this.forward("debug", message, context);
+  warn(message: string, ...args: any[]): void {
+    this.logger.warn(message, ...args);
+    this.forward("warn", message, args[0]);
   }
 
-  info(message: string, context?: LogContext): void {
-    this.logger.info(message, context);
-    this.forward("info", message, context);
-  }
-
-  warn(message: string, context?: LogContext): void {
-    this.logger.warn(message, context);
-    this.forward("warn", message, context);
-  }
-
-  error(message: string, context?: LogContext): void {
-    this.logger.error(message, context);
-    this.forward("error", message, context);
+  error(message: string, ...args: any[]): void {
+    this.logger.error(message, ...args);
+    this.forward("error", message, args[0]);
   }
 
   private forward(
     level: LogLevel,
     message: string,
-    context?: LogContext
+    context?: Record<string, any>
   ): void {
     try {
       this.logStream.publish({
@@ -934,17 +863,16 @@ export class LoggerService implements ILogger {
   // ========================================
 
   // Delegate new display methods to the underlying logger if it supports them
-  displayCapturedVariables(
-    variables: Record<string, any>,
-    context?: LogContext
-  ): void {
+  displayCapturedVariables(variables: Record<string, any>): void {
     if (typeof (this.logger as any).displayCapturedVariables === "function") {
-      (this.logger as any).displayCapturedVariables(variables, context);
+      (this.logger as any).displayCapturedVariables(variables);
     }
   }
 
   displayTestMetadata(suite: TestSuite): void {
-    if (typeof (this.logger as LoggerService).displayTestMetadata === "function") {
+    if (
+      typeof (this.logger as LoggerService).displayTestMetadata === "function"
+    ) {
       (this.logger as LoggerService).displayTestMetadata(suite);
     }
   }
@@ -958,7 +886,9 @@ export class LoggerService implements ILogger {
       assertion?: AssertionResult;
     }
   ): void {
-    if (typeof (this.logger as LoggerService).displayErrorContext === "function") {
+    if (
+      typeof (this.logger as LoggerService).displayErrorContext === "function"
+    ) {
       (this.logger as LoggerService).displayErrorContext(error, context);
     }
   }
@@ -976,44 +906,20 @@ export class LoggerService implements ILogger {
       timestamp: number;
     }>
   ): void {
-    if (typeof (this.logger as LoggerService).displayScenarioSummary === "function") {
+    if (
+      typeof (this.logger as LoggerService).displayScenarioSummary ===
+      "function"
+    ) {
       (this.logger as LoggerService).displayScenarioSummary(captures);
     }
   }
 
-  displayRawHttpResponse(raw: string, context?: LogContext): void {
-    if (typeof (this.logger as LoggerService).displayRawHttpResponse === "function") {
-      (this.logger as LoggerService).displayRawHttpResponse(raw, context);
+  displayRawHttpResponse(raw: string): void {
+    if (
+      typeof (this.logger as LoggerService).displayRawHttpResponse ===
+      "function"
+    ) {
+      (this.logger as LoggerService).displayRawHttpResponse(raw);
     }
   }
-}
-
-// Export convenience function for getting logger instance
-export function getLogger(): LoggerService {
-  return LoggerService.getInstance();
-}
-
-// Export convenience function for setting up logger with options
-export function setupLogger(
-  type: "console" | "pino" = "console",
-  options:
-    | { verbosity?: "silent" | "simple" | "detailed" | "verbose" }
-    | any = {}
-): LoggerService {
-  let logger: Logger;
-
-  if (type === "pino") {
-    logger = new PinoLoggerAdapter(options);
-  } else {
-    // Use Jest-style logger for simple mode, console for others
-    const verbosity = options.verbosity || "simple";
-    if (verbosity === "simple") {
-      logger = new JestStyleLoggerAdapter(verbosity);
-    } else {
-      logger = new ConsoleLoggerAdapter(verbosity);
-    }
-  }
-
-  LoggerService.setLogger(logger);
-  return LoggerService.getInstance();
 }

@@ -14,8 +14,4 @@ export {
   ResponseContextOptions,
 } from "./response-context-builder";
 
-export {
-  ErrorHandler,
-  ErrorHandlerOptions,
-  Logger as ErrorHandlerLogger,
-} from "./error-handler";
+export { ErrorHandler, ErrorHandlerOptions } from "./error-handler";

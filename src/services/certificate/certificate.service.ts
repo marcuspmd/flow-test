@@ -3,7 +3,7 @@
  * @module services/certificate
  */
 
-import { injectable } from "inversify";
+import { injectable, inject } from "inversify";
 import "reflect-metadata";
 import { AxiosRequestConfig } from "axios";
 import * as https from "https";
@@ -13,7 +13,8 @@ import {
   toCertificateConfig,
 } from "../../types/certificate.types";
 import { ICertificateService } from "../../interfaces/services/ICertificateService";
-import { getLogger } from "../logger.service";
+import { ILogger } from "../../interfaces/services/ILogger";
+import { TYPES } from "../../di/identifiers";
 import {
   LoaderRegistry,
   getDefaultLoaders,
@@ -50,7 +51,7 @@ import {
  */
 @injectable()
 export class CertificateService implements ICertificateService {
-  private logger = getLogger();
+  private logger: ILogger;
   private globalCertificates: CertificateEntry[] = [];
   private loaderRegistry: LoaderRegistry;
 
@@ -61,7 +62,8 @@ export class CertificateService implements ICertificateService {
    * For DI usage, use the parameterless constructor and call setCertificates()
    * if needed. For legacy usage, you can still pass certificates directly.
    */
-  constructor() {
+  constructor(@inject(TYPES.ILogger) logger: ILogger) {
+    this.logger = logger;
     this.loaderRegistry = getDefaultLoaders();
   }
 

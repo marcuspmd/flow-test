@@ -12,7 +12,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import * as yaml from "js-yaml";
-import { getLogger } from "../../../services/logger.service";
+import { LoggerService } from "../../../services/logger.service";
 import {
   OpenAPISpec,
   SwaggerParseResult,
@@ -21,6 +21,11 @@ import {
   OpenAPIOperation,
 } from "../../../types/swagger.types";
 import { OpenAPIValidator } from "./validator";
+
+/**
+ * Module-level logger instance for swagger parser
+ */
+const logger = new LoggerService();
 
 /**
  * Comprehensive parser for Swagger/OpenAPI specifications with advanced processing capabilities.
@@ -255,7 +260,7 @@ export class SwaggerParser {
         const resolved = this.resolveRef(param.$ref);
         return resolved;
       } catch (error) {
-        getLogger().warn(
+        logger.warn(
           `Failed to resolve parameter reference ${param.$ref}: ${
             (error as Error).message
           }`

@@ -10,15 +10,18 @@ import type {
   ReportGenerationContext,
   ReportGenerationResult,
 } from "./ReportStrategy.interface";
-import { getLogger } from "../../logger.service";
+import { LoggerService } from "../../logger.service";
 import { ReportingUtils } from "../utils/ReportingUtils";
+
+/**
+ * Module-level logger instance for JSON report strategy
+ */
+const logger = new LoggerService();
 
 /**
  * Strategy for generating JSON reports
  */
 export class JsonReportStrategy implements ReportStrategy {
-  private logger = getLogger();
-
   getFormat(): string {
     return "json";
   }
@@ -68,11 +71,11 @@ export class JsonReportStrategy implements ReportStrategy {
 
       // Write timestamped report
       fs.writeFileSync(filePath, jsonContent, "utf8");
-      this.logger.info(`JSON report: ${filePath}`);
+      logger.info(`JSON report: ${filePath}`);
 
       // Write latest snapshot
       fs.writeFileSync(latestPath, jsonContent, "utf8");
-      this.logger.info(`Latest JSON: ${latestPath}`);
+      logger.info(`Latest JSON: ${latestPath}`);
 
       return {
         format: this.getFormat(),
@@ -80,7 +83,7 @@ export class JsonReportStrategy implements ReportStrategy {
         success: true,
       };
     } catch (error) {
-      this.logger.error("Failed to generate JSON report", {
+      logger.error("Failed to generate JSON report", {
         metadata: { error: String(error) },
       });
 

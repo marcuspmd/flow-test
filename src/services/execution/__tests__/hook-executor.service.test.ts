@@ -54,7 +54,17 @@ describe("HookExecutorService", () => {
       executeStepCall: jest.fn(),
     } as any;
 
+    const mockLogger = {
+      debug: jest.fn(),
+      info: jest.fn(),
+      warn: jest.fn(),
+      error: jest.fn(),
+      setLogLevel: jest.fn(),
+      getLogLevel: jest.fn(() => "info"),
+    };
+
     hookExecutor = new HookExecutorService(
+      mockLogger,
       mockVariableService,
       mockJavaScriptService,
       mockCaptureService,
@@ -648,10 +658,22 @@ describe("HookExecutorService", () => {
     });
 
     it("should handle call without CallService", async () => {
-      const mockCaptureService = { captureFromObject: jest.fn(() => ({})) } as any;
+      const mockCaptureService = {
+        captureFromObject: jest.fn(() => ({})),
+      } as any;
       const mockGlobalRegistry = { setExportedVariable: jest.fn() } as any;
 
+      const mockLogger = {
+        debug: jest.fn(),
+        info: jest.fn(),
+        warn: jest.fn(),
+        error: jest.fn(),
+        setLogLevel: jest.fn(),
+        getLogLevel: jest.fn(() => "info"),
+      };
+
       const hooksExecutorWithoutCall = new HookExecutorService(
+        mockLogger,
         mockVariableService,
         mockJavaScriptService,
         mockCaptureService,
@@ -924,7 +946,17 @@ describe("HookExecutorService", () => {
         })),
       };
 
+      const mockLogger = {
+        debug: jest.fn(),
+        info: jest.fn(),
+        warn: jest.fn(),
+        error: jest.fn(),
+        setLogLevel: jest.fn(),
+        getLogLevel: jest.fn(() => "info"),
+      };
+
       const hookExecutorWithCapture = new (HookExecutorService as any)(
+        mockLogger,
         mockVariableService,
         mockJavaScriptService,
         mockCaptureService,
@@ -958,7 +990,10 @@ describe("HookExecutorService", () => {
         user_email: "test@example.com",
       });
       expect(mockCaptureService.captureFromObject).toHaveBeenCalledWith(
-        { user_id: "response.body.user.id", user_email: "response.body.user.email" },
+        {
+          user_id: "response.body.user.id",
+          user_email: "response.body.user.email",
+        },
         expect.objectContaining({
           response: expect.any(Object),
           variables: expect.any(Object),
@@ -974,7 +1009,17 @@ describe("HookExecutorService", () => {
         }),
       };
 
+      const mockLogger = {
+        debug: jest.fn(),
+        info: jest.fn(),
+        warn: jest.fn(),
+        error: jest.fn(),
+        setLogLevel: jest.fn(),
+        getLogLevel: jest.fn(() => "info"),
+      };
+
       const hookExecutorWithCapture = new (HookExecutorService as any)(
+        mockLogger,
         mockVariableService,
         mockJavaScriptService,
         mockCaptureService,
@@ -1014,7 +1059,17 @@ describe("HookExecutorService", () => {
         })),
       };
 
+      const mockLogger = {
+        debug: jest.fn(),
+        info: jest.fn(),
+        warn: jest.fn(),
+        error: jest.fn(),
+        setLogLevel: jest.fn(),
+        getLogLevel: jest.fn(() => "info"),
+      };
+
       const hookExecutorWithCapture = new (HookExecutorService as any)(
+        mockLogger,
         mockVariableService,
         mockJavaScriptService,
         mockCaptureService,
@@ -1032,7 +1087,13 @@ describe("HookExecutorService", () => {
       ];
 
       const context = createContext({
-        response: { status: 200, status_code: 200, headers: {}, body: { value: "data1" }, response_time_ms: 100 },
+        response: {
+          status: 200,
+          status_code: 200,
+          headers: {},
+          body: { value: "data1" },
+          response_time_ms: 100,
+        },
         call_result: { success: true },
       });
 
@@ -1063,7 +1124,17 @@ describe("HookExecutorService", () => {
         local_var: "local",
       });
 
+      const mockLogger = {
+        debug: jest.fn(),
+        info: jest.fn(),
+        warn: jest.fn(),
+        error: jest.fn(),
+        setLogLevel: jest.fn(),
+        getLogLevel: jest.fn(() => "info"),
+      };
+
       const hookExecutorWithExports = new (HookExecutorService as any)(
+        mockLogger, // LOGGER deve vir primeiro!
         mockVariableService,
         mockJavaScriptService,
         { captureFromObject: jest.fn(() => ({})) } as any,
@@ -1103,7 +1174,17 @@ describe("HookExecutorService", () => {
         existing_var: "value1",
       });
 
+      const mockLogger = {
+        debug: jest.fn(),
+        info: jest.fn(),
+        warn: jest.fn(),
+        error: jest.fn(),
+        setLogLevel: jest.fn(),
+        getLogLevel: jest.fn(() => "info"),
+      };
+
       const hookExecutorWithExports = new (HookExecutorService as any)(
+        mockLogger,
         mockVariableService,
         mockJavaScriptService,
         { captureFromObject: jest.fn(() => ({})) } as any,
@@ -1140,7 +1221,17 @@ describe("HookExecutorService", () => {
         captured_token: "token123",
       });
 
+      const mockLogger = {
+        debug: jest.fn(),
+        info: jest.fn(),
+        warn: jest.fn(),
+        error: jest.fn(),
+        setLogLevel: jest.fn(),
+        getLogLevel: jest.fn(() => "info"),
+      };
+
       const hookExecutorWithAll = new (HookExecutorService as any)(
+        mockLogger,
         mockVariableService,
         mockJavaScriptService,
         mockCaptureService,

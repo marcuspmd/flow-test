@@ -2,8 +2,11 @@
  * @fileoverview Tests for deterministic expression parser
  */
 
-import { ExpressionParserService, ExpressionType } from "../expression-parser.service";
-import { getLogger } from "../logger.service";
+import {
+  ExpressionParserService,
+  ExpressionType,
+} from "../expression-parser.service";
+import { createMockLogger } from "../../test-utils/di-test-helpers";
 import { InterpolationService } from "../interpolation.service";
 import { JavaScriptService } from "../javascript.service";
 import { FakerService } from "../faker.service";
@@ -13,7 +16,7 @@ describe("ExpressionParserService", () => {
   let logger: any;
 
   beforeEach(() => {
-    logger = getLogger();
+    logger = createMockLogger();
     parser = new ExpressionParserService(logger);
   });
 
@@ -52,13 +55,16 @@ describe("ExpressionParserService", () => {
     });
 
     it("should parse template with multiple variables", () => {
-      const result = parser.parseExpression("Hello {{name}}, you have {{count}} messages", {
-        variableResolver: (path) => {
-          if (path === "name") return "John";
-          if (path === "count") return "5";
-          return undefined;
-        },
-      });
+      const result = parser.parseExpression(
+        "Hello {{name}}, you have {{count}} messages",
+        {
+          variableResolver: (path) => {
+            if (path === "name") return "John";
+            if (path === "count") return "5";
+            return undefined;
+          },
+        }
+      );
 
       expect(result.type).toBe("template");
       expect(result.result).toBe("Hello John, you have 5 messages");
@@ -66,7 +72,7 @@ describe("ExpressionParserService", () => {
 
     it("should parse template with environment variable", () => {
       process.env.TEST_VAR = "test_value";
-      
+
       const result = parser.parseExpression("{{$env.TEST_VAR}}");
 
       expect(result.type).toBe("template");
@@ -76,13 +82,16 @@ describe("ExpressionParserService", () => {
     });
 
     it("should parse template with nested variables", () => {
-      const result = parser.parseExpression("{{base_url}}/api/{{version}}/users", {
-        variableResolver: (path) => {
-          if (path === "base_url") return "https://api.example.com";
-          if (path === "version") return "v1";
-          return undefined;
-        },
-      });
+      const result = parser.parseExpression(
+        "{{base_url}}/api/{{version}}/users",
+        {
+          variableResolver: (path) => {
+            if (path === "base_url") return "https://api.example.com";
+            if (path === "version") return "v1";
+            return undefined;
+          },
+        }
+      );
 
       expect(result.type).toBe("template");
       expect(result.result).toBe("https://api.example.com/api/v1/users");
@@ -184,7 +193,9 @@ describe("ExpressionParserService", () => {
     });
 
     it("should parse JavaScript with array operations", () => {
-      const result = parser.parseExpression("$[1, 2, 3].reduce((a, b) => a + b, 0)");
+      const result = parser.parseExpression(
+        "$[1, 2, 3].reduce((a, b) => a + b, 0)"
+      );
 
       expect(result.type).toBe("javascript");
       expect(result.result).toBe(6);
@@ -245,9 +256,11 @@ describe("ExpressionParserService", () => {
 
     it("should allow templates with $env and $faker", () => {
       process.env.TEST_API = "https://api.test.com";
-      
+
       // This should work - templates can contain these
-      const result = parser.parseExpression("{{$env.TEST_API}}/{{$faker.string.uuid}}");
+      const result = parser.parseExpression(
+        "{{$env.TEST_API}}/{{$faker.string.uuid}}"
+      );
 
       expect(result.type).toBe("template");
       expect(result.result).toContain("https://api.test.com/");
@@ -323,7 +336,9 @@ describe("ExpressionParserService", () => {
       const result = parser.parseExpression("#faker.person.firstName");
 
       expect(result.trace).toBeDefined();
-      const traceLine = result.trace?.find((line) => line.includes("[FAKER] Method:"));
+      const traceLine = result.trace?.find((line) =>
+        line.includes("[FAKER] Method:")
+      );
       expect(traceLine).toBeDefined();
     });
 
@@ -335,7 +350,9 @@ describe("ExpressionParserService", () => {
       });
 
       expect(result.trace).toBeDefined();
-      const traceLine = result.trace?.find((line) => line.includes("[JMESPATH] Query:"));
+      const traceLine = result.trace?.find((line) =>
+        line.includes("[JMESPATH] Query:")
+      );
       expect(traceLine).toBeDefined();
     });
   });
@@ -463,8 +480,12 @@ describe("ExpressionParserService", () => {
     it("should handle expressions starting with common prefixes in text", () => {
       // These should be literals, not special expressions
       expect(parser.parseExpression("I have $100").type).toBe("literal");
-      expect(parser.parseExpression("Email me at test@example.com").type).toBe("literal");
-      expect(parser.parseExpression("Use hashtag #trending").type).toBe("literal");
+      expect(parser.parseExpression("Email me at test@example.com").type).toBe(
+        "literal"
+      );
+      expect(parser.parseExpression("Use hashtag #trending").type).toBe(
+        "literal"
+      );
     });
   });
 

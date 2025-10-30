@@ -4,9 +4,8 @@ import path from "path";
 import { FlowTestEngine } from "../core/engine";
 import { EngineExecutionOptions, EngineHooks } from "../types/engine.types";
 import {
-  setupLogger,
   LoggerService,
-  getLogger,
+  ConsoleLoggerAdapter,
 } from "../services/logger.service";
 import { RealtimeReporter, LiveEvent } from "../services/realtime-reporter";
 import { createConsoleHooks } from "../services/hook-factory";
@@ -33,8 +32,8 @@ const liveEventsPath = liveEventsEnvPath
 
 const LOG_LEVELS: LogLevel[] = ["debug", "info", "warn", "error"];
 
-setupLogger("console", { verbosity: "simple" });
-const logger = LoggerService.getInstance();
+const orchestratorLogger = new LoggerService();
+orchestratorLogger.setLoggerAdapter(new ConsoleLoggerAdapter("simple"));
 const reporter = new RealtimeReporter(liveEventsPath);
 const logStream = LogStreamingService.getInstance();
 let activeRunId: string | null = null;
@@ -64,7 +63,7 @@ async function startRun(
   });
 
   const reporterHooks = reporter.createHooks(runId);
-  const consoleHooks = createConsoleHooks(logger);
+  const consoleHooks = createConsoleHooks(orchestratorLogger);
   const hooks = mergeHooks(consoleHooks, reporterHooks);
 
   activeRunId = runId;
@@ -88,7 +87,7 @@ async function startRun(
       });
     } catch (error) {
       const err = error as Error;
-      getLogger().error(`❌ Orchestrator run error: ${err.message}`, {
+      orchestratorLogger.error(`❌ Orchestrator run error: ${err.message}`, {
         error: err,
       });
       reporter.recordRunError(runId, err);
@@ -371,7 +370,7 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, () => {
-  getLogger().info(
+  orchestratorLogger.info(
     `🌐 Flow Test orchestrator listening on http://localhost:${PORT} (live events: ${liveEventsPath})`
   );
 });

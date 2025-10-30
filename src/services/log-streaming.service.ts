@@ -1,6 +1,19 @@
 import { EventEmitter } from "events";
 import { randomUUID } from "crypto";
-import type { LogContext } from "./logger.service";
+import { JSONValue } from "../types/common.types";
+
+/**
+ * Context information for log streaming
+ */
+export interface LogStreamContext {
+  nodeId?: string;
+  stepName?: string;
+  duration?: number;
+  metadata?: Record<string, JSONValue>;
+  filePath?: string;
+  error?: Error | string;
+}
+
 /**
  * Log message severities supported by the streaming service.
  *
@@ -47,7 +60,7 @@ export interface LogStreamRunDescriptor {
   lastUpdateAt?: string;
 }
 /**
- * Serialized representation of {@link LogContext} suitable for event payloads.
+ * Serialized representation of {@link LogStreamContext} suitable for event payloads.
  *
  * @remarks
  * Errors are converted into plain objects to avoid leaking prototype details
@@ -55,7 +68,8 @@ export interface LogStreamRunDescriptor {
  *
  * @public
  */
-export interface SerializedLogContext extends Omit<LogContext, "error"> {
+export interface SerializedLogStreamContext
+  extends Omit<LogStreamContext, "error"> {
   error?: { message: string; stack?: string } | string;
   metadata?: Record<string, any>;
 }
@@ -78,7 +92,7 @@ export interface LogStreamEvent {
   runId?: string;
   run?: LogStreamRunDescriptor;
   origin?: string;
-  context?: SerializedLogContext;
+  context?: SerializedLogStreamContext;
   extra?: Record<string, any>;
 }
 /**
@@ -90,7 +104,7 @@ export interface LogStreamEvent {
 export interface PublishLogInput {
   level: LogLevel;
   message: string;
-  context?: LogContext;
+  context?: LogStreamContext;
   runId?: string;
   origin?: string;
   extra?: Record<string, any>;
@@ -385,14 +399,14 @@ export class LogStreamingService {
   }
 
   private sanitizeContext(
-    context?: LogContext
-  ): SerializedLogContext | undefined {
+    context?: LogStreamContext
+  ): SerializedLogStreamContext | undefined {
     if (!context) {
       return undefined;
     }
 
     const { metadata, error, ...rest } = context;
-    const sanitized: SerializedLogContext = { ...rest };
+    const sanitized: SerializedLogStreamContext = { ...rest };
 
     if (metadata !== undefined) {
       sanitized.metadata = this.cloneMetadata(metadata);

@@ -12,7 +12,6 @@
 import { injectable, inject } from "inversify";
 import * as jmespath from "jmespath";
 import { StepExecutionResult } from "../types/config.types";
-import { getLogger } from "./logger.service";
 import { InterpolationService } from "./interpolation.service";
 import { ResponseContextBuilder, ErrorHandler } from "../utils";
 import { TYPES } from "../di/identifiers";

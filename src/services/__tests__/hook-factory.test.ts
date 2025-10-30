@@ -3,16 +3,12 @@
  */
 
 import { createConsoleHooks } from "../hook-factory";
-import { getLogger, setupLogger } from "../logger.service";
+import { createMockLogger } from "../../test-utils/di-test-helpers";
 
 describe("HookFactory", () => {
-  beforeEach(() => {
-    setupLogger("console", "silent");
-  });
-
   describe("createConsoleHooks", () => {
     it("should create hooks object with all required methods", () => {
-      const logger = getLogger();
+      const logger = createMockLogger();
       const hooks = createConsoleHooks(logger);
 
       expect(hooks.onExecutionStart).toBeDefined();
@@ -25,7 +21,7 @@ describe("HookFactory", () => {
     });
 
     it("should execute all hooks without error", async () => {
-      const logger = getLogger();
+      const logger = createMockLogger();
       const hooks = createConsoleHooks(logger);
 
       const stats = {

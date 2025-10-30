@@ -44,17 +44,16 @@ import {
 import { handleInitCommand } from "./commands/init";
 import { handleSchemaCommand, displaySchemaHelp } from "./commands/schema";
 import { PostmanCollectionService } from "./services/postman-collection.service";
-import {
-  setupLogger,
-  LoggerService,
-  getLogger,
-} from "./services/logger.service";
+import { LoggerService, ConsoleLoggerAdapter } from "./services/logger.service";
 import { RealtimeReporter } from "./services/realtime-reporter";
 import { createConsoleHooks } from "./services/hook-factory";
 import {
   LogStreamingService,
   LogSessionHandle,
 } from "./services/log-streaming.service";
+
+// Initialize logger for CLI
+const cliLogger = new LoggerService();
 
 const HOOK_KEYS: (keyof EngineHooks)[] = [
   "onTestDiscovered",
@@ -126,7 +125,7 @@ function loadConfiguredTestRoots(projectRoot: string): string[] {
         roots.add(absolutePath);
       }
     } catch (error) {
-      getLogger().debug(
+      cliLogger.debug(
         `⚠️  Skipping configured test root '${absolutePath}': ${error}`
       );
     }
@@ -160,7 +159,7 @@ function loadConfiguredTestRoots(projectRoot: string): string[] {
         pushRoot((config as any).testDirectory);
       }
     } catch (error) {
-      getLogger().debug(
+      cliLogger.debug(
         `⚠️  Could not load configured test roots from '${configPath}': ${error}`
       );
     }
@@ -186,7 +185,7 @@ function determineDependencySearchRoots(
         roots.add(path.resolve(candidate));
       }
     } catch (error) {
-      getLogger().debug(
+      cliLogger.debug(
         `⚠️  Skipping dependency search root '${candidate}': ${error}`
       );
     }
@@ -236,10 +235,14 @@ function mergeHooks(...hooks: Array<EngineHooks | undefined>): EngineHooks {
       .filter((callback) => typeof callback === "function");
 
     if (callbacks.length > 0) {
-      (merged as Record<string, unknown>)[hookName] = async (...args: unknown[]) => {
+      (merged as Record<string, unknown>)[hookName] = async (
+        ...args: unknown[]
+      ) => {
         for (const callback of callbacks) {
           if (callback) {
-            await (callback as (...args: unknown[]) => Promise<void> | void)(...args);
+            await (callback as (...args: unknown[]) => Promise<void> | void)(
+              ...args
+            );
           }
         }
       };
@@ -481,7 +484,7 @@ async function main() {
         if (i + 1 < args.length) {
           inlineYamlArg = args[++i];
         } else {
-          getLogger().error("❌ Missing value for --inline-yaml");
+          cliLogger.error("❌ Missing value for --inline-yaml");
           showHelp = true;
         }
         break;
@@ -490,7 +493,7 @@ async function main() {
         if (i + 1 < args.length) {
           inlineBaseDir = args[++i];
         } else {
-          getLogger().error("❌ Missing value for --inline-base");
+          cliLogger.error("❌ Missing value for --inline-base");
           showHelp = true;
         }
         break;
@@ -499,7 +502,7 @@ async function main() {
         if (i + 1 < args.length) {
           inlineRelativePath = args[++i];
         } else {
-          getLogger().error("❌ Missing value for --inline-path");
+          cliLogger.error("❌ Missing value for --inline-path");
           showHelp = true;
         }
         break;
@@ -526,7 +529,7 @@ async function main() {
         formats.add("html");
         reportingOptions.formats = Array.from(formats);
 
-        getLogger().info(
+        cliLogger.info(
           "🧾 HTML reporting enabled. A Postman-inspired report will be written alongside the JSON artifacts."
         );
 
@@ -565,9 +568,9 @@ async function main() {
           const path = require("path");
           const packagePath = path.join(__dirname, "..", "package.json");
           const packageJson = JSON.parse(fs.readFileSync(packagePath, "utf8"));
-          getLogger().info(`Flow Test Engine v${packageJson.version}`);
+          cliLogger.info(`Flow Test Engine v${packageJson.version}`);
         } catch (error) {
-          getLogger().info("Flow Test Engine v1.1.12");
+          cliLogger.info("Flow Test Engine v1.1.12");
         }
         process.exit(0);
         break;
@@ -577,7 +580,7 @@ async function main() {
         if (!arg.startsWith("-") && !testFile) {
           testFile = arg;
         } else {
-          getLogger().error(`❌ Unknown argument: ${arg}`);
+          cliLogger.error(`❌ Unknown argument: ${arg}`);
           showHelp = true;
         }
         break;
@@ -585,14 +588,14 @@ async function main() {
   }
 
   if (postmanExport && postmanImport) {
-    getLogger().error(
+    cliLogger.error(
       "❌ Cannot use --postman-export and --postman-import in the same command."
     );
     process.exit(1);
   }
 
   if (postmanExportFromResults && (postmanExport || postmanImport)) {
-    getLogger().error(
+    cliLogger.error(
       "❌ Cannot use --postman-export-from-results with other postman export/import commands."
     );
     process.exit(1);
@@ -620,7 +623,7 @@ async function main() {
     }
 
     if (!inlineYamlContent || !inlineYamlContent.trim()) {
-      getLogger().error("❌ Provided inline YAML content is empty.");
+      cliLogger.error("❌ Provided inline YAML content is empty.");
       process.exit(1);
     }
   }
@@ -657,14 +660,14 @@ async function main() {
 
   if (inlineYamlContent !== undefined) {
     if (dryRun) {
-      getLogger().error(
+      cliLogger.error(
         "❌ Inline YAML execution does not support --dry-run mode."
       );
       process.exit(1);
     }
 
     if (postmanExport || postmanImport || postmanExportFromResults) {
-      getLogger().error(
+      cliLogger.error(
         "❌ Inline YAML execution cannot be combined with Postman import/export commands."
       );
       process.exit(1);
@@ -700,7 +703,7 @@ async function main() {
 
       // Verifica se o arquivo existe
       if (!fs.existsSync(resolvedPath)) {
-        getLogger().error(`❌ Test file not found: ${testFile}`);
+        cliLogger.error(`❌ Test file not found: ${testFile}`);
         process.exit(1);
       }
 
@@ -758,11 +761,11 @@ async function main() {
             patternSet.add(normalizePattern(filePath));
           });
 
-          getLogger().info(
+          cliLogger.info(
             `🔍 Auto-discovered ${dependencyDiscovery.nodeIds.length} dependencies`
           );
           if (dependencyDiscovery.nodeIds.length > 0) {
-            getLogger().info(
+            cliLogger.info(
               `📋 Execution order: ${nodeIdsToExecute.join(" → ")}`
             );
           }
@@ -809,11 +812,11 @@ async function main() {
             patternSet.add(normalizePattern(filePath));
           });
 
-          getLogger().info(
+          cliLogger.info(
             `🔍 Auto-discovered ${dependencyDiscovery.nodeIds.length} dependencies`
           );
           if (dependencyDiscovery.nodeIds.length > 0) {
-            getLogger().info(
+            cliLogger.info(
               `📋 Execution order: ${suiteNamesToExecute.join(" → ")}`
             );
           }
@@ -831,11 +834,11 @@ async function main() {
             reporting: options.reporting ? { ...options.reporting } : undefined,
           };
         } else {
-          getLogger().error(`❌ Invalid test file format: ${testFile}`);
+          cliLogger.error(`❌ Invalid test file format: ${testFile}`);
           process.exit(1);
         }
       } catch (error) {
-        getLogger().error(`❌ Error reading test file: ${error}`);
+        cliLogger.error(`❌ Error reading test file: ${error}`);
         process.exit(1);
       }
     } else {
@@ -847,10 +850,14 @@ async function main() {
     }
 
     // Configura logger conforme a verbosidade escolhida
-    setupLogger("console", { verbosity: options.verbosity || "simple" });
-    const logger = LoggerService.getInstance();
+    const verbosity = options.verbosity || "simple";
+    if (verbosity === "simple") {
+      cliLogger.setLoggerAdapter(new ConsoleLoggerAdapter("simple"));
+    } else {
+      cliLogger.setLoggerAdapter(new ConsoleLoggerAdapter(verbosity as any));
+    }
     const logStream = LogStreamingService.getInstance();
-    const baseHooks = createConsoleHooks(logger);
+    const baseHooks = createConsoleHooks(cliLogger);
 
     let liveReporter: RealtimeReporter | undefined;
     let liveReporterRunId: string | null = null;
@@ -890,9 +897,9 @@ async function main() {
       // Execução em modo dry-run
       const plan = await engine.dryRun();
 
-      getLogger().info(`\n📊 Execution plan would run ${plan.length} test(s):`);
+      cliLogger.info(`\n📊 Execution plan would run ${plan.length} test(s):`);
       plan.forEach((test: DiscoveredTest, index: number) => {
-        getLogger().info(
+        cliLogger.info(
           `  ${index + 1}. ${test.suite_name} (${test.priority || "medium"})`
         );
       });
@@ -911,7 +918,7 @@ async function main() {
       const result = await engine.run();
 
       // Log final summary for Jest-style logger
-      logger.info(`Execution summary`, {
+      cliLogger.info(`Execution summary`, {
         metadata: {
           type: "execution_summary",
           successful_tests: result.successful_tests,
@@ -924,7 +931,7 @@ async function main() {
       // Exit code baseado no resultado
       const exitCode = result.success_rate === 100 ? 0 : 1;
 
-      getLogger().info(
+      cliLogger.info(
         `\n🏁 Execution completed with ${result.success_rate.toFixed(
           1
         )}% success rate`
@@ -945,7 +952,7 @@ async function main() {
       process.exit(exitCode);
     }
   } catch (error) {
-    getLogger().error("❌ Fatal error:", {
+    cliLogger.error("❌ Fatal error:", {
       error: error as Error,
     });
 
@@ -1026,9 +1033,7 @@ async function handleInlineYamlExecution(
   const suiteObj = parsedSuite as Record<string, unknown>;
 
   const inlineNodeId =
-    typeof suiteObj.node_id === "string"
-      ? suiteObj.node_id.trim()
-      : undefined;
+    typeof suiteObj.node_id === "string" ? suiteObj.node_id.trim() : undefined;
 
   if (!inlineNodeId) {
     console.error("❌ Inline YAML must include a 'node_id' property.");
@@ -1203,7 +1208,7 @@ async function handleInlineYamlExecution(
       };
     }
 
-    setupLogger("console", { verbosity: "silent" });
+    cliLogger.setLoggerAdapter(new ConsoleLoggerAdapter("silent"));
 
     const engine = new FlowTestEngine(inlineOptions, {});
     const result = await engine.run();
@@ -1304,13 +1309,13 @@ async function autoDiscoverDependencies(
               }
             }
           } catch (error) {
-            getLogger().debug(
+            cliLogger.debug(
               `⚠️ Could not parse YAML file during dependency discovery: ${absolutePath}`
             );
           }
         }
       } catch (error) {
-        getLogger().debug(
+        cliLogger.debug(
           `⚠️ Skipping dependency discovery in '${root}': ${error}`
         );
       }
@@ -1387,7 +1392,7 @@ async function autoDiscoverDependencies(
           );
         }
       } catch (error) {
-        getLogger().warn(
+        cliLogger.warn(
           `⚠️ Could not resolve dependency node_id for file: ${dependencyFilePath}`
         );
       }
@@ -1402,7 +1407,7 @@ async function autoDiscoverDependencies(
     }
 
     if (!resolvedNodeId || !dependencyFilePath) {
-      getLogger().warn(
+      cliLogger.warn(
         `⚠️ Could not resolve dependency: ${JSON.stringify(dependency)}`
       );
       continue;
@@ -1417,7 +1422,7 @@ async function autoDiscoverDependencies(
 
     if (!dependencyNodeIds.includes(resolvedNodeId)) {
       dependencyNodeIds.push(resolvedNodeId);
-      getLogger().info(
+      cliLogger.info(
         `✅ Found dependency: ${resolvedNodeId} (${path.basename(
           dependencyFilePath
         )})`
@@ -1456,7 +1461,7 @@ async function autoDiscoverDependencies(
         }
       }
     } catch (error) {
-      getLogger().warn(
+      cliLogger.warn(
         `⚠️ Could not read dependency file: ${dependencyFilePath}`
       );
     }
@@ -1502,7 +1507,7 @@ function printHelp() {
     // Fallback version if package.json can't be read
   }
 
-  getLogger().info(`
+  cliLogger.info(`
 🚀 Flow Test Engine v${version}
 
 USAGE:
@@ -1621,7 +1626,7 @@ async function handleSwaggerImport(
   specFilePath: string,
   outputDir?: string
 ): Promise<void> {
-  getLogger().info(
+  cliLogger.info(
     `🔄 Importing Swagger/OpenAPI specification from: ${specFilePath}`
   );
 
@@ -1641,36 +1646,36 @@ async function handleSwaggerImport(
     );
 
     if (!result.success) {
-      getLogger().error("❌ Import failed:");
-      result.errors.forEach((error) => getLogger().error(`  • ${error}`));
+      cliLogger.error("❌ Import failed:");
+      result.errors.forEach((error) => cliLogger.error(`  • ${error}`));
       process.exit(1);
     }
 
     // Show warnings if any
     if (result.warnings.length > 0) {
-      getLogger().info("\n⚠️  Warnings:");
-      result.warnings.forEach((warning) => getLogger().warn(`  • ${warning}`));
+      cliLogger.info("\n⚠️  Warnings:");
+      result.warnings.forEach((warning) => cliLogger.warn(`  • ${warning}`));
     }
 
     // Show success summary
-    getLogger().info("\n✅ Import completed successfully!");
-    getLogger().info(`📁 Output directory: ${result.outputPath}`);
-    getLogger().info(`📄 Generated test suites: ${result.generatedSuites}`);
+    cliLogger.info("\n✅ Import completed successfully!");
+    cliLogger.info(`📁 Output directory: ${result.outputPath}`);
+    cliLogger.info(`📄 Generated test suites: ${result.generatedSuites}`);
 
     if (result.generatedDocs > 0) {
-      getLogger().info(
+      cliLogger.info(
         `📚 Generated documentation files: ${result.generatedDocs}`
       );
     }
 
-    getLogger().info("\n🚀 Next steps:");
-    getLogger().info("  1. Review generated test files");
-    getLogger().info("  2. Adjust variables and assertions as needed");
-    getLogger().info(
+    cliLogger.info("\n🚀 Next steps:");
+    cliLogger.info("  1. Review generated test files");
+    cliLogger.info("  2. Adjust variables and assertions as needed");
+    cliLogger.info(
       `  3. Run tests: flow-test --directory ${result.outputPath}`
     );
   } catch (error) {
-    getLogger().error("❌ Unexpected error during import:", {
+    cliLogger.error("❌ Unexpected error during import:", {
       error: error as Error,
     });
     process.exit(1);
@@ -1681,7 +1686,7 @@ async function handlePostmanExportFromResults(
   resultsPath: string,
   outputPath?: string
 ): Promise<void> {
-  getLogger().info(
+  cliLogger.info(
     `🔄 Exporting Postman collection from execution results: ${resultsPath}`
   );
 
@@ -1692,25 +1697,24 @@ async function handlePostmanExportFromResults(
     });
 
     if (!result.success) {
-      getLogger().error("❌ Export failed:");
-      result.errors.forEach((error) => getLogger().error(`  • ${error}`));
+      cliLogger.error("❌ Export failed:");
+      result.errors.forEach((error) => cliLogger.error(`  • ${error}`));
       process.exit(1);
     }
 
     if (result.warnings.length > 0) {
-      getLogger().info("\n⚠️  Warnings:");
-      result.warnings.forEach((warning) => getLogger().warn(`  • ${warning}`));
+      cliLogger.info("\n⚠️  Warnings:");
+      result.warnings.forEach((warning) => cliLogger.warn(`  • ${warning}`));
     }
 
-    getLogger().info("\n✅ Export completed successfully!");
+    cliLogger.info("\n✅ Export completed successfully!");
     result.outputFiles.forEach((file) =>
-      getLogger().info(`📄 Generated: ${file}`)
+      cliLogger.info(`📄 Generated: ${file}`)
     );
   } catch (error) {
-    getLogger().error(
-      "❌ Unexpected error during Postman export from results:",
-      { error: error as Error }
-    );
+    cliLogger.error("❌ Unexpected error during Postman export from results:", {
+      error: error as Error,
+    });
     process.exit(1);
   }
 }
@@ -1719,7 +1723,7 @@ async function handlePostmanExport(
   inputPath: string,
   outputPath?: string
 ): Promise<void> {
-  getLogger().info(
+  cliLogger.info(
     `🔄 Exporting Flow Test suite(s) to Postman collection: ${inputPath}`
   );
 
@@ -1730,22 +1734,22 @@ async function handlePostmanExport(
     });
 
     if (!result.success) {
-      getLogger().error("❌ Export failed:");
-      result.errors.forEach((error) => getLogger().error(`  • ${error}`));
+      cliLogger.error("❌ Export failed:");
+      result.errors.forEach((error) => cliLogger.error(`  • ${error}`));
       process.exit(1);
     }
 
     if (result.warnings.length > 0) {
-      getLogger().info("\n⚠️  Warnings:");
-      result.warnings.forEach((warning) => getLogger().warn(`  • ${warning}`));
+      cliLogger.info("\n⚠️  Warnings:");
+      result.warnings.forEach((warning) => cliLogger.warn(`  • ${warning}`));
     }
 
-    getLogger().info("\n✅ Export completed successfully!");
+    cliLogger.info("\n✅ Export completed successfully!");
     result.outputFiles.forEach((file) =>
-      getLogger().info(`📄 Generated: ${file}`)
+      cliLogger.info(`📄 Generated: ${file}`)
     );
   } catch (error) {
-    getLogger().error("❌ Unexpected error during Postman export:", {
+    cliLogger.error("❌ Unexpected error during Postman export:", {
       error: error as Error,
     });
     process.exit(1);
@@ -1761,12 +1765,12 @@ async function handlePostmanImport(
   const mode = preserveFolders
     ? "multi-file with folder structure"
     : "single file";
-  getLogger().info(
+  cliLogger.info(
     `🔄 Importing Postman collection (${mode}): ${collectionPath}`
   );
 
   if (analyzeDeps && !preserveFolders) {
-    getLogger().warn(
+    cliLogger.warn(
       "⚠️  --postman-analyze-deps requires --postman-preserve-folders, ignoring..."
     );
     analyzeDeps = false;
@@ -1781,38 +1785,38 @@ async function handlePostmanImport(
     });
 
     if (!result.success) {
-      getLogger().error("❌ Import failed:");
-      result.errors.forEach((error) => getLogger().error(`  • ${error}`));
+      cliLogger.error("❌ Import failed:");
+      result.errors.forEach((error) => cliLogger.error(`  • ${error}`));
       process.exit(1);
     }
 
     if (result.warnings.length > 0) {
-      getLogger().info("\n⚠️  Warnings:");
-      result.warnings.forEach((warning) => getLogger().warn(`  • ${warning}`));
+      cliLogger.info("\n⚠️  Warnings:");
+      result.warnings.forEach((warning) => cliLogger.warn(`  • ${warning}`));
     }
 
-    getLogger().info("\n✅ Import completed successfully!");
-    getLogger().info(`📊 Generated ${result.generatedSuites} suite(s)`);
+    cliLogger.info("\n✅ Import completed successfully!");
+    cliLogger.info(`📊 Generated ${result.generatedSuites} suite(s)`);
 
     if (result.folderStructure) {
-      getLogger().info("\n" + result.folderStructure);
+      cliLogger.info("\n" + result.folderStructure);
     }
 
     if (result.dependenciesFound && result.dependenciesFound.length > 0) {
-      getLogger().info(
+      cliLogger.info(
         `\n🔗 Dependencies found: ${result.dependenciesFound.length}`
       );
       result.dependenciesFound.forEach((dep) => {
-        getLogger().info(
+        cliLogger.info(
           `  • ${dep.variableName}: captured in ${dep.capturedBy}, used by ${dep.usedBy.length} suite(s)`
         );
       });
     }
 
-    getLogger().info("\n📄 Generated files:");
-    result.outputFiles.forEach((file) => getLogger().info(`  • ${file}`));
+    cliLogger.info("\n📄 Generated files:");
+    result.outputFiles.forEach((file) => cliLogger.info(`  • ${file}`));
   } catch (error) {
-    getLogger().error("❌ Unexpected error during Postman import:", {
+    cliLogger.error("❌ Unexpected error during Postman import:", {
       error: error as Error,
     });
     process.exit(1);
@@ -1821,26 +1825,26 @@ async function handlePostmanImport(
 
 // Tratamento de sinais para cleanup graceful
 process.on("SIGINT", () => {
-  getLogger().info("\n🛑 Received SIGINT, shutting down gracefully...");
+  cliLogger.info("\n🛑 Received SIGINT, shutting down gracefully...");
   process.exit(130);
 });
 
 process.on("SIGTERM", () => {
-  getLogger().info("\n🛑 Received SIGTERM, shutting down gracefully...");
+  cliLogger.info("\n🛑 Received SIGTERM, shutting down gracefully...");
   process.exit(143);
 });
 
 // Tratamento de exceções não capturadas
 process.on("uncaughtException", (error) => {
-  getLogger().error("💥 Uncaught Exception:", { error });
+  cliLogger.error("💥 Uncaught Exception:", { error });
   process.exit(1);
 });
 
 process.on("unhandledRejection", (reason, promise) => {
-  getLogger().error("💥 Unhandled Rejection at:", {
+  cliLogger.error("💥 Unhandled Rejection at:", {
     metadata: {
       promise: String(promise),
-      reason: String(reason)
+      reason: String(reason),
     },
   });
   process.exit(1);
@@ -1848,6 +1852,6 @@ process.on("unhandledRejection", (reason, promise) => {
 
 // Executa o CLI
 main().catch((error) => {
-  getLogger().error("💥 CLI execution failed:", { error });
+  cliLogger.error("💥 CLI execution failed:", { error });
   process.exit(1);
 });

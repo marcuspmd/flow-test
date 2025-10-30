@@ -21,7 +21,12 @@ import {
   ReportFormat,
 } from "../types/engine.types";
 import { IConfigManager } from "../interfaces/services/IConfigManager";
-import { getLogger } from "../services/logger.service";
+import { LoggerService } from "../services/logger.service";
+
+/**
+ * Module-level logger instance for config manager
+ */
+const logger = new LoggerService();
 
 /**
  * Configuration manager for the Flow Test Engine with comprehensive loading and validation.
@@ -550,8 +555,6 @@ export class ConfigManager implements IConfigManager {
    * @private
    */
   private loadEnvFiles(envFiles?: string[]): void {
-    const logger = getLogger();
-
     if (!envFiles || envFiles.length === 0) {
       return;
     }
@@ -676,7 +679,7 @@ export class ConfigManager implements IConfigManager {
    *
    * @public
    */
-  getRuntimeFilters(): NonNullable<ExtendedConfig['_runtime_filters']> {
+  getRuntimeFilters(): NonNullable<ExtendedConfig["_runtime_filters"]> {
     return this.config._runtime_filters || {};
   }
 

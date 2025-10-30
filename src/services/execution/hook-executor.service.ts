@@ -18,7 +18,6 @@ import {
   HookValidationSeverity,
 } from "../../types/hook.types";
 import { injectable, inject, optional } from "inversify";
-import { getLogger } from "../logger.service";
 import { ErrorHandler } from "../../utils";
 import { TYPES } from "../../di/identifiers";
 import type { IHookExecutorService } from "../../interfaces/services/IHookExecutorService";
@@ -27,6 +26,7 @@ import type { IJavaScriptService } from "../../interfaces/services/IJavaScriptSe
 import type { ICallService } from "../../interfaces/services/ICallService";
 import type { ICaptureService } from "../../interfaces/services/ICaptureService";
 import type { IGlobalRegistryService } from "../../interfaces/services/IGlobalRegistryService";
+import type { ILogger } from "../../interfaces/services/ILogger";
 
 /**
  * Service responsible for executing lifecycle hooks
@@ -70,7 +70,7 @@ import type { IGlobalRegistryService } from "../../interfaces/services/IGlobalRe
  */
 @injectable()
 export class HookExecutorService implements IHookExecutorService {
-  private logger = getLogger();
+  private logger: ILogger;
 
   /**
    * Creates a new HookExecutorService instance
@@ -82,6 +82,7 @@ export class HookExecutorService implements IHookExecutorService {
    * @param callService - Optional service for step/suite calls
    */
   constructor(
+    @inject(TYPES.ILogger) logger: ILogger,
     @inject(TYPES.IVariableService)
     private readonly variableService: IVariableService,
     @inject(TYPES.IJavaScriptService)
@@ -93,7 +94,9 @@ export class HookExecutorService implements IHookExecutorService {
     @inject(TYPES.ICallService)
     @optional()
     private readonly callService?: ICallService
-  ) {}
+  ) {
+    this.logger = logger;
+  }
 
   /**
    * Execute an array of hook actions
@@ -660,9 +663,9 @@ export class HookExecutorService implements IHookExecutorService {
       Object.assign(captured, capturedVars);
 
       this.logger.debug(
-        `[Hook] Captured ${Object.keys(captured).length} variable(s): ${Object.keys(
-          captured
-        ).join(", ")}`,
+        `[Hook] Captured ${
+          Object.keys(captured).length
+        } variable(s): ${Object.keys(captured).join(", ")}`,
         { stepName: context.stepName }
       );
     } catch (error) {
@@ -700,7 +703,9 @@ export class HookExecutorService implements IHookExecutorService {
     const allVariables = this.variableService.getAllVariables();
 
     // Create a synthetic node ID for hook exports (could be enhanced with suite context)
-    const hookNodeId = `hook_${context.stepName.replace(/\s+/g, "_").toLowerCase()}`;
+    const hookNodeId = `hook_${context.stepName
+      .replace(/\s+/g, "_")
+      .toLowerCase()}`;
 
     for (const varName of exportList) {
       try {
@@ -720,10 +725,13 @@ export class HookExecutorService implements IHookExecutorService {
         this.globalRegistry.setExportedVariable(hookNodeId, varName, value);
         exported.push(varName);
 
-        this.logger.debug(`[Hook] Exported variable '${varName}' to global registry`, {
-          stepName: context.stepName,
-          metadata: { value, nodeId: hookNodeId },
-        });
+        this.logger.debug(
+          `[Hook] Exported variable '${varName}' to global registry`,
+          {
+            stepName: context.stepName,
+            metadata: { value, nodeId: hookNodeId },
+          }
+        );
       } catch (error) {
         this.logger.warn(
           `[Hook] Failed to export '${varName}': ${
@@ -737,9 +745,9 @@ export class HookExecutorService implements IHookExecutorService {
 
     if (exported.length > 0) {
       this.logger.info(
-        `[Hook] Exported ${exported.length} variable(s) to global registry: ${exported.join(
-          ", "
-        )}`,
+        `[Hook] Exported ${
+          exported.length
+        } variable(s) to global registry: ${exported.join(", ")}`,
         { stepName: context.stepName }
       );
     }

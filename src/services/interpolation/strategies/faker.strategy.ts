@@ -13,6 +13,29 @@ import {
   InterpolationResult,
 } from "../interpolation-strategy.interface";
 import { fakerService } from "../../faker.service";
+import type { ILogger } from "../../../interfaces/services/ILogger";
+
+/**
+ * No-op logger for strategies (avoids test pollution)
+ */
+const isTestEnv =
+  process.env.NODE_ENV === "test" || process.env.JEST_WORKER_ID !== undefined;
+const noopLogger: ILogger = {
+  debug: (msg: string, ...args: any[]) => {
+    if (!isTestEnv) console.debug(msg, ...args);
+  },
+  info: (msg: string, ...args: any[]) => {
+    if (!isTestEnv) console.log(msg, ...args);
+  },
+  warn: (msg: string, ...args: any[]) => {
+    if (!isTestEnv) console.warn(msg, ...args);
+  },
+  error: (msg: string, ...args: any[]) => {
+    if (!isTestEnv) console.error(msg, ...args);
+  },
+  setLogLevel: () => {},
+  getLogLevel: () => "info",
+};
 
 /**
  * Strategy for resolving Faker.js expressions
@@ -33,6 +56,8 @@ import { fakerService } from "../../faker.service";
 export class FakerStrategy implements InterpolationStrategy {
   readonly name = "Faker";
   readonly priority = 20;
+
+  constructor(private logger: ILogger = noopLogger) {}
 
   canHandle(expression: string): boolean {
     return expression.startsWith("$faker.") || expression.startsWith("faker.");
@@ -55,7 +80,7 @@ export class FakerStrategy implements InterpolationStrategy {
       const value = fakerService.parseFakerExpression(fakerExpr);
 
       if (context.debug) {
-        console.debug(`[${this.name}] Generated ${fakerExpr} = ${value}`);
+        this.logger.debug(`[${this.name}] Generated ${fakerExpr} = ${value}`);
       }
 
       return {

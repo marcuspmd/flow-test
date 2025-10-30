@@ -10,14 +10,18 @@ import type {
   ReportGenerationContext,
   ReportGenerationResult,
 } from "./ReportStrategy.interface";
-import { getLogger } from "../../logger.service";
+import { LoggerService } from "../../logger.service";
 import { QAReportService } from "../../qa-report.service";
+
+/**
+ * Module-level logger instance for QA report strategy
+ */
+const logger = new LoggerService();
 
 /**
  * Strategy for generating QA/tester-friendly reports
  */
 export class QAReportStrategy implements ReportStrategy {
-  private logger = getLogger();
   private qaReportService = new QAReportService();
 
   getFormat(): string {
@@ -59,11 +63,11 @@ export class QAReportStrategy implements ReportStrategy {
 
       // Write timestamped report
       fs.writeFileSync(filePath, jsonContent, "utf8");
-      this.logger.info(`QA report: ${filePath}`);
+      logger.info(`QA report: ${filePath}`);
 
       // Write latest snapshot
       fs.writeFileSync(latestPath, jsonContent, "utf8");
-      this.logger.info(`Latest QA report: ${latestPath}`);
+      logger.info(`Latest QA report: ${latestPath}`);
 
       return {
         format: this.getFormat(),
@@ -71,7 +75,7 @@ export class QAReportStrategy implements ReportStrategy {
         success: true,
       };
     } catch (error) {
-      this.logger.error("Failed to generate QA report", {
+      logger.error("Failed to generate QA report", {
         metadata: { error: String(error) },
       });
 

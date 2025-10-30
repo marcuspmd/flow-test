@@ -141,23 +141,6 @@ describe("DI Container", () => {
     });
   });
 
-  describe("Backward Compatibility", () => {
-    it("should work with legacy getLogger() function", () => {
-      const { getLogger } = require("../../services/logger.service");
-      const legacyLogger = getLogger();
-
-      expect(legacyLogger).toBeDefined();
-      expect(typeof legacyLogger.info).toBe("function");
-    });
-
-    it("should work with legacy LoggerService.getInstance()", () => {
-      const instance = LoggerService.getInstance();
-
-      expect(instance).toBeDefined();
-      expect(typeof instance.info).toBe("function");
-    });
-  });
-
   describe("ConfigManager Service Binding", () => {
     it("should resolve IConfigManager from container", () => {
       const configManager = container.get<IConfigManager>(TYPES.IConfigManager);
