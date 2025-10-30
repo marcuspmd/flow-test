@@ -4,7 +4,7 @@ This document summarizes the improvements made to standardize and facilitate tes
 
 ## 🎯 Objective
 
-**Problem Statement:** "Verificar o que podemos fazer para melhorar, padronizar e deixa mais facil para desenvolver tests com o flow test engine."
+**Problem Statement:** "Verificar o que podemos fazer para melhorar, padronizar e deixar mais facil para desenvolver tests com o flow test engine."
 
 **Solution:** Comprehensive documentation, examples, and tooling to reduce onboarding time and standardize test development.
 
