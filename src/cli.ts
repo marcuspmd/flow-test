@@ -233,15 +233,14 @@ function mergeHooks(...hooks: Array<EngineHooks | undefined>): EngineHooks {
     const callbacks = hooks
       .filter(Boolean)
       .map((hook) => hook![hookName])
-      .filter(
-        (callback): callback is (...args: any[]) => any =>
-          typeof callback === "function"
-      );
+      .filter((callback) => typeof callback === "function");
 
     if (callbacks.length > 0) {
-      (merged as any)[hookName] = async (...args: any[]) => {
+      (merged as Record<string, unknown>)[hookName] = async (...args: unknown[]) => {
         for (const callback of callbacks) {
-          await callback(...args);
+          if (callback) {
+            await (callback as (...args: unknown[]) => Promise<void> | void)(...args);
+          }
         }
       };
     }
@@ -1008,7 +1007,7 @@ async function handleInlineYamlExecution(
     runnerInteractiveMode,
   } = params;
 
-  let parsedSuite: any;
+  let parsedSuite: unknown;
   try {
     parsedSuite = yaml.load(yamlContent);
   } catch (error) {
@@ -1023,9 +1022,12 @@ async function handleInlineYamlExecution(
     return 1;
   }
 
+  // After validation, cast to Record for property access
+  const suiteObj = parsedSuite as Record<string, unknown>;
+
   const inlineNodeId =
-    typeof parsedSuite.node_id === "string"
-      ? parsedSuite.node_id.trim()
+    typeof suiteObj.node_id === "string"
+      ? suiteObj.node_id.trim()
       : undefined;
 
   if (!inlineNodeId) {
@@ -1128,7 +1130,7 @@ async function handleInlineYamlExecution(
     };
 
     const dependencyDiscovery = await autoDiscoverDependencies(
-      parsedSuite,
+      suiteObj,
       baseDirectory,
       dependencyContext
     );
@@ -1227,7 +1229,7 @@ async function handleInlineYamlExecution(
 }
 
 async function autoDiscoverDependencies(
-  testData: any,
+  testData: Record<string, unknown>,
   testDirectory: string,
   context?: DependencyDiscoveryContext
 ): Promise<DependencyDiscoveryResult> {
