@@ -1,0 +1,289 @@
+# Dynamic Data Generation with Faker.js
+# Demonstrates comprehensive test data generation
+# Perfect for: Avoiding data conflicts, realistic testing, data-driven tests
+
+suite_name: "Dynamic Data Generation"
+node_id: "dynamic-data-pattern"
+description: "Generate realistic, random test data using Faker.js"
+
+base_url: "https://httpbin.org"
+
+metadata:
+  priority: "medium"
+  tags: ["patterns", "faker", "data-generation"]
+
+steps:
+  # Example 1: Person data
+  - name: "Generate person data"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        # Person information
+        first_name: "{{$faker.person.firstName}}"
+        last_name: "{{$faker.person.lastName}}"
+        full_name: "{{$faker.person.fullName}}"
+        gender: "{{$faker.person.gender}}"
+        job_title: "{{$faker.person.jobTitle}}"
+        job_area: "{{$faker.person.jobArea}}"
+        prefix: "{{$faker.person.prefix}}"  # Mr., Mrs., Dr.
+        suffix: "{{$faker.person.suffix}}"  # Jr., Sr., PhD
+
+    assert:
+      status_code: 200
+
+    capture:
+      generated_person: "body.json"
+
+  # Example 2: Contact information
+  - name: "Generate contact data"
+    request:
+      method: "POST"
+      url: "/post"
+      body:
+        # Internet/Email
+        email: "{{$faker.internet.email}}"
+        username: "{{$faker.internet.userName}}"
+        password: "{{$faker.internet.password}}"
+        domain: "{{$faker.internet.domainName}}"
+        url: "{{$faker.internet.url}}"
+        ip: "{{$faker.internet.ip}}"
+        ipv6: "{{$faker.internet.ipv6}}"
+        user_agent: "{{$faker.internet.userAgent}}"
+        
+        # Phone numbers
+        phone: "{{$faker.phone.number}}"
+
+    assert:
+      status_code: 200
+
+  # Example 3: Address data
+  - name: "Generate address data"
+    request:
+      method: "POST"
+      url: "/post"
+      body:
+        street: "{{$faker.location.streetAddress}}"
+        city: "{{$faker.location.city}}"
+        state: "{{$faker.location.state}}"
+        country: "{{$faker.location.country}}"
+        country_code: "{{$faker.location.countryCode}}"
+        zip_code: "{{$faker.location.zipCode}}"
+        latitude: "{{$faker.location.latitude}}"
+        longitude: "{{$faker.location.longitude}}"
+        time_zone: "{{$faker.location.timeZone}}"
+
+    assert:
+      status_code: 200
+
+  # Example 4: Company/Business data
+  - name: "Generate company data"
+    request:
+      method: "POST"
+      url: "/post"
+      body:
+        company_name: "{{$faker.company.name}}"
+        company_suffix: "{{$faker.company.suffix}}"  # Inc., LLC, etc.
+        catchphrase: "{{$faker.company.catchPhrase}}"
+        business_description: "{{$faker.company.bs}}"
+
+    assert:
+      status_code: 200
+
+  # Example 5: Financial data
+  - name: "Generate financial data"
+    request:
+      method: "POST"
+      url: "/post"
+      body:
+        account_number: "{{$faker.finance.accountNumber}}"
+        routing_number: "{{$faker.finance.routingNumber}}"
+        amount: "{{$faker.finance.amount}}"
+        transaction_type: "{{$faker.finance.transactionType}}"
+        currency_code: "{{$faker.finance.currencyCode}}"
+        currency_name: "{{$faker.finance.currencyName}}"
+        bitcoin_address: "{{$faker.finance.bitcoinAddress}}"
+        iban: "{{$faker.finance.iban}}"
+        bic: "{{$faker.finance.bic}}"
+
+    assert:
+      status_code: 200
+
+  # Example 6: Product/Commerce data
+  - name: "Generate commerce data"
+    request:
+      method: "POST"
+      url: "/post"
+      body:
+        product_name: "{{$faker.commerce.productName}}"
+        product_description: "{{$faker.commerce.productDescription}}"
+        department: "{{$faker.commerce.department}}"
+        price: "{{$faker.commerce.price}}"
+        product_material: "{{$faker.commerce.productMaterial}}"
+        product_adjective: "{{$faker.commerce.productAdjective}}"
+
+    assert:
+      status_code: 200
+
+  # Example 7: Numbers and IDs
+  - name: "Generate numbers and IDs"
+    request:
+      method: "POST"
+      url: "/post"
+      body:
+        # UUIDs
+        uuid: "{{$faker.string.uuid}}"
+        
+        # Numbers
+        random_int: "{{$faker.number.int}}"
+        random_float: "{{$faker.number.float}}"
+        small_number: "{{$faker.number.int({ min: 1, max: 100 })}}"
+        price_value: "{{$faker.number.float({ min: 10, max: 1000, precision: 0.01 })}}"
+        
+        # Binary
+        binary: "{{$faker.number.binary}}"
+        hex: "{{$faker.number.hex}}"
+
+    assert:
+      status_code: 200
+
+  # Example 8: Dates and times
+  - name: "Generate date/time data"
+    request:
+      method: "POST"
+      url: "/post"
+      body:
+        past_date: "{{$faker.date.past}}"
+        future_date: "{{$faker.date.future}}"
+        recent_date: "{{$faker.date.recent}}"
+        soon_date: "{{$faker.date.soon}}"
+        birthdate: "{{$faker.date.birthdate}}"
+        month: "{{$faker.date.month}}"
+        weekday: "{{$faker.date.weekday}}"
+
+    assert:
+      status_code: 200
+
+  # Example 9: Lorem ipsum text
+  - name: "Generate text content"
+    request:
+      method: "POST"
+      url: "/post"
+      body:
+        word: "{{$faker.lorem.word}}"
+        words: "{{$faker.lorem.words}}"
+        sentence: "{{$faker.lorem.sentence}}"
+        paragraph: "{{$faker.lorem.paragraph}}"
+        slug: "{{$faker.lorem.slug}}"
+        lines: "{{$faker.lorem.lines}}"
+
+    assert:
+      status_code: 200
+
+  # Example 10: Random selections
+  - name: "Generate random selections"
+    request:
+      method: "POST"
+      url: "/post"
+      body:
+        # String patterns
+        alpha: "{{$faker.string.alpha({ length: 10 })}}"
+        alphanumeric: "{{$faker.string.alphanumeric({ length: 12 })}}"
+        numeric: "{{$faker.string.numeric({ length: 8 })}}"
+        
+        # Samples
+        sample_word: "{{$faker.helpers.arrayElement(['apple', 'banana', 'cherry'])}}"
+
+    assert:
+      status_code: 200
+
+  # Example 11: Combining multiple Faker methods
+  - name: "Generate complete user profile"
+    request:
+      method: "POST"
+      url: "/post"
+      body:
+        # Personal info
+        id: "{{$faker.string.uuid}}"
+        username: "{{$faker.internet.userName}}"
+        email: "{{$faker.internet.email}}"
+        avatar: "{{$faker.internet.avatar}}"
+        
+        # Profile
+        profile:
+          first_name: "{{$faker.person.firstName}}"
+          last_name: "{{$faker.person.lastName}}"
+          job_title: "{{$faker.person.jobTitle}}"
+          bio: "{{$faker.lorem.sentence}}"
+        
+        # Contact
+        contact:
+          phone: "{{$faker.phone.number}}"
+          address:
+            street: "{{$faker.location.streetAddress}}"
+            city: "{{$faker.location.city}}"
+            country: "{{$faker.location.country}}"
+            zip: "{{$faker.location.zipCode}}"
+        
+        # Metadata
+        created_at: "{{$faker.date.recent}}"
+        status: "{{$faker.helpers.arrayElement(['active', 'inactive', 'pending'])}}"
+
+    assert:
+      status_code: 200
+
+    capture:
+      complete_profile: "body.json"
+
+# Faker.js Categories Summary:
+# ----------------------------
+# Person:     firstName, lastName, fullName, gender, jobTitle
+# Internet:   email, userName, password, url, ip, domainName
+# Location:   city, country, streetAddress, zipCode, latitude
+# Phone:      number (phone numbers)
+# Company:    name, suffix, catchPhrase, bs
+# Finance:    accountNumber, amount, currencyCode, iban, bic
+# Commerce:   productName, price, department, productDescription
+# String:     uuid, alpha, alphanumeric, numeric
+# Number:     int, float, binary, hex
+# Date:       past, future, recent, soon, birthdate
+# Lorem:      word, words, sentence, paragraph, slug
+# Helpers:    arrayElement, shuffle, maybe
+
+# Common Patterns:
+# ---------------
+# 1. Unique User Email:
+#    email: "test.{{$faker.string.uuid}}@example.com"
+#
+# 2. Test User with Timestamp:
+#    username: "user_{{$faker.number.int}}_{{$faker.date.recent}}"
+#
+# 3. Random Product:
+#    name: "{{$faker.commerce.productName}}"
+#    price: "{{$faker.commerce.price}}"
+#
+# 4. Test Order:
+#    order_id: "{{$faker.string.uuid}}"
+#    customer_id: "{{$faker.number.int}}"
+#    total: "{{$faker.commerce.price}}"
+#
+# 5. Random Selection:
+#    status: "{{$faker.helpers.arrayElement(['active', 'pending', 'cancelled'])}}"
+#    priority: "{{$faker.helpers.arrayElement(['low', 'medium', 'high'])}}"
+
+# Best Practices:
+# 1. Use UUIDs for unique identifiers to avoid conflicts
+# 2. Use realistic data (Faker) instead of "test123"
+# 3. Combine multiple Faker methods for complex objects
+# 4. Capture generated values if needed for assertions
+# 5. Use arrayElement for constrained random choices
+# 6. Generate valid formats (emails, phones, IBANs)
+# 7. Avoid hardcoded test data that may conflict
+# 8. Use date generators for realistic timestamps
+# 9. Use commerce.price for monetary values
+# 10. Use lorem for text content testing
+
+# Documentation:
+# https://fakerjs.dev/api/

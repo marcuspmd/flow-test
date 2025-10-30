@@ -1,0 +1,196 @@
+# Setup and Teardown Pattern
+# Demonstrates test lifecycle management with setup and cleanup
+# Perfect for: Integration tests, managing test data lifecycle
+
+suite_name: "Setup and Teardown Pattern"
+node_id: "setup-teardown-pattern"
+description: "Test data lifecycle management with setup and cleanup"
+
+base_url: "https://httpbin.org"
+
+metadata:
+  priority: "high"
+  tags: ["pattern", "lifecycle", "cleanup"]
+
+variables:
+  test_user_email: "{{$faker.internet.email}}"
+  test_user_name: "{{$faker.person.fullName}}"
+  cleanup_enabled: true
+
+exports:
+  - created_user_id
+  - test_resources
+
+steps:
+  # ==================== SETUP PHASE ====================
+  # These steps prepare the test environment
+  
+  - name: "Setup - Create test user"
+    metadata:
+      description: "Create user for testing"
+      tags: ["setup"]
+    
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        email: "{{test_user_email}}"
+        name: "{{test_user_name}}"
+        role: "test_user"
+
+    assert:
+      status_code: 200
+
+    capture:
+      created_user_id: "{{$faker.number.int}}"
+      user_data: "body.json"
+
+  - name: "Setup - Create test resources"
+    metadata:
+      description: "Create multiple test resources"
+      tags: ["setup"]
+    
+    request:
+      method: "POST"
+      url: "/post"
+      body:
+        user_id: "{{created_user_id}}"
+        resources:
+          - { name: "Resource 1", type: "test" }
+          - { name: "Resource 2", type: "test" }
+
+    assert:
+      status_code: 200
+
+    capture:
+      test_resources: "body.json.resources"
+
+  # ==================== TEST PHASE ====================
+  # Main test logic here
+  
+  - name: "Test - Perform main test operation"
+    metadata:
+      description: "Main test logic"
+      tags: ["test"]
+    
+    request:
+      method: "GET"
+      url: "/get?user_id={{created_user_id}}"
+
+    assert:
+      status_code: 200
+      body:
+        args:
+          user_id:
+            equals: "{{created_user_id}}"
+
+  - name: "Test - Validate test user exists"
+    metadata:
+      description: "Verify test data is accessible"
+      tags: ["test", "validation"]
+    
+    request:
+      method: "GET"
+      url: "/get?email={{test_user_email}}"
+
+    assert:
+      status_code: 200
+
+  # ==================== TEARDOWN PHASE ====================
+  # These steps clean up test data
+  # Use continue_on_failure to ensure cleanup runs even if tests fail
+  
+  - name: "Teardown - Delete test resources"
+    metadata:
+      description: "Clean up test resources"
+      tags: ["teardown", "cleanup"]
+      # always_run ensures this runs even if previous steps fail
+      always_run: true
+    
+    request:
+      method: "DELETE"
+      url: "/delete?user_id={{created_user_id}}"
+
+    assert:
+      status_code: 200
+
+    # Continue even if deletion fails (resource might not exist)
+    continue_on_failure: true
+
+  - name: "Teardown - Delete test user"
+    metadata:
+      description: "Clean up test user"
+      tags: ["teardown", "cleanup"]
+      always_run: true
+    
+    request:
+      method: "DELETE"
+      url: "/delete?user_id={{created_user_id}}"
+
+    assert:
+      status_code: 200
+
+    continue_on_failure: true
+
+  - name: "Teardown - Verify cleanup completed"
+    metadata:
+      description: "Confirm test data was removed"
+      tags: ["teardown", "verification"]
+      always_run: true
+    
+    request:
+      method: "GET"
+      url: "/status/404"  # Mock - would be actual resource check
+
+    assert:
+      status_code: 404
+
+    continue_on_failure: true
+
+# Setup/Teardown Pattern Best Practices:
+# --------------------------------------
+# 1. SETUP Phase:
+#    - Create test data needed for the test
+#    - Capture IDs/references for later cleanup
+#    - Use Faker for unique test data
+#    - Tag steps with ["setup"]
+#
+# 2. TEST Phase:
+#    - Main test logic goes here
+#    - Use setup data via captured variables
+#    - Tag steps with ["test"]
+#
+# 3. TEARDOWN Phase:
+#    - Delete all created test data
+#    - Use continue_on_failure: true
+#    - Use metadata.always_run: true
+#    - Tag steps with ["teardown"]
+#
+# 4. Additional Tips:
+#    - Keep track of all created resources
+#    - Clean up in reverse order of creation
+#    - Handle cleanup failures gracefully
+#    - Consider using dedicated cleanup suites for shared resources
+#    - Export cleanup flags for conditional cleanup
+
+# Alternative Pattern: Conditional Cleanup
+# ----------------------------------------
+# Add a variable to control cleanup (useful for debugging):
+#
+# variables:
+#   cleanup_enabled: true  # Set to false to keep test data
+#
+# Then in teardown steps:
+#   condition: "{{cleanup_enabled}} == true"
+
+# Alternative Pattern: Separate Cleanup Suite
+# -------------------------------------------
+# For complex scenarios, create a dedicated cleanup suite:
+#
+# suite_name: "Cleanup Test Data"
+# node_id: "cleanup-suite"
+# depends:
+#   - node_id: "main-test-suite"
+#     required: false  # Run cleanup even if main suite fails

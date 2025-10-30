@@ -1,0 +1,92 @@
+# Simple Authentication Example
+# Demonstrates login flow with token capture and usage
+# Perfect for: Testing authentication, working with bearer tokens
+
+suite_name: "Simple Authentication Flow"
+node_id: "simple-auth-example"
+description: "Login and use authentication token in subsequent requests"
+
+base_url: "https://httpbin.org"
+
+metadata:
+  priority: "critical"
+  tags: ["basic", "auth", "example"]
+
+variables:
+  username: "testuser"
+  password: "TestPassword123"
+
+# Export the token so other test suites can use it
+exports:
+  - auth_token
+
+steps:
+  # Step 1: Login and get authentication token
+  - name: "User login"
+    request:
+      method: "POST"
+      url: "/post"  # Using httpbin as mock - replace with your /auth/login
+      headers:
+        Content-Type: "application/json"
+      body:
+        username: "{{username}}"
+        password: "{{password}}"
+
+    assert:
+      status_code: 200
+      body:
+        json:
+          username:
+            equals: "testuser"
+
+    # Capture the token for use in protected endpoints
+    # In real APIs, this would be: body.token or body.access_token
+    capture:
+      # For this example, we'll use a mock token
+      # Replace with actual token path from your API response
+      auth_token: "'mock-jwt-token-12345'"
+
+  # Step 2: Access a protected endpoint using the token
+  - name: "Access protected resource"
+    request:
+      method: "GET"
+      url: "/get"
+      headers:
+        # Use the captured token in Authorization header
+        Authorization: "Bearer {{auth_token}}"
+        Accept: "application/json"
+
+    assert:
+      status_code: 200
+      body:
+        headers:
+          Authorization:
+            equals: "Bearer mock-jwt-token-12345"
+
+  # Step 3: Make authenticated POST request
+  - name: "Create resource with authentication"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Authorization: "Bearer {{auth_token}}"
+        Content-Type: "application/json"
+      body:
+        resource_name: "New Resource"
+        owner: "{{username}}"
+
+    assert:
+      status_code: 200
+      body:
+        json:
+          resource_name:
+            equals: "New Resource"
+          owner:
+            equals: "testuser"
+
+# Tips:
+# 1. Always capture tokens/session IDs for reuse
+# 2. Use exports to share auth tokens with other test suites
+# 3. Real APIs typically return tokens in body.token or body.access_token
+# 4. Bearer token is the most common auth header format
+# 5. Consider testing both valid and invalid authentication

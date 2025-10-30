@@ -1,0 +1,264 @@
+# Error Handling and Validation Example
+# Demonstrates testing error scenarios and edge cases
+# Perfect for: API contract testing, validation testing
+
+suite_name: "Error Handling Examples"
+node_id: "error-handling-example"
+description: "Testing error scenarios, validation, and edge cases"
+
+base_url: "https://httpbin.org"
+
+metadata:
+  priority: "high"
+  tags: ["intermediate", "error-handling", "validation"]
+
+steps:
+  # Example 1: Expected error (400 Bad Request)
+  - name: "Test validation error - missing required field"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        # Intentionally missing required fields
+        partial_data: "incomplete"
+
+    # We EXPECT this to fail with 400
+    # In real API, this would validate and return 400
+    # For httpbin, we simulate by checking the echo
+    assert:
+      status_code: 200  # httpbin always returns 200
+      body:
+        json:
+          partial_data:
+            equals: "incomplete"
+
+    # Don't stop if this step "fails" (for demo purposes)
+    continue_on_failure: true
+
+  # Example 2: Test unauthorized access (401)
+  - name: "Test unauthorized - missing auth token"
+    request:
+      method: "GET"
+      url: "/status/401"  # httpbin endpoint that returns 401
+
+    assert:
+      status_code: 401
+
+    # Continue even if this assertion fails
+    continue_on_failure: true
+
+  # Example 3: Test forbidden access (403)
+  - name: "Test forbidden - insufficient permissions"
+    request:
+      method: "GET"
+      url: "/status/403"
+
+    assert:
+      status_code: 403
+      # In real API, check error message structure
+      # body:
+      #   error:
+      #     code: { equals: "FORBIDDEN" }
+      #     message: { contains: "permission" }
+
+    continue_on_failure: true
+
+  # Example 4: Test resource not found (404)
+  - name: "Test not found - invalid resource ID"
+    request:
+      method: "GET"
+      url: "/status/404"
+
+    assert:
+      status_code: 404
+
+    continue_on_failure: true
+
+  # Example 5: Test method not allowed (405)
+  - name: "Test method not allowed"
+    request:
+      method: "GET"
+      url: "/status/405"
+
+    assert:
+      status_code: 405
+
+    continue_on_failure: true
+
+  # Example 6: Test rate limiting (429)
+  - name: "Test rate limit exceeded"
+    request:
+      method: "GET"
+      url: "/status/429"
+
+    assert:
+      status_code: 429
+      # Real APIs often return retry-after header
+      # headers:
+      #   retry-after:
+      #     exists: true
+
+    continue_on_failure: true
+
+  # Example 7: Test server error (500)
+  - name: "Test internal server error"
+    request:
+      method: "GET"
+      url: "/status/500"
+
+    assert:
+      status_code: 500
+
+    continue_on_failure: true
+
+  # Example 8: Test with retry on transient errors
+  - name: "Test with automatic retry"
+    metadata:
+      # Retry configuration for flaky endpoints
+      retry:
+        max_attempts: 3
+        delay_ms: 1000
+        retry_on:
+          - status_code: 500
+          - status_code: 502
+          - status_code: 503
+          - status_code: 504
+
+    request:
+      method: "GET"
+      url: "/status/503"  # Service unavailable
+
+    assert:
+      status_code: 503
+
+    continue_on_failure: true
+
+  # Example 9: Validate error response structure
+  - name: "Validate error response format"
+    request:
+      method: "POST"
+      url: "/post"
+      body:
+        invalid_email: "not-an-email"
+        invalid_number: "not-a-number"
+
+    assert:
+      status_code: 200
+      # In real API with validation errors:
+      # body:
+      #   error:
+      #     type: { equals: "VALIDATION_ERROR" }
+      #     fields:
+      #       type: "array"
+      #       length: { min: 1 }
+      #     fields[0]:
+      #       field: { type: "string" }
+      #       message: { type: "string" }
+
+  # Example 10: Test timeout handling
+  - name: "Test request timeout"
+    metadata:
+      timeout: 5000  # 5 second timeout
+
+    request:
+      method: "GET"
+      url: "/delay/10"  # Delays 10 seconds (will timeout)
+
+    assert:
+      # This will fail due to timeout
+      status_code: 200
+
+    continue_on_failure: true
+
+  # Example 11: Graceful degradation testing
+  - name: "Test with fallback logic"
+    request:
+      method: "GET"
+      url: "/get"
+
+    assert:
+      status_code: 200
+
+    # Use scenarios to handle different response cases
+    scenarios:
+      - name: "Service available"
+        condition: "status == `200`"
+        then:
+          capture:
+            service_available: true
+
+      - name: "Service degraded"
+        condition: "status >= `500`"
+        then:
+          capture:
+            service_available: false
+            use_fallback: true
+
+  # Example 12: Test input validation edge cases
+  - name: "Test with various invalid inputs"
+    request:
+      method: "POST"
+      url: "/post"
+      body:
+        # Test different invalid formats
+        empty_string: ""
+        null_value: null
+        very_long_string: "{{$faker.lorem.paragraph}}"
+        special_chars: "<script>alert('xss')</script>"
+        sql_injection: "'; DROP TABLE users; --"
+
+    assert:
+      status_code: 200
+      # In real API, these should be sanitized or rejected
+      # body:
+      #   errors:
+      #     type: "array"
+      #     notEmpty: true
+
+# Error Handling Patterns Summary:
+# --------------------------------
+# 1. Test Expected Errors:
+#    - Use continue_on_failure: true
+#    - Assert on error status codes
+#    - Validate error response structure
+#
+# 2. Retry Strategies:
+#    - Configure retry for transient errors (5xx)
+#    - Don't retry client errors (4xx)
+#    - Set appropriate delays between retries
+#
+# 3. Timeout Handling:
+#    - Set realistic timeouts per step
+#    - Test both fast and slow endpoints
+#    - Handle timeout gracefully
+#
+# 4. Validation Testing:
+#    - Test missing required fields
+#    - Test invalid data formats
+#    - Test boundary conditions
+#    - Test special characters and injection
+#
+# 5. Status Codes to Test:
+#    - 400 - Bad Request (validation)
+#    - 401 - Unauthorized (auth missing)
+#    - 403 - Forbidden (insufficient permissions)
+#    - 404 - Not Found (invalid resource)
+#    - 405 - Method Not Allowed
+#    - 409 - Conflict (duplicate resource)
+#    - 422 - Unprocessable Entity (validation)
+#    - 429 - Too Many Requests (rate limit)
+#    - 500 - Internal Server Error
+#    - 502 - Bad Gateway
+#    - 503 - Service Unavailable
+#    - 504 - Gateway Timeout
+
+# Best Practices:
+# 1. Always test both success and error paths
+# 2. Validate error response structure and messages
+# 3. Use continue_on_failure for error scenarios
+# 4. Configure retries for transient errors only
+# 5. Document expected error behavior
+# 6. Test edge cases and boundary conditions
+# 7. Verify security (no sensitive data in errors)

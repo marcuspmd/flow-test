@@ -1,0 +1,244 @@
+# Data Validation and Assertions Example
+# Demonstrates comprehensive assertion capabilities
+# Perfect for: Learning assertion syntax, validation patterns
+
+suite_name: "Data Validation Examples"
+node_id: "data-validation-example"
+description: "Comprehensive examples of different assertion types"
+
+base_url: "https://httpbin.org"
+
+metadata:
+  priority: "medium"
+  tags: ["intermediate", "validation", "assertions"]
+
+steps:
+  # Assertion Type 1: Exact equality
+  - name: "Exact value assertions"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        status: "active"
+        count: 42
+        enabled: true
+        price: 19.99
+
+    assert:
+      status_code: 200
+      body:
+        json:
+          status:
+            equals: "active"  # Exact string match
+          count:
+            equals: 42  # Exact number match
+          enabled:
+            equals: true  # Exact boolean match
+          price:
+            equals: 19.99  # Exact float match
+
+  # Assertion Type 2: Contains and pattern matching
+  - name: "Pattern matching assertions"
+    request:
+      method: "POST"
+      url: "/post"
+      body:
+        email: "user@example.com"
+        description: "This is a test product"
+        tags: ["electronics", "gadgets"]
+
+    assert:
+      status_code: 200
+      body:
+        json:
+          email:
+            contains: "@"  # String contains
+            regex: "^[\\w-\\.]+@([\\w-]+\\.)+[\\w-]{2,4}$"  # Regex match
+          description:
+            contains: "test"
+            minLength: 10
+            maxLength: 100
+          tags:
+            type: "array"
+            contains: "electronics"  # Array contains value
+
+  # Assertion Type 3: Type validation
+  - name: "Type checking assertions"
+    request:
+      method: "POST"
+      url: "/post"
+      body:
+        id: 123
+        name: "Product"
+        active: true
+        metadata: { version: 1 }
+        tags: ["a", "b"]
+
+    assert:
+      status_code: 200
+      body:
+        json:
+          id:
+            type: "number"
+          name:
+            type: "string"
+            notEmpty: true
+          active:
+            type: "boolean"
+          metadata:
+            type: "object"
+          tags:
+            type: "array"
+
+  # Assertion Type 4: Numeric comparisons
+  - name: "Numeric comparison assertions"
+    request:
+      method: "POST"
+      url: "/post"
+      body:
+        quantity: 50
+        price: 99.99
+        rating: 4.5
+
+    assert:
+      status_code: 200
+      body:
+        json:
+          quantity:
+            greater_than: 0
+            less_than: 100
+            greater_than_or_equal: 50
+            less_than_or_equal: 50
+          price:
+            min: 0
+            max: 1000
+          rating:
+            greater_than: 0
+            less_than: 5
+
+  # Assertion Type 5: Existence and structure
+  - name: "Existence and structure assertions"
+    request:
+      method: "POST"
+      url: "/post"
+      body:
+        user:
+          id: 1
+          profile:
+            name: "John"
+            email: "john@example.com"
+        optional_field: null
+
+    assert:
+      status_code: 200
+      body:
+        json:
+          user:
+            exists: true
+            type: "object"
+          user.id:
+            exists: true
+          user.profile:
+            exists: true
+          user.profile.name:
+            exists: true
+            notEmpty: true
+          optional_field:
+            # Field can be null
+            type: "null"
+
+  # Assertion Type 6: Array and length
+  - name: "Array and length assertions"
+    request:
+      method: "POST"
+      url: "/post"
+      body:
+        items: [1, 2, 3, 4, 5]
+        tags: ["tag1", "tag2"]
+        empty_array: []
+
+    assert:
+      status_code: 200
+      body:
+        json:
+          items:
+            type: "array"
+            length: 5
+            length:
+              min: 1
+              max: 10
+          tags:
+            length:
+              greater_than: 0
+          empty_array:
+            length: 0
+
+  # Assertion Type 7: Multiple values (one_of, in)
+  - name: "Multiple value assertions"
+    request:
+      method: "POST"
+      url: "/post"
+      body:
+        status: "pending"
+        priority: "high"
+
+    assert:
+      status_code: 200
+      body:
+        json:
+          status:
+            in: ["pending", "active", "completed"]
+          priority:
+            one_of: ["low", "medium", "high"]
+
+  # Assertion Type 8: Header validation
+  - name: "Header assertions"
+    request:
+      method: "GET"
+      url: "/headers"
+
+    assert:
+      status_code: 200
+      headers:
+        content-type:
+          contains: "application/json"
+        # Headers are case-insensitive
+        Content-Type:
+          exists: true
+
+  # Assertion Type 9: Response time
+  - name: "Performance assertions"
+    request:
+      method: "GET"
+      url: "/delay/1"  # Delays response by 1 second
+
+    assert:
+      status_code: 200
+      response_time_ms:
+        less_than: 2000  # Should respond within 2 seconds
+        greater_than: 800  # Should take at least 800ms
+
+# Assertion Summary:
+# -----------------
+# equals          - Exact match (any type)
+# contains        - String/array contains value
+# regex           - Regular expression match
+# type            - Type validation (string, number, boolean, object, array, null)
+# exists          - Field exists (even if null)
+# notEmpty        - Not null and not empty string
+# greater_than    - Number > value
+# less_than       - Number < value
+# min / max       - Number range
+# length          - Array/string length
+# minLength       - Minimum length
+# maxLength       - Maximum length
+# in / one_of     - Value in list
+
+# Best Practices:
+# 1. Start with essential assertions (status, key fields)
+# 2. Add specific validations based on business rules
+# 3. Use type checks to catch API contract changes
+# 4. Validate both success and error responses
+# 5. Don't over-assert - focus on meaningful validations
