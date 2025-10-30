@@ -157,7 +157,24 @@ Criar uma documentação técnica completa que cubra todas as propriedades, tipo
 
 ### 3. Sistema de Interpolação de Variáveis
 
-#### 3.1 Sintaxe e Fontes
+> 📖 **Guia Completo**: [guides/interpolation-complete-reference.md](guides/interpolation-complete-reference.md)
+
+O Flow Test Engine suporta **dois sistemas de interpolação** que funcionam juntos:
+
+#### 3.1 Quick Reference
+
+| **O que você quer** | **Sintaxe Recomendada** | **Também Funciona (Legacy)** |
+|---------------------|-------------------------|------------------------------|
+| Variável | `{{user_id}}` | - |
+| Variável Ambiente | `{{$env.API_KEY}}` | - |
+| Dados Faker | **`"#faker.internet.email"`** | `{{$faker.internet.email}}` |
+| Código JavaScript | **`"$Date.now()"`** | `{{$js:Date.now()}}` |
+| Query JMESPath | **`"@body.data[0].id"`** | (apenas em capture) |
+| Template Misto | `"{{$env.URL}}/{{version}}"` | - |
+
+> 💡 **TL;DR**: Use **sintaxe direta** (`#faker`, `$js`, `@query`) para código mais limpo. Templates `{{}}` continuam funcionando em todo lugar.
+
+#### 3.2 Sintaxe Template (Universal)
 
 | Tipo | Sintaxe | Descrição | Exemplo |
 |------|---------|-----------|---------|
@@ -166,8 +183,39 @@ Criar uma documentação técnica completa que cubra todas as propriedades, tipo
 | **Variável de array** | `{{array[index]}}` | Acesso por índice | `{{items[0].id}}` |
 | **Variável global** | `{{suite-id.variable}}` | Variável exportada de outra suite | `{{auth-login.auth_token}}` |
 | **Ambiente** | `{{$env.VAR_NAME}}` | Variável de ambiente (prefixo `FLOW_TEST_`) | `{{$env.API_KEY}}` → lê `FLOW_TEST_API_KEY` |
-| **Faker.js** | `{{$faker.category.method}}` | Dados fake dinâmicos | `{{$faker.internet.email}}`, `{{$faker.person.firstName}}` |
-| **JavaScript** | `{{$js:expression}}` | Expressão JavaScript | `{{$js:Date.now()}}`, `{{$js:Math.random()}}` |
+| **Faker.js (legacy)** | `{{$faker.category.method}}` | Dados fake dinâmicos | `{{$faker.internet.email}}`, `{{$faker.person.firstName}}` |
+| **JavaScript (legacy)** | `{{$js:expression}}` | Expressão JavaScript | `{{$js:Date.now()}}`, `{{$js:Math.random()}}` |
+
+#### 3.3 Sintaxe Direta (Recomendada - v2.0+)
+
+| Tipo | Sintaxe | Descrição | Exemplo |
+|------|---------|-----------|---------|
+| **Faker** | `"#faker.category.method"` | Dados de teste dinâmicos | `"#faker.internet.email"` |
+| **JavaScript** | `"$code"` | Cálculos e lógica | `"$Date.now()"`, `"$items.length * 2"` |
+| **JMESPath** | `"@query"` | Queries JSON | `"@response.data[0].id"` |
+
+**Características**:
+- ✅ Sintaxe mais limpa (menos `{{}}`)
+- ✅ Parsing determinístico (mesma entrada → mesmo tipo)
+- ✅ Um prefixo por valor (não pode misturar)
+- ✅ Deve estar entre aspas no YAML
+- ✅ Use templates `{{}}` para combinar múltiplos tipos
+
+**Exemplos**:
+```yaml
+# ✅ Sintaxe direta (recomendada)
+body:
+  email: "#faker.internet.email"
+  timestamp: "$Date.now()"
+  user_id: "@body.user.id"
+
+# ✅ Template para composição
+url: "{{$env.BASE_URL}}/api/v{{version}}/users"
+message: "Hello {{user.name}}, score: {{score}}"
+
+# ❌ Não misture prefixos
+invalid: "@data with #faker.name"  # Erro!
+```
 
 #### 3.1.1 Variáveis de Ambiente (.env)
 
@@ -216,31 +264,63 @@ steps:
 
 📖 **Guia Completo:** [guides/10.environment-variables-guide.md](guides/10.environment-variables-guide.md)
 
-#### 3.2 Faker.js - Categorias Principais
+#### 3.4 Faker.js - Categorias Principais
+
+**Sintaxe recomendada**: `"#faker.category.method"` | **Legacy**: `{{$faker.category.method}}`
 
 | Categoria | Exemplos de Métodos | Resultado |
 |-----------|---------------------|-----------|
-| `$faker.person` | `firstName`, `lastName`, `fullName` | Nomes de pessoas |
-| `$faker.internet` | `email`, `url`, `userName`, `password` | Dados de internet |
-| `$faker.phone` | `number`, `imei` | Números de telefone |
-| `$faker.location` | `city`, `country`, `streetAddress` | Dados geográficos |
-| `$faker.commerce` | `productName`, `price`, `department` | Dados comerciais |
-| `$faker.company` | `name`, `catchPhrase`, `bs` | Dados de empresa |
-| `$faker.string` | `uuid`, `alphanumeric`, `numeric` | Strings especiais |
-| `$faker.number` | `int`, `float`, `binary` | Números |
-| `$faker.date` | `past`, `future`, `recent`, `soon` | Datas |
-| `$faker.lorem` | `word`, `words`, `sentence`, `paragraph` | Texto lorem ipsum |
+| `#faker.person` | `firstName`, `lastName`, `fullName` | Nomes de pessoas |
+| `#faker.internet` | `email`, `url`, `userName`, `password` | Dados de internet |
+| `#faker.phone` | `number`, `imei` | Números de telefone |
+| `#faker.location` | `city`, `country`, `streetAddress` | Dados geográficos |
+| `#faker.commerce` | `productName`, `price`, `department` | Dados comerciais |
+| `#faker.company` | `name`, `catchPhrase`, `bs` | Dados de empresa |
+| `#faker.string` | `uuid`, `alphanumeric`, `numeric` | Strings especiais |
+| `#faker.number` | `int`, `float`, `binary` | Números |
+| `#faker.date` | `past`, `future`, `recent`, `soon` | Datas |
+| `#faker.lorem` | `word`, `words`, `sentence`, `paragraph` | Texto lorem ipsum |
 
-#### 3.3 JavaScript Expressions
+**Exemplos**:
+```yaml
+# Nova sintaxe (recomendada)
+body:
+  email: "#faker.internet.email"
+  uuid: "#faker.string.uuid"
+  age: "#faker.number.int({min: 18, max: 65})"
 
-| Caso de Uso | Expressão | Resultado |
-|-------------|-----------|-----------|
-| Timestamp atual | `{{$js:Date.now()}}` | `1704110400000` |
-| Data ISO | `{{$js:new Date().toISOString()}}` | `"2024-01-01T12:00:00.000Z"` |
-| Número aleatório | `{{$js:Math.random()}}` | `0.123456789` |
-| Arredondamento | `{{$js:Math.round({{price}} * 1.1)}}` | Valor arredondado |
-| Base64 encode | `{{$js:Buffer.from('text').toString('base64')}}` | `"dGV4dA=="` |
-| Cálculo | `{{$js:{{quantity}} * {{price}}}}` | Resultado do cálculo |
+# Legacy (ainda funciona)
+body:
+  email: "{{$faker.internet.email}}"
+  name: "{{faker.person.fullName}}"
+```
+
+#### 3.5 JavaScript Expressions
+
+**Sintaxe recomendada**: `"$code"` | **Legacy**: `{{$js:code}}`
+
+| Caso de Uso | Nova Sintaxe | Legacy |
+|-------------|--------------|--------|
+| Timestamp atual | `"$Date.now()"` | `{{$js:Date.now()}}` |
+| Data ISO | `"$new Date().toISOString()"` | `{{$js:new Date().toISOString()}}` |
+| Número aleatório | `"$Math.random()"` | `{{$js:Math.random()}}` |
+| Cálculo | `"$quantity * price"` | `{{$js:{{quantity}} * {{price}}}}` |
+| Base64 encode | `"$Buffer.from('text').toString('base64')"` | `{{$js:Buffer.from('text').toString('base64')}}` |
+| Condicional | `"$status >= 200 && status < 300"` | `{{$js:status >= 200 && status < 300}}` |
+
+**Exemplos**:
+```yaml
+# Nova sintaxe (recomendada)
+variables:
+  timestamp: "$Date.now()"
+  is_valid: "$user.age >= 18"
+  total: "$items.reduce((s, i) => s + i.price, 0)"
+
+# Legacy (ainda funciona)
+variables:
+  timestamp: "{{$js:Date.now()}}"
+  is_valid: "{{js:user.age >= 18}}"
+```
 
 ---
 

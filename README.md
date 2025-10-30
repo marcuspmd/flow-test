@@ -178,6 +178,33 @@ The schema includes:
 
 **For extension developers:** See [guides/12.schema-catalog-guide.md](guides/12.schema-catalog-guide.md) for detailed integration examples.
 
+### Variable Interpolation System
+
+Flow Test Engine supports powerful variable interpolation with **two syntaxes**:
+
+```yaml
+# Template syntax (universal, works everywhere)
+url: "{{$env.BASE_URL}}/api/{{version}}/users"
+email: "{{$faker.internet.email}}"
+timestamp: "{{$js:Date.now()}}"
+
+# Direct syntax (new in v2.0, cleaner)
+email: "#faker.internet.email"
+timestamp: "$Date.now()"
+query: "@response.data[0].id"
+```
+
+**Key Features**:
+- ✅ Both syntaxes fully supported forever (no breaking changes)
+- ✅ Environment variables: `{{$env.VAR_NAME}}` (reads `FLOW_TEST_VAR_NAME`)
+- ✅ Faker test data: `#faker.person.name` or `{{$faker.person.name}}`
+- ✅ JavaScript expressions: `$Date.now()` or `{{$js:Date.now()}}`
+- ✅ JMESPath queries: `@body.data[0]` (extract from responses)
+- ✅ Cross-suite variables: `{{other-suite.auth_token}}`
+
+**📖 Complete Reference**: [guides/interpolation-complete-reference.md](guides/interpolation-complete-reference.md)
+**📝 See Example**: [tests/examples/syntax-showcase.yaml](tests/examples/syntax-showcase.yaml)
+
 ## 5. Integration Recipes by Ecosystem
 
 The commands below assume you created the dedicated `flow-tests/` workspace.

@@ -1,0 +1,436 @@
+---
+# ============================================================================
+# INTERPOLATION SYNTAX SHOWCASE
+# ============================================================================
+#
+# This test suite demonstrates ALL supported interpolation syntaxes in
+# Flow Test Engine v2.1+. Both legacy and new syntaxes are shown side-by-side.
+#
+# 📖 Complete Reference: guides/interpolation-complete-reference.md
+#
+# KEY PRINCIPLES:
+# - ✅ Both syntaxes work forever (no breaking changes)
+# - ✅ Use direct syntax (#faker, $js, @) for cleaner code
+# - ✅ Use templates {{}} for composition and backward compatibility
+# - ✅ Mix both approaches as needed
+#
+# ============================================================================
+
+node_id: "syntax-showcase"
+suite_name: "Interpolation Syntax Complete Showcase"
+description: "Demonstrates all interpolation syntax variants (legacy + new)"
+
+base_url: "https://httpbin.org"
+
+metadata:
+  priority: "high"
+  tags: ["examples", "syntax", "reference", "interpolation"]
+
+# ============================================================================
+# SECTION 1: BASIC VARIABLE INTERPOLATION (UNIVERSAL)
+# ============================================================================
+
+variables:
+  # Simple variables
+  user_id: 12345
+  api_version: "v2"
+
+  # Nested objects
+  user:
+    profile:
+      name: "John Doe"
+      email: "john@example.com"
+    settings:
+      theme: "dark"
+      notifications: true
+
+  # Arrays
+  tags: ["api", "test", "production"]
+  prices: [10.99, 20.50, 35.00]
+
+steps:
+  # ============================================================================
+  # TEST 1: Variable Interpolation Basics
+  # ============================================================================
+  - name: "Variable Interpolation - All Styles"
+    request:
+      method: POST
+      url: "/anything"
+      headers:
+        # Simple variables in templates
+        X-User-ID: "{{user_id}}"
+        X-API-Version: "{{api_version}}"
+
+        # Nested object access
+        X-User-Name: "{{user.profile.name}}"
+        X-User-Email: "{{user.profile.email}}"
+
+        # Array access
+        X-First-Tag: "{{tags[0]}}"
+        X-Price-Count: "{{prices.length}}"
+
+      body:
+        # Mixed template composition
+        api_endpoint: "/api/{{api_version}}/users/{{user_id}}"
+
+        # Type preservation (single variable)
+        user_id_number: "{{user_id}}"  # Stays as number
+        notifications_bool: "{{user.settings.notifications}}"  # Stays as boolean
+        tags_array: "{{tags}}"  # Stays as array
+
+        # String concatenation (multiple variables)
+        greeting: "Hello {{user.profile.name}}!"  # Becomes string
+
+  # ============================================================================
+  # TEST 2: FAKER - Both Syntaxes
+  # ============================================================================
+  - name: "Faker Test Data - Legacy vs New Syntax"
+    request:
+      method: POST
+      url: "/anything"
+      body:
+        # ────────────────────────────────────────────────────────────────
+        # LEGACY SYNTAX (still fully supported)
+        # ────────────────────────────────────────────────────────────────
+        legacy_faker:
+          email_with_dollar: "{{$faker.internet.email}}"
+          name_without_dollar: "{{faker.person.fullName}}"
+          uuid: "{{$faker.string.uuid}}"
+          phone: "{{faker.phone.number}}"
+          company: "{{$faker.company.name}}"
+
+        # ────────────────────────────────────────────────────────────────
+        # NEW SYNTAX (recommended for cleaner YAML)
+        # ────────────────────────────────────────────────────────────────
+        new_faker:
+          email: "#faker.internet.email"
+          username: "#faker.internet.userName"
+          first_name: "#faker.person.firstName"
+          last_name: "#faker.person.lastName"
+          uuid: "#faker.string.uuid"
+          phone: "#faker.phone.number"
+          address: "#faker.location.streetAddress"
+          city: "#faker.location.city"
+          zip: "#faker.location.zipCode"
+          company: "#faker.company.name"
+          job: "#faker.person.jobTitle"
+          price: "#faker.commerce.price"
+          product: "#faker.commerce.productName"
+          description: "#faker.lorem.sentence"
+
+        # ────────────────────────────────────────────────────────────────
+        # FAKER WITH ARGUMENTS
+        # ────────────────────────────────────────────────────────────────
+        faker_with_args:
+          age: "#faker.number.int({min: 18, max: 99})"
+          score: "#faker.number.float({min: 0, max: 100, precision: 0.01})"
+          status: "#faker.helpers.arrayElement(['active', 'pending', 'inactive'])"
+          tags: "#faker.lorem.words(3)"
+
+        # ────────────────────────────────────────────────────────────────
+        # MIXING IN TEMPLATES (legacy only works in templates)
+        # ────────────────────────────────────────────────────────────────
+        mixed_template:
+          welcome_message: "Welcome {{$faker.person.firstName}} {{$faker.person.lastName}}!"
+          user_email: "user-{{$faker.string.alphanumeric(8)}}@example.com"
+
+  # ============================================================================
+  # TEST 3: JAVASCRIPT - Both Syntaxes
+  # ============================================================================
+  - name: "JavaScript Expressions - Legacy vs New Syntax"
+    request:
+      method: POST
+      url: "/anything"
+      body:
+        # ────────────────────────────────────────────────────────────────
+        # LEGACY SYNTAX (still fully supported)
+        # ────────────────────────────────────────────────────────────────
+        legacy_js:
+          timestamp_with_dollar: "{{$js:Date.now()}}"
+          timestamp_without_dollar: "{{js:Date.now()}}"
+          iso_date: "{{$js:new Date().toISOString()}}"
+          random: "{{js:Math.random()}}"
+          calculation: "{{$js:10 * 5}}"
+          rounded: "{{js:Math.round(3.7)}}"
+
+        # ────────────────────────────────────────────────────────────────
+        # NEW SYNTAX (recommended for cleaner YAML)
+        # ────────────────────────────────────────────────────────────────
+        new_js:
+          timestamp: "$Date.now()"
+          iso_date: "$new Date().toISOString()"
+          today: "$new Date().toISOString().split('T')[0]"
+          random_int: "$Math.floor(Math.random() * 100)"
+          calculation: "$10 * 5 + 3"
+
+          # Auto-adds 'return' for simple expressions
+          is_valid: "$10 > 5"
+          has_value: "$'hello'.length > 0"
+
+          # Explicit return for complex logic
+          filtered_count: "$return [1,2,3,4,5].filter(n => n > 3).length"
+
+        # ────────────────────────────────────────────────────────────────
+        # JAVASCRIPT WITH VARIABLE ACCESS
+        # ────────────────────────────────────────────────────────────────
+        js_with_variables:
+          # Access variables directly
+          user_id_x2: "$user_id * 2"
+          user_uppercase: "$user.profile.name.toUpperCase()"
+          first_price: "$prices[0]"
+
+          # Using 'variables' object
+          all_tags_count: "$variables.tags.length"
+
+          # Complex operations
+          total_price: "$prices.reduce((sum, p) => sum + p, 0)"
+          tag_list: "$tags.join(', ')"
+
+        # ────────────────────────────────────────────────────────────────
+        # BASE64 ENCODING (common use case)
+        # ────────────────────────────────────────────────────────────────
+        encoding:
+          # Legacy
+          basic_auth_legacy: "{{$js:Buffer.from('user:pass').toString('base64')}}"
+
+          # New
+          basic_auth_new: "$Buffer.from('user:pass').toString('base64')"
+
+          # With variable interpolation (use legacy in template)
+          dynamic_auth: "{{$js:Buffer.from('{{user.profile.email}}:secret').toString('base64')}}"
+
+  # ============================================================================
+  # TEST 4: ENVIRONMENT VARIABLES
+  # ============================================================================
+  - name: "Environment Variables (Templates Only)"
+    request:
+      method: GET
+      url: "/get"
+      headers:
+        # Environment variables MUST use template syntax
+        X-API-Base: "{{$env.API_BASE_URL}}"
+        X-Environment: "{{$env.NODE_ENV}}"
+
+        # Can compose with other variables
+        X-Full-URL: "{{$env.API_BASE_URL}}/api/{{api_version}}"
+
+      params:
+        # Works in all fields
+        env: "{{$env.NODE_ENV}}"
+
+    capture:
+      # Can capture env vars too
+      api_base_captured: "{{$env.API_BASE_URL}}"
+
+  # ============================================================================
+  # TEST 5: JMESPATH QUERIES (NEW in v2.0)
+  # ============================================================================
+  - name: "JMESPath Queries - Direct Syntax"
+    request:
+      method: GET
+      url: "/json"
+
+    capture:
+      # ────────────────────────────────────────────────────────────────
+      # LEGACY: Implicit JMESPath (still works in capture)
+      # ────────────────────────────────────────────────────────────────
+      legacy_jmespath:
+        slide_title_implicit: "body.slideshow.slides[0].title"
+        author_implicit: "body.slideshow.author"
+
+      # ────────────────────────────────────────────────────────────────
+      # NEW: Explicit @query syntax (works anywhere now!)
+      # ────────────────────────────────────────────────────────────────
+      new_jmespath:
+        slide_title: "@body.slideshow.slides[0].title"
+        all_slide_titles: "@body.slideshow.slides[*].title"
+        first_item: "@body.slideshow.slides[0]"
+        status_code: "@status_code"
+
+    # Can use in assertions now too!
+    assert:
+      body:
+        slideshow:
+          author: { exists: true }
+
+  # ============================================================================
+  # TEST 6: MIXING SYNTAXES (Advanced Patterns)
+  # ============================================================================
+  - name: "Advanced Mixed Syntax Patterns"
+    request:
+      method: POST
+      url: "/anything"
+      headers:
+        # Template with multiple types
+        X-Complex-Header: "User {{user_id}} - {{$faker.person.firstName}} - {{$js:Date.now()}}"
+
+      body:
+        # Each field uses ONE syntax consistently
+        individual_fields:
+          user_var: "{{user_id}}"
+          fake_email: "#faker.internet.email"
+          timestamp: "$Date.now()"
+
+        # Templates for composition
+        composed_values:
+          api_url: "{{$env.API_BASE_URL}}/{{api_version}}/users/{{user_id}}"
+          greeting: "Hello {{$faker.person.firstName}}, today is {{$js:new Date().toLocaleDateString()}}"
+
+        # Nested structures with mixed syntax
+        user_profile:
+          id: "{{user_id}}"
+          email: "#faker.internet.email"
+          created_at: "$new Date().toISOString()"
+          full_name: "{{user.profile.name}}"
+
+  # ============================================================================
+  # TEST 7: TYPE PRESERVATION
+  # ============================================================================
+  - name: "Type Preservation Examples"
+    request:
+      method: POST
+      url: "/anything"
+      body:
+        # ────────────────────────────────────────────────────────────────
+        # SINGLE VARIABLE TEMPLATES preserve original type
+        # ────────────────────────────────────────────────────────────────
+        preserved_types:
+          number: "{{user_id}}"  # → 12345 (number)
+          boolean: "{{user.settings.notifications}}"  # → true (boolean)
+          array: "{{tags}}"  # → ["api", "test", "production"] (array)
+          object: "{{user.profile}}"  # → {name: "...", email: "..."} (object)
+
+        # ────────────────────────────────────────────────────────────────
+        # MULTI-VARIABLE TEMPLATES become strings
+        # ────────────────────────────────────────────────────────────────
+        string_results:
+          concatenated: "ID: {{user_id}}"  # → "ID: 12345" (string)
+          multiple: "{{user_id}}-{{api_version}}"  # → "12345-v2" (string)
+
+        # ────────────────────────────────────────────────────────────────
+        # DIRECT SYNTAX preserves/converts as appropriate
+        # ────────────────────────────────────────────────────────────────
+        direct_types:
+          string_faker: "#faker.internet.email"  # → string
+          number_js: "$Date.now()"  # → number
+          boolean_js: "$10 > 5"  # → boolean
+          array_js: "$[1, 2, 3]"  # → array
+
+  # ============================================================================
+  # TEST 8: ITERATION CONTEXT
+  # ============================================================================
+  - name: "Iterate over users - {{user.name}}"
+    iterate:
+      over: ["{{user}}", "{name: 'Alice', email: '#faker.internet.email'}", "{name: 'Bob', email: '#faker.internet.email'}"]
+      as: "user"
+
+    request:
+      method: POST
+      url: "/anything"
+      body:
+        # Iteration variables
+        user_name: "{{user.name}}"
+        user_email: "{{user.email}}"
+
+        # Iteration metadata
+        iteration_index: "{{_iteration.index}}"
+        is_first: "{{_iteration.isFirst}}"
+        is_last: "{{_iteration.isLast}}"
+
+        # Regular variables still accessible
+        global_user_id: "{{user_id}}"
+
+  # ============================================================================
+  # TEST 9: CROSS-SUITE VARIABLES (requires dependency)
+  # ============================================================================
+  # This section would reference variables from other suites if depends: was configured
+  #
+  # Example:
+  # depends:
+  #   - path: "./auth-suite.yaml"
+  #
+  # Then you can use:
+  #   auth_token: "{{auth-suite.auth_token}}"
+  #   user_id: "{{auth-suite.user_id}}"
+
+  # ============================================================================
+  # FINAL TEST: Everything Together
+  # ============================================================================
+  - name: "Kitchen Sink - All Syntaxes Combined"
+    request:
+      method: POST
+      url: "/anything"
+      headers:
+        Content-Type: "application/json"
+        X-Request-ID: "#faker.string.uuid"
+        X-Timestamp: "$Date.now()"
+        X-User: "{{user.profile.name}}"
+        X-Env: "{{$env.NODE_ENV}}"
+
+      body:
+        # Meta information
+        test_id: "#faker.string.uuid"
+        created_at: "$new Date().toISOString()"
+        environment: "{{$env.NODE_ENV}}"
+
+        # User data (mixed sources)
+        user:
+          id: "{{user_id}}"
+          name: "{{user.profile.name}}"
+          email: "#faker.internet.email"
+          phone: "#faker.phone.number"
+          registered_at: "$Date.now() - (86400000 * 30)"  # 30 days ago
+
+        # Dynamic calculations
+        calculations:
+          timestamp_ms: "$Date.now()"
+          random_score: "$Math.floor(Math.random() * 100)"
+          total_tags: "$tags.length"
+          first_price: "$prices[0]"
+          price_sum: "$prices.reduce((a, b) => a + b, 0)"
+
+        # Fake test data
+        products:
+          - name: "#faker.commerce.productName"
+            price: "#faker.commerce.price"
+            description: "#faker.lorem.sentence"
+          - name: "#faker.commerce.productName"
+            price: "#faker.commerce.price"
+            description: "#faker.lorem.sentence"
+
+        # Composed template
+        api_endpoint: "{{$env.API_BASE_URL}}/{{api_version}}/users/{{user_id}}"
+
+        # Conditional logic
+        is_premium: "$prices[0] > 30"
+        status_message: "$prices.length > 0 ? 'Has prices' : 'No prices'"
+
+    assert:
+      status_code: 200
+      body:
+        args: { type: "object" }
+
+    capture:
+      response_data: "@body"
+      request_args: "@body.json"
+
+# ============================================================================
+# END OF SHOWCASE
+# ============================================================================
+#
+# 📚 What You Learned:
+#
+# 1. ✅ Both syntaxes (legacy {{$x}} and new #x/$x/@x) work forever
+# 2. ✅ Use direct syntax (#faker, $js, @query) for cleaner single expressions
+# 3. ✅ Use templates {{}} for composition and variable interpolation
+# 4. ✅ Environment variables REQUIRE templates: {{$env.VAR}}
+# 5. ✅ JMESPath @queries can be used anywhere (not just capture)
+# 6. ✅ Type preservation works with single-variable templates
+# 7. ✅ You can mix both approaches in the same file
+#
+# 📖 Complete Documentation:
+#    - guides/interpolation-complete-reference.md
+#    - guides/EXPRESSION_PARSER_MIGRATION.md
+#    - AGENTS.md (Section 3)
+#
+# ============================================================================

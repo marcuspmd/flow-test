@@ -1,10 +1,37 @@
 # Expression Parser Migration Guide
 
+> ⚠️ **IMPORTANT UPDATE**: This guide was originally written as a migration guide, but **both syntaxes are now fully supported permanently**. You can:
+> - ✅ **Keep using legacy syntax** (`{{$faker.x}}`, `{{$js:code}}`) - fully supported
+> - ✅ **Use new syntax** (`#faker.x`, `$code`) - recommended for new code
+> - ✅ **Mix both** in the same project - no problem!
+>
+> **See**: [interpolation-complete-reference.md](./interpolation-complete-reference.md) for comprehensive documentation of both syntaxes.
+
 ## Overview
 
-The Flow Test Engine now includes a **deterministic expression parser** with clear prefix-based syntax. This ensures predictable, unambiguous expression processing across all test suites.
+The Flow Test Engine supports **two expression syntaxes** that work together seamlessly:
 
-> **Note on YAML Quoting**: In YAML, values that start with special characters (`@`, `#`, `$`) should typically be quoted to be treated as strings. However, the parser works with both quoted and unquoted values - it processes the string content the same way. For consistency and to avoid YAML parsing issues, we recommend quoting all expression values.
+1. **Template Syntax** (Universal, Legacy): `{{$faker.x}}`, `{{$js:code}}`
+2. **Direct Syntax** (New, Recommended): `#faker.x`, `$code`, `@query`
+
+Both are fully supported indefinitely. This guide shows the differences and helps you choose.
+
+> **Note on YAML Quoting**: In YAML, values that start with special characters (`@`, `#`, `$`) must be quoted to be treated as strings. The parser handles both quoted and unquoted values correctly.
+
+## Quick Comparison
+
+| Feature | Template Syntax | Direct Syntax |
+|---------|-----------------|---------------|
+| **Faker** | `"{{$faker.person.name}}"` | `"#faker.person.name"` ✨ |
+| **JavaScript** | `"{{$js:Date.now()}}"` | `"$Date.now()"` ✨ |
+| **JMESPath** | (only in capture) | `"@body.data[0]"` ✨ |
+| **Mixing** | ✅ Can mix in one value | ❌ One prefix per value |
+| **Composability** | ✅ `"{{env}}/{{path}}"` | Use template for this |
+| **Readability** | More `{{}}` noise | Cleaner ✨ |
+| **Type Safety** | Dynamic | Deterministic ✨ |
+| **Support** | ✅ Forever | ✅ Forever |
+
+**Recommendation**: Use **direct syntax** for single expressions, **templates** for composition.
 
 ## New Syntax System
 
@@ -49,10 +76,10 @@ variables:
 variables:
   # Faker: Remove {{ }} and $ prefix, add # prefix
   faker_name: "#faker.person.firstName"
-  
+
   # Environment: Keep in template (works as before)
   env_var: "{{$env.API_URL}}"
-  
+
   # JavaScript: Use $ prefix directly, remove {{}} and $js:
   js_calc: "$return 2 + 2"
   # OR for simple expressions:
@@ -130,19 +157,19 @@ description: "User {{$faker.person.firstName}} at {{$env.DOMAIN}}"
 
 ### What Still Works
 
-✅ All existing templates with `{{}}` syntax  
-✅ `{{$env.VARIABLE}}` for environment variables  
-✅ `{{$faker.category.method}}` inside templates  
-✅ `{{$js:expression}}` inside templates  
+✅ All existing templates with `{{}}` syntax
+✅ `{{$env.VARIABLE}}` for environment variables
+✅ `{{$faker.category.method}}` inside templates
+✅ `{{$js:expression}}` inside templates
 ✅ Regular variable interpolation `{{variable_name}}`
 
 ### What's New
 
-🆕 Direct Faker syntax: `#faker.category.method`  
-🆕 Direct JavaScript syntax: `$expression`  
-🆕 JMESPath anywhere: `@query`  
-🆕 Clear error messages for mixed syntax  
-🆕 Warnings for ambiguous expressions  
+🆕 Direct Faker syntax: `#faker.category.method`
+🆕 Direct JavaScript syntax: `$expression`
+🆕 JMESPath anywhere: `@query`
+🆕 Clear error messages for mixed syntax
+🆕 Warnings for ambiguous expressions
 🆕 Debug/trace mode for understanding parsing
 
 ## Common Migration Patterns
@@ -316,11 +343,39 @@ For questions or issues with migration, please see:
 
 ## Summary
 
-The new deterministic parser provides:
-- ✅ **Predictable** expression processing
-- ✅ **Clear** prefix-based syntax
-- ✅ **Comprehensive** error detection
-- ✅ **Backward compatible** with existing templates
-- ✅ **Debug support** for understanding parsing decisions
+**Both syntaxes are fully supported forever!** You don't need to migrate existing code.
 
-Start using the new syntax today for more reliable and maintainable test suites!
+### Syntax Support Matrix
+
+| Syntax | Status | When to Use |
+|--------|--------|-------------|
+| `{{$faker.x}}` | ✅ **Fully Supported** | Existing code, templates with multiple expressions |
+| `#faker.x` | ✅ **Fully Supported** | New code, single expressions, cleaner YAML |
+| `{{$js:code}}` | ✅ **Fully Supported** | Existing code, nested variable interpolation |
+| `$code` | ✅ **Fully Supported** | New code, simple calculations |
+| `{{var}}` | ✅ **Fully Supported** | Variable interpolation (universal) |
+| `@query` | ✅ **Fully Supported** | JMESPath queries (new feature) |
+
+### Key Principles
+
+The Flow Test Engine provides:
+- ✅ **Predictable** expression processing
+- ✅ **Clear** prefix-based syntax (new)
+- ✅ **Full backward compatibility** (legacy)
+- ✅ **Comprehensive** error detection
+- ✅ **Debug support** for understanding parsing decisions
+- ✅ **No breaking changes** - use what you prefer!
+
+### Learn More
+
+- **[interpolation-complete-reference.md](./interpolation-complete-reference.md)** - Complete guide to both syntaxes
+- **[EXPRESSION_PARSER.md](./EXPRESSION_PARSER.md)** - Technical details on expression parser
+- **[AGENTS.md](../AGENTS.md#3-sistema-de-interpolação-de-variáveis)** - Quick reference section
+- **[Examples](../examples/)** - Example test suites with various syntax patterns
+
+---
+
+**Last Updated**: 2025-01-29
+**Status**: Both syntaxes fully supported indefinitely
+**Recommendation**: Use direct syntax (`#faker`, `$js`, `@`) for new code, keep legacy for existing code
+
