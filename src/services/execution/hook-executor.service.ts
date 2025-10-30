@@ -523,7 +523,7 @@ export class HookExecutorService implements IHookExecutorService {
 
     this.logger.info(`[Hook] Metric: ${name} = ${value}`, {
       stepName: context.stepName,
-      metadata: { tags },
+      metadata: { tags: tags || {} },
     });
 
     return metric;

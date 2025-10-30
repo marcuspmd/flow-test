@@ -160,7 +160,7 @@ export class CallStepStrategy extends BaseStepStrategy {
             type: "step_call",
             internal: true,
             suite: suite.suite_name,
-            alias: alias,
+            alias: alias || "",
           },
         }
       );

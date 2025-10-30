@@ -330,12 +330,12 @@ export class CallService implements ICallService {
       filePath: options.callerSuitePath,
       error,
       metadata: {
-        callerSuite: options.callerSuiteName,
+        callerSuite: options.callerSuiteName || "Unknown",
         strategy,
         targetTest: request.test,
         targetStep: request.step,
       },
-    } as const;
+    };
 
     switch (strategy) {
       case "continue":

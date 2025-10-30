@@ -1838,7 +1838,10 @@ process.on("uncaughtException", (error) => {
 
 process.on("unhandledRejection", (reason, promise) => {
   getLogger().error("💥 Unhandled Rejection at:", {
-    metadata: { promise, reason },
+    metadata: {
+      promise: String(promise),
+      reason: String(reason)
+    },
   });
   process.exit(1);
 });

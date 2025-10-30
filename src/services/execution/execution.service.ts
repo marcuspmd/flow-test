@@ -910,7 +910,7 @@ export class ExecutionService implements IExecutionService {
                 new Error(stepResult.error_message),
                 {
                   stepName: step.name,
-                  request: stepResult.request_details,
+                  request: stepResult.request_details as any,
                   response: stepResult.response_details,
                   assertion: stepResult.assertions_results?.find(
                     (a) => !a.passed
