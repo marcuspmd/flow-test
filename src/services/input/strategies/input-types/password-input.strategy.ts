@@ -62,7 +62,8 @@ export class PasswordInputStrategy implements InputTypeStrategy {
 
       rl.question(prompt, (answer) => {
         rl.close();
-        resolve(answer || config.default || "");
+        const defaultValue = config.default ? String(config.default) : "";
+        resolve(answer || defaultValue);
       });
     });
   }

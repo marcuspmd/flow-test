@@ -271,3 +271,227 @@ export interface PostRequestScriptContext {
   /** Utility: faker (if available) */
   faker?: any;
 }
+/**
+ * Type-safe JSON types to replace 'any' in HTTP bodies, responses, etc.
+ *
+ * @remarks
+ * These types should be used instead of 'any' for HTTP request/response bodies,
+ * configuration values, and any data that needs to be JSON-serializable.
+ */
+
+/**
+ * Represents a JSON primitive value.
+ */
+export type JSONPrimitive = string | number | boolean | null;
+
+/**
+ * Represents any valid JSON value (recursive).
+ * Use this instead of 'any' for HTTP bodies, response data, etc.
+ *
+ * @example
+ * ```typescript
+ * const body: JSONValue = { name: "John", age: 30, tags: ["user", "active"] };
+ * ```
+ */
+export type JSONValue =
+  | JSONPrimitive
+  | JSONValue[]
+  | { [key: string]: JSONValue };
+
+/**
+ * Represents a JSON object (key-value pairs).
+ */
+export type JSONObject = { [key: string]: JSONValue };
+
+/**
+ * Represents a JSON array.
+ */
+export type JSONArray = JSONValue[];
+
+/**
+ * Valid HTTP methods supported by Axios.
+ * Use this instead of casting to 'any' in axios configs.
+ *
+ * @example
+ * ```typescript
+ * const method: AxiosMethod = request.method.toLowerCase() as AxiosMethod;
+ * ```
+ */
+export type AxiosMethod =
+  | "get"
+  | "GET"
+  | "delete"
+  | "DELETE"
+  | "head"
+  | "HEAD"
+  | "options"
+  | "OPTIONS"
+  | "post"
+  | "POST"
+  | "put"
+  | "PUT"
+  | "patch"
+  | "PATCH";
+
+/**
+ * Normalized HTTP method (lowercase).
+ */
+export type HttpMethod =
+  | "get"
+  | "delete"
+  | "head"
+  | "options"
+  | "post"
+  | "put"
+  | "patch";
+
+/**
+ * Context information for errors to improve debugging.
+ *
+ * @remarks
+ * Used by error handling services to provide rich context about failures.
+ * Helps with debugging, logging, and error reporting.
+ *
+ * @example
+ * ```typescript
+ * const context: ErrorContext = {
+ *   service: "HttpService",
+ *   operation: "executeRequest",
+ *   request: { method: "POST", url: "/api/users" },
+ *   suite: "user-management",
+ *   step: "create-user",
+ *   timestamp: new Date().toISOString()
+ * };
+ * ```
+ */
+export interface ErrorContext {
+  /** Service or module where the error occurred */
+  service: string;
+
+  /** Operation being performed when error occurred */
+  operation: string;
+
+  /** HTTP request details if applicable */
+  request?: {
+    method?: string;
+    url?: string;
+    headers?: Record<string, string>;
+    body?: JSONValue;
+  };
+
+  /** Test suite name if applicable */
+  suite?: string;
+
+  /** Step name if applicable */
+  step?: string;
+
+  /** Timestamp when error occurred (ISO 8601) */
+  timestamp: string;
+
+  /** Original error stack trace */
+  stackTrace?: string;
+
+  /** Additional metadata */
+  metadata?: Record<string, JSONValue>;
+}
+
+/**
+ * Generic result type for operations that can succeed or fail.
+ *
+ * @typeParam T - Success data type
+ * @typeParam E - Error type (defaults to Error)
+ *
+ * @example
+ * ```typescript
+ * function parseJSON(input: string): Result<JSONValue, SyntaxError> {
+ *   try {
+ *     return { success: true, data: JSON.parse(input) };
+ *   } catch (error) {
+ *     return { success: false, error: error as SyntaxError };
+ *   }
+ * }
+ * ```
+ */
+export type Result<T, E = Error> =
+  | { success: true; data: T }
+  | { success: false; error: E };
+
+/**
+ * Async version of Result type.
+ */
+export type AsyncResult<T, E = Error> = Promise<Result<T, E>>;
+
+/**
+ * Type guard to check if a value is a JSONPrimitive.
+ */
+export function isJSONPrimitive(value: unknown): value is JSONPrimitive {
+  return (
+    value === null ||
+    typeof value === "string" ||
+    typeof value === "number" ||
+    typeof value === "boolean"
+  );
+}
+
+/**
+ * Type guard to check if a value is a JSONObject.
+ */
+export function isJSONObject(value: unknown): value is JSONObject {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/**
+ * Type guard to check if a value is a JSONArray.
+ */
+export function isJSONArray(value: unknown): value is JSONArray {
+  return Array.isArray(value);
+}
+
+/**
+ * Type guard to check if a value is a valid JSONValue.
+ */
+export function isJSONValue(value: unknown): value is JSONValue {
+  if (isJSONPrimitive(value)) return true;
+  if (isJSONArray(value)) return value.every(isJSONValue);
+  if (isJSONObject(value)) {
+    return Object.values(value).every(isJSONValue);
+  }
+  return false;
+}
+
+/**
+ * Safely stringify a value that might contain circular references.
+ *
+ * @param value - Value to stringify
+ * @param indent - Number of spaces for indentation
+ * @returns JSON string with circular references replaced
+ */
+export function safeStringify(value: unknown, indent?: number): string {
+  const seen = new WeakSet();
+  return JSON.stringify(
+    value,
+    (key, val) => {
+      if (typeof val === "object" && val !== null) {
+        if (seen.has(val)) {
+          return "[Circular]";
+        }
+        seen.add(val);
+      }
+      return val;
+    },
+    indent
+  );
+}
+
+/**
+ * Type for HTTP headers (string to string mapping).
+ */
+export type HttpHeaders = Record<string, string>;
+
+/**
+ * Type for query parameters (can be strings, numbers, booleans or arrays).
+ */
+export type QueryParams = Record<
+  string,
+  string | string[] | number | boolean | undefined
+>;

@@ -1252,8 +1252,8 @@ describe("engine.types", () => {
             },
           },
         };
-        expect(request.body.user.profile.address.city).toBe("Springfield");
-        expect(request.body.user.profile.contacts).toHaveLength(2);
+        expect((request.body as any).user.profile.address.city).toBe("Springfield");
+        expect((request.body as any).user.profile.contacts).toHaveLength(2);
       });
 
       it("should handle URL with query parameters in string", () => {

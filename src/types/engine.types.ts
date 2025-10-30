@@ -14,6 +14,9 @@ import {
   DynamicVariableAssignment,
   InputDynamicConfig,
   InputValidationConfig,
+  JSONValue,
+  JSONObject,
+  QueryParams,
 } from "./common.types";
 import type { CertificateConfig } from "./certificate.types";
 import type { StepCallConfig } from "./call.types";
@@ -55,10 +58,10 @@ export interface RequestDetails {
   headers?: Record<string, string>;
 
   /** Request body payload for POST/PUT/PATCH methods */
-  body?: any;
+  body?: JSONValue;
 
   /** Query string parameters */
-  params?: Record<string, any>;
+  params?: QueryParams;
 
   /** Request timeout in milliseconds */
   timeout?: number;
@@ -107,13 +110,13 @@ export interface RequestDetails {
  */
 export interface AssertionChecks {
   /** Exact value equality check */
-  equals?: any;
+  equals?: unknown;
 
   /** Check if field contains the specified value */
-  contains?: any;
+  contains?: unknown;
 
   /** Check if field does not equal the specified value */
-  not_equals?: any;
+  not_equals?: unknown;
 
   /** Numerical greater than comparison */
   greater_than?: number;
@@ -447,7 +450,7 @@ export interface InputConfig {
   /** Optional detailed description */
   description?: string;
   /** Default value if user doesn't provide input */
-  default?: any;
+  default?: JSONValue;
   /** Placeholder text shown in input field */
   placeholder?: string;
   /** Whether input is required (cannot be empty) */
@@ -459,13 +462,13 @@ export interface InputConfig {
   /** JMESPath condition - input only shown if condition is true */
   condition?: string;
   /** Value to use automatically in CI/non-interactive environments */
-  ci_default?: any;
+  ci_default?: JSONValue;
   /** Validation rules for the input */
   validation?: InputValidationConfig;
   /** Dynamic processing configuration for derived variables */
   dynamic?: InputDynamicConfig;
   /** For select type: array of options or JMESPath expression */
-  options?: Array<{ value: any; label: string }> | string;
+  options?: Array<{ value: JSONValue; label: string }> | string;
 }
 
 /**
@@ -493,7 +496,7 @@ export interface InputResult {
   /** Variable name that was set */
   variable: string;
   /** The value provided by user or default */
-  value: any;
+  value: JSONValue;
   /** Time taken for user to provide input in milliseconds */
   input_time_ms: number;
   /** Whether validation passed */
@@ -551,9 +554,9 @@ export interface InteractiveInputRequest {
     | "url"
     | "multiline";
   /** Default value */
-  default?: any;
+  default?: JSONValue;
   /** Options for select type */
-  options?: Array<{ label: string; value: any }>;
+  options?: Array<{ label: string; value: JSONValue }>;
   /** Execution context */
   suite_name?: string;
   suite_path?: string;
@@ -597,7 +600,7 @@ export interface IterationContext {
   index: number;
 
   /** Current item (for array iteration) or current value (for range iteration) */
-  value: any;
+  value: JSONValue;
 
   /** Variable name to bind the current value to */
   variableName: string;
