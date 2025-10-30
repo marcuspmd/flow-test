@@ -523,13 +523,16 @@ ${suitesMarkup}
         const duration = end - start;
         const offset = start - earliestStart;
 
-        const offsetPercent = totalDuration > 0 ? (offset / totalDuration) * 100 : 0;
-        const durationPercent = totalDuration > 0 ? (duration / totalDuration) * 100 : 0;
+        const offsetPercent =
+          totalDuration > 0 ? (offset / totalDuration) * 100 : 0;
+        const durationPercent =
+          totalDuration > 0 ? (duration / totalDuration) * 100 : 0;
 
         const stepName = ReportingUtils.escapeHtml(step.step_name);
         const method = step.request_details?.method || "";
         const statusCode = step.response_details?.status_code || 0;
-        const statusClass = statusCode >= 200 && statusCode < 300 ? "success" : "error";
+        const statusClass =
+          statusCode >= 200 && statusCode < 300 ? "success" : "error";
 
         const ttfb = timing.time_to_first_byte_ms || 0;
         const download = timing.content_download_ms || 0;
@@ -721,9 +724,15 @@ ${stepsMarkup}
 
     // Decision Tracking tab (Scenarios)
     if (step.scenarios_meta && step.scenarios_meta.has_scenarios) {
-      tabs.push('<button class="tab-btn" data-tab="decisions">🔀 Decisions</button>');
+      tabs.push(
+        '<button class="tab-btn" data-tab="decisions">🔀 Decisions</button>'
+      );
       contents.push(this.renderDecisionsTab(step.scenarios_meta));
     }
+
+    // Debug tab (Always visible)
+    tabs.push('<button class="tab-btn" data-tab="debug">🐛 Debug</button>');
+    contents.push(this.renderDebugTab(step));
 
     if (tabs.length === 0) {
       return `<div class="step-details">
@@ -821,14 +830,19 @@ ${stepsMarkup}
    * Render response tab content
    */
   private renderResponseTab(response: any): string {
-    const status = ReportingUtils.escapeHtml(String(response.status_code || response.status || ""));
+    const status = ReportingUtils.escapeHtml(
+      String(response.status_code || response.status || "")
+    );
     const statusClass =
-      (response.status_code || response.status) >= 200 && (response.status_code || response.status) < 300
+      (response.status_code || response.status) >= 200 &&
+      (response.status_code || response.status) < 300
         ? "response-status--success"
         : "response-status--error";
 
     // Render timing information if available
-    const timingHtml = response.timing ? this.renderTimingBreakdown(response.timing) : "";
+    const timingHtml = response.timing
+      ? this.renderTimingBreakdown(response.timing)
+      : "";
 
     const responseHeadersJson = ReportingUtils.formatJson(response.headers);
     const headersHtml =
@@ -1188,15 +1202,22 @@ ${stepsMarkup}
 
     const evaluationsHtml = scenarioMeta.evaluations
       .map((evaluation: any, index: number) => {
-        const conditionLabel = ReportingUtils.escapeHtml(evaluation.condition || "");
+        const conditionLabel = ReportingUtils.escapeHtml(
+          evaluation.condition || ""
+        );
         const branchLabel = evaluation.branch || "none";
         const matched = evaluation.matched;
         const executed = evaluation.executed;
 
         const matchIcon = matched ? "✅" : "❌";
-        const branchIcon = branchLabel === "then" ? "➡️" : branchLabel === "else" ? "⬅️" : "⏸️";
-        const statusClass = matched ? "decision-matched" : "decision-not-matched";
-        const executionClass = executed ? "decision-executed" : "decision-skipped";
+        const branchIcon =
+          branchLabel === "then" ? "➡️" : branchLabel === "else" ? "⬅️" : "⏸️";
+        const statusClass = matched
+          ? "decision-matched"
+          : "decision-not-matched";
+        const executionClass = executed
+          ? "decision-executed"
+          : "decision-skipped";
 
         let actionsHtml = "";
         if (evaluation.assertions_added || evaluation.captures_added) {
@@ -1215,9 +1236,13 @@ ${stepsMarkup}
 
         return `<div class="decision-item ${statusClass} ${executionClass}">
           <div class="decision-header">
-            <span class="decision-index">Scenario #${evaluation.index + 1}</span>
+            <span class="decision-index">Scenario #${
+              evaluation.index + 1
+            }</span>
             <div class="decision-status">
-              <span class="decision-match">${matchIcon} ${matched ? "Matched" : "Not Matched"}</span>
+              <span class="decision-match">${matchIcon} ${
+          matched ? "Matched" : "Not Matched"
+        }</span>
               <span class="decision-branch">${branchIcon} ${branchLabel}</span>
             </div>
           </div>
@@ -1253,6 +1278,316 @@ ${stepsMarkup}
         </div>
       </div>
     </div>`;
+  }
+
+  /**
+   * Render debug tab content with categorized variables and execution metadata
+   */
+  private renderDebugTab(step: StepExecutionResult): string {
+    // Categorize variables by source
+    const categorizedVars = this.categorizeVariables(step);
+
+    // Variable Snapshot Section
+    const variableSnapshotHtml = this.renderVariableSnapshot(categorizedVars);
+
+    // Request Lifecycle Section
+    const requestLifecycleHtml = this.renderRequestLifecycle(step);
+
+    // Execution Metadata Section
+    const executionMetadataHtml = this.renderExecutionMetadata(step);
+
+    // Iteration Data Section (if applicable)
+    const iterationDataHtml =
+      step.iteration_results && step.iteration_results.length > 0
+        ? this.renderIterationData(step.iteration_results)
+        : "";
+
+    return `<div class="tab-content" data-tab="debug">
+      <div class="code-block">
+        <div class="code-header">
+          <span class="code-label">🐛 Debug Information</span>
+        </div>
+        ${variableSnapshotHtml}
+        ${requestLifecycleHtml}
+        ${executionMetadataHtml}
+        ${iterationDataHtml}
+      </div>
+    </div>`;
+  }
+
+  /**
+   * Categorize variables by source (suite, global, captured)
+   */
+  private categorizeVariables(step: StepExecutionResult): {
+    suite: Record<string, any>;
+    global: Record<string, any>;
+    captured: Record<string, any>;
+  } {
+    const availableVars = step.available_variables || {};
+    const capturedVars = step.captured_variables || {};
+
+    // Variables that were captured in this step
+    const captured: Record<string, any> = { ...capturedVars };
+
+    // Variables from global registry (contain '.' in key like 'suite-id.var')
+    const global: Record<string, any> = {};
+
+    // Suite-local variables
+    const suite: Record<string, any> = {};
+
+    Object.keys(availableVars).forEach((key) => {
+      // Skip if already in captured
+      if (key in captured) return;
+
+      // Check if it's a global variable (suite-id.variable format)
+      if (key.includes(".") && key.split(".").length === 2) {
+        global[key] = availableVars[key];
+      } else {
+        suite[key] = availableVars[key];
+      }
+    });
+
+    return { suite, global, captured };
+  }
+
+  /**
+   * Render variable snapshot section with categorization
+   */
+  private renderVariableSnapshot(categorized: {
+    suite: Record<string, any>;
+    global: Record<string, any>;
+    captured: Record<string, any>;
+  }): string {
+    const sections: string[] = [];
+
+    // Suite Variables
+    if (Object.keys(categorized.suite).length > 0) {
+      const varsJson = ReportingUtils.formatJson(categorized.suite);
+      sections.push(`
+        <div class="debug-subsection">
+          <div class="debug-subsection-header">
+            <span class="debug-subsection-icon">📦</span>
+            <span class="debug-subsection-title">Suite Variables</span>
+            <span class="debug-subsection-count">${
+              Object.keys(categorized.suite).length
+            }</span>
+          </div>
+          <pre class="debug-code-content">${ReportingUtils.escapeHtml(
+            varsJson
+          )}</pre>
+          <button class="copy-btn" onclick="navigator.clipboard.writeText(${ReportingUtils.escapeHtml(
+            JSON.stringify(varsJson)
+          )})">Copy</button>
+        </div>
+      `);
+    }
+
+    // Global Variables
+    if (Object.keys(categorized.global).length > 0) {
+      const varsJson = ReportingUtils.formatJson(categorized.global);
+      sections.push(`
+        <div class="debug-subsection">
+          <div class="debug-subsection-header">
+            <span class="debug-subsection-icon">🌍</span>
+            <span class="debug-subsection-title">Global Variables</span>
+            <span class="debug-subsection-count">${
+              Object.keys(categorized.global).length
+            }</span>
+          </div>
+          <pre class="debug-code-content">${ReportingUtils.escapeHtml(
+            varsJson
+          )}</pre>
+          <button class="copy-btn" onclick="navigator.clipboard.writeText(${ReportingUtils.escapeHtml(
+            JSON.stringify(varsJson)
+          )})">Copy</button>
+        </div>
+      `);
+    }
+
+    // Captured Variables
+    if (Object.keys(categorized.captured).length > 0) {
+      const varsJson = ReportingUtils.formatJson(categorized.captured);
+      sections.push(`
+        <div class="debug-subsection">
+          <div class="debug-subsection-header">
+            <span class="debug-subsection-icon">🎯</span>
+            <span class="debug-subsection-title">Captured Variables (This Step)</span>
+            <span class="debug-subsection-count">${
+              Object.keys(categorized.captured).length
+            }</span>
+          </div>
+          <pre class="debug-code-content">${ReportingUtils.escapeHtml(
+            varsJson
+          )}</pre>
+          <button class="copy-btn" onclick="navigator.clipboard.writeText(${ReportingUtils.escapeHtml(
+            JSON.stringify(varsJson)
+          )})">Copy</button>
+        </div>
+      `);
+    }
+
+    if (sections.length === 0) {
+      sections.push('<div class="debug-empty">No variables available</div>');
+    }
+
+    return `
+      <div class="debug-section">
+        <h4 class="debug-section-title">📊 Variable Snapshot</h4>
+        ${sections.join("\n")}
+      </div>
+    `;
+  }
+
+  /**
+   * Render request lifecycle section
+   */
+  private renderRequestLifecycle(step: StepExecutionResult): string {
+    if (!step.request_details) {
+      return "";
+    }
+
+    const rawUrl = step.request_details.raw_url || "N/A";
+    const fullUrl =
+      step.request_details.full_url || step.request_details.url || "N/A";
+    const method = step.request_details.method || "N/A";
+    const rawRequest = step.request_details.raw_request || "Not available";
+
+    return `
+      <div class="debug-section">
+        <h4 class="debug-section-title">🔄 Request Lifecycle</h4>
+
+        <div class="debug-item">
+          <span class="debug-label">HTTP Method:</span>
+          <code class="debug-value">${ReportingUtils.escapeHtml(method)}</code>
+        </div>
+
+        <div class="debug-item">
+          <span class="debug-label">Raw URL (Before Interpolation):</span>
+          <code class="debug-value debug-value-url">${ReportingUtils.escapeHtml(
+            rawUrl
+          )}</code>
+        </div>
+
+        <div class="debug-item">
+          <span class="debug-label">Full URL (After Interpolation):</span>
+          <code class="debug-value debug-value-url">${ReportingUtils.escapeHtml(
+            fullUrl
+          )}</code>
+        </div>
+
+        <div class="debug-subsection">
+          <div class="debug-subsection-header">
+            <span class="debug-subsection-icon">📄</span>
+            <span class="debug-subsection-title">Raw HTTP Request</span>
+          </div>
+          <pre class="debug-code-content debug-code-request">${ReportingUtils.escapeHtml(
+            rawRequest
+          )}</pre>
+          <button class="copy-btn" onclick="navigator.clipboard.writeText(${ReportingUtils.escapeHtml(
+            JSON.stringify(rawRequest)
+          )})">Copy</button>
+        </div>
+      </div>
+    `;
+  }
+
+  /**
+   * Render execution metadata section
+   */
+  private renderExecutionMetadata(step: StepExecutionResult): string {
+    const qualifiedId = step.qualified_step_id || step.step_id || "N/A";
+    const stepId = step.step_id || "N/A";
+    const status = step.status || "unknown";
+    const duration =
+      step.duration_ms !== undefined ? `${step.duration_ms}ms` : "N/A";
+    const errorMsg = step.error_message || "None";
+
+    return `
+      <div class="debug-section">
+        <h4 class="debug-section-title">⚙️ Execution Metadata</h4>
+
+        <div class="debug-item">
+          <span class="debug-label">Step ID:</span>
+          <code class="debug-value">${ReportingUtils.escapeHtml(stepId)}</code>
+        </div>
+
+        <div class="debug-item">
+          <span class="debug-label">Qualified Step ID:</span>
+          <code class="debug-value debug-value-qualified">${ReportingUtils.escapeHtml(
+            qualifiedId
+          )}</code>
+        </div>
+
+        <div class="debug-item">
+          <span class="debug-label">Status:</span>
+          <span class="debug-status-badge debug-status-${status}">${ReportingUtils.escapeHtml(
+      status
+    )}</span>
+        </div>
+
+        <div class="debug-item">
+          <span class="debug-label">Duration:</span>
+          <span class="debug-value">${duration}</span>
+        </div>
+
+        ${
+          errorMsg !== "None"
+            ? `
+        <div class="debug-item debug-item-error">
+          <span class="debug-label">Error Message:</span>
+          <code class="debug-value debug-value-error">${ReportingUtils.escapeHtml(
+            errorMsg
+          )}</code>
+        </div>
+        `
+            : ""
+        }
+      </div>
+    `;
+  }
+
+  /**
+   * Render iteration data section
+   */
+  private renderIterationData(iterationResults: StepExecutionResult[]): string {
+    const iterationsHtml = iterationResults
+      .map((iteration, index) => {
+        const status = iteration.status || "unknown";
+        const duration =
+          iteration.duration_ms !== undefined
+            ? `${iteration.duration_ms}ms`
+            : "N/A";
+        const capturedCount = iteration.captured_variables
+          ? Object.keys(iteration.captured_variables).length
+          : 0;
+
+        return `
+          <div class="debug-iteration-item">
+            <div class="debug-iteration-header">
+              <span class="debug-iteration-index">Iteration #${index + 1}</span>
+              <span class="debug-status-badge debug-status-${status}">${status}</span>
+              <span class="debug-iteration-duration">${duration}</span>
+            </div>
+            <div class="debug-iteration-stats">
+              <span class="debug-stat">📦 ${capturedCount} variable(s) captured</span>
+            </div>
+          </div>
+        `;
+      })
+      .join("\n");
+
+    return `
+      <div class="debug-section">
+        <h4 class="debug-section-title">🔁 Iteration Data</h4>
+        <div class="debug-iterations-summary">
+          <span class="debug-label">Total Iterations:</span>
+          <span class="debug-value">${iterationResults.length}</span>
+        </div>
+        <div class="debug-iterations-list">
+          ${iterationsHtml}
+        </div>
+      </div>
+    `;
   }
 
   /**
@@ -2217,6 +2552,205 @@ ${stepsMarkup}
         border-radius: 4px;
         font-size: 0.85rem;
         color: var(--warning);
+      }
+
+      /* Debug Tab Styles */
+      .debug-section {
+        margin-bottom: 32px;
+      }
+      .debug-section:last-child {
+        margin-bottom: 0;
+      }
+      .debug-section-title {
+        margin: 0 0 16px 0;
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: var(--text);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        border-bottom: 1px solid var(--border);
+        padding-bottom: 8px;
+      }
+      .debug-subsection {
+        position: relative;
+        margin-top: 16px;
+        padding: 16px;
+        background: var(--surface-alt);
+        border-radius: 6px;
+        border: 1px solid var(--border);
+      }
+      .debug-subsection-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 12px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+      }
+      .debug-subsection-icon {
+        font-size: 1.2rem;
+      }
+      .debug-subsection-title {
+        font-weight: 600;
+        color: var(--text);
+        font-size: 0.95rem;
+      }
+      .debug-subsection-count {
+        margin-left: auto;
+        padding: 2px 8px;
+        border-radius: 999px;
+        background: rgba(255, 108, 55, 0.2);
+        color: var(--accent);
+        font-size: 0.75rem;
+        font-weight: 600;
+      }
+      .debug-code-content {
+        margin: 0;
+        padding: 12px;
+        background: var(--bg);
+        border-radius: 4px;
+        border: 1px solid rgba(148, 163, 184, 0.1);
+        color: #94a3b8;
+        font-family: 'Fira Code', 'Consolas', monospace;
+        font-size: 0.85rem;
+        line-height: 1.6;
+        overflow-x: auto;
+        white-space: pre-wrap;
+        word-break: break-all;
+      }
+      .debug-code-request {
+        max-height: 400px;
+        overflow-y: auto;
+      }
+      .debug-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        padding: 10px 0;
+        border-bottom: 1px solid rgba(148, 163, 184, 0.08);
+      }
+      .debug-item:last-child {
+        border-bottom: none;
+      }
+      .debug-item-error {
+        background: rgba(248, 113, 113, 0.05);
+        padding: 12px;
+        border-radius: 4px;
+        border: 1px solid rgba(248, 113, 113, 0.2);
+      }
+      .debug-label {
+        min-width: 200px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+      .debug-value {
+        flex: 1;
+        padding: 4px 8px;
+        background: rgba(255, 255, 255, 0.03);
+        border-radius: 4px;
+        color: var(--text);
+        font-family: 'Fira Code', 'Consolas', monospace;
+        font-size: 0.85rem;
+        word-break: break-all;
+      }
+      .debug-value-url {
+        color: #60a5fa;
+      }
+      .debug-value-qualified {
+        color: #a78bfa;
+      }
+      .debug-value-error {
+        color: var(--danger);
+        background: rgba(248, 113, 113, 0.1);
+      }
+      .debug-status-badge {
+        padding: 4px 10px;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+      }
+      .debug-status-success {
+        background: rgba(45, 212, 191, 0.2);
+        color: var(--success);
+      }
+      .debug-status-failure,
+      .debug-status-error {
+        background: rgba(248, 113, 113, 0.2);
+        color: var(--danger);
+      }
+      .debug-status-skipped {
+        background: rgba(250, 204, 21, 0.2);
+        color: var(--warning);
+      }
+      .debug-status-unknown {
+        background: rgba(148, 163, 184, 0.2);
+        color: var(--muted);
+      }
+      .debug-empty {
+        padding: 24px;
+        text-align: center;
+        color: var(--muted);
+        font-size: 0.9rem;
+        background: var(--surface-alt);
+        border-radius: 6px;
+        border: 1px dashed var(--border);
+      }
+      .debug-iterations-summary {
+        display: flex;
+        gap: 12px;
+        padding: 12px 16px;
+        margin-bottom: 16px;
+        background: var(--surface-alt);
+        border-radius: 6px;
+        border: 1px solid var(--border);
+      }
+      .debug-iterations-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .debug-iteration-item {
+        padding: 14px 16px;
+        background: var(--surface-alt);
+        border-radius: 6px;
+        border: 1px solid var(--border);
+        transition: all 0.2s ease;
+      }
+      .debug-iteration-item:hover {
+        border-color: var(--border-strong);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+      }
+      .debug-iteration-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 8px;
+      }
+      .debug-iteration-index {
+        font-weight: 600;
+        color: var(--text);
+      }
+      .debug-iteration-duration {
+        margin-left: auto;
+        font-size: 0.85rem;
+        color: var(--muted);
+        font-family: 'Fira Code', 'Consolas', monospace;
+      }
+      .debug-iteration-stats {
+        display: flex;
+        gap: 16px;
+        font-size: 0.85rem;
+        color: var(--muted);
+      }
+      .debug-stat {
+        display: flex;
+        align-items: center;
+        gap: 6px;
       }
 
       @media (max-width: 768px) {
