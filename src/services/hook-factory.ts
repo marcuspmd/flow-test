@@ -76,10 +76,31 @@ export function createConsoleHooks(logger: ILogger): EngineHooks {
     },
 
     onExecutionEnd: async (result: AggregatedResult) => {
+      const rawSuccessRate = (() => {
+        if (typeof result.success_rate === "number") {
+          return result.success_rate;
+        }
+
+        const totals =
+          (result as any)?.total_tests ??
+          (result as any)?.tests_discovered ??
+          0;
+        if (!totals) {
+          return 0;
+        }
+
+        const successes =
+          (result as any)?.successful_tests ??
+          (result as any)?.tests_successful ??
+          0;
+
+        return (successes / totals) * 100;
+      })();
+
+      const successRate = Number.isFinite(rawSuccessRate) ? rawSuccessRate : 0;
+
       cliLogger.info(
-        `🏁 Execution completed with ${result.success_rate.toFixed(
-          1
-        )}% success rate`
+        `🏁 Execution completed with ${successRate.toFixed(1)}% success rate`
       );
     },
   };

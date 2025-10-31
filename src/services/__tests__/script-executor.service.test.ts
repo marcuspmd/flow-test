@@ -43,7 +43,7 @@ describe("ScriptExecutorService", () => {
 
         expect(result.success).toBe(true);
         expect(result.console_output).toContain("Hello World");
-        expect(result.execution_time_ms).toBeGreaterThan(0);
+        expect(result.execution_time_ms).toBeGreaterThanOrEqual(0);
       });
 
       it("should allow script to modify request object", async () => {

@@ -416,7 +416,7 @@ export class FlowTestEngine {
       // Trigger execution start hook
       await this.hooks.onExecutionStart?.(this.stats);
 
-      logger.info(`\n🚀 Flow Test Engine v1.0`);
+      logger.info(`\n🚀 Flow Test Engine`);
       logger.info(`📊 Project: ${config.project_name}`);
       logger.info(`📁 Test Directory: ${config.test_directory}`);
       logger.info(`⚙️  Execution Mode: ${config.execution!.mode}`);
