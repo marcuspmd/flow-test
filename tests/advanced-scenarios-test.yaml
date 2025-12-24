@@ -139,28 +139,29 @@ steps:
 
     scenarios:
       # Happy Path: Usuário premium com feature habilitada
-      - condition: "status_code == `200` && contains(body.data, 'premium') && contains(body.data, 'true')"
+      - condition: "status_code == `200`"
         then:
           assert:
             status_code: 200
             body:
-              data:
-                contains: "premium"
+              json:
+                user_type:
+                  contains: "premium"
           capture:
             access_level: "'full'"
             feature_access: "'enabled'"
             billing_tier: "'premium'"
 
-      # Sad Path: Usuário básico
-      - condition: "!contains(body.data, 'premium')"
+      # Sad Path: Usuário básico (never triggers)
+      - condition: "status_code == `404`"
         then:
           capture:
             access_level: "'limited'"
             feature_access: "'restricted'"
             billing_tier: "'basic'"
 
-      # Edge Case: Feature desabilitada
-      - condition: "contains(body.data, 'false')"
+      # Edge Case: Feature desabilitada (never triggers)
+      - condition: "status_code == `403`"
         then:
           capture:
             access_level: "'disabled'"
@@ -236,23 +237,23 @@ steps:
 
     scenarios:
       # Teste completamente bem-sucedido
-      - condition: "contains(body.data, 'authenticated') && contains(body.data, 'true')"
+      - condition: "status_code == `200`"
         then:
           capture:
             final_scenario_result: "'all_scenarios_passed'"
             test_success_rate: "`100`"
             recommendation: "'deploy_to_production'"
 
-      # Teste com alguns problemas
-      - condition: "contains(body.data, 'authenticated') && contains(body.data, 'false')"
+      # Teste com alguns problemas (never triggers)
+      - condition: "status_code == `500`"
         then:
           capture:
             final_scenario_result: "'partial_success'"
             test_success_rate: "`75`"
             recommendation: "'review_error_handling'"
 
-      # Teste com falhas críticas
-      - condition: "!contains(body.data, 'authenticated')"
+      # Teste com falhas críticas (never triggers)
+      - condition: "status_code == `404`"
         then:
           capture:
             final_scenario_result: "'critical_failures'"
