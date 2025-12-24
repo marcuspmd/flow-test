@@ -295,7 +295,6 @@ steps:
         max: 250
     capture:
       chain_step_3_time: "response_time_ms"
-      total_chain_time: "{{chain_step_1_time + chain_step_2_time + response_time_ms}}"
 
   # 9. Performance Under Error Conditions
   - name: "Performance during error handling"
@@ -369,7 +368,6 @@ steps:
         warning_threshold: 400
     capture:
       processing_time: "response_time_ms"
-      time_difference: "{{response_time_ms - baseline_time}}"
 
   # 12. Performance Summary and Analysis
   - name: "Collect performance test results"

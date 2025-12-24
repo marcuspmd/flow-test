@@ -34,7 +34,6 @@ steps:
         max: 2000
     capture:
       seq_request_1_time: "response_time_ms"
-      seq_request_1_start: "#faker.date.recent"
 
   - name: "Sequential request 2"
     request:
