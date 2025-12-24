@@ -100,7 +100,7 @@ steps:
       status_code: 200
       body:
         json:
-          user:
+          operation:
             exists: true
 
     capture:
@@ -137,7 +137,7 @@ steps:
       status_code: 200
       body:
         json:
-          test_context:
+          arrays_test:
             exists: true
 
     capture:

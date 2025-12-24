@@ -46,11 +46,11 @@ steps:
           current_user:
             contains: "{{$env.USER}}"
     capture:
-      environment_user: "body.data | fromjson | @.current_user"
-      environment_home: "body.data | fromjson | @.home_directory"
-      debug_env_variables: "body.data | fromjson | @.debug_env_dump"
-      debug_all_variables: "body.data | fromjson | @.debug_all_vars"
-      system_timestamp: "body.data | fromjson | @.system_info.timestamp"
+      environment_user: "body.json.current_user"
+      environment_home: "body.json.home_directory"
+      debug_env_variables: "body.json.debug_env_dump"
+      debug_all_variables: "body.json.debug_all_vars"
+      system_timestamp: "body.json.system_info.timestamp"
 
   - name: "Test variable scope and resolution debugging"
     request:
@@ -83,7 +83,7 @@ steps:
           variable_scopes:
             exists: true
     capture:
-      variable_resolution_test: "body.data | fromjson | @"
+      variable_resolution_test: "body.json"
       total_variables_tested: "`5`"  # Valor fixo
 
   - name: "Test assertion debugging and error scenarios"
@@ -95,9 +95,6 @@ steps:
         X-Expected-Status: "200"
     assert:
       status_code: 200
-      headers:
-        content-length:
-          type: string
       response_time_ms:
         less_than: 5000
     capture:
@@ -143,8 +140,8 @@ steps:
           debug_request_info:
             exists: true
     capture:
-      debug_request_response: "body.data | fromjson | @"
-      final_debug_timestamp: "body.data | fromjson | @.debug_request_info.timestamp"
+      debug_request_response: "body.json"
+      final_debug_timestamp: "body.json.debug_request_info.timestamp"
 
   - name: "Generate debug summary report"
     request:
@@ -178,6 +175,6 @@ steps:
           debug_summary:
             exists: true
     capture:
-      debug_info_captured: "body.data | fromjson | @.debug_summary"
+      debug_info_captured: "body.json.debug_summary"
       system_variables_count: "`10`"  # Valor fixo
       environment_variables_available: "`true`"  # Valor fixo

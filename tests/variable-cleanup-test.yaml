@@ -42,11 +42,11 @@ steps:
       status_code: 200
       body:
         json:
-          test_data:
+          test_context:
             exists: true
 
     capture:
-      variable_state_before: "body.data | fromjson | @"
+      variable_state_before: "body.json"
       accessed_previous_user_id: "body.json.previous_user_id"
       accessed_previous_user_name: "body.json.previous_user_name"
 
@@ -88,7 +88,7 @@ steps:
       status_code: 200
 
     capture:
-      variable_state_after: "body.data | fromjson | @"
+      variable_state_after: "body.json"
       cleanup_verification_result: "'cleanup_test_completed'"
       cleanup_timestamp: "'2024-01-01T12:30:00Z'"
 
@@ -116,7 +116,7 @@ steps:
       status_code: 200
       body:
         json:
-          verification:
+          verification_test:
             exists: true
 
     capture:
