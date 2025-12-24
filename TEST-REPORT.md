@@ -1,23 +1,23 @@
 # Comprehensive YAML Test Report
-**Generated:** 2025-12-24 (Final Update)  
+**Generated:** 2025-12-24 (Latest Update)  
 **Test Server:** http://localhost:8080 (Running)
 
 ## Executive Summary
 
 Executed comprehensive tests on **78 YAML files** (64 in tests/, 14 in examples/)
 
-**Final Status:**
-- ✅ **Passing:** 63 files (80.8%)
-- ❌ **With Errors:** 15 files (19.2%)
+**Current Status:**
+- ✅ **Passing:** 66 files (84.6%)
+- ❌ **With Errors:** 12 files (15.4%)
 
 ## Final Progress
 
 **Initial Status:** 42 files passing (53.8%)  
-**Final Status:** 63 files passing (80.8%)  
-**Improvement:** +21 files fixed (+50.0% improvement)  
-**Commits:** 17 commits with systematic fixes
+**Current Status:** 66 files passing (84.6%)  
+**Improvement:** +24 files fixed (+57.1% improvement)  
+**Commits:** 19 commits with systematic fixes
 
-## All Fixed Files (16 total)
+## All Fixed Files (19 total)
 
 ### ✅ Files Fixed in This PR:
 1. **tests/array-filtering-examples.yaml** (Commit 09cfd21) - Removed `group_by()`
@@ -36,31 +36,32 @@ Executed comprehensive tests on **78 YAML files** (64 in tests/, 14 in examples/
 14. **tests/demo-timing-waterfall.yaml** (Commit cf844f3) - Fixed URL assertions
 15. **tests/environment-variables-test.yaml** (Commit 83694c5) - Fixed body.data → body.json
 16. **tests/scenario-test.yaml** (Commit 83694c5) - Fixed body.data → body.json
+17. **tests/dynamic-test-generation.yaml** (Commit 9871403) - Fixed json.contains assertions
+18. **tests/integration-full-test.yaml** (Commit 9871403) - Fixed json.contains assertions
+19. **tests/logging-system-test.yaml** (Commit 9871403) - Fixed json.contains assertions
 
-## Remaining Files With Errors (15 files - 19.2%)
+## Remaining Files With Errors (12 files - 15.4%)
 
 **Files still needing fixes:**
 1. advanced-scenarios-test.yaml - Scenario evaluation errors
 2. cli-comprehensive-test.yaml - Capture and status code errors
 3. debug-introspection-test.yaml - Complex assertion failures
-4. dynamic-test-generation.yaml - Assertion failures
-5. edge-cases-test.yaml - JavaScript execution errors
-6. faker-advanced-integration-test.yaml - Assertion failures
-7. faker-comprehensive-test.yaml - Assertion failures
-8. http-methods-complete-test.yaml - Status code and header errors
-9. integration-full-test.yaml - Scenario assertion failures
-10. logging-system-test.yaml - Assertion failures
-11. meu-primeiro-test.yaml - Custom assertion failures
-12. tag-filtering-test.yaml - Status code mismatches
-13. test-alias-debug.yaml - Header capture errors
-14. variable-cleanup-test.yaml - Assertion failures
-15. variable-interpolation-test.yaml - Assertion failures
+4. edge-cases-test.yaml - JavaScript execution errors
+5. faker-advanced-integration-test.yaml - Assertion failures
+6. faker-comprehensive-test.yaml - Assertion failures
+7. http-methods-complete-test.yaml - Status code and header errors
+8. meu-primeiro-test.yaml - Custom JWT assertion failures
+9. tag-filtering-test.yaml - Status code mismatches
+10. test-alias-debug.yaml - Header capture errors
+11. variable-cleanup-test.yaml - Assertion failures
+12. variable-interpolation-test.yaml - Assertion failures
 
 **Most common remaining issues:**
-- Scenario evaluation errors (3 files)
-- Complex assertion mismatches requiring specific investigation
-- Custom JavaScript assertions failing
-- Status code mismatches
+- Scenario evaluation errors (1 file)
+- JavaScript execution errors (2 files)
+- Complex assertion mismatches (5 files)
+- Status code mismatches (2 files)
+- Header/capture errors (2 files)
 
 These require individual investigation and specific fixes per file.
 
