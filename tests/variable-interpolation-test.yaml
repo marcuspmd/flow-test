@@ -53,7 +53,8 @@ steps:
       status_code: 200
       body:
         json:
-          contains: "user"
+          user:
+            exists: true
 
     capture:
       # Capture simples
@@ -99,7 +100,8 @@ steps:
       status_code: 200
       body:
         json:
-          contains: "user_id"
+          user_id:
+            exists: true
 
     capture:
       # Capture de valores computados
@@ -135,7 +137,8 @@ steps:
       status_code: 200
       body:
         json:
-          contains: "simple_array"
+          simple_array:
+            exists: true
 
     capture:
       # Capture de elementos específicos de arrays
@@ -193,7 +196,8 @@ steps:
       status_code: 200
       body:
         json:
-          contains: "deep_structure"
+          deep_structure:
+            exists: true
 
     capture:
       # Deep nested capture
@@ -229,7 +233,8 @@ steps:
       status_code: 200
       body:
         json:
-          contains: "conditional_data"
+          conditional_data:
+            exists: true
 
     capture:
       # Conditional captures - Corrigidas para JMESPath válido
@@ -280,7 +285,8 @@ steps:
       status_code: 200
       body:
         json:
-          contains: "aggregation_summary"
+          aggregation_summary:
+            exists: true
 
     capture:
       captured_user_data: "body.data | fromjson | @.aggregation_summary.user_info"

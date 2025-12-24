@@ -42,7 +42,8 @@ steps:
       status_code: 200
       body:
         json:
-          contains: "before_cleanup"
+          before_cleanup:
+            exists: true
 
     capture:
       variable_state_before: "body.data | fromjson | @"
@@ -115,7 +116,8 @@ steps:
       status_code: 200
       body:
         json:
-          contains: "httpbin_url"
+          httpbin_url:
+            exists: true
 
     capture:
       final_verification: "body.data | fromjson | @.verification_test"

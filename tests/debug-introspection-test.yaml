@@ -80,7 +80,8 @@ steps:
       status_code: 200
       body:
         json:
-          contains: "variable_scopes"
+          variable_scopes:
+            exists: true
     capture:
       variable_resolution_test: "body.data | fromjson | @"
       total_variables_tested: "`5`"  # Valor fixo
@@ -139,7 +140,8 @@ steps:
       status_code: 200
       body:
         json:
-          contains: "debug_request_info"
+          debug_request_info:
+            exists: true
     capture:
       debug_request_response: "body.data | fromjson | @"
       final_debug_timestamp: "body.data | fromjson | @.debug_request_info.timestamp"
@@ -173,7 +175,8 @@ steps:
       status_code: 200
       body:
         json:
-          contains: "debug_summary"
+          debug_summary:
+            exists: true
     capture:
       debug_info_captured: "body.data | fromjson | @.debug_summary"
       system_variables_count: "`10`"  # Valor fixo

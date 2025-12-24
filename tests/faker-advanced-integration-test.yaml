@@ -117,7 +117,8 @@ steps:
       status_code: 200
       body:
         json:
-          contains: "tech"
+          tech:
+            exists: true
 
   - name: "Test date and time variations"
     request:
@@ -163,7 +164,8 @@ steps:
       status_code: 200
       body:
         json:
-          contains: "selections"
+          selections:
+            exists: true
 
   - name: "Test locale-specific generation"
     request:

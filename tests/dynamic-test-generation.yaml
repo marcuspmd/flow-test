@@ -82,7 +82,8 @@ steps:
       status_code: 200
       body:
         json:
-          contains: "user_id"
+          user_id:
+            exists: true
     capture:
       generated_user_data: "body.data | fromjson | @"
       post_response_time: "response_time_ms"
@@ -106,7 +107,8 @@ steps:
       status_code: 200
       body:
         json:
-          contains: "user_id"
+          user_id:
+            exists: true
     capture:
       modified_user_data: "body.data | fromjson | @"
       put_response_time: "response_time_ms"
@@ -153,7 +155,8 @@ steps:
       status_code: 200
       body:
         json:
-          contains: "test_summary"
+          test_summary:
+            exists: true
     capture:
       generated_users: "json.test_summary.generated_users_count"
       dynamic_endpoints_tested: "json.test_summary.total_endpoints_tested"

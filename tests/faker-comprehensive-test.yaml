@@ -134,7 +134,8 @@ steps:
       status_code: 200
       body:
         json:
-          contains: "financial_profile"  # Deve conter os dados financeiros
+          financial_profile:
+            exists: true
 
     capture:
       financial_data: "body.json"  # String JSON com dados financeiros
@@ -228,7 +229,8 @@ steps:
       status_code: 200
       body:
         json:
-          contains: "validation_test"  # Deve conter dados de validação
+          validation_test:
+            exists: true
 
     capture:
       validation_results: "body.json"
@@ -280,7 +282,8 @@ steps:
       status_code: 200
       body:
         json:
-          contains: "integration_data"
+          integration_data:
+            exists: true
 
     capture:
       integration_summary: "body.json"
@@ -338,7 +341,8 @@ steps:
       status_code: 200
       body:
         json:
-          contains: "complex_scenario"
+          complex_scenario:
+            exists: true
 
     capture:
       order_data: "body.json"

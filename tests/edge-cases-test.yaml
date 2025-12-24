@@ -115,7 +115,8 @@ steps:
       status_code: 200
       body:
         json:
-          contains: "special_chars"
+          special_chars:
+            exists: true
 
     capture:
       special_chars_handled: "`true`"
@@ -339,7 +340,8 @@ steps:
       status_code: 200
       body:
         json:
-          contains: "edge_cases_summary"
+          edge_cases_summary:
+            exists: true
 
     capture:
       error_handling_results: "body.data | fromjson | @.edge_cases_summary.error_handling"
