@@ -32,7 +32,7 @@ steps:
     assert:
       status_code: 200
       body:
-        data:
+        json:
           exists: true
           type: "string"  # httpbin retorna JSON como string em data
     capture:
@@ -116,7 +116,7 @@ steps:
     assert:
       status_code: 200
       body:
-        data:
+        json:
           contains: "tech"
 
   - name: "Test date and time variations"
@@ -162,7 +162,7 @@ steps:
     assert:
       status_code: 200
       body:
-        data:
+        json:
           contains: "selections"
 
   - name: "Test locale-specific generation"

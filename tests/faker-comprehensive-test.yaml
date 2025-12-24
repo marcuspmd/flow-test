@@ -74,7 +74,7 @@ steps:
     assert:
       status_code: 200
       body:
-        data:
+        json:
           exists: true
           type: "string"  # httpbin retorna string JSON
 
@@ -133,7 +133,7 @@ steps:
     assert:
       status_code: 200
       body:
-        data:
+        json:
           contains: "financial_profile"  # Deve conter os dados financeiros
 
     capture:
@@ -186,7 +186,7 @@ steps:
     assert:
       status_code: 200
       body:
-        data:
+        json:
           type: "string"  # httpbin retorna data como string JSON
 
   # Teste 4: Validação de Formato e Consistência
@@ -227,7 +227,7 @@ steps:
     assert:
       status_code: 200
       body:
-        data:
+        json:
           contains: "validation_test"  # Deve conter dados de validação
 
     capture:
@@ -279,7 +279,7 @@ steps:
     assert:
       status_code: 200
       body:
-        data:
+        json:
           contains: "integration_data"
 
     capture:
@@ -337,7 +337,7 @@ steps:
     assert:
       status_code: 200
       body:
-        data:
+        json:
           contains: "complex_scenario"
 
     capture:

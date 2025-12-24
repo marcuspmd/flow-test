@@ -114,7 +114,7 @@ steps:
     assert:
       status_code: 200
       body:
-        data:
+        json:
           contains: "special_chars"
 
     capture:
@@ -338,7 +338,7 @@ steps:
     assert:
       status_code: 200
       body:
-        data:
+        json:
           contains: "edge_cases_summary"
 
     capture:

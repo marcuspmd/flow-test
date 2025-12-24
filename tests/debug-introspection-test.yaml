@@ -42,8 +42,9 @@ steps:
     assert:
       status_code: 200
       body:
-        data:
-          contains: "current_user"
+        json:
+          current_user:
+            contains: "{{$env.USER}}"
     capture:
       environment_user: "body.data | fromjson | @.current_user"
       environment_home: "body.data | fromjson | @.home_directory"
@@ -78,7 +79,7 @@ steps:
     assert:
       status_code: 200
       body:
-        data:
+        json:
           contains: "variable_scopes"
     capture:
       variable_resolution_test: "body.data | fromjson | @"
@@ -137,7 +138,7 @@ steps:
     assert:
       status_code: 200
       body:
-        data:
+        json:
           contains: "debug_request_info"
     capture:
       debug_request_response: "body.data | fromjson | @"
@@ -171,7 +172,7 @@ steps:
     assert:
       status_code: 200
       body:
-        data:
+        json:
           contains: "debug_summary"
     capture:
       debug_info_captured: "body.data | fromjson | @.debug_summary"

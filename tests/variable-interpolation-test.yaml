@@ -52,7 +52,7 @@ steps:
     assert:
       status_code: 200
       body:
-        data:
+        json:
           contains: "user"
 
     capture:
@@ -98,7 +98,7 @@ steps:
     assert:
       status_code: 200
       body:
-        data:
+        json:
           contains: "user_id"
 
     capture:
@@ -134,7 +134,7 @@ steps:
     assert:
       status_code: 200
       body:
-        data:
+        json:
           contains: "simple_array"
 
     capture:
@@ -192,7 +192,7 @@ steps:
     assert:
       status_code: 200
       body:
-        data:
+        json:
           contains: "deep_structure"
 
     capture:
@@ -228,7 +228,7 @@ steps:
     assert:
       status_code: 200
       body:
-        data:
+        json:
           contains: "conditional_data"
 
     capture:
@@ -279,7 +279,7 @@ steps:
     assert:
       status_code: 200
       body:
-        data:
+        json:
           contains: "aggregation_summary"
 
     capture:

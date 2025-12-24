@@ -41,7 +41,7 @@ steps:
     assert:
       status_code: 200
       body:
-        data:
+        json:
           contains: "before_cleanup"
 
     capture:
@@ -114,7 +114,7 @@ steps:
     assert:
       status_code: 200
       body:
-        data:
+        json:
           contains: "httpbin_url"
 
     capture:

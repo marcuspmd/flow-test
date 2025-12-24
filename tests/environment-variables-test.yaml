@@ -50,7 +50,7 @@ steps:
     assert:
       status_code: 200
       body:
-        data:
+        json:
           contains: "local_value"
 
   - name: "Test environment variable defaults"

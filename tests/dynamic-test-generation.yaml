@@ -81,7 +81,7 @@ steps:
     assert:
       status_code: 200
       body:
-        data:
+        json:
           contains: "user_id"
     capture:
       generated_user_data: "body.data | fromjson | @"
@@ -105,7 +105,7 @@ steps:
     assert:
       status_code: 200
       body:
-        data:
+        json:
           contains: "user_id"
     capture:
       modified_user_data: "body.data | fromjson | @"
@@ -152,7 +152,7 @@ steps:
     assert:
       status_code: 200
       body:
-        data:
+        json:
           contains: "test_summary"
     capture:
       generated_users: "json.test_summary.generated_users_count"

@@ -79,7 +79,7 @@ steps:
           assert:
             status_code: 200
             body:
-              data:
+              json:
                 contains: "test_initialization"
           capture:
             init_success: "`true`"
@@ -202,7 +202,7 @@ steps:
     assert:
       status_code: 200
       body:
-        data:
+        json:
           contains: "data_processing"
 
     capture:
@@ -299,7 +299,7 @@ steps:
           assert:
             status_code: 200
             body:
-              data:
+              json:
                 contains: "final_validation"
           capture:
             final_validation_result: "'all_tests_passed'"

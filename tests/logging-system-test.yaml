@@ -192,7 +192,7 @@ steps:
     assert:
       status_code: 200
       body:
-        data:
+        json:
           contains: "verification"
     metadata:
       description: "Final step to verify all logging data is properly captured"
