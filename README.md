@@ -2,7 +2,7 @@
 
 A TypeScript-based API testing engine for writing rich, declarative flows in YAML. It supports request chaining, variable interpolation, flexible assertions, conditional scenarios, and clean reports in JSON and HTML.
 
-[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/marcuspmd/flow-test) [![Documentation](https://img.shields.io/badge/docs-GitHub%20Pages-blue.svg)](https://marcuspmd.github.io/flow-test/) [![npm version](https://img.shields.io/npm/v/flow-test-engine.svg)](https://www.npmjs.com/package/flow-test-engine) [![npm downloads](https://img.shields.io/npm/dm/flow-test-engine.svg)](https://www.npmjs.com/package/flow-test-engine) [![CI](https://github.com/marcuspmd/flow-test/workflows/API%20Tests/badge.svg)](https://github.com/marcuspmd/flow-test/actions) [![CodeQL](https://github.com/marcuspmd/flow-test/workflows/CodeQL/badge.svg)](https://github.com/marcuspmd/flow-test/actions?query=workflow%3ACodeQL) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![TypeScript](https://img.shields.io/badge/TypeScript-4.9+-blue.svg)](https://www.typescriptlang.org/) [![Node.js](https://img.shields.io/badge/Node.js-18+-green.svg)](https://nodejs.org/)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/marcuspmd/flow-test) [![Documentation](https://img.shields.io/badge/docs-GitHub%20Pages-blue.svg)](https://marcuspmd.github.io/flow-test/) [![npm version](https://img.shields.io/npm/v/flow-test-engine.svg)](https://www.npmjs.com/package/flow-test-engine) [![npm downloads](https://img.shields.io/npm/dm/flow-test-engine.svg)](https://www.npmjs.com/package/flow-test-engine) [![CI](https://github.com/marcuspmd/flow-test/workflows/API%20Tests/badge.svg)](https://github.com/marcuspmd/flow-test/actions) [![CodeQL](https://github.com/marcuspmd/flow-test/workflows/CodeQL/badge.svg)](https://github.com/marcuspmd/flow-test/actions?query=workflow%3ACodeQL) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![TypeScript](https://img.shields.io/badge/TypeScript-4.9+-blue.svg)](https://www.typescriptlang.org/) [![Node.js](https://img.shields.io/badge/Node.js-18+-green.svg)](https://nodejs.org/) [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](./CONTRIBUTING.md)
 
 
 Flow Test Engine is a language-agnostic runner for API suites written in YAML. You can bolt it onto any repository—regardless of the tech stack—to manage HTTP flows, capture variables, and publish reports.
@@ -414,6 +414,45 @@ Example CI step (GitHub Actions):
 - run: npm run --prefix report-dashboard build
 ```
 
+## 🤝 Contributing
+
+We welcome contributions! Whether it's bug reports, feature requests, or pull requests, your help makes Flow Test Engine better.
+
+**Quick links:**
+- 📖 [Contributing Guide](./CONTRIBUTING.md) — How to set up your development environment and submit PRs
+- 🗺️ [Roadmap](./docs/ROADMAP.md) — Planned features and evolution strategy
+- 🐛 [Issue Tracker](https://github.com/marcuspmd/flow-test/issues) — Report bugs or request features
+- 💬 [Discussions](https://github.com/marcuspmd/flow-test/discussions) — Ask questions and share ideas
+
+### Development Setup
+
+```bash
+git clone https://github.com/marcuspmd/flow-test.git
+cd flow-test
+npm install
+npm run build
+npm test
+```
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for detailed instructions.
+
+## 📈 Roadmap
+
+The project is actively evolving. Key focus areas:
+
+- 🔌 **VS Code Extension** — IntelliSense and validation for YAML suites
+- 🚀 **Zero-Config Deploy** — GitHub Action for automatic dashboard deployment
+- 📊 **Execution History** — Trend analysis across test runs
+- 🧪 **Integrated Mock Server** — Offline testing without Docker
+
+See the full [Roadmap](./docs/ROADMAP.md) for details and timeline.
+
 ## License
 
 MIT – see `package.json` for details.
+
+---
+
+<p align="center">
+  Made with ❤️ by <a href="https://github.com/marcuspmd">Marcus</a>
+</p>
