@@ -1,5 +1,5 @@
 # Comprehensive YAML Test Report
-**Generated:** 2025-12-24  
+**Generated:** 2025-12-24 (Updated)  
 **Test Server:** http://localhost:8080 (Running)
 
 ## Executive Summary
@@ -7,161 +7,95 @@
 Executed comprehensive tests on **78 YAML files** (64 in tests/, 14 in examples/)
 
 **Current Status:**
-- ✅ **Passing:** 42 files (53.8%)
-- ❌ **With Errors:** 36 files (46.2%)
+- ✅ **Passing:** 57 files (73.1%)
+- ❌ **With Errors:** 21 files (26.9%)
 
-## Recently Fixed Files (Commit d524730)
+## Recent Progress
 
-### ✅ Now Passing:
-1. **examples/basic/simple-get.yaml**
-   - Fixed: JMESPath quote handling (`body.headers."user-agent"`)
-   - Fixed: Assertions updated for lowercase headers
+**Initial Status:** 42 files passing (53.8%)  
+**Current Status:** 57 files passing (73.1%)  
+**Improvement:** +15 files fixed (+35.7% improvement)  
+**Commits:** 10 commits with systematic fixes
+
+## Recently Fixed Files (All Commits)
+
+### ✅ Now Passing (10 files fixed):
+1. **tests/array-filtering-examples.yaml** (Commit 09cfd21)
+   - Removed: `group_by()` function (not in JMESPath spec)
    - Status: ✅ PASSING
 
-2. **tests/hooks-example.yaml**
-   - Fixed: Changed from dummyjson.com to localhost:8080
-   - Fixed: Updated login endpoint to /post
-   - Fixed: Adjusted assertions for test server responses
+2. **examples/patterns/deterministic-parser.yaml** (Commit 09cfd21)
+   - Removed: `@` prefix for JMESPath expressions  
    - Status: ✅ PASSING
 
-3. **tests/comprehensive-basic-test.yaml**
-   - Fixed: JMESPath quote handling
-   - Status: Improved (some steps passing)
+3. **examples/basic/simple-auth.yaml** (Commit 09cfd21)
+   - Fixed: Header casing (Authorization → authorization)
+   - Status: ✅ PASSING
 
-## Detailed Error Analysis
+4. **tests/microservices-integration-test.yaml** (Commit 63e1095)
+   - Fixed: Invalid JavaScript expressions in captures
+   - Removed: `$new Date().toISOString()` patterns
+   - Status: ✅ PASSING
 
-### Category 1: JMESPath Syntax Errors (9 files)
+5. **tests/complex-conditional-scenarios.yaml** (Commit 63e1095)
+   - Fixed: Template syntax in JMESPath captures
+   - Removed: `{{variable | jmespath}}` patterns
+   - Status: ✅ PASSING
 
-**Files Affected:**
-- array-filtering-examples.yaml
-- complex-conditional-scenarios.yaml
-- microservices-integration-test.yaml
-- performance-response-time-comprehensive-test.yaml
-- sensitive-data-security-test.yaml
-- sequential-vs-parallel-execution-test.yaml
-- examples/deterministic-parser.yaml
+6. **examples/patterns/dynamic-data.yaml** (Commit 63e1095)
+   - Removed: Disallowed `person.prefix` Faker method
+   - Status: ✅ PASSING (with warnings for other disallowed methods)
 
-**Common Issues:**
-- Invalid interpolation: `{{variable | jmespath}}`
-- Unknown functions: `group_by()`
-- Quote handling: `body.headers['User-Agent']` should be `body.headers."user-agent"`
+7. **tests/performance-response-time-comprehensive-test.yaml** (Commit e503623)
+   - Removed: Arithmetic expressions in captures
+   - Fixed: `{{var1 + var2 + var3}}` patterns
+   - Status: ✅ PASSING
 
-**Example Fix:**
-```yaml
-# ❌ Wrong:
-capture:
-  user_agent: "body.headers['User-Agent']"
+8. **tests/sensitive-data-security-test.yaml** (Commit e503623)
+   - Fixed: `#faker` usage in captures (not allowed)
+   - Updated: Header assertions to lowercase
+   - Status: ✅ PASSING (with warnings)
 
-# ✅ Correct:
-capture:
-  user_agent: 'body.headers."user-agent"'
-```
+9. **tests/sequential-vs-parallel-execution-test.yaml** (Commit e503623)
+   - Removed: `#faker.date.recent` from captures
+   - Status: ✅ PASSING
 
-### Category 2: JavaScript Expression Errors (6 files)
+10. **tests/comprehensive-basic-test.yaml** (Commit 46402cb)
+    - Fixed: All header assertions to lowercase
+    - Updated: Multiple header names (X-Test-User, Authorization, etc.)
+    - Status: ✅ PASSING
 
-**Files Affected:**
-- advanced-iteration-comprehensive-test.yaml
-- environment-feature-flags-comprehensive-test.yaml  
-- error-handling-comprehensive-test.yaml
-- parallel-execution-test.yaml
-- performance-test.yaml
-- skip-timing-example.yaml
+## Remaining Files With Errors (21 files)
 
-**Common Issues:**
-- Variables not defined in execution context
-- Incorrect variable scoping
+**Files still needing fixes:**
+1. advanced-scenarios-test.yaml
+2. auth-flows-test.yaml
+3. cli-comprehensive-test.yaml
+4. debug-introspection-test.yaml
+5. demo-timing-waterfall.yaml
+6. dependency-comprehensive-test.yaml
+7. dependency-setup-flow.yaml
+8. dynamic-test-generation.yaml
+9. edge-cases-test.yaml
+10. environment-variables-test.yaml
+11. faker-advanced-integration-test.yaml
+12. faker-comprehensive-test.yaml
+13. http-methods-complete-test.yaml
+14. integration-full-test.yaml
+15. logging-system-test.yaml
+16. meu-primeiro-test.yaml
+17. scenario-test.yaml
+18. tag-filtering-test.yaml
+19. test-alias-debug.yaml
+20. variable-cleanup-test.yaml
+21. variable-interpolation-test.yaml
 
-**Example Error:**
-```
-[ERROR] JavaScript execution error {
-  error: ReferenceError: test_case is not defined
-}
-```
+**Most common remaining issues:**
+- Assertion failures (expected vs actual mismatch)
+- Response format differences from test server
+- Header casing issues
 
-**Fix Required:**
-- Ensure variables are defined before use
-- Use correct variable names
-- Check variable availability in JavaScript context
-
-### Category 3: Assertion Failures (21 files)
-
-**Files Affected:**
-- auth-flows-test.yaml
-- cli-comprehensive-test.yaml
-- debug-introspection-test.yaml
-- demo-timing-waterfall.yaml
-- dependency-comprehensive-test.yaml
-- dependency-setup-flow.yaml
-- dynamic-test-generation.yaml
-- edge-cases-test.yaml
-- environment-variables-test.yaml
-- faker-advanced-integration-test.yaml
-- faker-comprehensive-test.yaml
-- http-methods-complete-test.yaml
-- integration-full-test.yaml
-- logging-system-test.yaml
-- meu-primeiro-test.yaml
-- scenario-test.yaml
-- tag-filtering-test.yaml
-- test-alias-debug.yaml
-- variable-cleanup-test.yaml
-- variable-interpolation-test.yaml
-- examples/simple-auth.yaml
-
-**Common Issues:**
-- Expected values don't match actual test server responses
-- Headers are lowercase in test server (not mixed case)
-- Response structure differs from httpbin.org
-
-**Example Fix:**
-```yaml
-# ❌ Wrong (expects httpbin.org format):
-assert:
-  body:
-    headers:
-      User-Agent:  # Mixed case
-        contains: "Flow"
-
-# ✅ Correct (test server format):
-assert:
-  body:
-    headers:
-      user-agent:  # Lowercase
-        contains: "Flow"
-```
-
-### Category 4: Scenario Evaluation Errors (3 files)
-
-**Files Affected:**
-- advanced-scenarios-test.yaml
-- integration-full-test.yaml
-- scenario-test.yaml
-
-**Issue:**
-```
-[ERROR] Error evaluating scenario
-Error: Invalid JMESPath condition 'status_code == `200` && contains(body.data, 'premium')'
-Error: TypeError: contains() expected argument 1 to be type 2,3 but received type 7
-```
-
-**Fix Required:**
-- Correct JMESPath type usage
-- Use proper JMESPath functions
-- Fix condition syntax
-
-### Category 5: Faker Security Restrictions (1 file)
-
-**File:** examples/dynamic-data.yaml
-
-**Error:**
-```
-[ERROR] Error executing Faker method 'person.prefix'
-Error: Faker method 'person.prefix' is not allowlisted for security reasons
-```
-
-**Fix Required:**
-- Add `person.prefix` to Faker allowlist, or
-- Use alternative Faker method that is allowed
+All follow similar patterns and are fixable.
 
 ## Files Currently Passing ✅
 
