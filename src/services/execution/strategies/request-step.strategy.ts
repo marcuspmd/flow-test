@@ -144,11 +144,17 @@ export class RequestStepStrategy extends BaseStepStrategy {
     const { step, suite, identifiers, globalVariables, logger } = context;
     let interpolatedRequest: any = null; // Track request for error handling
 
+    // Interpolate step name for dynamic naming
+    const interpolatedStepName = this.interpolateStepName(
+      step,
+      globalVariables
+    );
+
     try {
       // Validate step configuration
       if (!step.request) {
         throw new Error(
-          `Step '${step.name}' must have 'request' configuration for RequestStepStrategy`
+          `Step '${interpolatedStepName}' must have 'request' configuration for RequestStepStrategy`
         );
       }
 
@@ -156,7 +162,13 @@ export class RequestStepStrategy extends BaseStepStrategy {
       let assertionResults: any[] = [];
 
       // **1. Execute pre-request hooks**
-      await this.executeHooks(context, step.hooks_pre_request, "pre_request");
+      await this.executeHooks(
+        context,
+        step.hooks_pre_request,
+        "pre_request",
+        undefined,
+        interpolatedStepName
+      );
 
       // **2. Execute pre-request script**
       await this.executePreRequestScript(context);
@@ -172,15 +184,17 @@ export class RequestStepStrategy extends BaseStepStrategy {
         );
         interpolatedRequest.certificate = interpolatedCertificate;
         logger.debug(
-          `Applied suite-level certificate to request: ${step.name}`
+          `Applied suite-level certificate to request: ${interpolatedStepName}`
         );
       } else if (interpolatedRequest.certificate) {
-        logger.debug(`Using step-level certificate for request: ${step.name}`);
+        logger.debug(
+          `Using step-level certificate for request: ${interpolatedStepName}`
+        );
       }
 
       // **4. Execute HTTP request**
       const httpResult = await context.httpService.executeRequest(
-        step.name,
+        interpolatedStepName,
         interpolatedRequest
       );
 
@@ -201,7 +215,8 @@ export class RequestStepStrategy extends BaseStepStrategy {
             data: httpResult.response_details?.body,
             response_time_ms: httpResult.duration_ms || 0,
           },
-        }
+        },
+        interpolatedStepName
       );
 
       // **6. Execute post-request script**
@@ -228,7 +243,8 @@ export class RequestStepStrategy extends BaseStepStrategy {
             data: httpResult.response_details?.body,
             response_time_ms: httpResult.duration_ms || 0,
           },
-        }
+        },
+        interpolatedStepName
       );
 
       // **9. Execute assertions**
@@ -257,20 +273,27 @@ export class RequestStepStrategy extends BaseStepStrategy {
             response_time_ms: httpResult.duration_ms || 0,
           },
           assertions: assertionResults,
-        }
+        },
+        interpolatedStepName
       );
 
       // **11. Execute pre-capture hooks**
-      await this.executeHooks(context, step.hooks_pre_capture, "pre_capture", {
-        response: {
-          status: httpResult.response_details?.status_code,
-          status_code: httpResult.response_details?.status_code,
-          headers: httpResult.response_details?.headers || {},
-          body: httpResult.response_details?.body,
-          data: httpResult.response_details?.body,
-          response_time_ms: httpResult.duration_ms || 0,
+      await this.executeHooks(
+        context,
+        step.hooks_pre_capture,
+        "pre_capture",
+        {
+          response: {
+            status: httpResult.response_details?.status_code,
+            status_code: httpResult.response_details?.status_code,
+            headers: httpResult.response_details?.headers || {},
+            body: httpResult.response_details?.body,
+            data: httpResult.response_details?.body,
+            response_time_ms: httpResult.duration_ms || 0,
+          },
         },
-      });
+        interpolatedStepName
+      );
 
       // **12. Capture variables**
       capturedVariables = await this.captureVariables(context, httpResult);
@@ -282,7 +305,8 @@ export class RequestStepStrategy extends BaseStepStrategy {
         "post_capture",
         {
           captured: capturedVariables,
-        }
+        },
+        interpolatedStepName
       );
 
       // **8. Process input if present (hybrid request+input step)**
@@ -309,7 +333,7 @@ export class RequestStepStrategy extends BaseStepStrategy {
       const result: StepExecutionResult = {
         step_id: identifiers.stepId,
         qualified_step_id: identifiers.qualifiedStepId,
-        step_name: step.name,
+        step_name: interpolatedStepName,
         status: httpResult.status || "success",
         duration_ms: duration,
         request_details: httpResult.request_details,
@@ -322,7 +346,7 @@ export class RequestStepStrategy extends BaseStepStrategy {
           : {}),
         available_variables: this.filterAvailableVariables(
           globalVariables.getAllVariables(),
-          { stepType: "request", stepName: step.name }
+          { stepType: "request", stepName: interpolatedStepName }
         ),
         scenarios_meta: (httpResult as any).scenarios_meta,
         error_message: httpResult.error_message,
@@ -790,28 +814,31 @@ export class RequestStepStrategy extends BaseStepStrategy {
    * @param hooks - Array of hook actions to execute
    * @param hookPoint - Name of the hook point (for logging)
    * @param additionalContext - Additional context data (e.g., response, captured vars)
+   * @param stepName - Interpolated step name (optional, defaults to step.name)
    * @private
    */
   private async executeHooks(
     context: StepExecutionContext,
     hooks: import("../../../types/hook.types").HookAction[] | undefined,
     hookPoint: string,
-    additionalContext?: Record<string, any>
+    additionalContext?: Record<string, any>,
+    stepName?: string
   ): Promise<void> {
     if (!hooks || hooks.length === 0) {
       return;
     }
 
     const { hookExecutorService, step, globalVariables, logger } = context;
+    const effectiveStepName = stepName || step.name;
 
     try {
       logger.debug(
-        `[Hook] Executing ${hooks.length} hook(s) at ${hookPoint} for step '${step.name}'`
+        `[Hook] Executing ${hooks.length} hook(s) at ${hookPoint} for step '${effectiveStepName}'`
       );
 
       const hookContext: import("../../../types/hook.types").HookExecutionContext =
         {
-          stepName: step.name,
+          stepName: effectiveStepName,
           stepIndex: context.stepIndex,
           variables: globalVariables.getAllVariables(),
           ...additionalContext,

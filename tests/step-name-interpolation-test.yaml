@@ -1,0 +1,85 @@
+suite_name: "Step Name Interpolation Test"
+node_id: "step-name-interpolation"
+description: "Test suite to verify that step names can be interpolated with variables"
+base_url: "http://localhost:8080"
+
+metadata:
+  priority: "medium"
+  tags: ["interpolation", "step-names", "variables"]
+  estimated_duration_ms: 500
+
+variables:
+  user_id: 12345
+  user_name: "John Doe"
+  test_index: 1
+  product_code: "ABC"
+
+steps:
+  # Test 1: Simple variable interpolation
+  - name: "Testing user {{user_name}}"
+    request:
+      method: "GET"
+      url: "/get"
+      params:
+        user_id: "{{user_id}}"
+    assert:
+      status_code: 200
+    capture:
+      step_1_result: "body.args.user_id"
+
+  # Test 2: Multiple variables
+  - name: "User {{user_id}} - {{user_name}}"
+    request:
+      method: "POST"
+      url: "/post"
+      body:
+        user_id: "{{user_id}}"
+        name: "{{user_name}}"
+    assert:
+      status_code: 200
+
+  # Test 3: JMESPath-like access
+  - name: "Process item {{test_index}} for product {{product_code}}"
+    request:
+      method: "GET"
+      url: "/get"
+      params:
+        index: "{{test_index}}"
+        product: "{{product_code}}"
+    assert:
+      status_code: 200
+
+  # Test 4: Faker interpolation in name
+  - name: "Random test with {{$faker.person.firstName}}"
+    request:
+      method: "GET"
+      url: "/get"
+    assert:
+      status_code: 200
+
+  # Test 5: JavaScript expression in name
+  - name: "Test number {{$js:test_index + 1}}"
+    request:
+      method: "GET"
+      url: "/get"
+    assert:
+      status_code: 200
+    capture:
+      final_test_index: "{{$js:test_index + 1}}"
+
+  # Test 6: Iteration with interpolated name
+  - name: "Iteration test {{item.id}} - {{item.name}}"
+    iterate:
+      over:
+        - { id: "A", name: "Item A" }
+        - { id: "B", name: "Item B" }
+        - { id: "C", name: "Item C" }
+      as: "item"
+    request:
+      method: "GET"
+      url: "/get"
+      params:
+        item_id: "{{item.id}}"
+        item_name: "{{item.name}}"
+    assert:
+      status_code: 200

@@ -88,6 +88,38 @@ export abstract class BaseStepStrategy implements StepExecutionStrategy {
   abstract execute(context: StepExecutionContext): Promise<StepExecutionResult>;
 
   /**
+   * Interpolates the step name with variables and returns the resolved name.
+   *
+   * @param step - The test step
+   * @param globalVariables - Global variables service for interpolation
+   * @returns Interpolated step name
+   *
+   * @remarks
+   * Supports:
+   * - Variable interpolation: `"Process user {{user.name}}"`
+   * - JMESPath expressions: `"Item {{items[0].id}}"`
+   * - Faker expressions: `"Test {{$faker.person.firstName}}"`
+   * - JavaScript expressions: `"Step {{$js:index + 1}}"`
+   *
+   * Falls back to original name if interpolation fails.
+   *
+   * @protected
+   */
+  protected interpolateStepName(step: TestStep, globalVariables: any): string {
+    try {
+      // If name contains {{ }}, attempt interpolation
+      if (step.name.includes("{{")) {
+        const interpolated = globalVariables.interpolateString(step.name);
+        return String(interpolated);
+      }
+      return step.name;
+    } catch (error) {
+      // Fallback to original name if interpolation fails
+      return step.name;
+    }
+  }
+
+  /**
    * Intelligently filters and masks available variables for step context.
    *
    * @param variables - All variables to filter
@@ -233,17 +265,16 @@ export abstract class BaseStepStrategy implements StepExecutionStrategy {
    *
    * @protected
    */
-  protected validateStepConfig(
-    step: TestStep,
-    requiredFields: string[]
-  ): void {
+  protected validateStepConfig(step: TestStep, requiredFields: string[]): void {
     const missingFields = requiredFields.filter(
       (field) => !(field in step) || (step as any)[field] === undefined
     );
 
     if (missingFields.length > 0) {
       throw new Error(
-        `Step '${step.name}' is missing required fields: ${missingFields.join(", ")}`
+        `Step '${step.name}' is missing required fields: ${missingFields.join(
+          ", "
+        )}`
       );
     }
   }
@@ -273,9 +304,10 @@ export abstract class BaseStepStrategy implements StepExecutionStrategy {
 
     if (presentFields.length > 1) {
       throw new Error(
-        `Step '${step.name}' has conflicting fields: ${presentFields.join(", ")}. Only one is allowed.`
+        `Step '${step.name}' has conflicting fields: ${presentFields.join(
+          ", "
+        )}. Only one is allowed.`
       );
     }
   }
-
 }

@@ -9,9 +9,9 @@ metadata:
   estimated_duration_ms: 2000
 
 variables:
-  workflow_test_id: "workflow-"#faker.string.uuid"
+  workflow_test_id: "{{$js:'workflow-' + faker.string.uuid()}}"
   customer_id: "#faker.number.int({min: 1000, max: 9999})"
-  session_id: "session-"#faker.string.uuid"
+  session_id: "{{$js:'session-' + faker.string.uuid()}}"
 
   # E-commerce test data
   customer_data:

@@ -60,7 +60,11 @@ export class FakerStrategy implements InterpolationStrategy {
   constructor(private logger: ILogger = noopLogger) {}
 
   canHandle(expression: string): boolean {
-    return expression.startsWith("$faker.") || expression.startsWith("faker.");
+    return (
+      expression.startsWith("$faker.") ||
+      expression.startsWith("faker.") ||
+      expression.startsWith("#faker.")
+    );
   }
 
   resolve(
@@ -72,10 +76,14 @@ export class FakerStrategy implements InterpolationStrategy {
     }
 
     try {
-      // Normalize: remove "$" prefix if present
-      const fakerExpr = expression.startsWith("$faker.")
-        ? expression.substring(1)
-        : expression;
+      // Normalize: remove "$" or "#" prefix if present
+      let fakerExpr = expression;
+      if (fakerExpr.startsWith("$faker.")) {
+        fakerExpr = fakerExpr.substring(1);
+      } else if (fakerExpr.startsWith("#faker.")) {
+        fakerExpr = fakerExpr.substring(1);
+      }
+      // Otherwise, it's already "faker."
 
       const value = fakerService.parseFakerExpression(fakerExpr);
 

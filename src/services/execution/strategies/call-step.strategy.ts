@@ -72,11 +72,17 @@ export class CallStepStrategy extends BaseStepStrategy {
       callService,
     } = context;
 
+    // Interpolate step name for dynamic naming
+    const interpolatedStepName = this.interpolateStepName(
+      step,
+      globalVariables
+    );
+
     try {
       // **1. Validate step configuration**
       if (!step.call) {
         throw new Error(
-          `Step '${step.name}' must have 'call' configuration for CallStepStrategy`
+          `Step '${interpolatedStepName}' must have 'call' configuration for CallStepStrategy`
         );
       }
 
@@ -94,7 +100,7 @@ export class CallStepStrategy extends BaseStepStrategy {
       const callConfig = step.call;
 
       // **4. Validate call configuration**
-      this.validateCallConfig(callConfig, step.name);
+      this.validateCallConfig(callConfig, interpolatedStepName);
 
       // **5. Interpolate call parameters**
       const resolvedTestPath = globalVariables
@@ -106,7 +112,7 @@ export class CallStepStrategy extends BaseStepStrategy {
 
       if (!resolvedTestPath || !resolvedStepKey) {
         throw new Error(
-          `Invalid call configuration for step '${step.name}': both 'test' and 'step' are required`
+          `Invalid call configuration for step '${interpolatedStepName}': both 'test' and 'step' are required`
         );
       }
 
@@ -155,7 +161,7 @@ export class CallStepStrategy extends BaseStepStrategy {
       logger.info(
         `📞 Calling step '${callLabel}'${aliasLabel} (isolate=${isolateContext})`,
         {
-          stepName: step.name,
+          stepName: interpolatedStepName,
           metadata: {
             type: "step_call",
             internal: true,
@@ -166,7 +172,13 @@ export class CallStepStrategy extends BaseStepStrategy {
       );
 
       // **6.8. Execute pre-call hooks**
-      await this.executeHooks(context, step.hooks_pre_call, "pre_call");
+      await this.executeHooks(
+        context,
+        step.hooks_pre_call,
+        "pre_call",
+        undefined,
+        interpolatedStepName
+      );
 
       // **7. Execute the call**
       const callResult = await callService.executeStepCall(
@@ -251,12 +263,18 @@ export class CallStepStrategy extends BaseStepStrategy {
       }
 
       // **7.6. Execute post-call hooks with call result context**
-      await this.executeHooks(context, step.hooks_post_call, "post_call", {
-        call_result: callResult,
-        propagated_variables: propagatedVariables,
-        success: callResult.success,
-        status: this.determineStatus(callResult),
-      });
+      await this.executeHooks(
+        context,
+        step.hooks_post_call,
+        "post_call",
+        {
+          call_result: callResult,
+          propagated_variables: propagatedVariables,
+          success: callResult.success,
+          status: this.determineStatus(callResult),
+        },
+        interpolatedStepName
+      );
 
       const duration = Date.now() - startTime;
       const status = this.determineStatus(callResult);
@@ -264,7 +282,7 @@ export class CallStepStrategy extends BaseStepStrategy {
       // **8. Log result**
       if (callResult.success) {
         logger.info(`✅ Step call '${callLabel}' completed in ${duration}ms`, {
-          stepName: step.name,
+          stepName: interpolatedStepName,
           metadata: {
             type: "step_call",
             internal: true,
@@ -275,7 +293,7 @@ export class CallStepStrategy extends BaseStepStrategy {
         logger.warn(
           `⚠️ Step call '${callLabel}' finished with status '${status}'`,
           {
-            stepName: step.name,
+            stepName: interpolatedStepName,
             metadata: {
               type: "step_call",
               internal: true,
@@ -300,7 +318,7 @@ export class CallStepStrategy extends BaseStepStrategy {
           : {}),
         available_variables: this.filterAvailableVariables(
           globalVariables.getAllVariables(),
-          { stepType: "call", stepName: step.name }
+          { stepType: "call", stepName: interpolatedStepName }
         ),
         error_message: callResult.error,
         // Include request/response details from nested call execution
@@ -431,22 +449,24 @@ export class CallStepStrategy extends BaseStepStrategy {
     context: StepExecutionContext,
     hooks: import("../../../types/hook.types").HookAction[] | undefined,
     hookPoint: string,
-    additionalContext?: Record<string, any>
+    additionalContext?: Record<string, any>,
+    stepName?: string
   ): Promise<void> {
     if (!hooks || hooks.length === 0) {
       return;
     }
 
     const { hookExecutorService, step, globalVariables, logger } = context;
+    const effectiveStepName = stepName || step.name;
 
     try {
       logger.debug(
-        `[Hook] Executing ${hooks.length} hook(s) at ${hookPoint} for step '${step.name}'`
+        `[Hook] Executing ${hooks.length} hook(s) at ${hookPoint} for step '${effectiveStepName}'`
       );
 
       const hookContext: import("../../../types/hook.types").HookExecutionContext =
         {
-          stepName: step.name,
+          stepName: effectiveStepName,
           stepIndex: context.stepIndex,
           variables: globalVariables.getAllVariables(),
           ...additionalContext,

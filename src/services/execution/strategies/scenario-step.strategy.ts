@@ -137,19 +137,27 @@ export class ScenarioStepStrategy extends BaseStepStrategy {
       scenarioService,
     } = context;
 
+    // Interpolate step name for dynamic naming
+    const interpolatedStepName = this.interpolateStepName(
+      step,
+      globalVariables
+    );
+
     try {
       // Validate step has scenarios
       if (!step.scenarios || !Array.isArray(step.scenarios)) {
         throw new Error(
-          `Step '${step.name}' (${identifiers.stepId}) must have 'scenarios' array`
+          `Step '${interpolatedStepName}' (${identifiers.stepId}) must have 'scenarios' array`
         );
       }
 
       if (step.scenarios.length === 0) {
-        logger.warn(`⚠️ Step '${step.name}' has empty scenarios array`);
+        logger.warn(
+          `⚠️ Step '${interpolatedStepName}' has empty scenarios array`
+        );
         return this.buildEmptyResult(
           identifiers,
-          step,
+          interpolatedStepName,
           stepStartTime,
           globalVariables.getAllVariables()
         );
@@ -445,11 +453,13 @@ export class ScenarioStepStrategy extends BaseStepStrategy {
 
       // No scenario matched
       if (!executedScenario) {
-        logger.info(`⏭️ No scenarios matched for step: ${step.name}`);
+        logger.info(
+          `⏭️ No scenarios matched for step: ${interpolatedStepName}`
+        );
 
         return this.buildSkippedResult(
           identifiers,
-          step,
+          interpolatedStepName,
           stepDuration,
           globalVariables.getAllVariables(),
           evaluations
@@ -459,7 +469,7 @@ export class ScenarioStepStrategy extends BaseStepStrategy {
       // Build success result
       return this.buildSuccessResult(
         identifiers,
-        step,
+        interpolatedStepName,
         stepDuration,
         httpResult,
         assertionResults,
@@ -471,7 +481,7 @@ export class ScenarioStepStrategy extends BaseStepStrategy {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
       logger.error(
-        `❌ Error executing scenario step '${step.name}': ${errorMessage}`
+        `❌ Error executing scenario step '${interpolatedStepName}': ${errorMessage}`
       );
 
       // Create error with descriptive prefix for scenario execution failures
@@ -548,20 +558,20 @@ export class ScenarioStepStrategy extends BaseStepStrategy {
    */
   private buildEmptyResult(
     identifiers: any,
-    step: TestStep,
+    stepName: string,
     stepStartTime: number,
     availableVariables: Record<string, any>
   ): StepExecutionResult {
     return {
       step_id: identifiers.stepId,
       qualified_step_id: identifiers.qualifiedStepId,
-      step_name: step.name,
+      step_name: stepName,
       status: "success",
       duration_ms: Date.now() - stepStartTime,
       captured_variables: {},
       available_variables: this.filterAvailableVariables(availableVariables, {
         stepType: "scenario",
-        stepName: step.name,
+        stepName: stepName,
       }),
       scenarios_meta: {
         has_scenarios: true,
@@ -576,7 +586,7 @@ export class ScenarioStepStrategy extends BaseStepStrategy {
    */
   private buildSkippedResult(
     identifiers: any,
-    step: TestStep,
+    stepName: string,
     duration: number,
     availableVariables: Record<string, any>,
     evaluations: ScenarioEvaluation[]
@@ -584,13 +594,13 @@ export class ScenarioStepStrategy extends BaseStepStrategy {
     return {
       step_id: identifiers.stepId,
       qualified_step_id: identifiers.qualifiedStepId,
-      step_name: step.name,
+      step_name: stepName,
       status: "skipped",
       duration_ms: duration,
       captured_variables: {},
       available_variables: this.filterAvailableVariables(availableVariables, {
         stepType: "scenario",
-        stepName: step.name,
+        stepName: stepName,
       }),
       error_message: "No matching scenario conditions",
       scenarios_meta: {
@@ -606,7 +616,7 @@ export class ScenarioStepStrategy extends BaseStepStrategy {
    */
   private buildSuccessResult(
     identifiers: any,
-    step: TestStep,
+    stepName: string,
     duration: number,
     httpResult: any,
     assertionResults: any[],
@@ -617,7 +627,7 @@ export class ScenarioStepStrategy extends BaseStepStrategy {
     return {
       step_id: identifiers.stepId,
       qualified_step_id: identifiers.qualifiedStepId,
-      step_name: step.name,
+      step_name: stepName,
       status: httpResult?.status || "success",
       duration_ms: duration,
       request_details: httpResult?.request_details,
@@ -626,7 +636,7 @@ export class ScenarioStepStrategy extends BaseStepStrategy {
       captured_variables: capturedVariables,
       available_variables: this.filterAvailableVariables(availableVariables, {
         stepType: "scenario",
-        stepName: step.name,
+        stepName: stepName,
       }),
       scenarios_meta: {
         has_scenarios: true,

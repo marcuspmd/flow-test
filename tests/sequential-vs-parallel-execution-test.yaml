@@ -10,7 +10,7 @@ metadata:
   execution_mode: "{{execution_mode || 'sequential'}}"
 
 variables:
-  execution_test_id: "exec-"#faker.string.uuid"
+  execution_test_id: "exec-{{$faker.string.uuid}}"
   test_delay: 1  # 1 second delay per request
   concurrent_requests: 5
   load_test_range: [1, 2, 3, 4, 5]

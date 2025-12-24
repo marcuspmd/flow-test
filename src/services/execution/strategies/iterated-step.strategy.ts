@@ -126,7 +126,12 @@ export class IteratedStepStrategy extends BaseStepStrategy {
           );
 
           // Create iteration-specific step
-          const iterationStepName = `${step.name} [${i + 1}/${
+          // Interpolate the step name NOW that iteration variables are set
+          const interpolatedOriginalName = this.interpolateStepName(
+            step,
+            globalVariables
+          );
+          const iterationStepName = `${interpolatedOriginalName} [${i + 1}/${
             iterationContexts.length
           }]`;
 

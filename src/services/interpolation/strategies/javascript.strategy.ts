@@ -77,10 +77,16 @@ export class JavaScriptStrategy
   constructor(private logger: ILogger = noopLogger) {}
 
   canHandle(expression: string): boolean {
+    // Do NOT handle $faker (that's Faker strategy)
+    if (expression.startsWith("$faker.")) {
+      return false;
+    }
+
     return (
       expression.startsWith("$js:") ||
       expression.startsWith("js:") ||
       expression.startsWith("$js.") ||
+      expression.startsWith("$") || // Direct JS syntax
       this.logicalOperatorPattern.test(expression)
     );
   }
@@ -147,12 +153,17 @@ export class JavaScriptStrategy
 
     try {
       let jsExpression: string;
+      let useCodeBlock = false;
 
       // Extract JS code
       if (expression.startsWith("$js:") || expression.startsWith("js:")) {
         jsExpression = expression.replace(/^\$?js:/, "").trim();
       } else if (expression.startsWith("$js.")) {
         jsExpression = expression.substring(4); // Remove "$js."
+        useCodeBlock = true;
+      } else if (expression.startsWith("$")) {
+        // Direct syntax: "$Date.now()" or "$Math.random()"
+        jsExpression = expression.substring(1); // Remove "$"
       } else {
         // Logical operators case
         jsExpression = expression;
@@ -175,7 +186,6 @@ export class JavaScriptStrategy
         variables: context.javascriptContext?.variables ?? {},
       };
 
-      const useCodeBlock = expression.startsWith("$js.");
       const value = javascriptService.executeExpression(
         preprocessed,
         jsContext,

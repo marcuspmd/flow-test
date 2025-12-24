@@ -1,0 +1,44 @@
+suite_name: "Direct Syntax Test"
+node_id: "direct-syntax-test"
+description: "Test direct syntax interpolation (#faker, $js, @query)"
+base_url: "http://localhost:8080"
+
+metadata:
+  priority: "medium"
+  tags: ["interpolation", "direct-syntax"]
+
+variables:
+  # Direct Faker syntax
+  test_email: "#faker.internet.email"
+  test_name: "#faker.person.fullName"
+  test_uuid: "#faker.string.uuid"
+
+  # Direct JS syntax
+  timestamp: "$Date.now()"
+  random_num: "$Math.random()"
+
+  # Nested object with direct syntax
+  user_data:
+    email: "#faker.internet.email"
+    name: "#faker.person.fullName"
+    age: "$Math.floor(Math.random() * 50) + 18"
+
+steps:
+  - name: "Test direct syntax interpolation"
+    request:
+      method: "POST"
+      url: "/post"
+      headers:
+        Content-Type: "application/json"
+      body:
+        test_email: "{{test_email}}"
+        test_name: "{{test_name}}"
+        test_uuid: "{{test_uuid}}"
+        timestamp: "{{timestamp}}"
+        random_num: "{{random_num}}"
+        user_data: "{{user_data}}"
+    assert:
+      status_code: 200
+    capture:
+      result_email: "body.json.test_email"
+      result_user_data: "body.json.user_data"

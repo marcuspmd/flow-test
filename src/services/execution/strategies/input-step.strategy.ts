@@ -71,25 +71,39 @@ export class InputStepStrategy extends BaseStepStrategy {
       discoveredTest,
     } = context;
 
+    // Interpolate step name for dynamic naming
+    const interpolatedStepName = this.interpolateStepName(
+      step,
+      globalVariables
+    );
+
     try {
       // Validate step configuration
       if (!step.input) {
         throw new Error(
-          `Step '${step.name}' must have 'input' configuration for InputStepStrategy`
+          `Step '${interpolatedStepName}' must have 'input' configuration for InputStepStrategy`
         );
       }
 
       // **1. Execute pre-input hooks**
-      await this.executeHooks(context, step.hooks_pre_input, "pre_input");
+      await this.executeHooks(
+        context,
+        step.hooks_pre_input,
+        "pre_input",
+        undefined,
+        interpolatedStepName
+      );
 
       // **2. Set execution context for interactive inputs**
       const executionContext: InputExecutionContext = {
         suite_name: suite.suite_name,
         suite_path: discoveredTest?.file_path,
-        step_name: step.name,
+        step_name: interpolatedStepName,
         step_id: step.step_id,
         step_index: stepIndex,
-        cache_key: `${suite.node_id || suite.suite_name}::${step.name}`,
+        cache_key: `${
+          suite.node_id || suite.suite_name
+        }::${interpolatedStepName}`,
       };
       context.inputService.setExecutionContext(executionContext);
 
@@ -105,10 +119,16 @@ export class InputStepStrategy extends BaseStepStrategy {
         return acc;
       }, {} as Record<string, any>);
 
-      await this.executeHooks(context, step.hooks_post_input, "post_input", {
-        input: inputContext,
-        capturedVariables: capturedVariables,
-      });
+      await this.executeHooks(
+        context,
+        step.hooks_post_input,
+        "post_input",
+        {
+          input: inputContext,
+          capturedVariables: capturedVariables,
+        },
+        interpolatedStepName
+      );
 
       // **5. Build success result**
       const duration = Date.now() - startTime;
@@ -116,14 +136,14 @@ export class InputStepStrategy extends BaseStepStrategy {
       const result: StepExecutionResult = {
         step_id: identifiers.stepId,
         qualified_step_id: identifiers.qualifiedStepId,
-        step_name: step.name,
+        step_name: interpolatedStepName,
         status: "success",
         duration_ms: duration,
         input_results: inputResults,
         captured_variables: capturedVariables,
         available_variables: this.filterAvailableVariables(
           globalVariables.getAllVariables(),
-          { stepType: "input", stepName: step.name }
+          { stepType: "input", stepName: interpolatedStepName }
         ),
         assertions_results: [],
       };
@@ -257,22 +277,24 @@ export class InputStepStrategy extends BaseStepStrategy {
     context: StepExecutionContext,
     hooks: import("../../../types/hook.types").HookAction[] | undefined,
     hookPoint: string,
-    additionalContext?: Record<string, any>
+    additionalContext?: Record<string, any>,
+    stepName?: string
   ): Promise<void> {
     if (!hooks || hooks.length === 0) {
       return;
     }
 
     const { hookExecutorService, step, globalVariables, logger } = context;
+    const effectiveStepName = stepName || step.name;
 
     try {
       logger.debug(
-        `[Hook] Executing ${hooks.length} hook(s) at ${hookPoint} for step '${step.name}'`
+        `[Hook] Executing ${hooks.length} hook(s) at ${hookPoint} for step '${effectiveStepName}'`
       );
 
       const hookContext: import("../../../types/hook.types").HookExecutionContext =
         {
-          stepName: step.name,
+          stepName: effectiveStepName,
           stepIndex: context.stepIndex,
           variables: globalVariables.getAllVariables(),
           ...additionalContext,

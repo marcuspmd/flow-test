@@ -116,7 +116,7 @@ Criar uma documentação técnica completa que cubra todas as propriedades, tipo
 
 | Propriedade | Tipo | Obrigatório | Descrição | Exemplo |
 |-------------|------|-------------|-----------|---------|
-| `name` | `string` | ✅ Sim | Nome descritivo do passo | `"Login user"` |
+| `name` | `string` | ✅ Sim | Nome descritivo do passo (suporta interpolação) | `"Login user"` ou `"Testing user {{user_name}}"` |
 | `step_id` | `string` | ❌ Não | Identificador único do passo | `"login-step"` |
 | `request` | `RequestDetails` | Condicional* | Configuração da requisição HTTP | Ver seção Request |
 | `assert` | `Assertions` | ❌ Não | Regras de validação | Ver seção Assertions |
@@ -130,6 +130,101 @@ Criar uma documentação técnica completa que cubra todas as propriedades, tipo
 | `metadata` | `TestStepMetadata` | ❌ Não | Metadados do passo | Ver seção Metadata |
 
 > **Nota:** `request` é opcional apenas se o step contém apenas `input` ou `call`.
+
+#### 2.0.1 Interpolação de Nomes de Steps (NOVO v2.1)
+
+O campo `name` dos steps agora **suporta interpolação completa** de variáveis, permitindo nomes dinâmicos que refletem o contexto de execução.
+
+**Sintaxes Suportadas:**
+
+| Tipo | Sintaxe | Descrição | Exemplo |
+|------|---------|-----------|---------|
+| **Variável simples** | `{{variable}}` | Acesso a variável local ou capturada | `"Testing user {{user_name}}"` |
+| **Variável aninhada** | `{{object.field}}` | Acesso a campos aninhados | `"Process {{user.profile.email}}"` |
+| **Variável de array** | `{{array[index]}}` | Acesso por índice | `"Item {{items[0].name}}"` |
+| **Variável global** | `{{suite-id.variable}}` | Variável exportada de outra suite | `"Auth user {{auth-login.user_id}}"` |
+| **Faker.js** | `{{$faker.category.method}}` | Dados fake dinâmicos | `"Test with {{$faker.person.firstName}}"` |
+| **JavaScript** | `{{$js:expression}}` | Expressão JavaScript | `"Step {{$js:index + 1}} of {{total}}"` |
+| **Iteração** | `{{item.field}}` | Variável de iteração (dentro de `iterate`) | `"Process user {{user.name}}"` |
+
+**Exemplos Práticos:**
+
+```yaml
+variables:
+  user_id: 12345
+  user_name: "John Doe"
+  test_index: 1
+
+steps:
+  # Exemplo 1: Variável simples
+  - name: "Testing user {{user_name}}"
+    request:
+      method: GET
+      url: "/users/{{user_id}}"
+    # Log aparecerá como: "Testing user John Doe"
+
+  # Exemplo 2: Múltiplas variáveis
+  - name: "User {{user_id}} - {{user_name}}"
+    request:
+      method: POST
+      url: "/users"
+    # Log: "User 12345 - John Doe"
+
+  # Exemplo 3: Faker dinâmico
+  - name: "Random test with {{$faker.person.firstName}}"
+    request:
+      method: GET
+      url: "/test"
+    # Log: "Random test with Alice" (valor aleatório)
+
+  # Exemplo 4: JavaScript expression
+  - name: "Test number {{$js:test_index + 1}}"
+    request:
+      method: GET
+      url: "/test"
+    # Log: "Test number 2"
+
+  # Exemplo 5: Iteração com contexto
+  - name: "Processing item {{item.id}} - {{item.name}}"
+    iterate:
+      over:
+        - {id: "A", name: "Item A"}
+        - {id: "B", name: "Item B"}
+      as: "item"
+    request:
+      method: GET
+      url: "/items/{{item.id}}"
+    # Log 1ª iteração: "Processing item A - Item A [1/2]"
+    # Log 2ª iteração: "Processing item B - Item B [2/2]"
+
+  # Exemplo 6: Variável capturada anteriormente
+  - name: "Get order details"
+    request:
+      method: POST
+      url: "/orders"
+    capture:
+      order_id: "body.order_id"
+
+  - name: "Verify order {{order_id}}"
+    request:
+      method: GET
+      url: "/orders/{{order_id}}"
+    # Log: "Verify order ORD-12345" (valor capturado)
+```
+
+**Características:**
+- ✅ Interpolação acontece **antes** da execução do step
+- ✅ Nomes interpolados aparecem em **logs**, **resultados** e **relatórios**
+- ✅ Facilita **debugging** e **rastreamento** de steps dinâmicos
+- ✅ Funciona em **todos os tipos** de steps (request, call, input, scenarios)
+- ✅ Fallback seguro: se interpolação falhar, usa nome original
+
+**Casos de Uso:**
+- Logs mais descritivos em iterações
+- Identificação clara de steps em paralelo
+- Rastreamento de operações por ID
+- Relatórios mais legíveis
+- Debugging facilitado em loops
 
 #### 2.1 Request Details (RequestDetails)
 
@@ -192,7 +287,6 @@ O Flow Test Engine suporta **dois sistemas de interpolação** que funcionam jun
 |------|---------|-----------|---------|
 | **Faker** | `"#faker.category.method"` | Dados de teste dinâmicos | `"#faker.internet.email"` |
 | **JavaScript** | `"$code"` | Cálculos e lógica | `"$Date.now()"`, `"$items.length * 2"` |
-| **JMESPath** | `"@query"` | Queries JSON | `"@response.data[0].id"` |
 
 **Características**:
 - ✅ Sintaxe mais limpa (menos `{{}}`)
@@ -207,14 +301,14 @@ O Flow Test Engine suporta **dois sistemas de interpolação** que funcionam jun
 body:
   email: "#faker.internet.email"
   timestamp: "$Date.now()"
-  user_id: "@body.user.id"
+  user_id: "$Math.floor(Math.random() * 10000)"
 
 # ✅ Template para composição
 url: "{{$env.BASE_URL}}/api/v{{version}}/users"
 message: "Hello {{user.name}}, score: {{score}}"
 
 # ❌ Não misture prefixos
-invalid: "@data with #faker.name"  # Erro!
+invalid: "$Date.now() with #faker.name"  # Erro!
 ```
 
 #### 3.1.1 Variáveis de Ambiente (.env)
@@ -553,11 +647,12 @@ input:
 
 | Propriedade | Tipo | Obrigatório | Descrição | Exemplo |
 |-------------|------|-------------|-----------|---------|
-| `over` | `string` | ✅ Sim | Expressão para o array | `"{{test_users}}"` |
+| `over` | `string \| any[]` | ✅ Sim | Expressão para o array ou array inline | `"{{test_users}}"` ou `[{id: 1}, {id: 2}]` |
 | `as` | `string` | ✅ Sim | Nome da variável do item | `"user"` |
 
 ```yaml
 steps:
+  # Com variável
   - name: "Process user {{user.name}}"
     iterate:
       over: "{{test_users}}"
@@ -568,6 +663,18 @@ steps:
       body:
         name: "{{user.name}}"
         email: "{{user.email}}"
+
+  # Com array inline
+  - name: "Process item {{item.id}}"
+    iterate:
+      over:
+        - {id: "A", name: "Item A"}
+        - {id: "B", name: "Item B"}
+        - {id: "C", name: "Item C"}
+      as: "item"
+    request:
+      method: GET
+      url: "/items/{{item.id}}"
 ```
 
 #### 7.2 Range Iteration

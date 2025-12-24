@@ -324,6 +324,20 @@ export class InterpolationService {
     template: string,
     context: InterpolationContext
   ): any {
+    // FIRST: Check if entire string matches direct syntax (#faker, $js, @jmespath)
+    // This allows: { name: "#faker.person.fullName" } without needing {{...}}
+    if (this.isDirectSyntax(template)) {
+      const value = this.resolveExpression(template, context);
+      if (value !== undefined) {
+        // For objects, recursively interpolate their contents
+        if (value !== null && typeof value === "object") {
+          return this.interpolate(value, context);
+        }
+        return value;
+      }
+      // If direct syntax failed to resolve, fall through to template processing
+    }
+
     // Check if entire string is a single variable
     const singleVarMatch = this.extractSingleVariable(template);
     if (singleVarMatch) {
@@ -502,6 +516,23 @@ export class InterpolationService {
 
     // No strategy could resolve the expression
     return undefined;
+  }
+
+  /**
+   * Checks if a string matches direct syntax patterns (#faker, $js, @jmespath)
+   *
+   * @param str - String to check
+   * @returns true if matches direct syntax pattern
+   * @private
+   */
+  private isDirectSyntax(str: string): boolean {
+    // Check for direct syntax patterns:
+    // - #faker.category.method or #faker.category.method({...})
+    // - $expression (JavaScript)
+    // - @query (JMESPath)
+    return (
+      str.startsWith("#faker.") || str.startsWith("$") || str.startsWith("@")
+    );
   }
 
   /**

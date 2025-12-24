@@ -345,8 +345,8 @@ export interface ConditionalScenario {
  * @public
  */
 export interface ArrayIterationConfig {
-  /** JMESPath expression or variable name pointing to the array to iterate over */
-  over: string;
+  /** JMESPath expression, variable name, or inline array to iterate over */
+  over: string | any[];
 
   /** Variable name to use for the current item in each iteration */
   as: string;

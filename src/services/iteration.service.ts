@@ -60,12 +60,17 @@ export class IterationService implements IIterationService {
   }
 
   /**
-   * Resolves an array from a variable expression
+   * Resolves an array from a variable expression or inline array
    */
   private resolveArray(
-    arrayExpression: string,
+    arrayExpression: string | any[],
     variableContext: Record<string, any>
   ): any[] {
+    // If already an array (inline YAML), return it directly
+    if (Array.isArray(arrayExpression)) {
+      return arrayExpression;
+    }
+
     // Remove {{ }} if present
     const cleanExpression = arrayExpression.replace(/^\{\{|\}\}$/g, "").trim();
 
