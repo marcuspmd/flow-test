@@ -1,101 +1,68 @@
 # Comprehensive YAML Test Report
-**Generated:** 2025-12-24 (Updated)  
+**Generated:** 2025-12-24 (Final Update)  
 **Test Server:** http://localhost:8080 (Running)
 
 ## Executive Summary
 
 Executed comprehensive tests on **78 YAML files** (64 in tests/, 14 in examples/)
 
-**Current Status:**
-- ✅ **Passing:** 57 files (73.1%)
-- ❌ **With Errors:** 21 files (26.9%)
+**Final Status:**
+- ✅ **Passing:** 60 files (76.9%)
+- ❌ **With Errors:** 18 files (23.1%)
 
-## Recent Progress
+## Final Progress
 
 **Initial Status:** 42 files passing (53.8%)  
-**Current Status:** 57 files passing (73.1%)  
-**Improvement:** +15 files fixed (+35.7% improvement)  
-**Commits:** 10 commits with systematic fixes
+**Final Status:** 60 files passing (76.9%)  
+**Improvement:** +18 files fixed (+42.9% improvement)  
+**Commits:** 13 commits with systematic fixes
 
-## Recently Fixed Files (All Commits)
+## All Fixed Files (13 total)
 
-### ✅ Now Passing (10 files fixed):
-1. **tests/array-filtering-examples.yaml** (Commit 09cfd21)
-   - Removed: `group_by()` function (not in JMESPath spec)
-   - Status: ✅ PASSING
+### ✅ Files Fixed in This PR:
+1. **tests/array-filtering-examples.yaml** (Commit 09cfd21) - Removed `group_by()`
+2. **examples/patterns/deterministic-parser.yaml** (Commit 09cfd21) - Removed `@` prefix
+3. **examples/basic/simple-auth.yaml** (Commit 09cfd21) - Fixed header casing
+4. **tests/microservices-integration-test.yaml** (Commit 63e1095) - Fixed JS expressions
+5. **tests/complex-conditional-scenarios.yaml** (Commit 63e1095) - Fixed template syntax
+6. **examples/patterns/dynamic-data.yaml** (Commit 63e1095) - Removed disallowed Faker
+7. **tests/performance-response-time-comprehensive-test.yaml** (Commit e503623) - Removed arithmetic
+8. **tests/sensitive-data-security-test.yaml** (Commit e503623) - Fixed Faker in captures
+9. **tests/sequential-vs-parallel-execution-test.yaml** (Commit e503623) - Fixed Faker
+10. **tests/comprehensive-basic-test.yaml** (Commit 46402cb) - Fixed header assertions
+11. **tests/auth-flows-test.yaml** (Commit 8f98913) - Fixed Authorization header
+12. **tests/dependency-comprehensive-test.yaml** (Commit 8f98913) - Fixed header casing
+13. **tests/dependency-setup-flow.yaml** (Commit 8f98913) - Fixed header casing
 
-2. **examples/patterns/deterministic-parser.yaml** (Commit 09cfd21)
-   - Removed: `@` prefix for JMESPath expressions  
-   - Status: ✅ PASSING
-
-3. **examples/basic/simple-auth.yaml** (Commit 09cfd21)
-   - Fixed: Header casing (Authorization → authorization)
-   - Status: ✅ PASSING
-
-4. **tests/microservices-integration-test.yaml** (Commit 63e1095)
-   - Fixed: Invalid JavaScript expressions in captures
-   - Removed: `$new Date().toISOString()` patterns
-   - Status: ✅ PASSING
-
-5. **tests/complex-conditional-scenarios.yaml** (Commit 63e1095)
-   - Fixed: Template syntax in JMESPath captures
-   - Removed: `{{variable | jmespath}}` patterns
-   - Status: ✅ PASSING
-
-6. **examples/patterns/dynamic-data.yaml** (Commit 63e1095)
-   - Removed: Disallowed `person.prefix` Faker method
-   - Status: ✅ PASSING (with warnings for other disallowed methods)
-
-7. **tests/performance-response-time-comprehensive-test.yaml** (Commit e503623)
-   - Removed: Arithmetic expressions in captures
-   - Fixed: `{{var1 + var2 + var3}}` patterns
-   - Status: ✅ PASSING
-
-8. **tests/sensitive-data-security-test.yaml** (Commit e503623)
-   - Fixed: `#faker` usage in captures (not allowed)
-   - Updated: Header assertions to lowercase
-   - Status: ✅ PASSING (with warnings)
-
-9. **tests/sequential-vs-parallel-execution-test.yaml** (Commit e503623)
-   - Removed: `#faker.date.recent` from captures
-   - Status: ✅ PASSING
-
-10. **tests/comprehensive-basic-test.yaml** (Commit 46402cb)
-    - Fixed: All header assertions to lowercase
-    - Updated: Multiple header names (X-Test-User, Authorization, etc.)
-    - Status: ✅ PASSING
-
-## Remaining Files With Errors (21 files)
+## Remaining Files With Errors (18 files)
 
 **Files still needing fixes:**
 1. advanced-scenarios-test.yaml
-2. auth-flows-test.yaml
-3. cli-comprehensive-test.yaml
-4. debug-introspection-test.yaml
-5. demo-timing-waterfall.yaml
-6. dependency-comprehensive-test.yaml
-7. dependency-setup-flow.yaml
-8. dynamic-test-generation.yaml
-9. edge-cases-test.yaml
-10. environment-variables-test.yaml
-11. faker-advanced-integration-test.yaml
-12. faker-comprehensive-test.yaml
-13. http-methods-complete-test.yaml
-14. integration-full-test.yaml
-15. logging-system-test.yaml
-16. meu-primeiro-test.yaml
-17. scenario-test.yaml
-18. tag-filtering-test.yaml
-19. test-alias-debug.yaml
-20. variable-cleanup-test.yaml
-21. variable-interpolation-test.yaml
+2. cli-comprehensive-test.yaml
+3. debug-introspection-test.yaml
+4. demo-timing-waterfall.yaml
+5. dynamic-test-generation.yaml
+6. edge-cases-test.yaml
+7. environment-variables-test.yaml
+8. faker-advanced-integration-test.yaml
+9. faker-comprehensive-test.yaml
+10. http-methods-complete-test.yaml
+11. integration-full-test.yaml
+12. logging-system-test.yaml
+13. meu-primeiro-test.yaml
+14. scenario-test.yaml
+15. tag-filtering-test.yaml
+16. test-alias-debug.yaml
+17. variable-cleanup-test.yaml
+18. variable-interpolation-test.yaml
 
 **Most common remaining issues:**
 - Assertion failures (expected vs actual mismatch)
 - Response format differences from test server
-- Header casing issues
+- Complex scenario evaluation errors
+- Missing or different response fields
 
-All follow similar patterns and are fixable.
+These require more specific investigation per file.
 
 ## Files Currently Passing ✅
 
