@@ -187,9 +187,7 @@ steps:
               equals: "test_premium_features"
           capture:
             premium_access: "true"
-            premium_features: "{{api_responses.premium_response.available_features}}"
-            export_enabled: "{{api_responses.premium_response.available_features | contains('export_data')}}"
-            advanced_filters: "{{api_responses.premium_response.available_features | contains('advanced_filters')}}"
+            premium_features: "body.json.requested_features"
 
       # Cenário B: Funcionalidade premium não disponível (downgrade?)
       - condition: "status_code == `403`"
