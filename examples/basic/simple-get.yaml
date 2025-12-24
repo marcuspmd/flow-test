@@ -38,19 +38,19 @@ steps:
       body:
         # httpbin echoes request headers back
         headers:
-          Accept:
+          accept:
             equals: "application/json"
-          User-Agent:
+          user-agent:
             contains: "FlowTestEngine"
 
         # Verify the URL that was called
         url:
-          contains: "localhost:8080/get"
+          equals: "/get"
 
     # Capture values from the response for use in later steps
     capture:
       response_url: "body.url"
-      user_agent_echo: "body.headers.'User-Agent'"
+      user_agent_echo: 'body.headers."user-agent"'
 
 # Tips:
 # 1. Start with simple assertions and add more as needed

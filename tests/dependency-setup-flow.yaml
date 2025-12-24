@@ -1,7 +1,7 @@
 node_id: "dependency-setup"
 suite_name: "Dependency Setup Flow"
 description: "Sets up authentication and basic configuration for dependency testing"
-base_url: "{{httpbin_url}}"
+base_url: "http://localhost:8080"
 
 metadata:
   priority: "high"
@@ -70,7 +70,7 @@ steps:
       status_code: 200
       body:
         headers:
-          Authorization:
+          authorization:
             contains: "{{auth_token}}"
     metadata:
       description: "Verifies that setup was completed successfully"

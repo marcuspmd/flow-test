@@ -4,7 +4,7 @@ node_id: "variable_cleanup_test"
 description: "Valida que variáveis não-globais são limpas entre diferentes nodes"
 priority: "high"
 
-base_url: "{{httpbin_url}}"
+base_url: "http://localhost:8080"
 
 # Removendo dependência para permitir teste individual
 # depends:
@@ -41,13 +41,14 @@ steps:
     assert:
       status_code: 200
       body:
-        data:
-          contains: "before_cleanup"
+        json:
+          test_context:
+            exists: true
 
     capture:
-      variable_state_before: "body.data | fromjson | @"
-      accessed_previous_user_id: "body.data | fromjson | @.previous_user_id"
-      accessed_previous_user_name: "body.data | fromjson | @.previous_user_name"
+      variable_state_before: "body.json"
+      accessed_previous_user_id: "body.json.previous_user_id"
+      accessed_previous_user_name: "body.json.previous_user_name"
 
   # Teste 2: Definir algumas variáveis locais neste node
   - name: "Set Local Variables in This Node"
@@ -69,9 +70,9 @@ steps:
 
     capture:
       # Estas variáveis devem ser limpas quando mudar de node
-      test_specific_var: "body.data | fromjson | @.local_data.test_specific_var"
-      another_local_var: "body.data | fromjson | @.local_data.another_local_var"
-      node_identifier: "body.data | fromjson | @.local_data.node_identifier"
+      test_specific_var: "body.json.local_data.test_specific_var"
+      another_local_var: "body.json.local_data.another_local_var"
+      node_identifier: "body.json.local_data.node_identifier"
       current_timestamp: "'2024-01-01T12:00:00Z'"
 
   # Teste 3: Simular mudança de contexto e verificar limpeza
@@ -87,7 +88,7 @@ steps:
       status_code: 200
 
     capture:
-      variable_state_after: "body.data | fromjson | @"
+      variable_state_after: "body.json"
       cleanup_verification_result: "'cleanup_test_completed'"
       cleanup_timestamp: "'2024-01-01T12:30:00Z'"
 
@@ -101,7 +102,7 @@ steps:
       body:
         verification_test:
           # Estas devem estar disponíveis (globais)
-          httpbin_url: "{{httpbin_url}}"
+          httpbin_url: "http://localhost:8080"
 
           # Estas NÃO devem mais estar disponíveis (eram locais do node anterior)
           should_be_cleaned_user_id: "{{user_id}}"  # Deve ser undefined/null
@@ -114,11 +115,12 @@ steps:
     assert:
       status_code: 200
       body:
-        data:
-          contains: "httpbin_url"
+        json:
+          verification_test:
+            exists: true
 
     capture:
-      final_verification: "body.data | fromjson | @.verification_test"
+      final_verification: "body.json.verification_test"
       global_variables_accessible: "`true`"  # Simplificado
       exported_variables_accessible: "`false`"  # Simplificado
 

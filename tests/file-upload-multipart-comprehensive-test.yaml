@@ -1,7 +1,7 @@
 suite_name: "File Upload and Multipart Forms Comprehensive Testing"
 node_id: "file-upload-multipart-test"
 description: "Comprehensive testing of file upload capabilities, multipart form data, different content types, and file handling scenarios"
-base_url: "{{httpbin_url}}"
+base_url: "http://localhost:8080"
 
 metadata:
   priority: "high"

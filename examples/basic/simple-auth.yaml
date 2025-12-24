@@ -60,7 +60,7 @@ steps:
       status_code: 200
       body:
         headers:
-          Authorization:
+          authorization:
             equals: "Bearer mock-jwt-token-12345"
 
   # Step 3: Make authenticated POST request

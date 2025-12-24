@@ -1,7 +1,7 @@
 suite_name: "Faker Integration Demo"
 node_id: "faker_demo"
 description: "Demonstrates Faker.js integration with dynamic data generation"
-base_url: "{{httpbin_url}}"
+base_url: "http://localhost:8080"
 
 # Optional Faker configuration
 faker:

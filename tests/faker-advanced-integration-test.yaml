@@ -1,7 +1,7 @@
 node_id: "faker-advanced-integration"
 suite_name: "Advanced Faker.js Integration Test Suite"
 description: "Comprehensive coverage of Faker.js capabilities for realistic test data generation"
-base_url: "{{httpbin_url}}"
+base_url: "http://localhost:8080"
 
 metadata:
   priority: "medium"
@@ -32,9 +32,9 @@ steps:
     assert:
       status_code: 200
       body:
-        data:
+        json:
           exists: true
-          type: "string"  # httpbin retorna JSON como string em data
+          type: "object"  # httpbin retorna JSON como string em data
     capture:
       generated_email: "body.url"  # Usar URL como fallback
       generated_name: "body.url"
@@ -116,8 +116,9 @@ steps:
     assert:
       status_code: 200
       body:
-        data:
-          contains: "tech"
+        json:
+          tech:
+            exists: true
 
   - name: "Test date and time variations"
     request:
@@ -162,8 +163,9 @@ steps:
     assert:
       status_code: 200
       body:
-        data:
-          contains: "selections"
+        json:
+          selections:
+            exists: true
 
   - name: "Test locale-specific generation"
     request:

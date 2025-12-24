@@ -1,7 +1,7 @@
 suite_name: "Dynamic Test Generation"
 node_id: "dynamic-test-generation"
 description: "Demonstrates dynamic test generation with arrays and loops using Faker.js and variable interpolation"
-base_url: "{{httpbin_url}}"
+base_url: "http://localhost:8080"
 
 metadata:
   priority: "medium"
@@ -60,7 +60,7 @@ steps:
         content-type:
           contains: "json"
     capture:
-      endpoint_get_result: "body.data"
+      endpoint_get_result: "body.json"
       response_time_get: "response_time_ms"
 
   - name: "Test POST with dynamic user data"
@@ -81,8 +81,9 @@ steps:
     assert:
       status_code: 200
       body:
-        data:
-          contains: "user_id"
+        json:
+          user_id:
+            exists: true
     capture:
       generated_user_data: "body.data | fromjson | @"
       post_response_time: "response_time_ms"
@@ -105,8 +106,9 @@ steps:
     assert:
       status_code: 200
       body:
-        data:
-          contains: "user_id"
+        json:
+          user_id:
+            exists: true
     capture:
       modified_user_data: "body.data | fromjson | @"
       put_response_time: "response_time_ms"
@@ -152,8 +154,9 @@ steps:
     assert:
       status_code: 200
       body:
-        data:
-          contains: "test_summary"
+        json:
+          test_summary:
+            exists: true
     capture:
       generated_users: "json.test_summary.generated_users_count"
       dynamic_endpoints_tested: "json.test_summary.total_endpoints_tested"

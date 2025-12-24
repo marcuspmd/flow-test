@@ -1,7 +1,7 @@
 node_id: "logging-system-test"
 suite_name: "Automatic Logging System Test"
 description: "Tests automatic log generation, --no-log flag, and log file format verification"
-base_url: "{{httpbin_url}}"
+base_url: "http://localhost:8080"
 
 metadata:
   priority: "medium"
@@ -192,8 +192,9 @@ steps:
     assert:
       status_code: 200
       body:
-        data:
-          contains: "verification"
+        json:
+          verification:
+            exists: true
     metadata:
       description: "Final step to verify all logging data is properly captured"
 

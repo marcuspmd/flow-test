@@ -1,7 +1,7 @@
 node_id: "retry-logic-comprehensive"
 suite_name: "Comprehensive Retry Logic Test Suite"
 description: "Tests advanced retry mechanisms with different strategies, delays, and conditions"
-base_url: "{{httpbin_url}}"
+base_url: "http://localhost:8080"
 
 metadata:
   priority: "high"

@@ -1,7 +1,7 @@
 # tests/meu-primeiro-teste.yaml
 suite_name: "Teste de Login API"
 node_id: "auth"
-base_url: "{{httpbin_url}}"
+base_url: "http://localhost:8080"
 
 variables:
   secure_signing_key: "NTNv7j0TuYARvmNMmWXo6fKvM4o6nv/aUi9ryX38ZH+L1bkrnD1ObOQ8JAUmHCBq7Iy7otZcyAagBLHVKvvYaIpmMuxmARQ97jUVG16Jkpkp1wXOPsrF9zwew6TpczyHkHgX5EuLg2MeBuiT/qJACs1J0apruOOJCg/gOtkjB4c="
@@ -13,7 +13,7 @@ variables:
   # URLs simuladas de autenticação
   auth_endpoints:
     login: "/post"
-    user_profile: "/anything"
+    user_profile: "/get"
 
   # Tokens simulados para testes
   mock_responses:
@@ -111,7 +111,7 @@ steps:
           message: "Username deve ser um email válido"
 
         - name: "authorization_header_present"
-          condition: "body.headers.Authorization && body.headers.Authorization.startsWith('Bearer ')"
+          condition: "body.headers.authorization && body.headers.authorization.startsWith('Bearer ')"
           message: "Header Authorization deve estar presente e começar com 'Bearer '"
 
         - name: "response_contains_expected_data"
@@ -119,7 +119,7 @@ steps:
           message: "Response deve conter pelo menos 3 parâmetros"
 
         - name: "token_in_authorization"
-          condition: "body.headers.Authorization && body.headers.Authorization.includes('eyJ')"
+          condition: "body.headers.authorization && body.headers.authorization.includes('eyJ')"
           message: "Header Authorization deve conter o token JWT"
 
     capture:

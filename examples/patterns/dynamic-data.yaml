@@ -28,7 +28,7 @@ steps:
         gender: "{{$faker.person.gender}}"
         job_title: "{{$faker.person.jobTitle}}"
         job_area: "{{$faker.person.jobArea}}"
-        prefix: "{{$faker.person.prefix}}"  # Mr., Mrs., Dr.
+        # Removed person.prefix (not in allowlist)
         suffix: "{{$faker.person.suffix}}"  # Jr., Sr., PhD
 
     assert:

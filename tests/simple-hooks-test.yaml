@@ -1,0 +1,70 @@
+suite_name: Simple Hooks Test
+node_id: simple-hooks-test
+base_url: http://localhost:8080
+
+metadata:
+  priority: high
+  tags:
+    - hooks
+    - test
+  description: Simple test to demonstrate hooks functionality
+
+variables:
+  user_tier: premium
+  discount_rate: 0.15
+
+steps:
+  - name: Test with pre-request hooks
+    step_id: test-hooks
+    hooks_pre_request:
+      - compute:
+          timestamp: "$Date.now()"
+          request_id: "$Math.floor(Math.random() * 1000000)"
+          user_agent: "Flow-Test-Engine/3.0"
+      - validate:
+          - expression: "user_tier !== undefined"
+            message: User tier must be defined
+            severity: info
+          - expression: "discount_rate >= 0 && discount_rate <= 1"
+            message: Discount rate must be between 0 and 1
+            severity: info
+      - log:
+          level: info
+          message: "Sending request with ID: {{request_id}}"
+          metadata:
+            user_tier: "{{user_tier}}"
+            timestamp: "{{timestamp}}"
+    request:
+      method: POST
+      url: /post
+      headers:
+        X-Request-ID: "{{request_id}}"
+        X-Timestamp: "{{timestamp}}"
+        User-Agent: "{{user_agent}}"
+      body:
+        tier: "{{user_tier}}"
+        discount: "{{discount_rate}}"
+    hooks_post_request:
+      - compute:
+          response_time_computed: "$Date.now() - timestamp"
+          response_size: "$JSON.stringify(response.body).length"
+      - metric:
+          name: api_request_duration_ms
+          value: "{{response_time_computed}}"
+          tags:
+            endpoint: /post
+            status: success
+      - log:
+          level: info
+          message: "Request completed in {{response_time_computed}}ms"
+          metadata:
+            response_size: "{{response_size}}"
+    assert:
+      status_code: 200
+      body:
+        json:
+          exists: true
+          type: object
+    capture:
+      captured_tier: body.json.tier
+      captured_discount: body.json.discount
