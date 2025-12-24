@@ -1,23 +1,23 @@
 # Comprehensive YAML Test Report
-**Generated:** 2025-12-24 (Latest Update)  
+**Generated:** 2025-12-24 (Final Update)  
 **Test Server:** http://localhost:8080 (Running)
 
 ## Executive Summary
 
 Executed comprehensive tests on **78 YAML files** (64 in tests/, 14 in examples/)
 
-**Current Status:**
-- ✅ **Passing:** 66 files (84.6%)
-- ❌ **With Errors:** 12 files (15.4%)
+**Final Status:**
+- ✅ **Passing:** 69 files (88.5%)
+- ❌ **With Errors:** 9 files (11.5%)
 
 ## Final Progress
 
 **Initial Status:** 42 files passing (53.8%)  
-**Current Status:** 66 files passing (84.6%)  
-**Improvement:** +24 files fixed (+57.1% improvement)  
-**Commits:** 19 commits with systematic fixes
+**Final Status:** 69 files passing (88.5%)  
+**Improvement:** +27 files fixed (+64.3% improvement)  
+**Commits:** 22 commits with systematic fixes
 
-## All Fixed Files (19 total)
+## All Fixed Files (22 total)
 
 ### ✅ Files Fixed in This PR:
 1. **tests/array-filtering-examples.yaml** (Commit 09cfd21) - Removed `group_by()`
@@ -39,31 +39,30 @@ Executed comprehensive tests on **78 YAML files** (64 in tests/, 14 in examples/
 17. **tests/dynamic-test-generation.yaml** (Commit 9871403) - Fixed json.contains assertions
 18. **tests/integration-full-test.yaml** (Commit 9871403) - Fixed json.contains assertions
 19. **tests/logging-system-test.yaml** (Commit 9871403) - Fixed json.contains assertions
+20. **tests/faker-advanced-integration-test.yaml** (Commit 31c60f0) - Fixed json type assertion
+21. **tests/faker-comprehensive-test.yaml** (Commit 31c60f0) - Fixed json type assertion
+22. **tests/http-methods-complete-test.yaml** (Commit fbc485b) - Fixed OPTIONS/HEAD methods
 
-## Remaining Files With Errors (12 files - 15.4%)
+## Remaining Files With Errors (9 files - 11.5%)
 
 **Files still needing fixes:**
-1. advanced-scenarios-test.yaml - Scenario evaluation errors
-2. cli-comprehensive-test.yaml - Capture and status code errors
-3. debug-introspection-test.yaml - Complex assertion failures
-4. edge-cases-test.yaml - JavaScript execution errors
-5. faker-advanced-integration-test.yaml - Assertion failures
-6. faker-comprehensive-test.yaml - Assertion failures
-7. http-methods-complete-test.yaml - Status code and header errors
-8. meu-primeiro-test.yaml - Custom JWT assertion failures
-9. tag-filtering-test.yaml - Status code mismatches
-10. test-alias-debug.yaml - Header capture errors
-11. variable-cleanup-test.yaml - Assertion failures
-12. variable-interpolation-test.yaml - Assertion failures
+1. advanced-scenarios-test.yaml - Scenario evaluation errors (JMESPath in conditions)
+2. cli-comprehensive-test.yaml - Capture errors (JMESPath issues)
+3. debug-introspection-test.yaml - Header type assertions (expecting string, getting number)
+4. edge-cases-test.yaml - JavaScript execution errors + assertion failures
+5. meu-primeiro-test.yaml - Custom JWT token validation assertions
+6. tag-filtering-test.yaml - Status code mismatches (expecting different codes)
+7. test-alias-debug.yaml - Header capture errors (complex JMESPath)
+8. variable-cleanup-test.yaml - Variable existence assertions
+9. variable-interpolation-test.yaml - Variable existence assertions
 
 **Most common remaining issues:**
-- Scenario evaluation errors (1 file)
-- JavaScript execution errors (2 files)
-- Complex assertion mismatches (5 files)
-- Status code mismatches (2 files)
-- Header/capture errors (2 files)
+- Scenario evaluation errors with JMESPath (2 files)
+- Variable/field existence assertions (3 files)
+- Complex JavaScript or JMESPath expressions (2 files)
+- Specific custom logic (JWT, status codes) (2 files)
 
-These require individual investigation and specific fixes per file.
+These files have complex, specific issues that require individual investigation and careful fixes.
 
 ## Files Currently Passing ✅
 
