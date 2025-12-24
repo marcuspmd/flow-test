@@ -1,7 +1,7 @@
 suite_name: "Sensitive Data and Security Testing"
 node_id: "sensitive-data-security"
 description: "Tests sensitive data handling, masking, and security best practices"
-base_url: "{{httpbin_url}}"
+base_url: "http://localhost:8080"
 
 metadata:
   priority: "high"

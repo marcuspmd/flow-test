@@ -1,7 +1,7 @@
 suite_name: "Dynamic Test Generation"
 node_id: "dynamic-test-generation"
 description: "Demonstrates dynamic test generation with arrays and loops using Faker.js and variable interpolation"
-base_url: "{{httpbin_url}}"
+base_url: "http://localhost:8080"
 
 metadata:
   priority: "medium"

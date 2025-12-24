@@ -3,7 +3,7 @@ suite_name: "Teste Avançado de Scenarios Condicionais"
 node_id: "advanced_scenarios"
 description: "Valida scenarios condicionais com Happy/Sad paths baseados em diferentes condições"
 
-base_url: "{{httpbin_url}}"
+base_url: "http://localhost:8080"
 
 variables:
   username: "scenario_test_user"

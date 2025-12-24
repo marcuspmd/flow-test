@@ -3,7 +3,7 @@ suite_name: "Teste de Edge Cases e Tratamento de Erros"
 node_id: "edge_cases"
 description: "Valida comportamentos em cenários extremos, erros e situações não convencionais"
 
-base_url: "{{httpbin_url}}"
+base_url: "http://localhost:8080"
 
 variables:
   timeout_short: 100

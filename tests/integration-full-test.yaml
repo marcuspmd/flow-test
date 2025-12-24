@@ -3,7 +3,7 @@ suite_name: "Teste Integrado Completo do Flow Test Engine"
 node_id: "integration_full"
 description: "Combina todas as funcionalidades: imports, scenarios, captures, assertions, faker e interpolação"
 
-base_url: "{{httpbin_url}}"
+base_url: "http://localhost:8080"
 
 # Configuração Faker
 faker:

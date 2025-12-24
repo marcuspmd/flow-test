@@ -1,7 +1,7 @@
 node_id: "faker-advanced-integration"
 suite_name: "Advanced Faker.js Integration Test Suite"
 description: "Comprehensive coverage of Faker.js capabilities for realistic test data generation"
-base_url: "{{httpbin_url}}"
+base_url: "http://localhost:8080"
 
 metadata:
   priority: "medium"

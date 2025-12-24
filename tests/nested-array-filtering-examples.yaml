@@ -1,7 +1,7 @@
 suite_name: "Nested Array Filtering and Flatten Projections"
 node_id: "nested-array-filtering"
 description: "Comprehensive examples of filtering and manipulating nested arrays (arrays of arrays) using JMESPath flatten projections and advanced queries"
-base_url: "{{httpbin_url}}"
+base_url: "http://localhost:8080"
 
 metadata:
   priority: "medium"

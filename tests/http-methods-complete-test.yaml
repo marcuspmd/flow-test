@@ -1,7 +1,7 @@
 node_id: "http-methods-complete"
 suite_name: "Complete HTTP Methods Test Suite"
 description: "Comprehensive test coverage for all supported HTTP methods including HEAD and OPTIONS"
-base_url: "{{httpbin_url}}"
+base_url: "http://localhost:8080"
 
 metadata:
   priority: "high"

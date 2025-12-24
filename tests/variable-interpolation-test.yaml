@@ -3,7 +3,7 @@ suite_name: "Teste de Capture de Variáveis e Interpolação"
 node_id: "variable_interpolation"
 description: "Valida captura de variáveis com JMESPath, interpolação e scoping hierárquico"
 
-base_url: "{{httpbin_url}}"
+base_url: "http://localhost:8080"
 
 variables:
   base_user_id: 1000

@@ -5,7 +5,7 @@ node_id: "complex_scenarios_test"
 description: "Testa lógica condicional complexa com múltiplos cenários baseados em diferentes condições"
 priority: "high"
 
-base_url: "{{httpbin_url}}"
+base_url: "http://localhost:8080"
 
 exports:
   - user_access_matrix

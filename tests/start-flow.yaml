@@ -8,7 +8,7 @@ metadata:
   description: "Basic flow test demonstrating core engine functionality"
 
 # URL base para todas as requisições.
-base_url: "{{httpbin_url}}"
+base_url: "http://localhost:8080"
 
 # Variáveis locais que podem ser usadas dentro desta suite apenas.
 variables:
@@ -24,7 +24,7 @@ steps:
   - name: "Enviar dados via POST e capturar valores"
     request:
       method: POST
-      url: "/post" # Concatena com base_url -> {{httpbin_url}}/post
+      url: "/post" # Concatena com base_url -> http://localhost:8080/post
       headers:
         Content-Type: "application/json"
         X-Custom-Header: "Meu-Teste"

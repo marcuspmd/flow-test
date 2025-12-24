@@ -1,7 +1,7 @@
 suite_name: "Debug and System Introspection Test"
 node_id: "debug-introspection"
 description: "Tests debug variables, system introspection, and troubleshooting features"
-base_url: "{{httpbin_url}}"
+base_url: "http://localhost:8080"
 
 metadata:
   priority: "low"

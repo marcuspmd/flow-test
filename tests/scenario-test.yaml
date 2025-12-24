@@ -2,7 +2,7 @@
 suite_name: "Teste de Cenários Condicionais"
 node_id: "conditional_scenarios_test"
 
-base_url: "{{httpbin_url}}"
+base_url: "http://localhost:8080"
 
 variables:
   username: "test_user"

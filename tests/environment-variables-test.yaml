@@ -1,7 +1,7 @@
 node_id: "environment-variables"
 suite_name: "Environment Variables Integration Test"
 description: "Tests environment variable loading and hierarchical scoping resolution"
-base_url: "{{httpbin_url}}"
+base_url: "http://localhost:8080"
 
 metadata:
   priority: "medium"

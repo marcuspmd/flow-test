@@ -3,7 +3,7 @@ suite_name: "Teste Abrangente de Integração Faker.js"
 node_id: "faker_comprehensive"
 description: "Valida geração de dados dinâmicos com Faker.js em cenários realistas"
 
-base_url: "{{httpbin_url}}"
+base_url: "http://localhost:8080"
 
 # Configuração do Faker
 faker:

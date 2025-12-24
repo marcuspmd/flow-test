@@ -1,7 +1,7 @@
 suite_name: "Conditional Execution Comprehensive Testing"
 node_id: "conditional-execution-test"
 description: "Comprehensive testing of conditional execution patterns including skip logic, feature flags, environment-based execution, and cleanup operations"
-base_url: "{{httpbin_url}}"
+base_url: "http://localhost:8080"
 
 metadata:
   priority: "medium"

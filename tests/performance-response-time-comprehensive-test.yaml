@@ -1,7 +1,7 @@
 suite_name: "Performance and Response Time Comprehensive Testing"
 node_id: "performance-response-time-test"
 description: "Comprehensive testing of response time assertions, performance thresholds, load testing patterns, and performance monitoring"
-base_url: "{{httpbin_url}}"
+base_url: "http://localhost:8080"
 
 metadata:
   priority: "medium"

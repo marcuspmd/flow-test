@@ -1,7 +1,7 @@
 suite_name: "Advanced Retry Patterns and Logic Testing"
 node_id: "advanced-retry-patterns"
 description: "Comprehensive testing of all retry mechanisms including backoff strategies, conditional retries, and timeout handling"
-base_url: "{{httpbin_url}}"
+base_url: "http://localhost:8080"
 
 metadata:
   priority: "high"

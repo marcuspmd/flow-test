@@ -1,7 +1,7 @@
 node_id: "cli-comprehensive-test"
 suite_name: "CLI Comprehensive Test Suite"
 description: "Tests all documented CLI options and flags to ensure they work as documented"
-base_url: "{{httpbin_url}}"
+base_url: "http://localhost:8080"
 
 metadata:
   priority: "critical"

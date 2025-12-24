@@ -1,7 +1,7 @@
 suite_name: "Array Filtering and Query Examples"
 node_id: "array-filtering-examples"
 description: "Comprehensive examples of filtering arrays using JMESPath queries, including object arrays, simple arrays, and complex conditional filtering"
-base_url: "{{httpbin_url}}"
+base_url: "http://localhost:8080"
 
 metadata:
   priority: "medium"

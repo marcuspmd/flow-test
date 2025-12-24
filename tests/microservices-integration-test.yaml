@@ -5,7 +5,7 @@ node_id: "microservices_integration_test"
 description: "Testa comunicação entre microserviços, propagação de dados, e coordenação de transações distribuídas"
 priority: "high"
 
-base_url: "{{httpbin_url}}"
+base_url: "http://localhost:8080"
 
 exports:
   - service_health_status

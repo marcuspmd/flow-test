@@ -1,7 +1,7 @@
 suite_name: "Iteration Examples - Array and Range"
 node_id: "iteration-examples"
 description: "Demonstrates iteration functionality with both array and range patterns"
-base_url: "{{httpbin_url}}"
+base_url: "http://localhost:8080"
 
 metadata:
   priority: "high"

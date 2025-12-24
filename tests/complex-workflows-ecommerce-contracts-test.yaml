@@ -1,7 +1,7 @@
 suite_name: "Complex Workflows - E-commerce and API Contracts Testing"
 node_id: "complex-workflows-test"
 description: "Comprehensive testing of complex business workflows including complete e-commerce flows, API contract validation, microservices communication, and end-to-end scenarios"
-base_url: "{{httpbin_url}}"
+base_url: "http://localhost:8080"
 
 metadata:
   priority: "critical"

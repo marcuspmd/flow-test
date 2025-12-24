@@ -1,7 +1,7 @@
 suite_name: "Advanced Iteration Testing Comprehensive"
 node_id: "advanced-iteration-test"
 description: "Comprehensive testing of all iteration patterns including range, dynamic data, error handling, and complex scenarios"
-base_url: "{{httpbin_url}}"
+base_url: "http://localhost:8080"
 
 metadata:
   priority: "medium"

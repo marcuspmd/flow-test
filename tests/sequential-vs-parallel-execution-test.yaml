@@ -1,7 +1,7 @@
 suite_name: "Sequential vs Parallel Execution Comparison"
 node_id: "sequential-parallel-comparison"
 description: "Test suite designed to demonstrate differences between sequential and parallel execution modes"
-base_url: "{{httpbin_url}}"
+base_url: "http://localhost:8080"
 
 metadata:
   priority: "medium"

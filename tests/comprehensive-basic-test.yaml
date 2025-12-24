@@ -4,7 +4,7 @@ suite_name: "Teste Básico Abrangente das Funcionalidades Core"
 node_id: "comprehensive_basic"
 description: "Valida requests HTTP básicos, assertions, captures e interpolação de variáveis"
 
-base_url: "{{httpbin_url}}"
+base_url: "http://localhost:8080"
 
 variables:
   test_user: "flow_test_user"

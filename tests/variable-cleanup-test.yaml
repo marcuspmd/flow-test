@@ -4,7 +4,7 @@ node_id: "variable_cleanup_test"
 description: "Valida que variáveis não-globais são limpas entre diferentes nodes"
 priority: "high"
 
-base_url: "{{httpbin_url}}"
+base_url: "http://localhost:8080"
 
 # Removendo dependência para permitir teste individual
 # depends:
@@ -101,7 +101,7 @@ steps:
       body:
         verification_test:
           # Estas devem estar disponíveis (globais)
-          httpbin_url: "{{httpbin_url}}"
+          httpbin_url: "http://localhost:8080"
 
           # Estas NÃO devem mais estar disponíveis (eram locais do node anterior)
           should_be_cleaned_user_id: "{{user_id}}"  # Deve ser undefined/null
