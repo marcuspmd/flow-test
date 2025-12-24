@@ -75,7 +75,7 @@ steps:
       status_code: 200
       body:
         headers:
-          X-Dependency-Token:
+          x-dependency-token:
             equals: "{{auth_token}}"
     scenarios:
       - name: "Verify dependency data exists"
@@ -84,7 +84,7 @@ steps:
           assert:
             body:
               headers:
-                X-Conditional-Test:
+                x-conditional-test:
                   equals: "yes"
           variables:
             dependency_condition_met: true
@@ -130,7 +130,7 @@ steps:
     assert:
       status_code: 200
       headers:
-        X-Cache-Test:
+        x-cache-test:
           equals: "dependency-cache-validation"
     metadata:
       description: "Validates header propagation using httpbin's response-headers endpoint"

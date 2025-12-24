@@ -102,7 +102,7 @@ steps:
       status_code: 200
       body:
         headers:
-          Authorization:
+          authorization:
             contains: "Bearer"
 
     capture:
@@ -245,7 +245,7 @@ steps:
       status_code: 200
       body:
         headers:
-          Authorization:
+          authorization:
             contains: "Bearer"
 
     capture:

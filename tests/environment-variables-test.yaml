@@ -30,7 +30,7 @@ steps:
       status_code: 200
       body:
         headers:
-          X-Home:
+          x-home:
             exists: true
     capture:
       env_user: "body.data | fromjson | @.user"
@@ -64,7 +64,7 @@ steps:
       status_code: 200
       body:
         headers:
-          X-With-Default:
+          x-with-default:
             equals: "default_value"
 
   - name: "Test environment in scenarios"

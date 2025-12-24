@@ -25,7 +25,7 @@ steps:
       status_code: 200
       body:
         headers:
-          X-Test-Type:
+          x-test-type:
             equals: "smoke-test"
     metadata:
       tags: ["smoke"]
@@ -172,7 +172,7 @@ steps:
       status_code: 200
       body:
         headers:
-          Accept:
+          accept:
             equals: "application/json"
     metadata:
       tags: ["frontend", "ui", "ajax"]
