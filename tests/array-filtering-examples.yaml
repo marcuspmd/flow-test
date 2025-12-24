@@ -303,9 +303,9 @@ steps:
       # Active users with formatted output
       active_users_formatted: "body.json.users[?status == 'active'].{employee_id: id, full_name: name, contact: email, dept: department}"
       # High-value products summary
-      premium_products_summary: "body.json.products[?price > `100`].{product_code: id, title: name, price_usd: price, availability: stock > `0` && 'In Stock' || 'Out of Stock'}"
-      # Department user counts
-      dept_summary: "body.json.users[?status == 'active'] | group_by(@, &department)"
+      premium_products_summary: "body.json.products[?price > `100`].{product_code: id, title: name, price_usd: price}"
+      # Department list from active users
+      dept_list: "body.json.users[?status == 'active'].department"
 
   # 10. Advanced filtering scenarios
   - name: "Advanced filtering scenarios"

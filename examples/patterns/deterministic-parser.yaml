@@ -46,8 +46,8 @@ steps:
       status_code: 200
     
     capture:
-      # JMESPath expression (@ prefix) - extracts from response
-      posted_data: "@body.json"
+      # JMESPath expression - extracts from response
+      posted_data: "body.json"
 
   # Step 2: Template interpolation with {{}}
   - name: "Template Variable Interpolation"
@@ -83,10 +83,10 @@ steps:
       status_code: 200
     
     capture:
-      # Extract using JMESPath (@ prefix)
-      first_user_id: "@body.json.users[0].id"
-      active_users: "@body.json.users[?active]"
-      all_user_names: "@body.json.users[*].name"
+      # Extract using JMESPath
+      first_user_id: "body.json.users[0].id"
+      active_users: "body.json.users[?active]"
+      all_user_names: "body.json.users[*].name"
 
   # Step 4: JavaScript expressions ($ prefix)
   - name: "JavaScript Calculations"
@@ -133,7 +133,7 @@ steps:
     
     capture:
       # Use JMESPath to capture generated data
-      generated_user_id: "@body.json.user.id"
+      generated_user_id: "body.json.user.id"
 
   # Step 6: Combining different expression types
   - name: "Complex Expression Composition"
