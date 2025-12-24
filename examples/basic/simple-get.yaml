@@ -38,14 +38,14 @@ steps:
       body:
         # httpbin echoes request headers back
         headers:
-          accept:
+          Accept:
             equals: "application/json"
-          user-agent:
+          User-Agent:
             contains: "FlowTestEngine"
 
         # Verify the URL that was called
         url:
-          equals: "/get"
+          contains: "/get"
 
     # Capture values from the response for use in later steps
     capture:

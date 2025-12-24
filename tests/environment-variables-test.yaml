@@ -30,8 +30,8 @@ steps:
       status_code: 200
       body:
         headers:
-          x-home:
-            exists: true
+          X-Home:
+            exists: true  # Header existe mesmo se valor for vazio/null
     capture:
       env_user: "body.data | fromjson | @.user"
       env_home: "body.data | fromjson | @.home_exists"
@@ -64,7 +64,7 @@ steps:
       status_code: 200
       body:
         headers:
-          x-with-default:
+          X-With-Default:
             equals: "default_value"
 
   - name: "Test environment in scenarios"

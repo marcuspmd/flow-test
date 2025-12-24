@@ -73,9 +73,9 @@ steps:
       status_code: 200
       body:
         headers:
-          authorization:
+          Authorization:
             contains: "Bearer"
-          x-api-key:
+          X-Api-Key:
             equals: "client_secret_xyz789"
     capture:
       api_key_test_response: "json"

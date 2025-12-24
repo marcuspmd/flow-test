@@ -70,7 +70,7 @@ steps:
       status_code: 200
       body:
         headers:
-          authorization:
+          Authorization:
             contains: "{{auth_token}}"
     metadata:
       description: "Verifies that setup was completed successfully"

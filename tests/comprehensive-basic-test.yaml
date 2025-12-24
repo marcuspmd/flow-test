@@ -35,9 +35,9 @@ steps:
           contains: "application/json"
       body:
         headers:
-          x-test-user:
+          X-Test-User:
             equals: "flow_test_user"
-          x-test-id:
+          X-Test-Id:
             equals: "12345"
         args:
           # httpbin retorna objeto vazio {} para GET sem query params
@@ -80,7 +80,7 @@ steps:
             test_mode:
               equals: true
         headers:
-          authorization:
+          Authorization:
             contains: "Bearer test-token-12345"
 
     capture:
@@ -129,7 +129,7 @@ steps:
       status_code: 200
       body:
         headers:
-          x-reason:
+          X-Reason:
             contains: "Test cleanup"
 
     capture:
@@ -199,11 +199,11 @@ steps:
             captured_data:
               equals: "create_resource"
         headers:
-          x-numeric-id:
+          X-Numeric-Id:
             equals: "12345"
-          x-boolean-flag:
+          X-Boolean-Flag:
             equals: "true"
-          x-array-data:
+          X-Array-Data:
             contains: "item1,item2,item3"
 
     capture:

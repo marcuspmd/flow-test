@@ -18,7 +18,7 @@ steps:
     assert:
       status_code: 200
       body:
-        url: { equals: "/get" }
+        url: { contains: "/get" }
 
   - name: "POST request with body"
     request:

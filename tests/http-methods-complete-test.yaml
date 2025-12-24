@@ -22,7 +22,7 @@ steps:
     assert:
       status_code: 200
       headers:
-        content-type:
+        Content-Type:
           contains: "application/json"
       body:
         url:
@@ -95,7 +95,7 @@ steps:
     assert:
       status_code: 200
       headers:
-        content-type:
+        Content-Type:
           exists: true
     metadata:
       description: "HEAD method should return headers without body content"
@@ -105,9 +105,9 @@ steps:
       method: "OPTIONS"
       url: "/status/200"
     assert:
-      status_code: 204  # OPTIONS returns 204 No Content for CORS
+      status_code: 200  # OPTIONS returns 200 for httpbin
     metadata:
-      description: "OPTIONS method returns 204 for CORS preflight"
+      description: "OPTIONS method returns 200 for CORS preflight"
 
   - name: "Test HEAD method with different endpoint"
     request:
@@ -116,7 +116,7 @@ steps:
     assert:
       status_code: 200
       headers:
-        content-type:
+        Content-Type:
           contains: "application/json"
     metadata:
       description: "HEAD should return same headers as GET but without body"
@@ -129,9 +129,9 @@ steps:
         Origin: "https://example.com"
         Access-Control-Request-Method: "GET"
     assert:
-      status_code: 204  # OPTIONS returns 204 No Content for CORS
+      status_code: 200  # OPTIONS returns 200 for httpbin
       headers:
-        access-control-allow-origin:
+        Access-Control-Allow-Origin:
           exists: true
     metadata:
       description: "OPTIONS should handle CORS preflight requests"

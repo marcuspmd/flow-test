@@ -27,4 +27,4 @@ steps:
       status_code: 200
       body:
         headers:
-          x-captured-value: {contains: "test-value-123"}
+          X-Captured-Value: {contains: "test-value-123"}

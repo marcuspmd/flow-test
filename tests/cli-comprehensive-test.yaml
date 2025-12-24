@@ -24,7 +24,7 @@ steps:
       status_code: 200
       body:
         headers:
-          x-test-purpose:
+          X-Test-Purpose:
             equals: "CLI basic execution test"
     metadata:
       description: "Verifies basic CLI execution works without any flags"
@@ -40,9 +40,9 @@ steps:
       status_code: 200
       body:
         headers:
-          x-environment:
+          X-Environment:
             equals: "testing"
-          x-cli-test:
+          X-Cli-Test:
             equals: "CLI comprehensive test execution"
     metadata:
       description: "Tests that --environment flag enables proper variable resolution"

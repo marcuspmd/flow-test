@@ -4,9 +4,10 @@ This document provides a comprehensive overview of the "Flow Test Engine" projec
 
 ## 1. Project Overview
 
-The "Flow Test Engine" is a powerful, TypeScript-based API testing framework. It allows developers to define and execute complex API test scenarios using declarative YAML files. The engine is designed for automation and CI/CD integration.
+The "Flow Test Engine" is a powerful, TypeScript-based API testing framework. It allows developers to define and execute complex API test scenarios using declarative YAML files. The engine is designed for automation, CI/CD integration, and ease of use.
 
 - **Core Technology**: TypeScript, Node.js
+- **Current Version**: 3.0.0 (Major Architecture Refactoring)
 - **Primary Goal**: To enable flexible, powerful, and easy-to-maintain API testing.
 - **Key Features**:
     - **Declarative YAML Tests**: Test flows are defined in `.yaml` files.
@@ -15,24 +16,38 @@ The "Flow Test Engine" is a powerful, TypeScript-based API testing framework. It
     - **Advanced Assertions**: Validate status codes, headers, response times, and body content using JMESPath.
     - **Conditional Logic**: Define different execution paths based on response data.
     - **Swagger/OpenAPI Import**: Automatically generate test suites from API specifications.
-    - **Comprehensive Reporting**: Gera artefatos JSON consumidos pelo dashboard HTML dedicado.
-    - **CLI Tool**: A rich command-line interface (`flow-test`) for running and managing tests.
+    - **Interactive Init**: `npx fest init` command to quickly scaffold new projects with templates.
+    - **Comprehensive Reporting**: Generates JSON artifacts consumed by a dedicated HTML dashboard.
+    - **CLI Tool**: A rich command-line interface (`flow-test` or `fest`) for running and managing tests.
 
-## 2. Key Files & Directories
+## 2. Architecture (v3.0.0)
+
+Version 3.0.0 introduced a modular architecture based on SOLID principles, splitting the monolithic `ExecutionService` into focused services:
+
+- **`StepExecutorService`**: Handles execution of individual test steps, strategies, and skip conditions.
+- **`VariableContextManager`**: Manages variable lifecycles, scopes (global, suite, runtime), and exports.
+- **`ResultBuilderService`**: Aggregates results, tracks performance, and builds execution reports.
+- **Dependency Injection**: Uses InversifyJS for loose coupling and better testability.
+
+## 3. Key Files & Directories
 
 - **`src/`**: Contains all the TypeScript source code.
     - **`src/cli.ts`**: The main entry point for the command-line interface.
-    - **`src/core/engine.ts`**: The core logic for parsing YAML files and executing test steps.
-    - **`src/core/discovery.ts`**: Handles the automatic discovery of test files in directories.
-    - **`src/services/`**: Contains services for handling HTTP requests, assertions, variable interpolation, etc.
-    - **`report-dashboard/`**: Aplicação Astro que transforma `results/latest.json` em dashboard HTML.
-- **`tests/`**: Contains all the YAML test files (`.yaml`). This is where test scenarios are defined. The engine automatically discovers tests in this directory and its subdirectories.
-- **`package.json`**: Defines project metadata, dependencies, and, most importantly, the `scripts` for building, running, and testing the project.
-- **`flow-test.config.yml`**: The main configuration file for the test engine (though not present in the initial file listing, it's a key concept).
-- **`results/`**: The default output directory for test execution logs (JSON format).
+    - **`src/services/`**: Core business logic (Execution, Variable Management, Result Building).
+    - **`src/di/`**: Dependency Injection container and identifiers.
+    - **`src/commands/`**: CLI command implementations (e.g., `init.ts`).
+- **`tests/`**: Default directory for YAML test files.
+- **`examples/`**: A collection of 13+ example test files covering basic to advanced patterns (CRUD, Auth, Logic).
 - **`docs/`**: Project documentation.
+- **`results/`**: Default output directory for test execution logs (JSON format).
+- **`flow-test.config.yml`**: Main configuration file for the engine (base URL, timeouts, etc.).
+- **`package.json`**: Defines project metadata, dependencies, and scripts.
+- **Documentation Files**:
+    - **`QUICKSTART.md`**: 5-minute guide to get started.
+    - **`CHEATSHEET.md`**: Quick reference for syntax and commands.
+    - **`V3.0.0-REFACTORING.md`**: Details on the architectural changes.
 
-## 3. Building and Running
+## 4. Building and Running
 
 The project uses `npm` for script and dependency management.
 
@@ -41,60 +56,67 @@ The project uses `npm` for script and dependency management.
   npm install
   ```
 
-- **Build the Project**: Compiles TypeScript to JavaScript.
+- **Build the Project**:
   ```bash
   npm run build
   ```
-  *Output is placed in the `dist/` directory.*
 
-- **Run All Tests (Primary Command)**: This is the main command for running the entire test suite. It performs a full cycle: build, import a Swagger spec for testing, run all discovered `.yaml` tests, and clean up.
+- **Initialize a New Project**:
+  ```bash
+  npm run init
+  # or directly via CLI
+  npx fest init
+  ```
+
+- **Run All Tests**:
   ```bash
   npm test
   ```
 
-- **Run a Specific Test File (Development)**: Use `ts-node` to execute a single test file without a separate build step.
+- **Run a Specific Test File (Development)**:
   ```bash
   npm run dev tests/path/to/your-test.yaml
   ```
 
-- **Visualizar no Dashboard**: Após a execução, rode o dashboard para ver o relatório em HTML.
+- **Orchestrator**:
   ```bash
-  npm run report:dashboard:dev
+  npm run orchestrator:dev
   ```
 
-## 4. Development Conventions
+## 5. Development Conventions
 
-- **Testing**: All tests are written in YAML and reside in the `tests/` directory. The framework is built around the idea of file-based test discovery.
-- **Code Style**: The project uses TypeScript. Adhere to the existing coding style and patterns found in the `src/` directory.
-- **CLI First**: The primary interface for the tool is the `flow-test` CLI. New features should be exposed through this interface.
-- **Documentation**: The project uses `api-extractor` to generate API documentation from TSDoc comments.
+- **Testing**:
+    - **Unit Tests**: Written in Jest, focusing on individual services (e.g., `StepExecutorService`).
+    - **Flow Tests**: YAML-based integration tests in `tests/`.
+- **Code Style**: TypeScript with strict typing. Follows the patterns in `src/` (Service-Repository, DI).
+- **CLI First**: New features should be exposed through the `flow-test` (or `fest`) CLI.
+- **Documentation**: Use `api-extractor` for TSDoc. Keep `CHEATSHEET.md` and `examples/` updated with new features.
 
-## 5. CLI Usage
+## 6. CLI Usage
 
-The compiled CLI is available as `dist/cli.js` and can be invoked via `flow-test`.
+The CLI is available as `flow-test` or `fest`.
 
-- **Run all tests in a directory**:
+- **Initialize Project**:
   ```bash
-  flow-test --directory ./tests --verbose
+  fest init
+  ```
+
+- **Run tests in a directory**:
+  ```bash
+  fest --directory ./tests --verbose
   ```
 
 - **Filter tests by tag**:
   ```bash
-  flow-test --tag user-onboarding,checkout-process
+  fest --tag user-onboarding
   ```
 
-- **Import a Swagger/OpenAPI file**:
+- **Import OpenAPI spec**:
   ```bash
-  flow-test --swagger-import path/to/api.json --swagger-output ./tests/imported
+  fest --swagger-import api.json --swagger-output ./tests/imported
   ```
 
-- **Dry Run**: Display the execution plan without making any HTTP requests.
-  ```bash
-  flow-test --dry-run
-  ```
+## 7. CI/CD & Docker
 
-## 6. CI/CD & Docker
-
-The project is well-equipped for CI/CD environments.
-- **GitHub Actions**: A workflow is defined in `.github/workflows/test.yml` that runs `npm test` on every push.
-- **Docker**: A `Dockerfile` and `docker-compose.yml` are provided to build and run the engine in a containerized environment. Tests run against the Dockerized httpbin service.
+- **GitHub Actions**: Workflow in `.github/workflows/test.yml`.
+- **Docker**: `Dockerfile` and `docker-compose.yml` available for containerized execution (often used with httpbin for testing).

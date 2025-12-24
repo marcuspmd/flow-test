@@ -75,7 +75,7 @@ steps:
       status_code: 200
       body:
         headers:
-          x-dependency-token:
+          X-Dependency-Token:
             equals: "{{auth_token}}"
     scenarios:
       - name: "Verify dependency data exists"
@@ -84,7 +84,7 @@ steps:
           assert:
             body:
               headers:
-                x-conditional-test:
+                X-Conditional-Test:
                   equals: "yes"
           variables:
             dependency_condition_met: true
