@@ -86,16 +86,16 @@ steps:
   - name: "Security validation step"
     request:
       method: "GET"
-      url: "/basic-auth/secure_user/secure_pass"
+      url: "/bearer"
       headers:
-        Authorization: "Basic c2VjdXJlX3VzZXI6c2VjdXJlX3Bhc3M="
+        Authorization: "Bearer test_token_12345"
     assert:
       status_code: 200
       body:
         authenticated:
           equals: true
-        user:
-          equals: "secure_user"
+        token:
+          exists: true
     metadata:
       tags: ["security", "auth"]
       description: "Should be included when filtering by 'security' or 'auth' tags"

@@ -42,13 +42,13 @@ steps:
       status_code: 200
       body:
         json:
-          before_cleanup:
+          test_data:
             exists: true
 
     capture:
       variable_state_before: "body.data | fromjson | @"
-      accessed_previous_user_id: "body.data | fromjson | @.previous_user_id"
-      accessed_previous_user_name: "body.data | fromjson | @.previous_user_name"
+      accessed_previous_user_id: "body.json.previous_user_id"
+      accessed_previous_user_name: "body.json.previous_user_name"
 
   # Teste 2: Definir algumas variáveis locais neste node
   - name: "Set Local Variables in This Node"
@@ -70,9 +70,9 @@ steps:
 
     capture:
       # Estas variáveis devem ser limpas quando mudar de node
-      test_specific_var: "body.data | fromjson | @.local_data.test_specific_var"
-      another_local_var: "body.data | fromjson | @.local_data.another_local_var"
-      node_identifier: "body.data | fromjson | @.local_data.node_identifier"
+      test_specific_var: "body.json.local_data.test_specific_var"
+      another_local_var: "body.json.local_data.another_local_var"
+      node_identifier: "body.json.local_data.node_identifier"
       current_timestamp: "'2024-01-01T12:00:00Z'"
 
   # Teste 3: Simular mudança de contexto e verificar limpeza
@@ -116,11 +116,11 @@ steps:
       status_code: 200
       body:
         json:
-          httpbin_url:
+          verification:
             exists: true
 
     capture:
-      final_verification: "body.data | fromjson | @.verification_test"
+      final_verification: "body.json.verification_test"
       global_variables_accessible: "`true`"  # Simplificado
       exported_variables_accessible: "`false`"  # Simplificado
 

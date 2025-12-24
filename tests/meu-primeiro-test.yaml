@@ -13,7 +13,7 @@ variables:
   # URLs simuladas de autenticação
   auth_endpoints:
     login: "/post"
-    user_profile: "/anything"
+    user_profile: "/get"
 
   # Tokens simulados para testes
   mock_responses:
