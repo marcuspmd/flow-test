@@ -5,7 +5,7 @@ metadata:
   priority: "medium"
   tags: ["demo", "assertions"]
 
-base_url: "{{httpbin_url}}"
+base_url: "http://localhost:8080"
 
 steps:
   - name: "Teste com múltiplas assertions"

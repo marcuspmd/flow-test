@@ -1,7 +1,7 @@
 node_id: "javascript-expressions"
 suite_name: "JavaScript Expressions Integration Test"
 description: "Tests JavaScript expressions for dynamic data generation and calculations"
-base_url: "{{httpbin_url}}"
+base_url: "http://localhost:8080"
 
 metadata:
   priority: "high"

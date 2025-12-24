@@ -5,7 +5,7 @@ node_id: "performance_test"
 description: "Testa tempos de resposta, throughput, e comportamento sob diferentes cargas de trabalho"
 priority: "medium"
 
-base_url: "{{httpbin_url}}"
+base_url: "http://localhost:8080"
 
 exports:
   - performance_metrics

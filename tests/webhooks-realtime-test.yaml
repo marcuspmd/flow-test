@@ -1,7 +1,7 @@
 node_id: "webhooks-realtime"
 suite_name: "Webhooks and Real-time Testing Suite"
 description: "Tests webhook delivery, real-time communications, and event-driven scenarios"
-base_url: "{{httpbin_url}}"
+base_url: "http://localhost:8080"
 
 metadata:
   priority: "high"
@@ -10,7 +10,7 @@ metadata:
 
 variables:
   webhook_id: "webhook-"#faker.string.uuid"
-  callback_url: "{{httpbin_url}}/post"
+  callback_url: "http://localhost:8080/post"
   event_type: "user.created"
 
 steps:

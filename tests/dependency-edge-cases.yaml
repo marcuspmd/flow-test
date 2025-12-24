@@ -11,7 +11,7 @@ exports:
 
 variables:
   test_value: "edge-case-value"
-  api_url: "{{httpbin_url}}"
+  api_url: "http://localhost:8080"
 
 steps:
   - name: "Test basic functionality"

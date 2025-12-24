@@ -1,7 +1,7 @@
 suite_name: "Advanced Assertions Comprehensive Testing"
 node_id: "advanced-assertions-test"
 description: "Comprehensive testing of all assertion operators including regex matching, length validation, oneOf assertions, type checking, and complex nested validations"
-base_url: "{{httpbin_url}}"
+base_url: "http://localhost:8080"
 
 metadata:
   priority: "high"

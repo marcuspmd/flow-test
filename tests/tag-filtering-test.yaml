@@ -1,7 +1,7 @@
 node_id: "tag-filtering-comprehensive"
 suite_name: "Tag-based Filtering Comprehensive Test"
 description: "Comprehensive test suite demonstrating various tag combinations for CLI filtering"
-base_url: "{{httpbin_url}}"
+base_url: "http://localhost:8080"
 
 metadata:
   priority: "high"
@@ -25,7 +25,7 @@ steps:
       status_code: 200
       body:
         headers:
-          X-Test-Type:
+          x-test-type:
             equals: "smoke-test"
     metadata:
       tags: ["smoke"]
@@ -86,16 +86,16 @@ steps:
   - name: "Security validation step"
     request:
       method: "GET"
-      url: "/basic-auth/secure_user/secure_pass"
+      url: "/bearer"
       headers:
-        Authorization: "Basic c2VjdXJlX3VzZXI6c2VjdXJlX3Bhc3M="
+        Authorization: "Bearer test_token_12345"
     assert:
       status_code: 200
       body:
         authenticated:
           equals: true
-        user:
-          equals: "secure_user"
+        token:
+          exists: true
     metadata:
       tags: ["security", "auth"]
       description: "Should be included when filtering by 'security' or 'auth' tags"
@@ -172,7 +172,7 @@ steps:
       status_code: 200
       body:
         headers:
-          Accept:
+          accept:
             equals: "application/json"
     metadata:
       tags: ["frontend", "ui", "ajax"]

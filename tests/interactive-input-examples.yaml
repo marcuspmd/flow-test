@@ -1,7 +1,7 @@
 suite_name: Interactive Input Examples
 node_id: interactive-input-examples
 description: Demonstrates interactive input capabilities with various input types and dynamic prompts based on API responses
-base_url: '{{httpbin_url}}'
+base_url: 'http://localhost:8080'
 execution_mode: sequential
 metadata:
   priority: medium

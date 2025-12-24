@@ -1,7 +1,7 @@
 suite_name: "Environment-Specific and Feature Flags Comprehensive Testing"
 node_id: "environment-feature-flags-test"
 description: "Comprehensive testing of environment-specific behaviors, feature flag integration, multi-environment configuration, and environment-based conditional execution"
-base_url: "{{httpbin_url}}"
+base_url: "http://localhost:8080"
 
 metadata:
   priority: "high"

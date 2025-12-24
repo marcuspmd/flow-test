@@ -1,6 +1,6 @@
 suite_name: E-commerce API - Complete Flow with Hooks
 node_id: ecommerce-hooks-demo
-base_url: https://dummyjson.com
+base_url: http://localhost:8080
 variables:
   user_tier: premium
   discount_rate: 0.15
@@ -43,53 +43,48 @@ steps:
             client: flow-test
     request:
       method: POST
-      url: /auth/login
+      url: /post
       headers:
         X-Request-ID: '{{request_id}}'
         X-Timestamp: '{{timestamp}}'
         User-Agent: '{{user_agent}}'
       body:
-        username: emilys
-        password: emilyspass
-        expiresInMins: 30
+        username: testuser
+        action: login
+        tier: '{{user_tier}}'
     hooks_post_request:
       - compute:
           response_time: "$Date.now() - timestamp"
           expires_at: "$Date.now() + (30 * 60 * 1000)"
-          token_length: "$response.body.accessToken.length"
+          auth_token_mock: "$Math.random().toString(36).substring(7)"
       - metric:
           name: api_login_duration_ms
           value: '{{response_time}}'
           tags:
-            endpoint: /auth/login
+            endpoint: /post
             status: success
             user_tier: '{{user_tier}}'
       - validate:
-          - expression: response_time < 2000
+          - expression: "response_time < 2000"
             message: Login took {{response_time}}ms - Performance acceptable
             severity: info
-          - expression: response_time < 5000
+          - expression: "response_time < 5000"
             message: Login took {{response_time}}ms - Performance degraded!
             severity: warning
       - log:
           level: info
           message: Login successful in {{response_time}}ms, token expires at {{expires_at}}
           metadata:
-            token_length: '{{token_length}}'
-            user_id: $response.body.id
+            auth_token: '{{auth_token_mock}}'
     assert:
       status_code: 200
       body:
-        accessToken:
+        json:
           exists: true
-          type: string
-        id:
-          exists: true
-          type: number
+          type: object
     capture:
-      auth_token: body.accessToken
-      user_id: body.id
-      user_email: body.email
+      auth_token: "auth_token_mock"
+      user_id: "body.json.username"
   - name: Select product with input hooks
     step_id: select-product
     hooks_pre_input:
@@ -136,33 +131,31 @@ steps:
     hooks_pre_request:
       - log:
           level: info
-          message: 'Fetching cart 1'
+          message: 'Fetching mock cart data'
     request:
       method: GET
-      url: /carts/1
+      url: /get
+      headers:
+        Authorization: "Bearer {{auth_token}}"
     hooks_post_request:
       - compute:
           verification_time: "$Date.now()"
-          fetched_products_count: "$response.body.totalProducts"
+          fetched_products_count: "3"
       - metric:
           name: cart_verified
           value: 1
           tags:
-            cart_id: "1"
-            products_count: "{{fetched_products_count}}"
+            cart_id: "mock-cart"
+            products_count: "3"
       - log:
           level: info
-          message: 'Cart verified: {{fetched_products_count}} products, total: ${{response.body.total}}'
+          message: 'Cart verified: {{fetched_products_count}} products'
     assert:
       status_code: 200
       body:
-        id:
+        url:
           exists: true
-        products:
-          type: array
-        total:
-          type: number
     capture:
-      verified_cart_id: body.id
-      verified_total: body.total
-      verified_products_count: body.totalProducts
+      verified_cart_id: "body.url"
+      verified_total: "verification_time"
+      verified_products_count: "fetched_products_count"

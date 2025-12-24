@@ -1,7 +1,7 @@
 suite_name: "Data Formatting and Transformation Examples"
 node_id: "data-formatting-examples"
 description: "Demonstrates various data formatting and transformation techniques using JMESPath projections and extractions"
-base_url: "{{httpbin_url}}"
+base_url: "http://localhost:8080"
 
 metadata:
   priority: "medium"

@@ -1,7 +1,7 @@
 suite_name: "Input Capture Test"
 node_id: "input-capture-test"
 description: "Demonstrates step.capture working with input, just like with request"
-base_url: "{{httpbin_url}}"
+base_url: "http://localhost:8080"
 
 metadata:
   priority: "high"

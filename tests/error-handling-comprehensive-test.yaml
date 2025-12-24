@@ -1,7 +1,7 @@
 suite_name: "Error Handling Comprehensive Testing"
 node_id: "error-handling-test"
 description: "Comprehensive testing of error handling patterns including continue_on_failure, timeout handling, network errors, and graceful degradation"
-base_url: "{{httpbin_url}}"
+base_url: "http://localhost:8080"
 
 metadata:
   priority: "high"

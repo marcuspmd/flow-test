@@ -1,7 +1,7 @@
 node_id: "parallel-execution"
 suite_name: "Parallel Execution Test Suite"
 description: "Tests concurrent test execution with configurable limits and performance validation"
-base_url: "{{httpbin_url}}"
+base_url: "http://localhost:8080"
 
 metadata:
   priority: "medium"

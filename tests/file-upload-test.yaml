@@ -5,7 +5,7 @@ node_id: "file_upload_test"
 description: "Testa operações de upload, download e manipulação de arquivos com simulação"
 priority: "high"
 
-base_url: "{{httpbin_url}}"
+base_url: "http://localhost:8080"
 
 exports:
   - file_id

@@ -1,7 +1,7 @@
 suite_name: "Sensitive Data and Security Testing"
 node_id: "sensitive-data-security"
 description: "Tests sensitive data handling, masking, and security best practices"
-base_url: "{{httpbin_url}}"
+base_url: "http://localhost:8080"
 
 metadata:
   priority: "high"
@@ -56,7 +56,7 @@ steps:
               equals: "super_secret_password_123"
     capture:
       auth_response: "json"
-      simulated_auth_token: "#faker.string.alphanumeric(32)"
+      simulated_auth_token: "body.json.session_id"
       login_timestamp: "json.login_request.timestamp"
 
   - name: "Test API key handling and masking"
@@ -73,9 +73,9 @@ steps:
       status_code: 200
       body:
         headers:
-          Authorization:
+          authorization:
             contains: "Bearer"
-          "X-Api-Key":
+          x-api-key:
             equals: "client_secret_xyz789"
     capture:
       api_key_test_response: "json"

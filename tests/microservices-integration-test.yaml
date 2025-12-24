@@ -5,7 +5,7 @@ node_id: "microservices_integration_test"
 description: "Testa comunicação entre microserviços, propagação de dados, e coordenação de transações distribuídas"
 priority: "high"
 
-base_url: "{{httpbin_url}}"
+base_url: "http://localhost:8080"
 
 exports:
   - service_health_status
@@ -90,7 +90,6 @@ steps:
         payment_service: "healthy"
         notification_service: "healthy"
         inventory_service: "healthy"
-      health_check_timestamp: "$new Date().toISOString()"
       all_services_up: "true"
 
   # Passo 2: Criar Usuário no User Service
@@ -126,8 +125,7 @@ steps:
 
     capture:
       user_created: "true"
-      user_service_response: "{{json}}"
-      user_creation_time: "$new Date().toISOString()"
+      user_service_response: "body.json"
 
   # Passo 3: Verificar Estoque no Inventory Service
   - name: "Check Product Inventory"
@@ -157,8 +155,6 @@ steps:
     capture:
       inventory_available: "true"
       available_stock: 100
-      reserved_quantity: "{{test_transaction.quantity}}"
-      inventory_check_time: "$new Date().toISOString()"
 
   # Passo 4: Criar Pedido no Order Service
   - name: "Create Order in Order Service"

@@ -3,7 +3,7 @@ suite_name: "Teste Integrado Completo do Flow Test Engine"
 node_id: "integration_full"
 description: "Combina todas as funcionalidades: imports, scenarios, captures, assertions, faker e interpolação"
 
-base_url: "{{httpbin_url}}"
+base_url: "http://localhost:8080"
 
 # Configuração Faker
 faker:
@@ -79,8 +79,9 @@ steps:
           assert:
             status_code: 200
             body:
-              data:
-                contains: "test_initialization"
+              json:
+                test_initialization:
+                  exists: true
           capture:
             init_success: "`true`"
             test_user_id: "body.data | fromjson | @.test_initialization.test_user.id"
@@ -202,8 +203,9 @@ steps:
     assert:
       status_code: 200
       body:
-        data:
-          contains: "data_processing"
+        json:
+          data_processing:
+            exists: true
 
     capture:
       # Captures simplificados para evitar erros JMESPath
@@ -299,8 +301,9 @@ steps:
           assert:
             status_code: 200
             body:
-              data:
-                contains: "final_validation"
+              json:
+                final_validation:
+                  exists: true
           capture:
             final_validation_result: "'all_tests_passed'"
             success_rate: "`100`"
