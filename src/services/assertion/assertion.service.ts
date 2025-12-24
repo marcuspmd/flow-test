@@ -18,6 +18,7 @@ import { AssertionContext } from "./strategies/assertion-strategy.interface";
 import { TYPES } from "../../di/identifiers";
 import { ILogger } from "../../interfaces/services/ILogger";
 import { IAssertionService } from "../../interfaces/services/IAssertionService";
+import { IVariableService } from "../../interfaces/services/IVariableService";
 
 /**
  * Comprehensive assertion validation service for HTTP response testing.
@@ -89,9 +90,14 @@ import { IAssertionService } from "../../interfaces/services/IAssertionService";
 export class AssertionService implements IAssertionService {
   private logger: ILogger;
   private strategyRegistry: StrategyRegistry;
+  private variableService: IVariableService;
 
-  constructor(@inject(TYPES.ILogger) logger: ILogger) {
+  constructor(
+    @inject(TYPES.ILogger) logger: ILogger,
+    @inject(TYPES.IVariableService) variableService: IVariableService
+  ) {
     this.logger = logger;
+    this.variableService = variableService;
     this.strategyRegistry = new StrategyRegistry();
   }
 
@@ -562,10 +568,18 @@ export class AssertionService implements IAssertionService {
       const strategy = this.strategyRegistry.findStrategy(checkObj);
 
       if (strategy) {
+        // 🔥 INTERPOLATE expectedValue before passing to strategy
+        // This ensures {{variables}} in assertions are resolved to actual values
+        // before comparison, fixing the HTML report display issue
+        const interpolatedExpectedValue = this.variableService.interpolate(
+          checkValue,
+          true // suppress warnings for optional variables
+        );
+
         const context: AssertionContext & { propertyName?: string } = {
           fieldName,
           actualValue,
-          expectedValue: checkValue,
+          expectedValue: interpolatedExpectedValue,
           propertyName: checkKey, // Pass the original property name
         };
 

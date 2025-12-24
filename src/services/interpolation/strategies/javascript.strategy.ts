@@ -77,8 +77,8 @@ export class JavaScriptStrategy
   constructor(private logger: ILogger = noopLogger) {}
 
   canHandle(expression: string): boolean {
-    // Do NOT handle $faker (that's Faker strategy)
-    if (expression.startsWith("$faker.")) {
+    // Do NOT handle $faker or $env (those are Faker/Env strategies)
+    if (expression.startsWith("$faker.") || expression.startsWith("$env.")) {
       return false;
     }
 

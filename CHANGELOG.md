@@ -5,6 +5,30 @@ All notable changes to the Flow Test Engine will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.1] - 2025-12-24
+
+### 🐛 Bug Fixes
+
+#### Fixed
+- **VariableService singleton issue**: Variables computed in hooks (`hooks_pre_request`) were not available during request interpolation
+  - **Root Cause**: `VariableService` was not registered as singleton in DI container, causing multiple instances with isolated variable contexts
+  - **Solution**: Added `.inSingletonScope()` to `IVariableService` binding in `src/di/container.ts`
+  - **Impact**: Hooks `compute` actions now work correctly for headers, body, and params interpolation
+  - **Documentation**: See [docs/fix-variable-service-singleton.md](docs/fix-variable-service-singleton.md) for detailed analysis
+
+#### Example Fixed
+```yaml
+hooks_pre_request:
+  - compute:
+      request_id: "$Math.floor(Math.random() * 1000000)"
+      timestamp: "$Date.now()"
+
+request:
+  headers:
+    X-Request-ID: "{{request_id}}"    # ✅ Now interpolates correctly
+    X-Timestamp: "{{timestamp}}"       # ✅ Now interpolates correctly
+```
+
 ## [3.0.0] - 2025-10-30
 
 ### 🏗️ Architecture - BREAKING CHANGES

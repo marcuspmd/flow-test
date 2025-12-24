@@ -174,6 +174,7 @@ export class RequestStepStrategy extends BaseStepStrategy {
       await this.executePreRequestScript(context);
 
       // **3. Interpolate variables and apply certificate**
+      // NOTE: This MUST happen AFTER pre-request hooks so that computed variables are available
       const rawRequestUrl = step.request.url;
       interpolatedRequest = globalVariables.interpolate(step.request);
 

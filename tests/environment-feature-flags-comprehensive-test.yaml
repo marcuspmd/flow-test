@@ -9,18 +9,8 @@ metadata:
   estimated_duration_ms: 1800
 
 variables:
-  current_environment: "{{$env.NODE_ENV || 'development'}}"
-  test_environment: "{{$env.TEST_ENV || 'test'}}"
-  deployment_stage: "{{$env.DEPLOYMENT_STAGE || 'staging'}}"
-
-  # Feature flags from environment variables
-  feature_flags:
-    new_ui: "{{$env.FEATURE_NEW_UI || 'false'}}"
-    api_v2: "{{$env.FEATURE_API_V2 || 'false'}}"
-    advanced_analytics: "{{$env.FEATURE_ANALYTICS || 'false'}}"
-    beta_program: "{{$env.FEATURE_BETA || 'false'}}"
-    experimental_features: "{{$env.FEATURE_EXPERIMENTAL || 'false'}}"
-    debug_mode: "{{$env.FEATURE_DEBUG || 'false'}}"
+  # Static feature flags structure (will be populated in first step)
+  feature_flags: {}
 
   # Environment-specific URLs
   environment_urls:
@@ -48,11 +38,41 @@ variables:
       retry_attempts: 1
       debug_logging: false
 
-  env_test_id: "env-"#faker.string.uuid"
-
 exports: ["environment_results", "feature_flag_data", "multi_env_config"]
 
 steps:
+  # 0. Initialize and materialize environment variables
+  - name: "Initialize environment context"
+    request:
+      method: "GET"
+      url: "/get"
+      headers:
+        X-Init: "environment_context"
+      params:
+        # Use $env directly - will return null if not set, then we use defaults in JavaScript
+        env_node: "{{$env.NODE_ENV}}"
+        env_test: "{{$env.TEST_ENV}}"
+        env_stage: "{{$env.DEPLOYMENT_STAGE}}"
+        # Feature flags
+        flag_new_ui: "{{$env.FEATURE_NEW_UI}}"
+        flag_api_v2: "{{$env.FEATURE_API_V2}}"
+        flag_analytics: "{{$env.FEATURE_ANALYTICS}}"
+        flag_beta: "{{$env.FEATURE_BETA}}"
+        flag_experimental: "{{$env.FEATURE_EXPERIMENTAL}}"
+        flag_debug: "{{$env.FEATURE_DEBUG}}"
+        # Generate unique ID using faker
+        test_id: "{{$js:'env-' + '{{$faker.string.uuid}}'}}"
+    assert:
+      status_code: 200
+    capture:
+      # Capture resolved environment variables with fallbacks
+      current_environment: "body.args.env_node || 'development'"
+      test_environment: "body.args.env_test || 'test'"
+      deployment_stage: "body.args.env_stage || 'staging'"
+      env_test_id: "body.args.test_id"
+      # Capture feature flags with defaults
+      feature_flags: "body.args | {new_ui: (flag_new_ui || 'false'), api_v2: (flag_api_v2 || 'false'), advanced_analytics: (flag_analytics || 'false'), beta_program: (flag_beta || 'false'), experimental_features: (flag_experimental || 'false'), debug_mode: (flag_debug || 'false')}"
+
   # 1. Environment Detection and Configuration
   - name: "Detect current environment"
     request:
@@ -72,13 +92,13 @@ steps:
         args:
           environment: { equals: "{{current_environment}}" }
     capture:
-      detected_environment: "body.current_environment"
-      environment_detection_result: "success"
+      detected_environment: "body.args.environment"
+      environment_detection_result: "'success'"
 
   # 2. Development Environment Specific Tests
   - name: "Development environment operations"
     metadata:
-      skip: "{{current_environment}} !== 'development'"
+      skip: "{{$js:current_environment !== 'development'}}"
       description: "Only run in development environment"
     request:
       method: "POST"
@@ -105,12 +125,12 @@ steps:
               json:
                 environment: { equals: "development" }
           capture:
-            dev_environment_result: "development_features_enabled"
+            dev_environment_result: "'development_features_enabled'"
 
   # 3. Test Environment Specific Tests
   - name: "Test environment operations"
     metadata:
-      skip: "{{test_environment}} !== 'test'"
+      skip: "{{$js:test_environment !== 'test'}}"
       description: "Only run in test environment"
     request:
       method: "POST"
@@ -134,12 +154,12 @@ steps:
           assert:
             status_code: 200
           capture:
-            test_environment_result: "test_features_enabled"
+            test_environment_result: "'test_features_enabled'"
 
   # 4. Staging Environment Specific Tests
   - name: "Staging environment operations"
     metadata:
-      skip: "{{deployment_stage}} !== 'staging'"
+      skip: "{{$js:deployment_stage !== 'staging'}}"
       description: "Only run in staging environment"
     request:
       method: "POST"
@@ -163,12 +183,12 @@ steps:
           assert:
             status_code: 200
           capture:
-            staging_environment_result: "staging_features_enabled"
+            staging_environment_result: "'staging_features_enabled'"
 
   # 5. Production Environment Specific Tests
   - name: "Production environment operations"
     metadata:
-      skip: "{{deployment_stage}} !== 'production'"
+      skip: "{{$js:deployment_stage !== 'production'}}"
       description: "Only run in production environment"
     request:
       method: "GET"  # Only safe operations in production
@@ -189,12 +209,12 @@ steps:
             response_time_ms:
               max: "{{environment_config.production.timeout}}"
           capture:
-            production_environment_result: "production_safety_verified"
+            production_environment_result: "'production_safety_verified'"
 
   # 6. Feature Flag Testing
   - name: "Test new UI feature flag"
     metadata:
-      skip: "{{feature_flags.new_ui}} !== 'true'"
+      skip: "{{$js:feature_flags.new_ui !== 'true'}}"
       description: "Test new UI when feature flag is enabled"
     request:
       method: "GET"
@@ -213,11 +233,11 @@ steps:
           assert:
             status_code: 200
           capture:
-            new_ui_feature_result: "new_ui_enabled"
+            new_ui_feature_result: "'new_ui_enabled'"
 
   - name: "Test API v2 feature flag"
     metadata:
-      skip: "{{feature_flags.api_v2}} !== 'true'"
+      skip: "{{$js:feature_flags.api_v2 !== 'true'}}"
       description: "Test API v2 when feature flag is enabled"
     request:
       method: "POST"
@@ -239,11 +259,11 @@ steps:
           assert:
             status_code: 200
           capture:
-            api_v2_feature_result: "api_v2_enabled"
+            api_v2_feature_result: "'api_v2_enabled'"
 
   - name: "Test advanced analytics feature flag"
     metadata:
-      skip: "{{feature_flags.advanced_analytics}} !== 'true'"
+      skip: "{{$js:feature_flags.advanced_analytics !== 'true'}}"
       description: "Test analytics when feature flag is enabled"
     request:
       method: "POST"
@@ -264,12 +284,12 @@ steps:
           assert:
             status_code: 200
           capture:
-            analytics_feature_result: "analytics_enabled"
+            analytics_feature_result: "'analytics_enabled'"
 
   # 7. Beta Program Feature Testing
   - name: "Test beta program features"
     metadata:
-      skip: "{{feature_flags.beta_program}} !== 'true'"
+      skip: "{{$js:feature_flags.beta_program !== 'true'}}"
       description: "Test beta features when user is in beta program"
     request:
       method: "GET"
@@ -288,12 +308,12 @@ steps:
           assert:
             status_code: 200
           capture:
-            beta_program_result: "beta_access_granted"
+            beta_program_result: "'beta_access_granted'"
 
   # 8. Experimental Features Testing
   - name: "Test experimental features"
     metadata:
-      skip: "{{feature_flags.experimental_features}} !== 'true'"
+      skip: "{{$js:feature_flags.experimental_features !== 'true'}}"
       description: "Test experimental features when flag is enabled"
     request:
       method: "POST"
@@ -315,12 +335,12 @@ steps:
           assert:
             status_code: 200
           capture:
-            experimental_feature_result: "experimental_enabled"
+            experimental_feature_result: "'experimental_enabled'"
 
   # 9. Debug Mode Feature Testing
   - name: "Test debug mode features"
     metadata:
-      skip: "{{feature_flags.debug_mode}} !== 'true'"
+      skip: "{{$js:feature_flags.debug_mode !== 'true'}}"
       description: "Test debug features when debug mode is enabled"
     request:
       method: "GET"
@@ -340,7 +360,7 @@ steps:
           assert:
             status_code: 200
           capture:
-            debug_mode_result: "debug_features_enabled"
+            debug_mode_result: "'debug_features_enabled'"
 
   # 10. Multi-Environment Configuration Testing
   - name: "Test environment-specific configuration"
@@ -362,7 +382,7 @@ steps:
         json:
           environment: { equals: "{{current_environment}}" }
     capture:
-      environment_config_result: "config_loaded"
+      environment_config_result: "'config_loaded'"
 
   # 11. Environment-Based Data Handling
   - name: "Environment-specific data operations"
@@ -376,17 +396,17 @@ steps:
       body:
         operation: "data_handling"
         environment: "{{current_environment}}"
-        data_strategy: "{{current_environment === 'production' ? 'real_data' : 'test_data'}}"
-        data_sensitivity: "{{current_environment === 'production' ? 'high' : 'low'}}"
-        anonymization: "{{current_environment === 'production' ? 'required' : 'optional'}}"
-        backup_strategy: "{{current_environment === 'production' ? 'continuous' : 'daily'}}"
+        data_strategy: "{{$js:current_environment === 'production' ? 'real_data' : 'test_data'}}"
+        data_sensitivity: "{{$js:current_environment === 'production' ? 'high' : 'low'}}"
+        anonymization: "{{$js:current_environment === 'production' ? 'required' : 'optional'}}"
+        backup_strategy: "{{$js:current_environment === 'production' ? 'continuous' : 'daily'}}"
     assert:
       status_code: 200
       body:
         json:
           environment: { equals: "{{current_environment}}" }
     capture:
-      data_handling_result: "environment_data_strategy_applied"
+      data_handling_result: "'environment_data_strategy_applied'"
 
   # 12. Feature Flag Combination Testing
   - name: "Test feature flag combinations"
@@ -407,16 +427,16 @@ steps:
           experimental_features: "{{feature_flags.experimental_features}}"
           debug_mode: "{{feature_flags.debug_mode}}"
         feature_compatibility:
-          ui_api_combo: "{{feature_flags.new_ui === 'true' && feature_flags.api_v2 === 'true'}}"
-          analytics_beta_combo: "{{feature_flags.advanced_analytics === 'true' && feature_flags.beta_program === 'true'}}"
-        total_active_features: "{{Object.values(feature_flags).filter(flag => flag === 'true').length}}"
+          ui_api_combo: "{{$js:(feature_flags && feature_flags.new_ui === 'true' && feature_flags.api_v2 === 'true') || false}}"
+          analytics_beta_combo: "{{$js:(feature_flags && feature_flags.advanced_analytics === 'true' && feature_flags.beta_program === 'true') || false}}"
+        total_active_features: "{{$js:feature_flags ? Object.values(feature_flags).filter(flag => flag === 'true').length : 0}}"
     assert:
       status_code: 200
       body:
         json:
           test_type: { equals: "feature_flag_combinations" }
     capture:
-      feature_combination_result: "combinations_tested"
+      feature_combination_result: "'combinations_tested'"
 
   # 13. Final Environment and Feature Summary
   - name: "Collect environment and feature flag results"
@@ -434,17 +454,17 @@ steps:
         deployment_stage: "{{deployment_stage}}"
         feature_flags_tested: "{{feature_flags}}"
         environment_specific_tests:
-          development: "{{dev_environment_result || 'skipped'}}"
-          test: "{{test_environment_result || 'skipped'}}"
-          staging: "{{staging_environment_result || 'skipped'}}"
-          production: "{{production_environment_result || 'skipped'}}"
+          development: "{{$js:typeof dev_environment_result !== 'undefined' ? dev_environment_result : 'skipped'}}"
+          test: "{{$js:typeof test_environment_result !== 'undefined' ? test_environment_result : 'skipped'}}"
+          staging: "{{$js:typeof staging_environment_result !== 'undefined' ? staging_environment_result : 'skipped'}}"
+          production: "{{$js:typeof production_environment_result !== 'undefined' ? production_environment_result : 'skipped'}}"
         feature_flag_results:
-          new_ui: "{{new_ui_feature_result || 'skipped'}}"
-          api_v2: "{{api_v2_feature_result || 'skipped'}}"
-          advanced_analytics: "{{analytics_feature_result || 'skipped'}}"
-          beta_program: "{{beta_program_result || 'skipped'}}"
-          experimental_features: "{{experimental_feature_result || 'skipped'}}"
-          debug_mode: "{{debug_mode_result || 'skipped'}}"
+          new_ui: "{{$js:typeof new_ui_feature_result !== 'undefined' ? new_ui_feature_result : 'skipped'}}"
+          api_v2: "{{$js:typeof api_v2_feature_result !== 'undefined' ? api_v2_feature_result : 'skipped'}}"
+          advanced_analytics: "{{$js:typeof analytics_feature_result !== 'undefined' ? analytics_feature_result : 'skipped'}}"
+          beta_program: "{{$js:typeof beta_program_result !== 'undefined' ? beta_program_result : 'skipped'}}"
+          experimental_features: "{{$js:typeof experimental_feature_result !== 'undefined' ? experimental_feature_result : 'skipped'}}"
+          debug_mode: "{{$js:typeof debug_mode_result !== 'undefined' ? debug_mode_result : 'skipped'}}"
         environment_configurations: "{{environment_config}}"
         environment_urls: "{{environment_urls}}"
         test_patterns:

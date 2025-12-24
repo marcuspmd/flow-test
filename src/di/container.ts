@@ -112,7 +112,10 @@ export function createContainer(): Container {
   // Transient services (new instance per injection)
   container.bind<IHttpService>(TYPES.IHttpService).to(HttpService);
 
-  container.bind<IVariableService>(TYPES.IVariableService).to(VariableService);
+  container
+    .bind<IVariableService>(TYPES.IVariableService)
+    .to(VariableService)
+    .inSingletonScope();
 
   // ========================================
   // FASE 2: Validation Services (Sprint 3)

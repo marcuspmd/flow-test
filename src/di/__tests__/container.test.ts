@@ -397,12 +397,12 @@ describe("DI Container", () => {
       expect(variableService).toHaveProperty("getAllVariables");
     });
 
-    it("should return different VariableService instances (transient)", () => {
+    it("should return same VariableService instance (singleton)", () => {
       const instance1 = container.get<IVariableService>(TYPES.IVariableService);
       const instance2 = container.get<IVariableService>(TYPES.IVariableService);
 
-      // Transient scope = different instances
-      expect(instance1).not.toBe(instance2);
+      // Singleton scope = same instance
+      expect(instance1).toBe(instance2);
     });
 
     it("should have interpolate method that works", () => {

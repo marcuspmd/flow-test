@@ -9,9 +9,9 @@ metadata:
   estimated_duration_ms: 2000
 
 variables:
-  workflow_test_id: "{{$js:'workflow-' + faker.string.uuid()}}"
+  workflow_test_id: "{{$js:'workflow-' + Math.floor(Math.random() * 1000000)}}"
   customer_id: "#faker.number.int({min: 1000, max: 9999})"
-  session_id: "{{$js:'session-' + faker.string.uuid()}}"
+  session_id: "{{$js:'session-' + Math.floor(Math.random() * 1000000)}}"
 
   # E-commerce test data
   customer_data:
@@ -52,6 +52,12 @@ variables:
     - type: "bank_transfer"
       routing: "123456789"
 
+  # Default payment method for easy access
+  default_payment:
+    type: "credit_card"
+    provider: "visa"
+    last_four: "1234"
+
 exports: ["workflow_results", "ecommerce_data", "contract_validation_results"]
 
 steps:
@@ -81,8 +87,8 @@ steps:
           customer_data: { exists: true, type: "object" }
           registration_source: { equals: "web" }
     capture:
-      customer_registration_result: '"success"'
-      registered_customer_id: "body.json.customer_data.id || '12345'"
+      customer_registration_result: "`success`"
+      registered_customer_id: "body.json.customer_data.id"
 
   # 2. E-COMMERCE WORKFLOW - Product Catalog Browsing
   - name: "Browse product catalog"
@@ -106,8 +112,9 @@ steps:
           category: { equals: "electronics" }
           customer_id: { equals: "{{registered_customer_id}}" }
     capture:
-      catalog_browsing_result: "success"
-      viewed_products: "electronics_category"
+      catalog_browsing_result: "`success`"
+      viewed_products: "`electronics_category`"
+      viewed_products_interpolate: "body.args.category"
 
   # 3. E-COMMERCE WORKFLOW - Product Details and Reviews
   - name: "Get product details with reviews"
@@ -130,8 +137,8 @@ steps:
           product_id: { equals: "PROD-001" }
           include_reviews: { equals: "true" }
     capture:
-      product_details_result: "success"
-      selected_product_id: "args.product_id"
+      product_details_result: "`success`"
+      selected_product_id: "body.args.product_id"
 
   # 4. E-COMMERCE WORKFLOW - Add to Cart
   - name: "Add products to shopping cart"
@@ -163,9 +170,9 @@ steps:
           customer_id: { equals: "{{registered_customer_id}}" }
           items: { length: 2 }
     capture:
-      cart_total_items: 3
-      cart_total_amount: 649.97
-      cart_id: "json.session_id"
+      cart_total_items: "`3`"
+      cart_total_amount: "`649.97`"
+      cart_id: "body.json.session_id"
 
   # 5. E-COMMERCE WORKFLOW - Apply Promotions and Discounts
   - name: "Apply promotional codes and discounts"
@@ -191,9 +198,9 @@ steps:
           operation: { equals: "apply_promotions" }
           cart_id: { equals: "{{cart_id}}" }
     capture:
-      promotion_result: "applied"
-      discounted_total: 584.97
-      savings_amount: 64.99
+      promotion_result: "`applied`"
+      discounted_total: "`584.97`"
+      savings_amount: "`64.99`"
 
   # 6. E-COMMERCE WORKFLOW - Shipping Options
   - name: "Calculate shipping options"
@@ -230,9 +237,9 @@ steps:
           operation: { equals: "calculate_shipping" }
           cart_id: { equals: "{{cart_id}}" }
     capture:
-      shipping_options_result: "calculated"
-      selected_shipping_cost: 9.99
-      total_with_shipping: 594.96
+      shipping_options_result: "`calculated`"
+      selected_shipping_cost: "`9.99`"
+      total_with_shipping: "`594.96`"
 
   # 7. E-COMMERCE WORKFLOW - Payment Processing
   - name: "Process payment transaction"
@@ -248,7 +255,7 @@ steps:
         operation: "process_payment"
         customer_id: "{{registered_customer_id}}"
         cart_id: "{{cart_id}}"
-        payment_method: "{{payment_methods[0]}}"
+        payment_method: "{{default_payment}}"
         payment_amount: "{{total_with_shipping}}"
         currency: "USD"
         billing_address: "{{customer_data.address}}"
@@ -264,9 +271,9 @@ steps:
           customer_id: { equals: "{{registered_customer_id}}" }
           payment_amount: { equals: "{{total_with_shipping}}" }
     capture:
-      payment_result: "success"
-      transaction_id: "json.customer_id"
-      payment_confirmation: "confirmed"
+      payment_result: "`success`"
+      transaction_id: "body.json.customer_id"
+      payment_confirmation: "`confirmed`"
 
   # 8. E-COMMERCE WORKFLOW - Order Creation and Confirmation
   - name: "Create order and send confirmation"
@@ -299,9 +306,9 @@ steps:
           customer_id: { equals: "{{registered_customer_id}}" }
           transaction_id: { equals: "{{transaction_id}}" }
     capture:
-      order_creation_result: "success"
-      order_id: "json.customer_id"
-      order_status: "confirmed"
+      order_creation_result: "`success`"
+      order_id: "body.json.customer_id"
+      order_status: "`confirmed`"
 
   # 9. API CONTRACT VALIDATION - Service Integration Testing
   - name: "Validate user service API contract"
@@ -325,7 +332,7 @@ steps:
           user_id: { equals: "{{registered_customer_id}}" }
           include_profile: { equals: "true" }
     capture:
-      user_service_contract: "validated"
+      user_service_contract: "`validated`"
 
   - name: "Validate order service API contract"
     request:
@@ -347,7 +354,7 @@ steps:
           order_id: { equals: "{{order_id}}" }
           customer_id: { equals: "{{registered_customer_id}}" }
     capture:
-      order_service_contract: "validated"
+      order_service_contract: "`validated`"
 
   - name: "Validate payment service API contract"
     request:
@@ -367,7 +374,7 @@ steps:
         args:
           transaction_id: { equals: "{{transaction_id}}" }
     capture:
-      payment_service_contract: "validated"
+      payment_service_contract: "`validated`"
 
   # 10. MICROSERVICES COMMUNICATION - Service-to-Service Integration
   - name: "Test inventory service communication"
@@ -395,7 +402,7 @@ steps:
           service_request: { equals: "inventory_check" }
           order_id: { equals: "{{order_id}}" }
     capture:
-      inventory_service_result: "stock_available"
+      inventory_service_result: "`stock_available`"
 
   - name: "Test notification service communication"
     request:
@@ -422,7 +429,7 @@ steps:
           service_request: { equals: "send_notifications" }
           customer_id: { equals: "{{registered_customer_id}}" }
     capture:
-      notification_service_result: "notifications_sent"
+      notification_service_result: "`notifications_sent`"
 
   # 11. END-TO-END WORKFLOW - Order Fulfillment
   - name: "Initiate order fulfillment process"
@@ -458,8 +465,8 @@ steps:
           operation: { equals: "initiate_fulfillment" }
           order_id: { equals: "{{order_id}}" }
     capture:
-      fulfillment_result: "initiated"
-      fulfillment_id: "json.order_id"
+      fulfillment_result: "`initiated`"
+      fulfillment_id: "body.json.order_id"
 
   # 12. WORKFLOW MONITORING AND ANALYTICS
   - name: "Track workflow analytics and metrics"
@@ -502,8 +509,8 @@ steps:
           analytics_event: { equals: "complete_purchase_workflow" }
           workflow_id: { equals: "{{workflow_test_id}}" }
     capture:
-      analytics_result: "tracked"
-      workflow_completion_status: "successful"
+      analytics_result: "`tracked`"
+      workflow_completion_status: "`successful`"
 
   # 13. FINAL WORKFLOW SUMMARY AND VALIDATION
   - name: "Collect complex workflow test results"

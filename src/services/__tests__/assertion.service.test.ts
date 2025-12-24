@@ -25,8 +25,20 @@ describe("AssertionService", () => {
     endGroup: jest.fn(),
   };
 
+  const mockVariableService = {
+    interpolate: jest.fn((value) => value), // Pass-through by default
+    setVariables: jest.fn(),
+    setRuntimeVariable: jest.fn(),
+    getVariable: jest.fn(),
+    getAllVariables: jest.fn(),
+    hasVariable: jest.fn(),
+  };
+
   beforeEach(() => {
-    assertionService = new AssertionService(mockLogger as any);
+    assertionService = new AssertionService(
+      mockLogger as any,
+      mockVariableService as any
+    );
     jest.clearAllMocks();
   });
 
