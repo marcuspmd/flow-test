@@ -79,10 +79,10 @@ steps:
           type: "string"  # httpbin retorna string JSON
 
     capture:
-      generated_user_profile: "body.data"  # String JSON com dados do usuário
+      generated_user_profile: "body.json"  # String JSON com dados do usuário
       user_id: "body.url"  # Como fallback, usar URL para identificação
       user_email: "body.headers.Host"  # Como fallback, usar host
-      user_company: "body.data"  # String JSON completa
+      user_company: "body.json"  # String JSON completa
 
   # Teste 2: Dados Financeiros e Comerciais
   - name: "Generate Financial and Commerce Data"
@@ -137,9 +137,9 @@ steps:
           contains: "financial_profile"  # Deve conter os dados financeiros
 
     capture:
-      financial_data: "body.data"  # String JSON com dados financeiros
+      financial_data: "body.json"  # String JSON com dados financeiros
       product_name: "body.url"  # Fallback para identificação
-      transaction_count: "body.data"  # String JSON completa
+      transaction_count: "body.json"  # String JSON completa
 
   # Teste 3: Dados de Empresa e Negócios
   - name: "Generate Business and Company Data"
@@ -231,9 +231,9 @@ steps:
           contains: "validation_test"  # Deve conter dados de validação
 
     capture:
-      validation_results: "body.data"
-      email_count: "body.data"  # String JSON completa
-      uuid_count: "body.data"  # String JSON completa
+      validation_results: "body.json"
+      email_count: "body.json"  # String JSON completa
+      uuid_count: "body.json"  # String JSON completa
 
   # Teste 5: Integração com Variáveis Anteriores
   - name: "Integration with Previous Variables"
@@ -283,9 +283,9 @@ steps:
           contains: "integration_data"
 
     capture:
-      integration_summary: "body.data"
-      related_user_count: "body.data"  # String JSON completa
-      final_timestamp: "body.data"  # String JSON completa
+      integration_summary: "body.json"
+      related_user_count: "body.json"  # String JSON completa
+      final_timestamp: "body.json"  # String JSON completa
 
   # Teste 6: Cenário Complexo com Múltiplos Fakers
   - name: "Complex Multi-Faker Scenario"
@@ -341,7 +341,7 @@ steps:
           contains: "complex_scenario"
 
     capture:
-      order_data: "body.data"
-      customer_email: "body.data"  # String JSON completa
-      total_items: "body.data"  # String JSON completa
-      payment_method: "body.data"  # String JSON completa
+      order_data: "body.json"
+      customer_email: "body.json"  # String JSON completa
+      total_items: "body.json"  # String JSON completa
+      payment_method: "body.json"  # String JSON completa

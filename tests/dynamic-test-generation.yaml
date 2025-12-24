@@ -60,7 +60,7 @@ steps:
         content-type:
           contains: "json"
     capture:
-      endpoint_get_result: "body.data"
+      endpoint_get_result: "body.json"
       response_time_get: "response_time_ms"
 
   - name: "Test POST with dynamic user data"

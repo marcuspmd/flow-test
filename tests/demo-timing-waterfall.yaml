@@ -18,7 +18,7 @@ steps:
     assert:
       status_code: 200
       body:
-        url: { contains: "localhost" }
+        url: { equals: "/get" }
 
   - name: "POST request with body"
     request:
