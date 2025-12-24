@@ -76,7 +76,7 @@ steps:
       body:
         json:
           exists: true
-          type: "string"  # httpbin retorna string JSON
+          type: "object"  # httpbin retorna string JSON
 
     capture:
       generated_user_profile: "body.json"  # String JSON com dados do usuário
@@ -188,7 +188,7 @@ steps:
       status_code: 200
       body:
         json:
-          type: "string"  # httpbin retorna data como string JSON
+          type: "object"  # test server retorna json como object
 
   # Teste 4: Validação de Formato e Consistência
   - name: "Validate Faker Data Formats"

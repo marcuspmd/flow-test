@@ -34,7 +34,7 @@ steps:
       body:
         json:
           exists: true
-          type: "string"  # httpbin retorna JSON como string em data
+          type: "object"  # httpbin retorna JSON como string em data
     capture:
       generated_email: "body.url"  # Usar URL como fallback
       generated_name: "body.url"
